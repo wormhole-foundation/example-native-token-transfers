@@ -1,6 +1,7 @@
 all: build
 
 build: forge_dependencies
+	forge build
 
 forge_dependencies: lib/forge-std lib/openzeppelin-contracts lib/wormhole-solidity-sdk
 

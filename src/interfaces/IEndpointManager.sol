@@ -16,7 +16,6 @@ interface IEndpointManager {
     error NonRegisteredEndpoint(address endpoint);
     error DisabledEndpoint(address endpoint);
     error TooManyEndpoints();
-    error InvalidFork(uint256 evmChainId, uint256 blockChainId);
 
     event EndpointAdded(address endpoint);
     event EndpointRemoved(address endpoint);
@@ -27,11 +26,14 @@ interface IEndpointManager {
         bytes32 recipient
     ) external payable returns (uint64 msgId);
 
-    function attestationReceived(bytes memory payload) external;
+    function quoteDeliveryPrice(
+        uint16 recipientChain
+    ) external view returns (uint256);
 
-    function getThreshold() external view returns (uint8);
-
-    function getEndpoints() external view returns (address[] memory);
+    function setSibling(
+        uint16 siblingChainId,
+        bytes32 siblingContract
+    ) external;
 
     function nextSequence() external view returns (uint64);
 }
