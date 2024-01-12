@@ -3,20 +3,20 @@ pragma solidity >=0.6.12 <0.9.0;
 
 import "wormhole-solidity-sdk/Utils.sol";
 
-import "./Endpoint.sol";
+import "./libraries/EndpointHelpers.sol";
 import "./interfaces/IWormhole.sol";
-import "./interfaces/IEndpointManager.sol";
+import "./Endpoint.sol";
 
-contract WormholeEndpoint is Endpoint {
+abstract contract WormholeEndpoint is Endpoint {
     // TODO -- fix this after some testing
-    uint256 constant GAS_LIMIT = 500000;
+    uint256 constant _GAS_LIMIT = 500000;
 
-    address immutable wormholeCoreBridge;
-    address immutable wormholeRelayerAddr;
-    uint256 immutable evmChainId;
+    address immutable _wormholeCoreBridge;
+    address immutable _wormholeRelayerAddr;
+    uint256 immutable _wormholeEndpoint_evmChainId;
 
     // Mapping of consumed VAAs
-    mapping(bytes32 => bool) consumedVAAs;
+    mapping(bytes32 => bool) _consumedVAAs;
 
     event ReceivedMessage(
         bytes32 digest,
@@ -28,22 +28,16 @@ contract WormholeEndpoint is Endpoint {
     error InvalidVaa(string reason);
     error InvalidSibling(uint16 chainId, bytes32 siblingAddress);
     error TransferAlreadyCompleted(bytes32 vaaHash);
-    error InvalidFork(uint256 evmChainId, uint256 blockChainId);
 
-    constructor(
-        address _manager,
-        address _wormholeCoreBridge,
-        address _wormholeRelayerAddr,
-        uint256 _evmChainId
-    ) Endpoint(_manager) {
-        wormholeCoreBridge = _wormholeCoreBridge;
-        wormholeRelayerAddr = _wormholeRelayerAddr;
-        evmChainId = _evmChainId;
+    constructor(address wormholeCoreBridge, address wormholeRelayerAddr, uint256 evmChainId) {
+        _wormholeCoreBridge = wormholeCoreBridge;
+        _wormholeRelayerAddr = wormholeRelayerAddr;
+        _wormholeEndpoint_evmChainId = evmChainId;
     }
 
-    function quoteDeliveryPrice(
+    function _quoteDeliveryPrice(
         uint16 targetChain
-    ) external view override returns (uint256 nativePriceQuote) {
+    ) internal view override returns (uint256 nativePriceQuote) {
         // no delivery fee for solana (standard relaying is not yet live)
         if (targetChain == 1) {
             return 0;
@@ -52,7 +46,7 @@ contract WormholeEndpoint is Endpoint {
         (uint256 cost, ) = wormholeRelayer().quoteEVMDeliveryPrice(
             targetChain,
             0,
-            GAS_LIMIT
+            _GAS_LIMIT
         );
 
         return cost;
@@ -71,12 +65,14 @@ contract WormholeEndpoint is Endpoint {
                 fromWormholeFormat(getSibling(recipientChain)),
                 payload,
                 0,
-                GAS_LIMIT
+                _GAS_LIMIT
             );
         }
     }
 
-    function receiveMessage(bytes memory encodedMessage) external override {
+    function _verifyMessage(
+        bytes memory encodedMessage
+    ) internal override returns (bytes memory) {
         // verify VAA against Wormhole Core Bridge contract
         (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole()
             .parseAndVerifyVM(encodedMessage);
@@ -87,7 +83,7 @@ contract WormholeEndpoint is Endpoint {
         }
 
         // ensure that the message came from a registered sibling contract
-        if (!verifyBridgeVM(vm)) {
+        if (!_verifyBridgeVM(vm)) {
             revert InvalidSibling(vm.emitterChainId, vm.emitterAddress);
         }
 
@@ -95,7 +91,7 @@ contract WormholeEndpoint is Endpoint {
         if (isVAAConsumed(vm.hash)) {
             revert TransferAlreadyCompleted(vm.hash);
         }
-        setVAAConsumed(vm.hash);
+        _setVAAConsumed(vm.hash);
 
         // emit `ReceivedMessage` event
         emit ReceivedMessage(
@@ -105,36 +101,29 @@ contract WormholeEndpoint is Endpoint {
             vm.sequence
         );
 
-        // forward the VAA payload to the endpoint manager contract
-        IEndpointManager(manager).attestationReceived(vm.payload);
+        return vm.payload;
     }
 
     function wormhole() public view returns (IWormhole) {
-        return IWormhole(wormholeCoreBridge);
+        return IWormhole(_wormholeCoreBridge);
     }
 
     function wormholeRelayer() public view returns (IWormholeRelayer) {
-        return IWormholeRelayer(wormholeRelayerAddr);
+        return IWormholeRelayer(_wormholeRelayerAddr);
     }
 
-    function verifyBridgeVM(
+    function _verifyBridgeVM(
         IWormhole.VM memory vm
     ) internal view returns (bool) {
-        if (isFork()) {
-            revert InvalidFork(evmChainId, block.chainid);
-        }
+        checkFork(_wormholeEndpoint_evmChainId);
         return super.getSibling(vm.emitterChainId) == vm.emitterAddress;
     }
 
-    function isFork() public view returns (bool) {
-        return evmChainId != block.chainid;
-    }
-
     function isVAAConsumed(bytes32 hash) public view returns (bool) {
-        return consumedVAAs[hash];
+        return _consumedVAAs[hash];
     }
 
-    function setVAAConsumed(bytes32 hash) internal {
-        consumedVAAs[hash] = true;
+    function _setVAAConsumed(bytes32 hash) internal {
+        _consumedVAAs[hash] = true;
     }
 }

@@ -3,20 +3,20 @@ pragma solidity >=0.6.12 <0.9.0;
 
 import "forge-std/Test.sol";
 
-import "../src/EndpointManager.sol";
+import "../src/EndpointManagerStandalone.sol";
 
 // @dev A non-abstract EndpointManager contract
-contract EndpointManagerContract is EndpointManager {
+contract EndpointManagerContract is EndpointManagerStandalone {
     constructor(
-        address _token,
-        bool _isLockingMode,
-        uint16 _chainId,
-        uint256 _evmChainId
-    ) EndpointManager(_token, _isLockingMode, _chainId, _evmChainId) {}
+        address token,
+        bool isLockingMode,
+        uint16 chainId,
+        uint256 evmChainId
+    ) EndpointManagerStandalone(token, isLockingMode, chainId, evmChainId) {}
 }
 
 contract TestEndpointManager is Test {
-    EndpointManager endpointManager;
+    EndpointManagerStandalone endpointManager;
 
     function test_countSetBits() public {
         assertEq(endpointManager.countSetBits(5), 2);
