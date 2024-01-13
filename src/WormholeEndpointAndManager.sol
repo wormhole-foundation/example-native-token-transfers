@@ -7,12 +7,12 @@ import "./WormholeEndpoint.sol";
 contract WormholeEndpointAndManager is EndpointAndManager, WormholeEndpoint {
     constructor(
         address token,
-        bool isLockingMode,
+        Mode mode,
         uint16 chainId,
         address wormholeCoreBridge,
         address wormholeRelayerAddr
     )
-        EndpointAndManager(token, isLockingMode, chainId)
+        EndpointAndManager(token, mode, chainId)
         WormholeEndpoint(wormholeCoreBridge, wormholeRelayerAddr)
     {}
 }
