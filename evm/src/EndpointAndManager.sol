@@ -8,9 +8,8 @@ abstract contract EndpointAndManager is Endpoint, EndpointManager {
     constructor(
         address token,
         bool isLockingMode,
-        uint16 chainId,
-        uint256 evmChainId
-    ) EndpointManager(token, isLockingMode, chainId, evmChainId) {}
+        uint16 chainId
+    ) EndpointManager(token, isLockingMode, chainId) {}
 
     function quoteDeliveryPrice(uint16 recipientChain) public view override returns (uint256) {
         return _quoteDeliveryPrice(recipientChain);

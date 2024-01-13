@@ -10,9 +10,8 @@ contract EndpointManagerContract is EndpointManagerStandalone {
     constructor(
         address token,
         bool isLockingMode,
-        uint16 chainId,
-        uint256 evmChainId
-    ) EndpointManagerStandalone(token, isLockingMode, chainId, evmChainId) {}
+        uint16 chainId
+    ) EndpointManagerStandalone(token, isLockingMode, chainId) {}
 }
 
 contract TestEndpointManager is Test {
@@ -27,7 +26,8 @@ contract TestEndpointManager is Test {
     }
 
     function setUp() public {
-        endpointManager = new EndpointManagerContract(address(0), false, 0, 0);
+        endpointManager = new EndpointManagerContract(address(0), false, 0);
+        endpointManager.initialize();
         // deploy sample token contract
         // deploy wormhole contract
         // wormhole = deployWormholeForTest();
