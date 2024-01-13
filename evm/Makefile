@@ -1,8 +1,16 @@
 all: build
 
+#######################
+## BUILD
+
+.PHONY: build
 build: forge_dependencies
 	cd evm && forge build
 
+#######################
+## INSTALL DEPENDENCIES
+
+.PHONY: forge_dependencies
 forge_dependencies: lib/forge-std lib/openzeppelin-contracts lib/wormhole-solidity-sdk
 
 lib/forge-std:
@@ -13,3 +21,14 @@ lib/openzeppelin-contracts:
 
 lib/wormhole-solidity-sdk:
 	forge install wormhole-foundation/wormhole-solidity-sdk@374a016685715f6aa8cb05f079f22f471e5f48fc --no-git --no-commit
+
+#######################
+## TESTS
+
+.PHONY: check-format
+check-format:
+	forge fmt --check
+
+.PHONY: test
+test: forge_dependencies
+	forge test -vvv
