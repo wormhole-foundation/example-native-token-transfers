@@ -128,10 +128,9 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         return amount;
     }
 
-    /// @dev Called by a Endpoint contract to deliver a verified attestation.
+    /// @dev Called after a message has been sufficiently verified to execute the command in the message.
     ///      This function will decode the payload as an EndpointManagerMessage to extract the sequence, msgType, and other parameters.
-    ///      When the threshold is reached for a sequence, this function will execute logic to handle the action specified by the msgType and payload.
-    function _attestationReceived(bytes memory payload) internal {
+    function _executeMsg(bytes memory payload) internal {
         // verify chain has not forked
         checkFork(_evmChainId);
 
