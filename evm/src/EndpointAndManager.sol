@@ -21,7 +21,7 @@ abstract contract EndpointAndManager is Endpoint, EndpointManager {
     }
 
     function _deliverToManager(bytes memory payload) internal override {
-        return _attestationReceived(payload);
+        return _executeMsg(payload);
     }
 
     function setSibling(
