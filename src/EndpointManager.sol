@@ -26,11 +26,16 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
 
     uint64 _sequence;
 
-    constructor(address token, bool isLockingMode, uint16 chainId, uint256 evmChainId) {
+    constructor(address token, bool isLockingMode, uint16 chainId) {
         _token = token;
         _isLockingMode = isLockingMode;
         _chainId = chainId;
-        _evmChainId = evmChainId;
+        _evmChainId = block.chainid;
+    }
+
+    function initialize() public initializer {
+        // TODO: shouldn't be msg.sender but a separate (contract) address that's passed in the initializer
+        __Ownable_init(msg.sender);
     }
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
