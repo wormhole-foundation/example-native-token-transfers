@@ -109,8 +109,9 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
 
         // construct the ManagerMessage payload
         _sequence = useSequence();
-        bytes memory encodedManagerPayload =
-            encodeEndpointManagerMessage(_chainId, _sequence, 1, encodedTransferPayload);
+        bytes memory encodedManagerPayload = encodeEndpointManagerMessage(
+            EndpointManagerMessage(_chainId, _sequence, 1, encodedTransferPayload)
+        );
 
         // send the message
         sendMessage(recipientChain, encodedManagerPayload);
@@ -185,15 +186,14 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         _sequence++;
     }
 
-    function encodeEndpointManagerMessage(
-        uint16 chainId,
-        uint64 sequence,
-        uint8 msgType,
-        bytes memory payload
-    ) public pure returns (bytes memory encoded) {
+    function encodeEndpointManagerMessage(EndpointManagerMessage memory m)
+        public
+        pure
+        returns (bytes memory encoded)
+    {
         // TODO -- should we check payload length here?
         // for example, CCTP integration checks payload is <= max(uint16)
-        return abi.encodePacked(chainId, sequence, msgType, payload);
+        return abi.encodePacked(m.chainId, m.sequence, m.msgType, m.payload);
     }
 
     /*
