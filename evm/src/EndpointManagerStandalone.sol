@@ -172,7 +172,9 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
         uint64 updatedEnabledEndpointBitmap =
             _enabledEndpointBitmap | uint64(1 << endpointInfos[endpoint].index);
         // ensure that this actually changed the bitmap
-        assert(updatedEnabledEndpointBitmap > _enabledEndpointBitmap);
+        if (updatedEnabledEndpointBitmap == _enabledEndpointBitmap) {
+            revert EndpointAlreadyEnabled(endpoint);
+        }
         _enabledEndpointBitmap = updatedEnabledEndpointBitmap;
 
         emit EndpointAdded(endpoint);
@@ -181,6 +183,9 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
     }
 
     function removeEndpoint(address endpoint) external onlyOwner {
+        // TODO: should this reduce the threshold if the threshold is greater
+        // than the number of enabled endpoints after this one is removed?
+
         if (endpoint == address(0)) {
             revert InvalidEndpointZeroAddress();
         }
