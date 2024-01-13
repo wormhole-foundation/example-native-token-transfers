@@ -16,11 +16,7 @@ import "./interfaces/IEndpointManager.sol";
 import "./interfaces/IEndpointToken.sol";
 import "./Endpoint.sol";
 
-abstract contract EndpointManager is
-    IEndpointManager,
-    OwnableUpgradeable,
-    ReentrancyGuard
-{
+abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, ReentrancyGuard {
     using BytesParsing for bytes;
 
     address immutable _token;
@@ -30,12 +26,7 @@ abstract contract EndpointManager is
 
     uint64 _sequence;
 
-    constructor(
-        address token,
-        bool isLockingMode,
-        uint16 chainId,
-        uint256 evmChainId
-    ) {
+    constructor(address token, bool isLockingMode, uint16 chainId, uint256 evmChainId) {
         _token = token;
         _isLockingMode = isLockingMode;
         _chainId = chainId;
@@ -43,21 +34,13 @@ abstract contract EndpointManager is
     }
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
-    function quoteDeliveryPrice(
-        uint16 recipientChain
-    ) public view virtual returns (uint256);
+    function quoteDeliveryPrice(uint16 recipientChain) public view virtual returns (uint256);
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
-    function sendMessage(
-        uint16 recipientChain,
-        bytes memory payload
-    ) internal virtual;
+    function sendMessage(uint16 recipientChain, bytes memory payload) internal virtual;
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
-    function setSibling(
-        uint16 siblingChainId,
-        bytes32 siblingContract
-    ) external virtual;
+    function setSibling(uint16 siblingChainId, bytes32 siblingContract) external virtual;
 
     /// @notice Called by the user to send the token cross-chain.
     ///         This function will either lock or burn the sender's tokens.
@@ -80,9 +63,7 @@ abstract contract EndpointManager is
         }
 
         // query tokens decimals
-        (, bytes memory queriedDecimals) = _token.staticcall(
-            abi.encodeWithSignature("decimals()")
-        );
+        (, bytes memory queriedDecimals) = _token.staticcall(abi.encodeWithSignature("decimals()"));
         uint8 decimals = abi.decode(queriedDecimals, (uint8));
 
         // don't deposit dust that can not be bridged due to the decimal shift
@@ -94,12 +75,7 @@ abstract contract EndpointManager is
             uint256 balanceBefore = getTokenBalanceOf(_token, address(this));
 
             // transfer tokens
-            SafeERC20.safeTransferFrom(
-                IERC20(_token),
-                msg.sender,
-                address(this),
-                amount
-            );
+            SafeERC20.safeTransferFrom(IERC20(_token), msg.sender, address(this), amount);
 
             // query own token balance after transfer
             uint256 balanceAfter = getTokenBalanceOf(_token, address(this));
@@ -123,21 +99,13 @@ abstract contract EndpointManager is
         // normalize amount decimals
         uint256 normalizedAmount = normalizeAmount(amount, decimals);
 
-        bytes memory encodedTransferPayload = encodeNativeTokenTransfer(
-            normalizedAmount,
-            _token,
-            recipient,
-            recipientChain
-        );
+        bytes memory encodedTransferPayload =
+            encodeNativeTokenTransfer(normalizedAmount, _token, recipient, recipientChain);
 
         // construct the ManagerMessage payload
         _sequence = useSequence();
-        bytes memory encodedManagerPayload = encodeEndpointManagerMessage(
-            _chainId,
-            _sequence,
-            1,
-            encodedTransferPayload
-        );
+        bytes memory encodedManagerPayload =
+            encodeEndpointManagerMessage(_chainId, _sequence, 1, encodedTransferPayload);
 
         // send the message
         sendMessage(recipientChain, encodedManagerPayload);
@@ -146,20 +114,14 @@ abstract contract EndpointManager is
         return _sequence;
     }
 
-    function normalizeAmount(
-        uint256 amount,
-        uint8 decimals
-    ) internal pure returns (uint256) {
+    function normalizeAmount(uint256 amount, uint8 decimals) internal pure returns (uint256) {
         if (decimals > 8) {
             amount /= 10 ** (decimals - 8);
         }
         return amount;
     }
 
-    function deNormalizeAmount(
-        uint256 amount,
-        uint8 decimals
-    ) internal pure returns (uint256) {
+    function deNormalizeAmount(uint256 amount, uint8 decimals) internal pure returns (uint256) {
         if (decimals > 8) {
             amount *= 10 ** (decimals - 8);
         }
@@ -174,19 +136,14 @@ abstract contract EndpointManager is
         checkFork(_evmChainId);
 
         // parse the payload as an EndpointManagerMessage
-        EndpointManagerMessage memory message = parseEndpointManagerMessage(
-            payload
-        );
+        EndpointManagerMessage memory message = parseEndpointManagerMessage(payload);
 
         // for msgType == 1, parse the payload as a NativeTokenTransfer.
         // for other msgTypes, revert (unsupported for now)
         if (message.msgType != 1) {
             revert UnexpectedEndpointManagerMessageType(message.msgType);
         }
-        NativeTokenTransfer
-            memory nativeTokenTransfer = parseNativeTokenTransfer(
-                message.payload
-            );
+        NativeTokenTransfer memory nativeTokenTransfer = parseNativeTokenTransfer(message.payload);
 
         // verify that the destination chain is valid
         if (nativeTokenTransfer.toChain != _chainId) {
@@ -196,30 +153,18 @@ abstract contract EndpointManager is
         // calculate proper amount of tokens to unlock/mint to recipient
         // query the decimals of the token contract that's tied to this manager
         // adjust the decimals of the amount in the nativeTokenTransfer payload accordingly
-        (, bytes memory queriedDecimals) = _token.staticcall(
-            abi.encodeWithSignature("decimals()")
-        );
+        (, bytes memory queriedDecimals) = _token.staticcall(abi.encodeWithSignature("decimals()"));
         uint8 decimals = abi.decode(queriedDecimals, (uint8));
-        uint256 nativeTransferAmount = deNormalizeAmount(
-            nativeTokenTransfer.amount,
-            decimals
-        );
+        uint256 nativeTransferAmount = deNormalizeAmount(nativeTokenTransfer.amount, decimals);
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
         if (_isLockingMode) {
             // unlock tokens to the specified recipient
-            SafeERC20.safeTransfer(
-                IERC20(_token),
-                transferRecipient,
-                nativeTransferAmount
-            );
+            SafeERC20.safeTransfer(IERC20(_token), transferRecipient, nativeTransferAmount);
         } else {
             // mint tokens to the specified recipient
-            IEndpointToken(_token).mint(
-                transferRecipient,
-                nativeTransferAmount
-            );
+            IEndpointToken(_token).mint(transferRecipient, nativeTransferAmount);
         }
     }
 
@@ -252,17 +197,16 @@ abstract contract EndpointManager is
      *
      * @params encoded The byte array corresponding to the encoded message
      */
-    function parseEndpointManagerMessage(
-        bytes memory encoded
-    ) public pure returns (EndpointManagerMessage memory managerMessage) {
+    function parseEndpointManagerMessage(bytes memory encoded)
+        public
+        pure
+        returns (EndpointManagerMessage memory managerMessage)
+    {
         uint256 offset = 0;
         (managerMessage.chainId, offset) = encoded.asUint16(offset);
         (managerMessage.sequence, offset) = encoded.asUint64(offset);
         (managerMessage.msgType, offset) = encoded.asUint8(offset);
-        (managerMessage.payload, offset) = encoded.slice(
-            offset,
-            encoded.length - offset
-        );
+        (managerMessage.payload, offset) = encoded.slice(offset, encoded.length - offset);
     }
 
     function encodeNativeTokenTransfer(
@@ -271,13 +215,7 @@ abstract contract EndpointManager is
         bytes32 recipient,
         uint16 toChain
     ) public pure returns (bytes memory encoded) {
-        return
-            abi.encodePacked(
-                amount,
-                toWormholeFormat(tokenAddr),
-                recipient,
-                toChain
-            );
+        return abi.encodePacked(amount, toWormholeFormat(tokenAddr), recipient, toChain);
     }
 
     /*
@@ -285,9 +223,11 @@ abstract contract EndpointManager is
      *
      * @params encoded The byte array corresponding to the encoded message
      */
-    function parseNativeTokenTransfer(
-        bytes memory encoded
-    ) public pure returns (NativeTokenTransfer memory nativeTokenTransfer) {
+    function parseNativeTokenTransfer(bytes memory encoded)
+        public
+        pure
+        returns (NativeTokenTransfer memory nativeTokenTransfer)
+    {
         uint256 offset = 0;
         (nativeTokenTransfer.amount, offset) = encoded.asUint256(offset);
         (nativeTokenTransfer.tokenAddress, offset) = encoded.asBytes32(offset);
@@ -299,9 +239,8 @@ abstract contract EndpointManager is
         address tokenAddr,
         address accountAddr
     ) internal view returns (uint256) {
-        (, bytes memory queriedBalance) = tokenAddr.staticcall(
-            abi.encodeWithSelector(IERC20.balanceOf.selector, accountAddr)
-        );
+        (, bytes memory queriedBalance) =
+            tokenAddr.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, accountAddr));
         return abi.decode(queriedBalance, (uint256));
     }
 }
