@@ -11,10 +11,6 @@ contract WormholeEndpointStandalone is WormholeEndpoint, EndpointStandalone, Own
     constructor(
         address manager,
         address wormholeCoreBridge,
-        address wormholeRelayerAddr,
-        uint256 evmChainId
-    )
-        EndpointStandalone(manager)
-        WormholeEndpoint(wormholeCoreBridge, wormholeRelayerAddr, evmChainId)
-    {}
+        address wormholeRelayerAddr
+    ) EndpointStandalone(manager) WormholeEndpoint(wormholeCoreBridge, wormholeRelayerAddr) {}
 }
