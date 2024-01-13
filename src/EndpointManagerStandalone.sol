@@ -97,6 +97,9 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
         // this function should specify which endpoint the sibling is for
     }
 
+    /// @dev Called by an Endpoint contract to deliver a verified attestation.
+    ///      This function enforces attestation threshold and replay logic for messages.
+    ///      Once all validations are complete, this function calls _executeMsg to execute the command specified by the message.
     function attestationReceived(bytes memory payload) external onlyEndpoint {
         bytes32 managerMessageHash = computeManagerMessageHash(payload);
 
@@ -118,7 +121,7 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
 
         _markMessageExecuted(managerMessageHash);
 
-        return _attestationReceived(payload);
+        return _executeMsg(payload);
     }
 
     // @dev Mark a message as executed.
