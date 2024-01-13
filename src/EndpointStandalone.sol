@@ -29,9 +29,7 @@ abstract contract EndpointStandalone is IEndpointStandalone, Endpoint {
         _sendMessage(recipientChain, payload);
     }
 
-    function quoteDeliveryPrice(
-        uint16 targetChain
-    ) external view override returns (uint256) {
+    function quoteDeliveryPrice(uint16 targetChain) external view override returns (uint256) {
         return _quoteDeliveryPrice(targetChain);
     }
 
@@ -40,10 +38,7 @@ abstract contract EndpointStandalone is IEndpointStandalone, Endpoint {
         IEndpointManagerStandalone(_manager).attestationReceived(payload);
     }
 
-    function setSibling(
-        uint16 chainId,
-        bytes32 siblingContract
-    ) external onlyManager {
+    function setSibling(uint16 chainId, bytes32 siblingContract) external onlyManager {
         _setSibling(chainId, siblingContract);
     }
 }

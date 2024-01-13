@@ -3,10 +3,7 @@ pragma solidity >=0.6.12 <0.9.0;
 
 interface IEndpointManager {
     error CallerNotEndpoint(address caller);
-    error DeliveryPaymentTooLow(
-        uint256 requiredPayment,
-        uint256 providedPayment
-    );
+    error DeliveryPaymentTooLow(uint256 requiredPayment, uint256 providedPayment);
     error MessageAttestationAlreadyReceived(bytes32 msgHash, address endpoint);
     error MessageAlreadyExecuted(bytes32 msgHash);
     error UnexpectedEndpointManagerMessageType(uint8 msgType);
@@ -26,14 +23,9 @@ interface IEndpointManager {
         bytes32 recipient
     ) external payable returns (uint64 msgId);
 
-    function quoteDeliveryPrice(
-        uint16 recipientChain
-    ) external view returns (uint256);
+    function quoteDeliveryPrice(uint16 recipientChain) external view returns (uint256);
 
-    function setSibling(
-        uint16 siblingChainId,
-        bytes32 siblingContract
-    ) external;
+    function setSibling(uint16 siblingChainId, bytes32 siblingContract) external;
 
     function nextSequence() external view returns (uint64);
 }
