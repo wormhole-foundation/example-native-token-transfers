@@ -19,16 +19,21 @@ import "./Endpoint.sol";
 abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, ReentrancyGuard {
     using BytesParsing for bytes;
 
+    enum Mode {
+        LOCKING,
+        BURNING
+    }
+
     address immutable _token;
-    bool immutable _isLockingMode;
+    Mode immutable _mode;
     uint16 immutable _chainId;
     uint256 immutable _evmChainId;
 
     uint64 _sequence;
 
-    constructor(address token, bool isLockingMode, uint16 chainId) {
+    constructor(address token, Mode mode, uint16 chainId) {
         _token = token;
-        _isLockingMode = isLockingMode;
+        _mode = mode;
         _chainId = chainId;
         _evmChainId = block.chainid;
     }
@@ -74,7 +79,7 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         // don't deposit dust that can not be bridged due to the decimal shift
         amount = deNormalizeAmount(normalizeAmount(amount, decimals), decimals);
 
-        if (_isLockingMode) {
+        if (_mode == Mode.LOCKING) {
             // use transferFrom to pull tokens from the user and lock them
             // query own token balance before transfer
             uint256 balanceBefore = getTokenBalanceOf(_token, address(this));
@@ -164,7 +169,7 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
-        if (_isLockingMode) {
+        if (_mode == Mode.LOCKING) {
             // unlock tokens to the specified recipient
             SafeERC20.safeTransfer(IERC20(_token), transferRecipient, nativeTransferAmount);
         } else {

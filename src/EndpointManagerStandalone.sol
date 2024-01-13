@@ -59,11 +59,7 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
         _;
     }
 
-    constructor(
-        address token,
-        bool isLockingMode,
-        uint16 chainId
-    ) EndpointManager(token, isLockingMode, chainId) {
+    constructor(address token, Mode mode, uint16 chainId) EndpointManager(token, mode, chainId) {
         _checkEndpointsInvariants();
     }
 

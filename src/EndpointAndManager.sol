@@ -5,11 +5,7 @@ import "./Endpoint.sol";
 import "./EndpointManager.sol";
 
 abstract contract EndpointAndManager is Endpoint, EndpointManager {
-    constructor(
-        address token,
-        bool isLockingMode,
-        uint16 chainId
-    ) EndpointManager(token, isLockingMode, chainId) {}
+    constructor(address token, Mode mode, uint16 chainId) EndpointManager(token, mode, chainId) {}
 
     function quoteDeliveryPrice(uint16 recipientChain) public view override returns (uint256) {
         return _quoteDeliveryPrice(recipientChain);
