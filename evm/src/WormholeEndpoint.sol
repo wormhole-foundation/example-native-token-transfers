@@ -19,10 +19,7 @@ abstract contract WormholeEndpoint is Endpoint {
     mapping(bytes32 => bool) _consumedVAAs;
 
     event ReceivedMessage(
-        bytes32 digest,
-        uint16 emitterChainId,
-        bytes32 emitterAddress,
-        uint64 sequence
+        bytes32 digest, uint16 emitterChainId, bytes32 emitterAddress, uint64 sequence
     );
 
     error InvalidVaa(string reason);
@@ -35,27 +32,23 @@ abstract contract WormholeEndpoint is Endpoint {
         _wormholeEndpoint_evmChainId = evmChainId;
     }
 
-    function _quoteDeliveryPrice(
-        uint16 targetChain
-    ) internal view override returns (uint256 nativePriceQuote) {
+    function _quoteDeliveryPrice(uint16 targetChain)
+        internal
+        view
+        override
+        returns (uint256 nativePriceQuote)
+    {
         // no delivery fee for solana (standard relaying is not yet live)
         if (targetChain == 1) {
             return 0;
         }
 
-        (uint256 cost, ) = wormholeRelayer().quoteEVMDeliveryPrice(
-            targetChain,
-            0,
-            _GAS_LIMIT
-        );
+        (uint256 cost,) = wormholeRelayer().quoteEVMDeliveryPrice(targetChain, 0, _GAS_LIMIT);
 
         return cost;
     }
 
-    function _sendMessage(
-        uint16 recipientChain,
-        bytes memory payload
-    ) internal override {
+    function _sendMessage(uint16 recipientChain, bytes memory payload) internal override {
         // do not use standard relaying for solana deliveries
         if (recipientChain == 1) {
             wormhole().publishMessage(0, payload, 1);
@@ -70,12 +63,10 @@ abstract contract WormholeEndpoint is Endpoint {
         }
     }
 
-    function _verifyMessage(
-        bytes memory encodedMessage
-    ) internal override returns (bytes memory) {
+    function _verifyMessage(bytes memory encodedMessage) internal override returns (bytes memory) {
         // verify VAA against Wormhole Core Bridge contract
-        (IWormhole.VM memory vm, bool valid, string memory reason) = wormhole()
-            .parseAndVerifyVM(encodedMessage);
+        (IWormhole.VM memory vm, bool valid, string memory reason) =
+            wormhole().parseAndVerifyVM(encodedMessage);
 
         // ensure that the VAA is valid
         if (!valid) {
@@ -94,12 +85,7 @@ abstract contract WormholeEndpoint is Endpoint {
         _setVAAConsumed(vm.hash);
 
         // emit `ReceivedMessage` event
-        emit ReceivedMessage(
-            vm.hash,
-            vm.emitterChainId,
-            vm.emitterAddress,
-            vm.sequence
-        );
+        emit ReceivedMessage(vm.hash, vm.emitterChainId, vm.emitterAddress, vm.sequence);
 
         return vm.payload;
     }
@@ -112,9 +98,7 @@ abstract contract WormholeEndpoint is Endpoint {
         return IWormholeRelayer(_wormholeRelayerAddr);
     }
 
-    function _verifyBridgeVM(
-        IWormhole.VM memory vm
-    ) internal view returns (bool) {
+    function _verifyBridgeVM(IWormhole.VM memory vm) internal view returns (bool) {
         checkFork(_wormholeEndpoint_evmChainId);
         return super.getSibling(vm.emitterChainId) == vm.emitterAddress;
     }

@@ -6,11 +6,7 @@ import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "./WormholeEndpoint.sol";
 import "./EndpointStandalone.sol";
 
-contract WormholeEndpointStandalone is
-    WormholeEndpoint,
-    EndpointStandalone,
-    Ownable
-{
+contract WormholeEndpointStandalone is WormholeEndpoint, EndpointStandalone, Ownable {
     constructor(
         address manager,
         address wormholeCoreBridge,

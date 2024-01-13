@@ -5,10 +5,7 @@ import "./interfaces/IEndpointManagerStandalone.sol";
 import "./interfaces/IEndpointStandalone.sol";
 import "./EndpointManager.sol";
 
-contract EndpointManagerStandalone is
-    IEndpointManagerStandalone,
-    EndpointManager
-{
+contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManager {
     uint8 _threshold;
 
     // ========================= ENDPOINT REGISTRATION =========================
@@ -71,31 +68,24 @@ contract EndpointManagerStandalone is
         _checkEndpointsInvariants();
     }
 
-    function quoteDeliveryPrice(
-        uint16 recipientChain
-    ) public view override returns (uint256) {
+    function quoteDeliveryPrice(uint16 recipientChain) public view override returns (uint256) {
         uint256 totalPriceQuote = 0;
         for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
-            uint256 endpointPriceQuote = IEndpointStandalone(
-                _enabledEndpoints[i]
-            ).quoteDeliveryPrice(recipientChain);
+            uint256 endpointPriceQuote =
+                IEndpointStandalone(_enabledEndpoints[i]).quoteDeliveryPrice(recipientChain);
             totalPriceQuote += endpointPriceQuote;
         }
         return totalPriceQuote;
     }
 
-    function sendMessage(
-        uint16 recipientChain,
-        bytes memory payload
-    ) internal override {
+    function sendMessage(uint16 recipientChain, bytes memory payload) internal override {
         // call into endpoint contracts to send the message
         for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
-            uint256 endpointPriceQuote = IEndpointStandalone(
-                _enabledEndpoints[i]
-            ).quoteDeliveryPrice(recipientChain);
-            IEndpointStandalone(_enabledEndpoints[i]).sendMessage{
-                value: endpointPriceQuote
-            }(recipientChain, payload);
+            uint256 endpointPriceQuote =
+                IEndpointStandalone(_enabledEndpoints[i]).quoteDeliveryPrice(recipientChain);
+            IEndpointStandalone(_enabledEndpoints[i]).sendMessage{value: endpointPriceQuote}(
+                recipientChain, payload
+            );
         }
     }
 
@@ -115,8 +105,8 @@ contract EndpointManagerStandalone is
         // This is fine, because attestation is idempotent (bitwise or 1), but
         // maybe we want to revert anyway?
         // TODO: factor out the bitmap logic into helper functions (or even a library)
-        managerMessageAttestations[managerMessageHash]
-            .attestedEndpoints |= uint64(1 << endpointInfos[msg.sender].index);
+        managerMessageAttestations[managerMessageHash].attestedEndpoints |=
+            uint64(1 << endpointInfos[msg.sender].index);
 
         uint8 attestationCount = messageAttestations(managerMessageHash);
 
@@ -170,18 +160,15 @@ contract EndpointManagerStandalone is
         if (endpointInfos[endpoint].registered) {
             endpointInfos[endpoint].enabled = true;
         } else {
-            endpointInfos[endpoint] = EndpointInfo({
-                registered: true,
-                enabled: true,
-                index: _numRegisteredEndpoints
-            });
+            endpointInfos[endpoint] =
+                EndpointInfo({registered: true, enabled: true, index: _numRegisteredEndpoints});
             _numRegisteredEndpoints++;
         }
 
         _enabledEndpoints.push(endpoint);
 
-        uint64 updatedEnabledEndpointBitmap = _enabledEndpointBitmap |
-            uint64(1 << endpointInfos[endpoint].index);
+        uint64 updatedEnabledEndpointBitmap =
+            _enabledEndpointBitmap | uint64(1 << endpointInfos[endpoint].index);
         // ensure that this actually changed the bitmap
         assert(updatedEnabledEndpointBitmap > _enabledEndpointBitmap);
         _enabledEndpointBitmap = updatedEnabledEndpointBitmap;
@@ -206,8 +193,8 @@ contract EndpointManagerStandalone is
 
         endpointInfos[endpoint].enabled = false;
 
-        uint64 updatedEnabledEndpointBitmap = _enabledEndpointBitmap &
-            uint64(~(1 << endpointInfos[endpoint].index));
+        uint64 updatedEnabledEndpointBitmap =
+            _enabledEndpointBitmap & uint64(~(1 << endpointInfos[endpoint].index));
         // ensure that this actually changed the bitmap
         assert(updatedEnabledEndpointBitmap < _enabledEndpointBitmap);
         _enabledEndpointBitmap = updatedEnabledEndpointBitmap;
@@ -216,9 +203,7 @@ contract EndpointManagerStandalone is
 
         for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
             if (_enabledEndpoints[i] == endpoint) {
-                _enabledEndpoints[i] = _enabledEndpoints[
-                    _enabledEndpoints.length - 1
-                ];
+                _enabledEndpoints[i] = _enabledEndpoints[_enabledEndpoints.length - 1];
                 _enabledEndpoints.pop();
                 removed = true;
                 break;
@@ -234,19 +219,13 @@ contract EndpointManagerStandalone is
         _checkEndpointInvariants(endpoint);
     }
 
-    function computeManagerMessageHash(
-        bytes memory payload
-    ) public pure returns (bytes32) {
+    function computeManagerMessageHash(bytes memory payload) public pure returns (bytes32) {
         return keccak256(payload);
     }
 
     // @dev Count the number of attestations from enabled endpoints for a given message.
-    function messageAttestations(
-        bytes32 managerMessageHash
-    ) public view returns (uint8 count) {
-        uint64 attestedEndpoints = managerMessageAttestations[
-            managerMessageHash
-        ].attestedEndpoints;
+    function messageAttestations(bytes32 managerMessageHash) public view returns (uint8 count) {
+        uint64 attestedEndpoints = managerMessageAttestations[managerMessageHash].attestedEndpoints;
 
         return countSetBits(attestedEndpoints & _enabledEndpointBitmap);
     }
@@ -282,10 +261,7 @@ contract EndpointManagerStandalone is
         assert(_numRegisteredEndpoints <= _MAX_ENDPOINTS);
 
         // invariant: threshold <= enabledEndpoints.length
-        require(
-            _threshold <= _enabledEndpoints.length,
-            "threshold <= enabledEndpoints.length"
-        );
+        require(_threshold <= _enabledEndpoints.length, "threshold <= enabledEndpoints.length");
     }
 
     // @dev Check that the endpoint is in a valid state.
@@ -293,13 +269,10 @@ contract EndpointManagerStandalone is
         EndpointInfo memory endpointInfo = endpointInfos[endpoint];
 
         // if an endpoint is not registered, it should not be enabled
-        assert(
-            endpointInfo.registered ||
-                (!endpointInfo.enabled && endpointInfo.index == 0)
-        );
+        assert(endpointInfo.registered || (!endpointInfo.enabled && endpointInfo.index == 0));
 
-        bool endpointInEnabledBitmap = (_enabledEndpointBitmap &
-            uint64(1 << endpointInfo.index)) != 0;
+        bool endpointInEnabledBitmap =
+            (_enabledEndpointBitmap & uint64(1 << endpointInfo.index)) != 0;
         bool endpointEnabled = endpointInfo.enabled;
 
         bool endpointInEnabledEndpoints = false;
