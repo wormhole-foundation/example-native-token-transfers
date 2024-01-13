@@ -9,7 +9,7 @@ interface IEndpointManager {
     error UnexpectedEndpointManagerMessageType(uint8 msgType);
     error InvalidTargetChain(uint16 targetChain, uint16 thisChain);
     error InvalidEndpointZeroAddress();
-    error AlreadyRegisteredEndpoint(address endpoint);
+    error EndpointAlreadyEnabled(address endpoint);
     error NonRegisteredEndpoint(address endpoint);
     error DisabledEndpoint(address endpoint);
     error TooManyEndpoints();
