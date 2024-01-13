@@ -26,10 +26,10 @@ abstract contract WormholeEndpoint is Endpoint {
     error InvalidSibling(uint16 chainId, bytes32 siblingAddress);
     error TransferAlreadyCompleted(bytes32 vaaHash);
 
-    constructor(address wormholeCoreBridge, address wormholeRelayerAddr, uint256 evmChainId) {
+    constructor(address wormholeCoreBridge, address wormholeRelayerAddr) {
         _wormholeCoreBridge = wormholeCoreBridge;
         _wormholeRelayerAddr = wormholeRelayerAddr;
-        _wormholeEndpoint_evmChainId = evmChainId;
+        _wormholeEndpoint_evmChainId = block.chainid;
     }
 
     function _quoteDeliveryPrice(uint16 targetChain)

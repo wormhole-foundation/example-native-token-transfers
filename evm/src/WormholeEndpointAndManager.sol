@@ -9,11 +9,10 @@ contract WormholeEndpointAndManager is EndpointAndManager, WormholeEndpoint {
         address token,
         bool isLockingMode,
         uint16 chainId,
-        uint256 evmChainId,
         address wormholeCoreBridge,
         address wormholeRelayerAddr
     )
-        EndpointAndManager(token, isLockingMode, chainId, evmChainId)
-        WormholeEndpoint(wormholeCoreBridge, wormholeRelayerAddr, evmChainId)
+        EndpointAndManager(token, isLockingMode, chainId)
+        WormholeEndpoint(wormholeCoreBridge, wormholeRelayerAddr)
     {}
 }
