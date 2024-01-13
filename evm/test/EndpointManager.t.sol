@@ -10,9 +10,9 @@ import "../src/EndpointStandalone.sol";
 contract EndpointManagerContract is EndpointManagerStandalone {
     constructor(
         address token,
-        bool isLockingMode,
+        Mode mode,
         uint16 chainId
-    ) EndpointManagerStandalone(token, isLockingMode, chainId) {}
+    ) EndpointManagerStandalone(token, mode, chainId) {}
 }
 
 contract DummyEndpoint is EndpointStandalone {
@@ -47,7 +47,7 @@ contract TestEndpointManager is Test {
     EndpointManagerStandalone endpointManager;
 
     function setUp() public {
-        endpointManager = new EndpointManagerContract(address(0), false, 0);
+        endpointManager = new EndpointManagerContract(address(0), EndpointManager.Mode.BURNING, 0);
         endpointManager.initialize();
         // deploy sample token contract
         // deploy wormhole contract
