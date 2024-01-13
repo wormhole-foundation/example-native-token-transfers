@@ -1,6 +1,11 @@
 name: test
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
 
 env:
   FOUNDRY_PROFILE: ci
@@ -24,11 +29,15 @@ jobs:
 
       - name: Run Forge build
         run: |
-          forge --version
-          forge build --sizes
+          make build
         id: build
 
       - name: Run Forge tests
         run: |
-          forge test -vvv
+          make test
         id: test
+
+      - name: Run Forge fmt
+        run: |
+          make check-format
+        id: check
