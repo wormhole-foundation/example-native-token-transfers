@@ -203,9 +203,8 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         pure
         returns (bytes memory encoded)
     {
-        // TODO -- should we check payload length here?
-        // for example, CCTP integration checks payload is <= max(uint16)
-        return abi.encodePacked(m.chainId, m.sequence, m.msgType, m.payload);
+        uint16 payloadLength = uint16(m.payload.length);
+        return abi.encodePacked(m.chainId, m.sequence, m.msgType, payloadLength, m.payload);
     }
 
     /*
@@ -219,11 +218,12 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         returns (EndpointManagerMessage memory managerMessage)
     {
         uint256 offset = 0;
-        // TODO: use unchecked operations (the length is checked at the end anyway)
-        (managerMessage.chainId, offset) = encoded.asUint16(offset);
-        (managerMessage.sequence, offset) = encoded.asUint64(offset);
-        (managerMessage.msgType, offset) = encoded.asUint8(offset);
-        (managerMessage.payload, offset) = encoded.slice(offset, encoded.length - offset);
+        (managerMessage.chainId, offset) = encoded.asUint16Unchecked(offset);
+        (managerMessage.sequence, offset) = encoded.asUint64Unchecked(offset);
+        (managerMessage.msgType, offset) = encoded.asUint8Unchecked(offset);
+        uint256 payloadLength;
+        (payloadLength, offset) = encoded.asUint16Unchecked(offset);
+        (managerMessage.payload, offset) = encoded.sliceUnchecked(offset, payloadLength);
         encoded.checkLength(offset);
     }
 
