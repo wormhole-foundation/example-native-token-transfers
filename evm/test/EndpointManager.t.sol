@@ -216,9 +216,14 @@ contract TestEndpointManager is Test {
         (DummyEndpoint e1,) = setup_endpoints();
         endpointManager.removeEndpoint(address(e1));
 
+        EndpointStructs.EndpointManagerMessage memory m = EndpointStructs.EndpointManagerMessage(
+            0, 0, 1, abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
+        );
+        bytes memory message = EndpointStructs.encodeEndpointManagerMessage(m);
+
         bytes4 selector = bytes4(keccak256("CallerNotEndpoint(address)"));
         vm.expectRevert(abi.encodeWithSelector(selector, address(e1)));
-        e1.receiveMessage("hello");
+        e1.receiveMessage(message);
     }
 
     function test_attest() public {

@@ -151,13 +151,9 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
 
     /// @dev Called after a message has been sufficiently verified to execute the command in the message.
     ///      This function will decode the payload as an EndpointManagerMessage to extract the sequence, msgType, and other parameters.
-    function _executeMsg(bytes memory payload) internal {
+    function _executeMsg(EndpointStructs.EndpointManagerMessage memory message) internal {
         // verify chain has not forked
         checkFork(_evmChainId);
-
-        // parse the payload as an EndpointManagerMessage
-        EndpointStructs.EndpointManagerMessage memory message =
-            EndpointStructs.parseEndpointManagerMessage(payload);
 
         // for msgType == 1, parse the payload as a NativeTokenTransfer.
         // for other msgTypes, revert (unsupported for now)
