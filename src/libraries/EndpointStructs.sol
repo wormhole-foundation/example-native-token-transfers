@@ -16,9 +16,6 @@ struct EndpointManagerMessage {
 struct NativeTokenTransfer {
     /// @notice Amount being transferred (big-endian uint256)
     uint256 amount;
-    /// @notice Address of the token. Left-zero-padded if shorter than 32 bytes
-    // TODO: this field is not needed.
-    bytes32 tokenAddress;
     /// @notice Address of the recipient. Left-zero-padded if shorter than 32 bytes
     bytes32 to;
     /// @notice Chain ID of the recipient
