@@ -6,6 +6,8 @@ import "forge-std/Test.sol";
 import "../src/EndpointManagerStandalone.sol";
 import "../src/EndpointStandalone.sol";
 
+import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+
 // @dev A non-abstract EndpointManager contract
 contract EndpointManagerContract is EndpointManagerStandalone {
     constructor(
@@ -41,13 +43,26 @@ contract DummyEndpoint is EndpointStandalone {
     }
 }
 
+contract DummyToken is ERC20 {
+    constructor() ERC20("DummyToken", "DTKN") {}
+
+    // NOTE: this is purposefully not called mint() to so we can test that in
+    // locking mode the EndpointManager contract doesn't call mint (or burn)
+    function mintDummy(address to, uint256 amount) public {
+        _mint(to, amount);
+    }
+}
+
 // TODO: set this up so the common functionality tests can be run against both
 // the standalone and the integrated version of the endpoint manager
 contract TestEndpointManager is Test {
     EndpointManagerStandalone endpointManager;
+    uint16 constant chainId = 7;
 
     function setUp() public {
-        endpointManager = new EndpointManagerContract(address(0), EndpointManager.Mode.BURNING, 0);
+        DummyToken t = new DummyToken();
+        endpointManager =
+            new EndpointManagerContract(address(t), EndpointManager.Mode.LOCKING, chainId);
         endpointManager.initialize();
         // deploy sample token contract
         // deploy wormhole contract
@@ -263,8 +278,54 @@ contract TestEndpointManager is Test {
         assertEq(endpointManager.messageAttestations(hash), 1);
     }
 
-    // TODO: add tests cases for actually handling the quorum case.
-    // doing that requires setting up the token etc.
+    function test_attestationQuorum() public {
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        (DummyEndpoint e1, DummyEndpoint e2) = setup_endpoints();
+
+        DummyToken token = DummyToken(endpointManager.token());
+
+        uint256 decimals = token.decimals();
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+
+        vm.startPrank(user_A);
+
+        token.approve(address(endpointManager), 3 * 10 ** decimals);
+        // we add 500 dust to check that the rounding code works.
+        endpointManager.transfer(3 * 10 ** decimals + 500, chainId, toWormholeFormat(user_B));
+
+        assertEq(token.balanceOf(address(user_A)), 2 * 10 ** decimals);
+        assertEq(token.balanceOf(address(endpointManager)), 3 * 10 ** decimals);
+
+        EndpointManagerMessage memory m = EndpointManagerMessage(
+            0,
+            0,
+            1,
+            endpointManager.encodeNativeTokenTransfer(
+                NativeTokenTransfer({
+                    amount: 50,
+                    tokenAddress: "",
+                    to: toWormholeFormat(user_B),
+                    toChain: chainId
+                })
+            )
+        );
+
+        bytes memory message = endpointManager.encodeEndpointManagerMessage(m);
+
+        e1.receiveMessage(message);
+
+        // no quorum yet
+        assertEq(token.balanceOf(address(user_B)), 0);
+
+        e2.receiveMessage(message);
+
+        assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
+    }
+
+    // TODO:
     // currently there is no way to test the threshold logic and the duplicate
     // protection logic without setting up the business logic as well.
     //
