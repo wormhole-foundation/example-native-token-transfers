@@ -153,7 +153,8 @@ contract TestEndpointManager is Test {
 
     function test_cantSetThresholdTooHigh() public {
         // no endpoints set, so can't set threshold to 1
-        vm.expectRevert("threshold <= enabledEndpoints.length");
+        bytes4 selector = bytes4(keccak256("ThresholdTooHigh(uint256,uint256)"));
+        vm.expectRevert(abi.encodeWithSelector(selector, 1, 0));
         endpointManager.setThreshold(1);
     }
 
@@ -165,8 +166,16 @@ contract TestEndpointManager is Test {
 
         endpointManager.setThreshold(1);
         endpointManager.setThreshold(2);
-        endpointManager.setThreshold(0);
         endpointManager.setThreshold(1);
+    }
+
+    function test_cantSetThresholdToZero() public {
+        DummyEndpoint e = new DummyEndpoint(address(endpointManager));
+        endpointManager.setEndpoint(address(e));
+
+        bytes4 selector = bytes4(keccak256("ZeroThreshold()"));
+        vm.expectRevert(abi.encodeWithSelector(selector));
+        endpointManager.setThreshold(0);
     }
 
     function test_onlyOwnerCanSetThreshold() public {
