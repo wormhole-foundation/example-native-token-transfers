@@ -13,6 +13,8 @@ interface IEndpointManager {
     error NonRegisteredEndpoint(address endpoint);
     error DisabledEndpoint(address endpoint);
     error TooManyEndpoints();
+    error ZeroThreshold();
+    error ThresholdTooHigh(uint256 threshold, uint256 endpoints);
 
     event EndpointAdded(address endpoint);
     event EndpointRemoved(address endpoint);
