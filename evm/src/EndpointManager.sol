@@ -116,18 +116,16 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
 
         bytes memory recipientBytes = abi.encodePacked(recipient);
 
-        NativeTokenTransfer memory nativeTokenTransfer = NativeTokenTransfer({
-            amount: normalizedAmount,
-            to: recipientBytes,
-            toChain: recipientChain
-        });
+        EndpointStructs.NativeTokenTransfer memory nativeTokenTransfer = EndpointStructs
+            .NativeTokenTransfer({amount: normalizedAmount, to: recipientBytes, toChain: recipientChain});
 
-        bytes memory encodedTransferPayload = encodeNativeTokenTransfer(nativeTokenTransfer);
+        bytes memory encodedTransferPayload =
+            EndpointStructs.encodeNativeTokenTransfer(nativeTokenTransfer);
 
         // construct the ManagerMessage payload
         _sequence = useSequence();
-        bytes memory encodedManagerPayload = encodeEndpointManagerMessage(
-            EndpointManagerMessage(_chainId, _sequence, 1, encodedTransferPayload)
+        bytes memory encodedManagerPayload = EndpointStructs.encodeEndpointManagerMessage(
+            EndpointStructs.EndpointManagerMessage(_chainId, _sequence, 1, encodedTransferPayload)
         );
 
         // send the message
@@ -158,14 +156,16 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         checkFork(_evmChainId);
 
         // parse the payload as an EndpointManagerMessage
-        EndpointManagerMessage memory message = parseEndpointManagerMessage(payload);
+        EndpointStructs.EndpointManagerMessage memory message =
+            EndpointStructs.parseEndpointManagerMessage(payload);
 
         // for msgType == 1, parse the payload as a NativeTokenTransfer.
         // for other msgTypes, revert (unsupported for now)
         if (message.msgType != 1) {
             revert UnexpectedEndpointManagerMessageType(message.msgType);
         }
-        NativeTokenTransfer memory nativeTokenTransfer = parseNativeTokenTransfer(message.payload);
+        EndpointStructs.NativeTokenTransfer memory nativeTokenTransfer =
+            EndpointStructs.parseNativeTokenTransfer(message.payload);
 
         // verify that the destination chain is valid
         if (nativeTokenTransfer.toChain != _chainId) {
@@ -201,69 +201,6 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
 
     function incrementSequence() internal {
         _sequence++;
-    }
-
-    function encodeEndpointManagerMessage(EndpointManagerMessage memory m)
-        public
-        pure
-        returns (bytes memory encoded)
-    {
-        if (m.payload.length > type(uint16).max) {
-            revert PayloadTooLong(m.payload.length);
-        }
-        uint16 payloadLength = uint16(m.payload.length);
-        return abi.encodePacked(m.chainId, m.sequence, m.msgType, payloadLength, m.payload);
-    }
-
-    /*
-     * @dev Parse a EndpointManagerMessage.
-     *
-     * @params encoded The byte array corresponding to the encoded message
-     */
-    function parseEndpointManagerMessage(bytes memory encoded)
-        public
-        pure
-        returns (EndpointManagerMessage memory managerMessage)
-    {
-        uint256 offset = 0;
-        (managerMessage.chainId, offset) = encoded.asUint16Unchecked(offset);
-        (managerMessage.sequence, offset) = encoded.asUint64Unchecked(offset);
-        (managerMessage.msgType, offset) = encoded.asUint8Unchecked(offset);
-        uint256 payloadLength;
-        (payloadLength, offset) = encoded.asUint16Unchecked(offset);
-        (managerMessage.payload, offset) = encoded.sliceUnchecked(offset, payloadLength);
-        encoded.checkLength(offset);
-    }
-
-    function encodeNativeTokenTransfer(NativeTokenTransfer memory m)
-        public
-        pure
-        returns (bytes memory encoded)
-    {
-        if (m.to.length > type(uint16).max) {
-            revert PayloadTooLong(m.to.length);
-        }
-        uint16 toLength = uint16(m.to.length);
-        return abi.encodePacked(m.amount, toLength, m.to, m.toChain);
-    }
-
-    /*
-     * @dev Parse a NativeTokenTransfer.
-     *
-     * @params encoded The byte array corresponding to the encoded message
-     */
-    function parseNativeTokenTransfer(bytes memory encoded)
-        public
-        pure
-        returns (NativeTokenTransfer memory nativeTokenTransfer)
-    {
-        uint256 offset = 0;
-        (nativeTokenTransfer.amount, offset) = encoded.asUint256Unchecked(offset);
-        uint16 toLength;
-        (toLength, offset) = encoded.asUint16Unchecked(offset);
-        (nativeTokenTransfer.to, offset) = encoded.sliceUnchecked(offset, toLength);
-        (nativeTokenTransfer.toChain, offset) = encoded.asUint16Unchecked(offset);
-        encoded.checkLength(offset);
     }
 
     function getTokenBalanceOf(

@@ -225,11 +225,11 @@ contract TestEndpointManager is Test {
         (DummyEndpoint e1,) = setup_endpoints();
         endpointManager.setThreshold(2);
 
-        EndpointManagerMessage memory m = EndpointManagerMessage(
-            0, 0, 1, abi.encode(EndpointMessage("hello", "world", "payload"))
+        EndpointStructs.EndpointManagerMessage memory m = EndpointStructs.EndpointManagerMessage(
+            0, 0, 1, abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
         );
 
-        bytes memory message = endpointManager.encodeEndpointManagerMessage(m);
+        bytes memory message = EndpointStructs.encodeEndpointManagerMessage(m);
 
         e1.receiveMessage(message);
 
@@ -241,11 +241,11 @@ contract TestEndpointManager is Test {
         (DummyEndpoint e1,) = setup_endpoints();
         endpointManager.setThreshold(2);
 
-        EndpointManagerMessage memory m = EndpointManagerMessage(
-            0, 0, 1, abi.encode(EndpointMessage("hello", "world", "payload"))
+        EndpointStructs.EndpointManagerMessage memory m = EndpointStructs.EndpointManagerMessage(
+            0, 0, 1, abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
         );
 
-        bytes memory message = endpointManager.encodeEndpointManagerMessage(m);
+        bytes memory message = EndpointStructs.encodeEndpointManagerMessage(m);
 
         e1.receiveMessage(message);
         e1.receiveMessage(message);
@@ -259,11 +259,11 @@ contract TestEndpointManager is Test {
         (DummyEndpoint e1,) = setup_endpoints();
         endpointManager.setThreshold(2);
 
-        EndpointManagerMessage memory m = EndpointManagerMessage(
-            0, 0, 1, abi.encode(EndpointMessage("hello", "world", "payload"))
+        EndpointStructs.EndpointManagerMessage memory m = EndpointStructs.EndpointManagerMessage(
+            0, 0, 1, abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
         );
 
-        bytes memory message = endpointManager.encodeEndpointManagerMessage(m);
+        bytes memory message = EndpointStructs.encodeEndpointManagerMessage(m);
 
         e1.receiveMessage(message);
         endpointManager.setThreshold(1);
@@ -299,16 +299,20 @@ contract TestEndpointManager is Test {
         assertEq(token.balanceOf(address(user_A)), 2 * 10 ** decimals);
         assertEq(token.balanceOf(address(endpointManager)), 3 * 10 ** decimals);
 
-        EndpointManagerMessage memory m = EndpointManagerMessage(
+        EndpointStructs.EndpointManagerMessage memory m = EndpointStructs.EndpointManagerMessage(
             0,
             0,
             1,
-            endpointManager.encodeNativeTokenTransfer(
-                NativeTokenTransfer({amount: 50, to: abi.encodePacked(user_B), toChain: chainId})
+            EndpointStructs.encodeNativeTokenTransfer(
+                EndpointStructs.NativeTokenTransfer({
+                    amount: 50,
+                    to: abi.encodePacked(user_B),
+                    toChain: chainId
+                })
             )
         );
 
-        bytes memory message = endpointManager.encodeEndpointManagerMessage(m);
+        bytes memory message = EndpointStructs.encodeEndpointManagerMessage(m);
 
         e1.receiveMessage(message);
 
@@ -332,10 +336,13 @@ contract TestEndpointManager is Test {
 
     // TODO: add some negative tests for unknown message types etc
 
-    function test_SerdeRoundtrip_EndpointManagerMessage(EndpointManagerMessage memory m) public {
-        bytes memory message = endpointManager.encodeEndpointManagerMessage(m);
+    function test_SerdeRoundtrip_EndpointManagerMessage(
+        EndpointStructs.EndpointManagerMessage memory m
+    ) public {
+        bytes memory message = EndpointStructs.encodeEndpointManagerMessage(m);
 
-        EndpointManagerMessage memory parsed = endpointManager.parseEndpointManagerMessage(message);
+        EndpointStructs.EndpointManagerMessage memory parsed =
+            EndpointStructs.parseEndpointManagerMessage(message);
 
         assertEq(m.chainId, parsed.chainId);
         assertEq(m.sequence, parsed.sequence);
@@ -343,8 +350,10 @@ contract TestEndpointManager is Test {
         assertEq(m.payload, parsed.payload);
     }
 
-    function test_SerdeJunk_EndpointManagerMessage(EndpointManagerMessage memory m) public {
-        bytes memory message = endpointManager.encodeEndpointManagerMessage(m);
+    function test_SerdeJunk_EndpointManagerMessage(EndpointStructs.EndpointManagerMessage memory m)
+        public
+    {
+        bytes memory message = EndpointStructs.encodeEndpointManagerMessage(m);
 
         bytes memory junk = "junk";
 
@@ -352,21 +361,26 @@ contract TestEndpointManager is Test {
         vm.expectRevert(
             abi.encodeWithSelector(selector, message.length + junk.length, message.length)
         );
-        endpointManager.parseEndpointManagerMessage(abi.encodePacked(message, junk));
+        EndpointStructs.parseEndpointManagerMessage(abi.encodePacked(message, junk));
     }
 
-    function test_SerdeRoundtrip_NativeTokenTransfer(NativeTokenTransfer memory m) public {
-        bytes memory message = endpointManager.encodeNativeTokenTransfer(m);
+    function test_SerdeRoundtrip_NativeTokenTransfer(EndpointStructs.NativeTokenTransfer memory m)
+        public
+    {
+        bytes memory message = EndpointStructs.encodeNativeTokenTransfer(m);
 
-        NativeTokenTransfer memory parsed = endpointManager.parseNativeTokenTransfer(message);
+        EndpointStructs.NativeTokenTransfer memory parsed =
+            EndpointStructs.parseNativeTokenTransfer(message);
 
         assertEq(m.amount, parsed.amount);
         assertEq(m.to, parsed.to);
         assertEq(m.toChain, parsed.toChain);
     }
 
-    function test_SerdeJunk_NativeTokenTransfer(NativeTokenTransfer memory m) public {
-        bytes memory message = endpointManager.encodeNativeTokenTransfer(m);
+    function test_SerdeJunk_NativeTokenTransfer(EndpointStructs.NativeTokenTransfer memory m)
+        public
+    {
+        bytes memory message = EndpointStructs.encodeNativeTokenTransfer(m);
 
         bytes memory junk = "junk";
 
@@ -374,7 +388,7 @@ contract TestEndpointManager is Test {
         vm.expectRevert(
             abi.encodeWithSelector(selector, message.length + junk.length, message.length)
         );
-        endpointManager.parseNativeTokenTransfer(abi.encodePacked(message, junk));
+        EndpointStructs.parseNativeTokenTransfer(abi.encodePacked(message, junk));
     }
 
     function test_bytesToAddress_roundtrip(address a) public {
