@@ -109,8 +109,14 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         // normalize amount decimals
         uint256 normalizedAmount = normalizeAmount(amount, decimals);
 
-        bytes memory encodedTransferPayload =
-            encodeNativeTokenTransfer(normalizedAmount, _token, recipient, recipientChain);
+        NativeTokenTransfer memory nativeTokenTransfer = NativeTokenTransfer({
+            amount: normalizedAmount,
+            tokenAddress: toWormholeFormat(_token),
+            to: recipient,
+            toChain: recipientChain
+        });
+
+        bytes memory encodedTransferPayload = encodeNativeTokenTransfer(nativeTokenTransfer);
 
         // construct the ManagerMessage payload
         _sequence = useSequence();
@@ -212,19 +218,20 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         returns (EndpointManagerMessage memory managerMessage)
     {
         uint256 offset = 0;
+        // TODO: use unchecked operations (the length is checked at the end anyway)
         (managerMessage.chainId, offset) = encoded.asUint16(offset);
         (managerMessage.sequence, offset) = encoded.asUint64(offset);
         (managerMessage.msgType, offset) = encoded.asUint8(offset);
         (managerMessage.payload, offset) = encoded.slice(offset, encoded.length - offset);
+        encoded.checkLength(offset);
     }
 
-    function encodeNativeTokenTransfer(
-        uint256 amount,
-        address tokenAddr,
-        bytes32 recipient,
-        uint16 toChain
-    ) public pure returns (bytes memory encoded) {
-        return abi.encodePacked(amount, toWormholeFormat(tokenAddr), recipient, toChain);
+    function encodeNativeTokenTransfer(NativeTokenTransfer memory m)
+        public
+        pure
+        returns (bytes memory encoded)
+    {
+        return abi.encodePacked(m.amount, m.tokenAddress, m.to, m.toChain);
     }
 
     /*
@@ -242,6 +249,7 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         (nativeTokenTransfer.tokenAddress, offset) = encoded.asBytes32(offset);
         (nativeTokenTransfer.to, offset) = encoded.asBytes32(offset);
         (nativeTokenTransfer.toChain, offset) = encoded.asUint16(offset);
+        encoded.checkLength(offset);
     }
 
     function getTokenBalanceOf(
