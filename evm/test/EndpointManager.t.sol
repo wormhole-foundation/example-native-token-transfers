@@ -343,12 +343,15 @@ contract TestEndpointManager is Test {
         assertEq(m.payload, parsed.payload);
     }
 
-    function test_SerdeJunk_EndpointManagerMessage(EndpointManagerMessage memory m) public view {
+    function test_SerdeJunk_EndpointManagerMessage(EndpointManagerMessage memory m) public {
         bytes memory message = endpointManager.encodeEndpointManagerMessage(m);
 
         bytes memory junk = "junk";
 
-        // TODO: this should revert. we should add a length prefix to the payload
+        bytes4 selector = bytes4(keccak256("LengthMismatch(uint256,uint256)"));
+        vm.expectRevert(
+            abi.encodeWithSelector(selector, message.length + junk.length, message.length)
+        );
         endpointManager.parseEndpointManagerMessage(abi.encodePacked(message, junk));
     }
 
