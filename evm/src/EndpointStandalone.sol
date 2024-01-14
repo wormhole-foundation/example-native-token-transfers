@@ -33,7 +33,10 @@ abstract contract EndpointStandalone is IEndpointStandalone, Endpoint {
         return _quoteDeliveryPrice(targetChain);
     }
 
-    function _deliverToManager(bytes memory payload) internal override {
+    function _deliverToManager(EndpointStructs.EndpointManagerMessage memory payload)
+        internal
+        override
+    {
         // forward the VAA payload to the endpoint manager contract
         IEndpointManagerStandalone(_manager).attestationReceived(payload);
     }

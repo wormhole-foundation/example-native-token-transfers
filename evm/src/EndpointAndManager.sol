@@ -15,7 +15,10 @@ abstract contract EndpointAndManager is Endpoint, EndpointManager {
         return _sendMessage(recipientChain, payload);
     }
 
-    function _deliverToManager(bytes memory payload) internal override {
+    function _deliverToManager(EndpointStructs.EndpointManagerMessage memory payload)
+        internal
+        override
+    {
         // TODO: this relies on the Endpoint implementation to replay protect messages.
         return _executeMsg(payload);
     }
