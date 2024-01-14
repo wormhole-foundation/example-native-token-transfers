@@ -304,7 +304,7 @@ contract TestEndpointManager is Test {
             0,
             1,
             endpointManager.encodeNativeTokenTransfer(
-                NativeTokenTransfer({amount: 50, to: toWormholeFormat(user_B), toChain: chainId})
+                NativeTokenTransfer({amount: 50, to: abi.encodePacked(user_B), toChain: chainId})
             )
         );
 
@@ -375,5 +375,18 @@ contract TestEndpointManager is Test {
             abi.encodeWithSelector(selector, message.length + junk.length, message.length)
         );
         endpointManager.parseNativeTokenTransfer(abi.encodePacked(message, junk));
+    }
+
+    function test_bytesToAddress_roundtrip(address a) public {
+        bytes memory b = abi.encodePacked(a);
+        assertEq(endpointManager.bytesToAddress(b), a);
+    }
+
+    function test_bytesToAddress_junk(address a) public {
+        bytes memory b = abi.encodePacked(a, "junk");
+
+        bytes4 selector = bytes4(keccak256("LengthMismatch(uint256,uint256)"));
+        vm.expectRevert(abi.encodeWithSelector(selector, 24, 20));
+        endpointManager.bytesToAddress(b);
     }
 }

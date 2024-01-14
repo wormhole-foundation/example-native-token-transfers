@@ -32,8 +32,8 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
 
     uint64 _sequence;
 
-    constructor(address token, Mode mode, uint16 chainId) {
-        _token = token;
+    constructor(address tokenAddress, Mode mode, uint16 chainId) {
+        _token = tokenAddress;
         _mode = mode;
         _chainId = chainId;
         _evmChainId = block.chainid;
@@ -114,8 +114,13 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         // normalize amount decimals
         uint256 normalizedAmount = normalizeAmount(amount, decimals);
 
-        NativeTokenTransfer memory nativeTokenTransfer =
-            NativeTokenTransfer({amount: normalizedAmount, to: recipient, toChain: recipientChain});
+        bytes memory recipientBytes = abi.encodePacked(recipient);
+
+        NativeTokenTransfer memory nativeTokenTransfer = NativeTokenTransfer({
+            amount: normalizedAmount,
+            to: recipientBytes,
+            toChain: recipientChain
+        });
 
         bytes memory encodedTransferPayload = encodeNativeTokenTransfer(nativeTokenTransfer);
 
@@ -174,7 +179,7 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         uint8 decimals = abi.decode(queriedDecimals, (uint8));
         uint256 nativeTransferAmount = deNormalizeAmount(nativeTokenTransfer.amount, decimals);
 
-        address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
+        address transferRecipient = bytesToAddress(nativeTokenTransfer.to);
 
         if (_mode == Mode.LOCKING) {
             // unlock tokens to the specified recipient
@@ -232,7 +237,8 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         pure
         returns (bytes memory encoded)
     {
-        return abi.encodePacked(m.amount, m.to, m.toChain);
+        uint16 toLength = uint16(m.to.length);
+        return abi.encodePacked(m.amount, toLength, m.to, m.toChain);
     }
 
     /*
@@ -246,9 +252,11 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         returns (NativeTokenTransfer memory nativeTokenTransfer)
     {
         uint256 offset = 0;
-        (nativeTokenTransfer.amount, offset) = encoded.asUint256(offset);
-        (nativeTokenTransfer.to, offset) = encoded.asBytes32(offset);
-        (nativeTokenTransfer.toChain, offset) = encoded.asUint16(offset);
+        (nativeTokenTransfer.amount, offset) = encoded.asUint256Unchecked(offset);
+        uint16 toLength;
+        (toLength, offset) = encoded.asUint16Unchecked(offset);
+        (nativeTokenTransfer.to, offset) = encoded.sliceUnchecked(offset, toLength);
+        (nativeTokenTransfer.toChain, offset) = encoded.asUint16Unchecked(offset);
         encoded.checkLength(offset);
     }
 
@@ -263,5 +271,11 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
 
     function token() external view override returns (address) {
         return _token;
+    }
+
+    function bytesToAddress(bytes memory b) public pure returns (address) {
+        (address addr, uint256 offset) = b.asAddress(0);
+        b.checkLength(offset);
+        return addr;
     }
 }

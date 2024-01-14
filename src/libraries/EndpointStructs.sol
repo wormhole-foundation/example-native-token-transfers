@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.6.12 <0.9.0;
 
+/// @dev The wire format is as follows:
+///     - chainId - 2 bytes
+///     - sequence - 8 bytes
+///     - msgType - 1 byte
+///     - payloadLength - 2 bytes
+///     - payload - `payloadLength` bytes
 struct EndpointManagerMessage {
     /// @notice chainId that message originates from
     uint16 chainId;
@@ -13,11 +19,16 @@ struct EndpointManagerMessage {
 }
 
 /// Token Transfer payload corresponding to type == 1
+/// @dev The wire format is as follows:
+///    - amount - 32 bytes
+///    - toLength - 2 bytes
+///    - to - `toLength` bytes
+///    - toChain - 2 bytes
 struct NativeTokenTransfer {
     /// @notice Amount being transferred (big-endian uint256)
     uint256 amount;
-    /// @notice Address of the recipient. Left-zero-padded if shorter than 32 bytes
-    bytes32 to;
+    /// @notice Address of the recipient.
+    bytes to;
     /// @notice Chain ID of the recipient
     uint16 toChain;
 }
