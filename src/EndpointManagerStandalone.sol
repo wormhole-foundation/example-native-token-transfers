@@ -41,17 +41,6 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
 
     // =========================================================================
 
-    // @dev Information about attestations for a given message.
-    struct AttestationInfo {
-        // bitmap of endpoints that have attested to this message (NOTE: might contain disabled endpoints)
-        uint64 attestedEndpoints;
-        // whether this message has been executed
-        bool executed;
-    }
-
-    // Maps are keyed by hash of EndpointManagerMessage.
-    mapping(bytes32 => AttestationInfo) public managerMessageAttestations;
-
     modifier onlyEndpoint() {
         if (!endpointInfos[msg.sender].enabled) {
             revert CallerNotEndpoint(msg.sender);
@@ -117,21 +106,7 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
             return;
         }
 
-        _markMessageExecuted(managerMessageHash);
-
         return _executeMsg(payload);
-    }
-
-    // @dev Mark a message as executed.
-    // This function will revert if the message has already been executed.
-    function _markMessageExecuted(bytes32 digest) internal {
-        // check if this message has already been executed
-        if (managerMessageAttestations[digest].executed) {
-            revert MessageAlreadyExecuted(digest);
-        }
-
-        // mark this message as executed
-        managerMessageAttestations[digest].executed = true;
     }
 
     /// @notice Returns the number of Endpoints that must attest to a msgId for it to be considered valid and acted upon.
