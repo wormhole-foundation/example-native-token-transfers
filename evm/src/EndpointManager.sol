@@ -25,6 +25,17 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         BURNING
     }
 
+    // @dev Information about attestations for a given message.
+    struct AttestationInfo {
+        // whether this message has been executed
+        bool executed;
+        // bitmap of endpoints that have attested to this message (NOTE: might contain disabled endpoints)
+        uint64 attestedEndpoints;
+    }
+
+    // Maps are keyed by hash of EndpointManagerMessage.
+    mapping(bytes32 => AttestationInfo) public managerMessageAttestations;
+
     address immutable _token;
     Mode immutable _mode;
     uint16 immutable _chainId;
@@ -149,11 +160,26 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         return amount;
     }
 
+    // @dev Mark a message as executed.
+    // This function will revert if the message has already been executed.
+    function _replayProtect(bytes32 digest) internal {
+        // check if this message has already been executed
+        if (isMessageExecuted(digest)) {
+            revert MessageAlreadyExecuted(digest);
+        }
+
+        // mark this message as executed
+        managerMessageAttestations[digest].executed = true;
+    }
+
     /// @dev Called after a message has been sufficiently verified to execute the command in the message.
     ///      This function will decode the payload as an EndpointManagerMessage to extract the sequence, msgType, and other parameters.
     function _executeMsg(EndpointStructs.EndpointManagerMessage memory message) internal {
         // verify chain has not forked
         checkFork(_evmChainId);
+
+        bytes32 managerMessageHash = EndpointStructs.endpointManagerMessageDigest(message);
+        _replayProtect(managerMessageHash);
 
         // for msgType == 1, parse the payload as a NativeTokenTransfer.
         // for other msgTypes, revert (unsupported for now)
@@ -216,5 +242,9 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         (address addr, uint256 offset) = b.asAddress(0);
         b.checkLength(offset);
         return addr;
+    }
+
+    function isMessageExecuted(bytes32 digest) public view returns (bool) {
+        return managerMessageAttestations[digest].executed;
     }
 }
