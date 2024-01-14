@@ -304,12 +304,7 @@ contract TestEndpointManager is Test {
             0,
             1,
             endpointManager.encodeNativeTokenTransfer(
-                NativeTokenTransfer({
-                    amount: 50,
-                    tokenAddress: "",
-                    to: toWormholeFormat(user_B),
-                    toChain: chainId
-                })
+                NativeTokenTransfer({amount: 50, to: toWormholeFormat(user_B), toChain: chainId})
             )
         );
 
@@ -363,7 +358,6 @@ contract TestEndpointManager is Test {
         NativeTokenTransfer memory parsed = endpointManager.parseNativeTokenTransfer(message);
 
         assertEq(m.amount, parsed.amount);
-        assertEq(m.tokenAddress, parsed.tokenAddress);
         assertEq(m.to, parsed.to);
         assertEq(m.toChain, parsed.toChain);
     }
