@@ -2,6 +2,7 @@
 pragma solidity >=0.6.12 <0.9.0;
 
 import "./interfaces/IEndpoint.sol";
+import "./libraries/EndpointStructs.sol";
 
 abstract contract Endpoint is IEndpoint {
     // Mapping of siblings on other chains
@@ -13,12 +14,16 @@ abstract contract Endpoint is IEndpoint {
     ///         This function should verify the encodedVm and then call attestationReceived on the endpoint manager contract.
     function receiveMessage(bytes memory encodedMessage) external {
         bytes memory payload = _verifyMessage(encodedMessage);
-        _deliverToManager(payload);
+        EndpointStructs.EndpointManagerMessage memory parsed =
+            EndpointStructs.parseEndpointManagerMessage(payload);
+        _deliverToManager(parsed);
     }
 
     function _verifyMessage(bytes memory encodedMessage) internal virtual returns (bytes memory);
 
-    function _deliverToManager(bytes memory payload) internal virtual;
+    function _deliverToManager(EndpointStructs.EndpointManagerMessage memory payload)
+        internal
+        virtual;
 
     function _quoteDeliveryPrice(uint16 targetChain) internal view virtual returns (uint256);
 
