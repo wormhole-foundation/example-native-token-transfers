@@ -18,6 +18,7 @@ import "./Endpoint.sol";
 
 abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, ReentrancyGuard {
     using BytesParsing for bytes;
+    using SafeERC20 for IERC20;
 
     enum Mode {
         LOCKING,
@@ -79,13 +80,17 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         // don't deposit dust that can not be bridged due to the decimal shift
         amount = deNormalizeAmount(normalizeAmount(amount, decimals), decimals);
 
+        if (amount == 0) {
+            revert ZeroAmount();
+        }
+
         if (_mode == Mode.LOCKING) {
             // use transferFrom to pull tokens from the user and lock them
             // query own token balance before transfer
             uint256 balanceBefore = getTokenBalanceOf(_token, address(this));
 
             // transfer tokens
-            SafeERC20.safeTransferFrom(IERC20(_token), msg.sender, address(this), amount);
+            IERC20(_token).safeTransferFrom(msg.sender, address(this), amount);
 
             // query own token balance after transfer
             uint256 balanceAfter = getTokenBalanceOf(_token, address(this));
@@ -177,7 +182,7 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
 
         if (_mode == Mode.LOCKING) {
             // unlock tokens to the specified recipient
-            SafeERC20.safeTransfer(IERC20(_token), transferRecipient, nativeTransferAmount);
+            IERC20(_token).safeTransfer(transferRecipient, nativeTransferAmount);
         } else {
             // mint tokens to the specified recipient
             IEndpointToken(_token).mint(transferRecipient, nativeTransferAmount);
@@ -259,5 +264,9 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         (, bytes memory queriedBalance) =
             tokenAddr.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, accountAddr));
         return abi.decode(queriedBalance, (uint256));
+    }
+
+    function token() external view override returns (address) {
+        return _token;
     }
 }
