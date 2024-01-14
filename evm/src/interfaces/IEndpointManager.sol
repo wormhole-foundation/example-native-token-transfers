@@ -16,6 +16,7 @@ interface IEndpointManager {
     error TooManyEndpoints();
     error ZeroThreshold();
     error ThresholdTooHigh(uint256 threshold, uint256 endpoints);
+    error InvalidAddressLength(uint256 length);
 
     event EndpointAdded(address endpoint);
     event EndpointRemoved(address endpoint);
