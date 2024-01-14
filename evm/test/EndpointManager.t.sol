@@ -274,9 +274,9 @@ contract TestEndpointManager is Test {
 
     // === message encoding/decoding
 
-    // TODO: add some negative for unknown message types etc
+    // TODO: add some negative tests for unknown message types etc
 
-    function testSerdeRoundtrip(EndpointManagerMessage memory m) public {
+    function test_SerdeRoundtrip_EndpointManagerMessage(EndpointManagerMessage memory m) public {
         bytes memory message = endpointManager.encodeEndpointManagerMessage(m);
 
         EndpointManagerMessage memory parsed = endpointManager.parseEndpointManagerMessage(message);
@@ -287,12 +287,35 @@ contract TestEndpointManager is Test {
         assertEq(m.payload, parsed.payload);
     }
 
-    function test_SerdeJunk(EndpointManagerMessage memory m) public view {
+    function test_SerdeJunk_EndpointManagerMessage(EndpointManagerMessage memory m) public view {
         bytes memory message = endpointManager.encodeEndpointManagerMessage(m);
 
         bytes memory junk = "junk";
 
         // TODO: this should revert. we should add a length prefix to the payload
         endpointManager.parseEndpointManagerMessage(abi.encodePacked(message, junk));
+    }
+
+    function test_SerdeRoundtrip_NativeTokenTransfer(NativeTokenTransfer memory m) public {
+        bytes memory message = endpointManager.encodeNativeTokenTransfer(m);
+
+        NativeTokenTransfer memory parsed = endpointManager.parseNativeTokenTransfer(message);
+
+        assertEq(m.amount, parsed.amount);
+        assertEq(m.tokenAddress, parsed.tokenAddress);
+        assertEq(m.to, parsed.to);
+        assertEq(m.toChain, parsed.toChain);
+    }
+
+    function test_SerdeJunk_NativeTokenTransfer(NativeTokenTransfer memory m) public {
+        bytes memory message = endpointManager.encodeNativeTokenTransfer(m);
+
+        bytes memory junk = "junk";
+
+        bytes4 selector = bytes4(keccak256("LengthMismatch(uint256,uint256)"));
+        vm.expectRevert(
+            abi.encodeWithSelector(selector, message.length + junk.length, message.length)
+        );
+        endpointManager.parseNativeTokenTransfer(abi.encodePacked(message, junk));
     }
 }
