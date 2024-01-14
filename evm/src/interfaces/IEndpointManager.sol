@@ -9,6 +9,7 @@ interface IEndpointManager {
     error UnexpectedEndpointManagerMessageType(uint8 msgType);
     error InvalidTargetChain(uint16 targetChain, uint16 thisChain);
     error InvalidEndpointZeroAddress();
+    error ZeroAmount();
     error EndpointAlreadyEnabled(address endpoint);
     error NonRegisteredEndpoint(address endpoint);
     error DisabledEndpoint(address endpoint);
@@ -30,4 +31,6 @@ interface IEndpointManager {
     function setSibling(uint16 siblingChainId, bytes32 siblingContract) external;
 
     function nextSequence() external view returns (uint64);
+
+    function token() external view returns (address);
 }
