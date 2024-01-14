@@ -175,13 +175,17 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
 
         emit EndpointAdded(endpoint);
 
+        // We increase the threshold here. This might not be what the user
+        // wants, in which case they can call setThreshold() afterwards.
+        // However, this is the most sensible default behaviour, since
+        // this makes the system more secure in the event that the user forgets
+        // to call setThreshold().
+        _threshold += 1;
+
         _checkEndpointsInvariants();
     }
 
     function removeEndpoint(address endpoint) external onlyOwner {
-        // TODO: should this reduce the threshold if the threshold is greater
-        // than the number of enabled endpoints after this one is removed?
-
         if (endpoint == address(0)) {
             revert InvalidEndpointZeroAddress();
         }
@@ -215,6 +219,10 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
         assert(removed);
 
         emit EndpointRemoved(endpoint);
+
+        if (_enabledEndpoints.length < _threshold) {
+            _threshold = uint8(_enabledEndpoints.length);
+        }
 
         _checkEndpointsInvariants();
         // we call the invariant check on the endpoint here as well, since
@@ -264,7 +272,15 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
         assert(_numRegisteredEndpoints <= _MAX_ENDPOINTS);
 
         // invariant: threshold <= enabledEndpoints.length
-        require(_threshold <= _enabledEndpoints.length, "threshold <= enabledEndpoints.length");
+        if (_threshold > _enabledEndpoints.length) {
+            revert ThresholdTooHigh(_threshold, _enabledEndpoints.length);
+        }
+
+        if (_enabledEndpoints.length > 0) {
+            if (_threshold == 0) {
+                revert ZeroThreshold();
+            }
+        }
     }
 
     // @dev Check that the endpoint is in a valid state.
