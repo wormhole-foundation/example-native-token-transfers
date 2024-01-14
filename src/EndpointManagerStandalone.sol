@@ -95,8 +95,11 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
     /// @dev Called by an Endpoint contract to deliver a verified attestation.
     ///      This function enforces attestation threshold and replay logic for messages.
     ///      Once all validations are complete, this function calls _executeMsg to execute the command specified by the message.
-    function attestationReceived(bytes memory payload) external onlyEndpoint {
-        bytes32 managerMessageHash = computeManagerMessageHash(payload);
+    function attestationReceived(EndpointStructs.EndpointManagerMessage memory payload)
+        external
+        onlyEndpoint
+    {
+        bytes32 managerMessageHash = EndpointStructs.endpointManagerMessageDigest(payload);
 
         // set the attested flag for this endpoint.
         // TODO: this allows an endpoint to attest to a message multiple times.
