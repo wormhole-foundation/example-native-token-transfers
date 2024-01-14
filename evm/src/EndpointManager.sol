@@ -114,12 +114,8 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         // normalize amount decimals
         uint256 normalizedAmount = normalizeAmount(amount, decimals);
 
-        NativeTokenTransfer memory nativeTokenTransfer = NativeTokenTransfer({
-            amount: normalizedAmount,
-            tokenAddress: toWormholeFormat(_token),
-            to: recipient,
-            toChain: recipientChain
-        });
+        NativeTokenTransfer memory nativeTokenTransfer =
+            NativeTokenTransfer({amount: normalizedAmount, to: recipient, toChain: recipientChain});
 
         bytes memory encodedTransferPayload = encodeNativeTokenTransfer(nativeTokenTransfer);
 
@@ -236,7 +232,7 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         pure
         returns (bytes memory encoded)
     {
-        return abi.encodePacked(m.amount, m.tokenAddress, m.to, m.toChain);
+        return abi.encodePacked(m.amount, m.to, m.toChain);
     }
 
     /*
@@ -251,7 +247,6 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
     {
         uint256 offset = 0;
         (nativeTokenTransfer.amount, offset) = encoded.asUint256(offset);
-        (nativeTokenTransfer.tokenAddress, offset) = encoded.asBytes32(offset);
         (nativeTokenTransfer.to, offset) = encoded.asBytes32(offset);
         (nativeTokenTransfer.toChain, offset) = encoded.asUint16(offset);
         encoded.checkLength(offset);
