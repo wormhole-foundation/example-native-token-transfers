@@ -295,6 +295,29 @@ contract TestEndpointManager is Test {
         assertEq(endpointManager.messageAttestations(hash), 1);
     }
 
+    function test_transfer_sequences() public {
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(endpointManager.token());
+
+        uint256 decimals = token.decimals();
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+
+        vm.startPrank(user_A);
+
+        token.approve(address(endpointManager), 3 * 10 ** decimals);
+
+        uint64 s1 = endpointManager.transfer(1 * 10 ** decimals, chainId, toWormholeFormat(user_B));
+        uint64 s2 = endpointManager.transfer(1 * 10 ** decimals, chainId, toWormholeFormat(user_B));
+        uint64 s3 = endpointManager.transfer(1 * 10 ** decimals, chainId, toWormholeFormat(user_B));
+
+        assertEq(s1, 0);
+        assertEq(s2, 1);
+        assertEq(s3, 2);
+    }
+
     function test_attestationQuorum() public {
         address user_A = address(0x123);
         address user_B = address(0x456);
