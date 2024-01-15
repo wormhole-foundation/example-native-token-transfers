@@ -4,55 +4,74 @@ pragma solidity >=0.6.12 <0.9.0;
 import "./interfaces/IEndpointManagerStandalone.sol";
 import "./interfaces/IEndpointStandalone.sol";
 import "./EndpointManager.sol";
+import "./EndpointRegistry.sol";
 
-contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManager {
-    uint8 _threshold;
-
-    // ========================= ENDPOINT REGISTRATION =========================
-
-    // @dev Information about registered endpoints.
-    struct EndpointInfo {
-        // whether this endpoint is registered
-        bool registered;
-        // whether this endpoint is enabled
-        bool enabled;
-        uint8 index;
-    }
-
-    // @dev Information about registered endpoints.
-    // This is the source of truth, we define a couple of derived fields below
-    // for efficiency.
-    mapping(address => EndpointInfo) public endpointInfos;
-
-    // @dev List of enabled endpoints.
-    // invariant: forall (a: address), endpointInfos[a].enabled <=> a in enabledEndpoints
-    address[] _enabledEndpoints;
-
-    // invariant: forall (i: uint8), enabledEndpointBitmap & i == 1 <=> endpointInfos[i].enabled
-    uint64 _enabledEndpointBitmap;
-
-    uint8 constant _MAX_ENDPOINTS = 64;
-
-    // @dev Total number of registered endpoints. This number can only increase.
-    // invariant: numRegisteredEndpoints <= MAX_ENDPOINTS
-    // invariant: forall (i: uint8),
-    //   i < numRegisteredEndpoints <=> exists (a: address), endpointInfos[a].index == i
-    uint8 _numRegisteredEndpoints;
-
-    // =========================================================================
-
-    modifier onlyEndpoint() {
-        if (!endpointInfos[msg.sender].enabled) {
-            revert CallerNotEndpoint(msg.sender);
-        }
-        _;
-    }
-
+contract EndpointManagerStandalone is
+    IEndpointManagerStandalone,
+    EndpointManager,
+    EndpointRegistry
+{
     constructor(address token, Mode mode, uint16 chainId) EndpointManager(token, mode, chainId) {
-        _checkEndpointsInvariants();
+        _checkThresholdInvariants();
+    }
+
+    struct _Threshold {
+        uint8 num;
+    }
+
+    /// =============== STORAGE ===============================================
+
+    bytes32 public constant THRESHOLD_SLOT = bytes32(uint256(keccak256("ntt.threshold")) - 1);
+
+    function _getThresholdStorage() private pure returns (_Threshold storage $) {
+        uint256 slot = uint256(THRESHOLD_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
+    /// =============== GETTERS/SETTERS ========================================
+
+    function setThreshold(uint8 threshold) external onlyOwner {
+        _Threshold storage _threshold = _getThresholdStorage();
+        _threshold.num = threshold;
+        _checkThresholdInvariants();
+    }
+
+    /// @notice Returns the number of Endpoints that must attest to a msgId for
+    ///         it to be considered valid and acted upon.
+    function getThreshold() public view returns (uint8) {
+        _Threshold storage _threshold = _getThresholdStorage();
+        return _threshold.num;
+    }
+
+    function setEndpoint(address endpoint) external onlyOwner {
+        _setEndpoint(endpoint);
+
+        _Threshold storage _threshold = _getThresholdStorage();
+        // We increase the threshold here. This might not be what the user
+        // wants, in which case they can call setThreshold() afterwards.
+        // However, this is the most sensible default behaviour, since
+        // this makes the system more secure in the event that the user forgets
+        // to call setThreshold().
+        _threshold.num += 1;
+
+    }
+
+    function removeEndpoint(address endpoint) external onlyOwner {
+        _removeEndpoint(endpoint);
+
+        _Threshold storage _threshold = _getThresholdStorage();
+        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
+
+        if (_enabledEndpoints.length < _threshold.num) {
+            _threshold.num = uint8(_enabledEndpoints.length);
+        }
+
     }
 
     function quoteDeliveryPrice(uint16 recipientChain) public view override returns (uint256) {
+        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
         uint256 totalPriceQuote = 0;
         for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
             uint256 endpointPriceQuote =
@@ -63,6 +82,7 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
     }
 
     function sendMessage(uint16 recipientChain, bytes memory payload) internal override {
+        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
         // call into endpoint contracts to send the message
         for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
             uint256 endpointPriceQuote =
@@ -88,6 +108,7 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
         external
         onlyEndpoint
     {
+        mapping(address => EndpointInfo) storage endpointInfos = _getEndpointInfosStorage();
         bytes32 managerMessageHash = EndpointStructs.endpointManagerMessageDigest(payload);
 
         // set the attested flag for this endpoint.
@@ -102,110 +123,11 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
 
         // end early if the threshold hasn't been met.
         // otherwise, continue with execution for the message type.
-        if (attestationCount < _threshold) {
+        if (attestationCount < getThreshold()) {
             return;
         }
 
         return _executeMsg(payload);
-    }
-
-    /// @notice Returns the number of Endpoints that must attest to a msgId for it to be considered valid and acted upon.
-    function getThreshold() external view returns (uint8) {
-        return _threshold;
-    }
-
-    function setThreshold(uint8 threshold) external onlyOwner {
-        _threshold = threshold;
-        _checkEndpointsInvariants();
-    }
-
-    /// @notice Returns the Endpoint contracts that have been registered via governance.
-    function getEndpoints() external view returns (address[] memory) {
-        return _enabledEndpoints;
-    }
-
-    function setEndpoint(address endpoint) external onlyOwner {
-        if (endpoint == address(0)) {
-            revert InvalidEndpointZeroAddress();
-        }
-
-        if (_numRegisteredEndpoints >= _MAX_ENDPOINTS) {
-            revert TooManyEndpoints();
-        }
-
-        if (endpointInfos[endpoint].registered) {
-            endpointInfos[endpoint].enabled = true;
-        } else {
-            endpointInfos[endpoint] =
-                EndpointInfo({registered: true, enabled: true, index: _numRegisteredEndpoints});
-            _numRegisteredEndpoints++;
-        }
-
-        _enabledEndpoints.push(endpoint);
-
-        uint64 updatedEnabledEndpointBitmap =
-            _enabledEndpointBitmap | uint64(1 << endpointInfos[endpoint].index);
-        // ensure that this actually changed the bitmap
-        if (updatedEnabledEndpointBitmap == _enabledEndpointBitmap) {
-            revert EndpointAlreadyEnabled(endpoint);
-        }
-        _enabledEndpointBitmap = updatedEnabledEndpointBitmap;
-
-        emit EndpointAdded(endpoint);
-
-        // We increase the threshold here. This might not be what the user
-        // wants, in which case they can call setThreshold() afterwards.
-        // However, this is the most sensible default behaviour, since
-        // this makes the system more secure in the event that the user forgets
-        // to call setThreshold().
-        _threshold += 1;
-
-        _checkEndpointsInvariants();
-    }
-
-    function removeEndpoint(address endpoint) external onlyOwner {
-        if (endpoint == address(0)) {
-            revert InvalidEndpointZeroAddress();
-        }
-
-        if (!endpointInfos[endpoint].registered) {
-            revert NonRegisteredEndpoint(endpoint);
-        }
-
-        if (!endpointInfos[endpoint].enabled) {
-            revert DisabledEndpoint(endpoint);
-        }
-
-        endpointInfos[endpoint].enabled = false;
-
-        uint64 updatedEnabledEndpointBitmap =
-            _enabledEndpointBitmap & uint64(~(1 << endpointInfos[endpoint].index));
-        // ensure that this actually changed the bitmap
-        assert(updatedEnabledEndpointBitmap < _enabledEndpointBitmap);
-        _enabledEndpointBitmap = updatedEnabledEndpointBitmap;
-
-        bool removed = false;
-
-        for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
-            if (_enabledEndpoints[i] == endpoint) {
-                _enabledEndpoints[i] = _enabledEndpoints[_enabledEndpoints.length - 1];
-                _enabledEndpoints.pop();
-                removed = true;
-                break;
-            }
-        }
-        assert(removed);
-
-        emit EndpointRemoved(endpoint);
-
-        if (_enabledEndpoints.length < _threshold) {
-            _threshold = uint8(_enabledEndpoints.length);
-        }
-
-        _checkEndpointsInvariants();
-        // we call the invariant check on the endpoint here as well, since
-        // the above check only iterates through the enabled endpoints.
-        _checkEndpointInvariants(endpoint);
     }
 
     function computeManagerMessageHash(bytes memory payload) public pure returns (bytes32) {
@@ -214,9 +136,11 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
 
     // @dev Count the number of attestations from enabled endpoints for a given message.
     function messageAttestations(bytes32 managerMessageHash) public view returns (uint8 count) {
+        _EnabledEndpointBitmap storage _enabledEndpointBitmap = _getEndpointBitmapStorage();
+
         uint64 attestedEndpoints = managerMessageAttestations[managerMessageHash].attestedEndpoints;
 
-        return countSetBits(attestedEndpoints & _enabledEndpointBitmap);
+        return countSetBits(attestedEndpoints & _enabledEndpointBitmap.bitmap);
     }
 
     // @dev Count the number of set bits in a uint64
@@ -229,64 +153,21 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
         return count;
     }
 
-    // @dev Check that the endpoint manager is in a valid state.
-    // Checking these invariants is somewhat costly, but we only need to do it
-    // when modifying the endpoints, which happens infrequently.
-    function _checkEndpointsInvariants() internal view {
-        // TODO: add custom errors for each invariant
+    /// ============== INVARIANTS =============================================
 
-        for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
-            _checkEndpointInvariants(_enabledEndpoints[i]);
-        }
-
-        // invariant: each endpoint is only enabled once
-        for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
-            for (uint256 j = i + 1; j < _enabledEndpoints.length; j++) {
-                assert(_enabledEndpoints[i] != _enabledEndpoints[j]);
-            }
-        }
-
-        // invariant: numRegisteredEndpoints <= MAX_ENDPOINTS
-        assert(_numRegisteredEndpoints <= _MAX_ENDPOINTS);
+    function _checkThresholdInvariants() internal view {
+        _Threshold storage _threshold = _getThresholdStorage();
+        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
 
         // invariant: threshold <= enabledEndpoints.length
-        if (_threshold > _enabledEndpoints.length) {
-            revert ThresholdTooHigh(_threshold, _enabledEndpoints.length);
+        if (_threshold.num > _enabledEndpoints.length) {
+            revert ThresholdTooHigh(_threshold.num, _enabledEndpoints.length);
         }
 
         if (_enabledEndpoints.length > 0) {
-            if (_threshold == 0) {
+            if (_threshold.num == 0) {
                 revert ZeroThreshold();
             }
         }
-    }
-
-    // @dev Check that the endpoint is in a valid state.
-    function _checkEndpointInvariants(address endpoint) internal view {
-        EndpointInfo memory endpointInfo = endpointInfos[endpoint];
-
-        // if an endpoint is not registered, it should not be enabled
-        assert(endpointInfo.registered || (!endpointInfo.enabled && endpointInfo.index == 0));
-
-        bool endpointInEnabledBitmap =
-            (_enabledEndpointBitmap & uint64(1 << endpointInfo.index)) != 0;
-        bool endpointEnabled = endpointInfo.enabled;
-
-        bool endpointInEnabledEndpoints = false;
-
-        for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
-            if (_enabledEndpoints[i] == endpoint) {
-                endpointInEnabledEndpoints = true;
-                break;
-            }
-        }
-
-        // invariant: endpointInfos[endpoint].enabled <=> enabledEndpointBitmap & (1 << endpointInfos[endpoint].index) != 0
-        assert(endpointInEnabledBitmap == endpointEnabled);
-
-        // invariant: endpointInfos[endpoint].enabled <=> endpoint in _enabledEndpoints
-        assert(endpointInEnabledEndpoints == endpointEnabled);
-
-        assert(endpointInfo.index < _numRegisteredEndpoints);
     }
 }
