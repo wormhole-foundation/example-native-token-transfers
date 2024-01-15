@@ -40,15 +40,39 @@ abstract contract EndpointManager is
         uint64 attestedEndpoints;
     }
 
-    // Maps are keyed by hash of EndpointManagerMessage.
-    mapping(bytes32 => AttestationInfo) public managerMessageAttestations;
+    struct _Sequence {
+        uint64 num;
+    }
+
+    /// =============== STORAGE ===============================================
+
+    bytes32 public constant MESSAGE_ATTESTATIONS_SLOT =
+        bytes32(uint256(keccak256("ntt.messageAttestations")) - 1);
+
+    bytes32 public constant SEQUENCE_SLOT = bytes32(uint256(keccak256("ntt.sequence")) - 1);
+
+    function _getMessageAttestationsStorage()
+        internal
+        pure
+        returns (mapping(bytes32 => AttestationInfo) storage $)
+    {
+        uint256 slot = uint256(MESSAGE_ATTESTATIONS_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
+    function _getSequenceStorage() internal pure returns (_Sequence storage $) {
+        uint256 slot = uint256(SEQUENCE_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
 
     address immutable _token;
     Mode immutable _mode;
     uint16 immutable _chainId;
     uint256 immutable _evmChainId;
-
-    uint64 _sequence;
 
     constructor(address tokenAddress, Mode mode, uint16 chainId) {
         _token = tokenAddress;
@@ -76,7 +100,7 @@ abstract contract EndpointManager is
     function isMessageApproved(bytes32 digest) public view virtual returns (bool);
 
     function _setEndpointAttestedToMessage(bytes32 digest, uint8 index) internal {
-        managerMessageAttestations[digest].attestedEndpoints |= uint64(1 << index);
+        _getMessageAttestationsStorage()[digest].attestedEndpoints |= uint64(1 << index);
     }
 
     function _setEndpointAttestedToMessage(bytes32 digest, address endpoint) internal {
@@ -86,7 +110,7 @@ abstract contract EndpointManager is
     /// @dev Returns the bitmap of attestations from enabled endpoints for a given message.
     function _getMessageAttestations(bytes32 digest) internal view returns (uint64) {
         uint64 enabledEndpointBitmap = _getEnabledEndpointsBitmap();
-        return managerMessageAttestations[digest].attestedEndpoints & enabledEndpointBitmap;
+        return _getMessageAttestationsStorage()[digest].attestedEndpoints & enabledEndpointBitmap;
     }
 
     function _getEnabledEndpointAttestedToMessage(
@@ -201,7 +225,7 @@ abstract contract EndpointManager is
         }
 
         // mark this message as executed
-        managerMessageAttestations[digest].executed = true;
+        _getMessageAttestationsStorage()[digest].executed = true;
     }
 
     /// @dev Called after a message has been sufficiently verified to execute the command in the message.
@@ -251,7 +275,7 @@ abstract contract EndpointManager is
     }
 
     function nextSequence() public view returns (uint64) {
-        return _sequence;
+        return _getSequenceStorage().num;
     }
 
     function useSequence() internal returns (uint64 currentSequence) {
@@ -260,7 +284,7 @@ abstract contract EndpointManager is
     }
 
     function incrementSequence() internal {
-        _sequence++;
+        _getSequenceStorage().num++;
     }
 
     function getTokenBalanceOf(
@@ -283,6 +307,6 @@ abstract contract EndpointManager is
     }
 
     function isMessageExecuted(bytes32 digest) public view returns (bool) {
-        return managerMessageAttestations[digest].executed;
+        return _getMessageAttestationsStorage()[digest].executed;
     }
 }
