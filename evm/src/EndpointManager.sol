@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.6.12 <0.9.0;
 
-import "openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
@@ -10,6 +9,7 @@ import "wormhole-solidity-sdk/Utils.sol";
 import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 
 import "./libraries/external/OwnableUpgradeable.sol";
+import "./libraries/external/ReentrancyGuardUpgradeable.sol";
 import "./libraries/EndpointStructs.sol";
 import "./libraries/EndpointHelpers.sol";
 import "./interfaces/IEndpointManager.sol";
@@ -17,7 +17,7 @@ import "./interfaces/IEndpointToken.sol";
 import "./Endpoint.sol";
 
 // TODO: rename this (it's really the business logic)
-abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, ReentrancyGuard {
+abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using BytesParsing for bytes;
     using SafeERC20 for IERC20;
 
@@ -54,6 +54,7 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
     function initialize() public initializer {
         // TODO: shouldn't be msg.sender but a separate (contract) address that's passed in the initializer
         __Ownable_init(msg.sender);
+        __ReentrancyGuard_init();
     }
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
