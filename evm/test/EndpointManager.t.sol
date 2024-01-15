@@ -327,6 +327,13 @@ contract TestEndpointManager is Test {
         e2.receiveMessage(message);
 
         assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
+
+        // replay protection
+        bytes4 selector = bytes4(keccak256("MessageAlreadyExecuted(bytes32)"));
+        vm.expectRevert(
+            abi.encodeWithSelector(selector, endpointManager.computeManagerMessageHash(message))
+        );
+        e2.receiveMessage(message);
     }
 
     // TODO:
