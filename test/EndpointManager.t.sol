@@ -329,6 +329,7 @@ contract TestEndpointManager is Test {
         uint256 decimals = token.decimals();
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
+        endpointManager.setOutboundLimit(type(uint256).max);
 
         vm.startPrank(user_A);
 
@@ -455,5 +456,63 @@ contract TestEndpointManager is Test {
 
     function test_noAutomaticSlot() public {
         assertEq(EndpointManagerContract(address(endpointManager)).lastSlot(), 0x0);
+    }
+
+    // === token transfer rate limiting
+
+    function test_outboundRateLimit_singleHit() public {
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(endpointManager.token());
+
+        uint256 decimals = token.decimals();
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+        uint256 outboundLimit = 1 * 10 ** decimals;
+        endpointManager.setOutboundLimit(outboundLimit);
+
+        vm.startPrank(user_A);
+
+        uint256 transferAmount = 3 * 10 ** decimals;
+        token.approve(address(endpointManager), transferAmount);
+
+        bytes4 selector = bytes4(keccak256("NotEnoughOutboundCapacity(uint256,uint256)"));
+        vm.expectRevert(abi.encodeWithSelector(selector, outboundLimit, transferAmount));
+        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B));
+    }
+
+    function test_outboundRateLimit_multiHit() public {
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(endpointManager.token());
+
+        uint256 decimals = token.decimals();
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+        uint256 outboundLimit = 4 * 10 ** decimals;
+        endpointManager.setOutboundLimit(outboundLimit);
+
+        vm.startPrank(user_A);
+
+        uint256 transferAmount = 3 * 10 ** decimals;
+        token.approve(address(endpointManager), transferAmount);
+        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B));
+
+        // assert that first transfer went through
+        assertEq(token.balanceOf(address(user_A)), 2 * 10 ** decimals);
+        assertEq(token.balanceOf(address(endpointManager)), transferAmount);
+
+        // assert currentCapacity is updated
+        uint256 newCapacity = outboundLimit - transferAmount;
+        assertEq(endpointManager.getCurrentOutboundCapacity(), newCapacity);
+
+        uint256 badTransferAmount = 2 * 10 ** decimals;
+        token.approve(address(endpointManager), badTransferAmount);
+
+        bytes4 selector = bytes4(keccak256("NotEnoughOutboundCapacity(uint256,uint256)"));
+        vm.expectRevert(abi.encodeWithSelector(selector, newCapacity, badTransferAmount));
+        endpointManager.transfer(badTransferAmount, chainId, toWormholeFormat(user_B));
     }
 }

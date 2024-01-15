@@ -74,6 +74,20 @@ abstract contract EndpointManager is
     uint16 immutable _chainId;
     uint256 immutable _evmChainId;
 
+    /**
+     * @dev The duration it takes for the limits to fully replenish
+     */
+    uint256 private constant _RATE_LIMIT_DURATION = 1 days;
+
+    struct RateLimitParams {
+        uint256 limit;
+        uint256 currentCapacity;
+        uint256 lastTxTimestamp;
+        uint256 ratePerSecond;
+    }
+
+    RateLimitParams outboundLimitParams;
+
     constructor(address tokenAddress, Mode mode, uint16 chainId) {
         _token = tokenAddress;
         _mode = mode;
@@ -120,6 +134,76 @@ abstract contract EndpointManager is
         return _getMessageAttestations(digest) & uint64(1 << index) != 0;
     }
 
+    function setOutboundLimit(uint256 limit) external onlyOwner {
+        uint256 oldLimit = outboundLimitParams.limit;
+        uint256 currentCapacity = getCurrentOutboundCapacity();
+        outboundLimitParams.limit = limit;
+
+        outboundLimitParams.currentCapacity =
+            _calculateNewCurrentCapacity(limit, oldLimit, currentCapacity);
+
+        outboundLimitParams.ratePerSecond = limit / _RATE_LIMIT_DURATION;
+        outboundLimitParams.lastTxTimestamp = block.timestamp;
+    }
+
+    function getCurrentOutboundCapacity() public view returns (uint256) {
+        return _getCurrentCapacity(outboundLimitParams);
+    }
+
+    /**
+     * @dev Gets the current capacity for a parameterized rate limits struct
+     */
+    function _getCurrentCapacity(RateLimitParams memory rateLimitParams)
+        internal
+        view
+        returns (uint256 capacity)
+    {
+        capacity = rateLimitParams.currentCapacity;
+        if (capacity == rateLimitParams.limit) {
+            return capacity;
+        } else if (rateLimitParams.lastTxTimestamp + _RATE_LIMIT_DURATION <= block.timestamp) {
+            capacity = rateLimitParams.limit;
+        } else if (rateLimitParams.lastTxTimestamp + _RATE_LIMIT_DURATION > block.timestamp) {
+            uint256 timePassed = block.timestamp - rateLimitParams.lastTxTimestamp;
+            uint256 calculatedCapacity = capacity + (timePassed * rateLimitParams.ratePerSecond);
+            capacity = calculatedCapacity > rateLimitParams.limit
+                ? rateLimitParams.limit
+                : calculatedCapacity;
+        }
+    }
+
+    /**
+     * @dev Updates the current capacity
+     *
+     * @param newLimit The new limit
+     * @param oldLimit The old limit
+     * @param currentLimit The current limit
+     */
+    function _calculateNewCurrentCapacity(
+        uint256 newLimit,
+        uint256 oldLimit,
+        uint256 currentLimit
+    ) internal pure returns (uint256 newCurrentCapacity) {
+        uint256 difference;
+
+        if (oldLimit > newLimit) {
+            difference = oldLimit - newLimit;
+            newCurrentCapacity = currentLimit > difference ? currentLimit - difference : 0;
+        } else {
+            difference = newLimit - oldLimit;
+            newCurrentCapacity = currentLimit + difference;
+        }
+    }
+
+    function _consumeOutboundAmount(uint256 amount) internal {
+        uint256 currentCapacity = getCurrentOutboundCapacity();
+        if (currentCapacity < amount) {
+            revert NotEnoughOutboundCapacity(currentCapacity, amount);
+        }
+        outboundLimitParams.lastTxTimestamp = block.timestamp;
+        outboundLimitParams.currentCapacity = currentCapacity - amount;
+    }
+
     /// @notice Called by the user to send the token cross-chain.
     ///         This function will either lock or burn the sender's tokens.
     ///         Finally, this function will call into the Endpoint contracts to send a message with the incrementing sequence number, msgType = 1y, and the token transfer payload.
@@ -128,6 +212,9 @@ abstract contract EndpointManager is
         uint16 recipientChain,
         bytes32 recipient
     ) external payable nonReentrant returns (uint64 msgSequence) {
+        // check outbound rate limits up front
+        _consumeOutboundAmount(amount);
+
         // check up front that msg.value will cover the delivery price
         uint256 totalPriceQuote = quoteDeliveryPrice(recipientChain);
         if (msg.value < totalPriceQuote) {
