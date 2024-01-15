@@ -16,6 +16,7 @@ import "./interfaces/IEndpointManager.sol";
 import "./interfaces/IEndpointToken.sol";
 import "./Endpoint.sol";
 
+// TODO: rename this (it's really the business logic)
 abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, ReentrancyGuard {
     using BytesParsing for bytes;
     using SafeERC20 for IERC20;
