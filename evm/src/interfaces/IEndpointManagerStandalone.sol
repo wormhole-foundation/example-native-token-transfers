@@ -6,9 +6,8 @@ import "../libraries/EndpointStructs.sol";
 interface IEndpointManagerStandalone {
     error NotImplemented();
 
+    error ZeroThreshold();
+    error ThresholdTooHigh(uint256 threshold, uint256 endpoints);
+
     function attestationReceived(EndpointStructs.EndpointManagerMessage memory payload) external;
-
-    function getThreshold() external view returns (uint8);
-
-    function getEndpoints() external view returns (address[] memory);
 }
