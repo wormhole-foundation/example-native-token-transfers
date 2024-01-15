@@ -212,9 +212,6 @@ abstract contract EndpointManager is
         uint16 recipientChain,
         bytes32 recipient
     ) external payable nonReentrant returns (uint64 msgSequence) {
-        // check outbound rate limits up front
-        _consumeOutboundAmount(amount);
-
         // check up front that msg.value will cover the delivery price
         uint256 totalPriceQuote = quoteDeliveryPrice(recipientChain);
         if (msg.value < totalPriceQuote) {
@@ -237,6 +234,9 @@ abstract contract EndpointManager is
         if (amount == 0) {
             revert ZeroAmount();
         }
+
+        // check outbound rate limits up front
+        _consumeOutboundAmount(amount);
 
         if (_mode == Mode.LOCKING) {
             // use transferFrom to pull tokens from the user and lock them
