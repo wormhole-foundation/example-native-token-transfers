@@ -82,7 +82,7 @@ abstract contract EndpointRegistry {
         }
     }
 
-    function _getEndpointBitmapStorage() internal pure returns (_EnabledEndpointBitmap storage $) {
+    function _getEndpointBitmapStorage() private pure returns (_EnabledEndpointBitmap storage $) {
         uint256 slot = uint256(ENDPOINT_BITMAP_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
@@ -102,7 +102,7 @@ abstract contract EndpointRegistry {
 
     /// =============== GETTERS/SETTERS ========================================
 
-    function _setEndpoint(address endpoint) internal {
+    function _setEndpoint(address endpoint) internal returns (uint8 index) {
         mapping(address => EndpointInfo) storage endpointInfos = _getEndpointInfosStorage();
         _EnabledEndpointBitmap storage _enabledEndpointBitmap = _getEndpointBitmapStorage();
         address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
@@ -139,6 +139,8 @@ abstract contract EndpointRegistry {
         emit EndpointAdded(endpoint);
 
         _checkEndpointsInvariants();
+
+        return endpointInfos[endpoint].index;
     }
 
     function _removeEndpoint(address endpoint) internal {
@@ -186,6 +188,10 @@ abstract contract EndpointRegistry {
         _checkEndpointInvariants(endpoint);
     }
 
+    function _getEnabledEndpointsBitmap() internal view virtual returns (uint64 bitmap) {
+        return _getEndpointBitmapStorage().bitmap;
+    }
+
     /// @notice Returns the Endpoint contracts that have been registered via governance.
     function getEndpoints() external pure returns (address[] memory result) {
         result = _getEnabledEndpointsStorage();
@@ -215,7 +221,6 @@ abstract contract EndpointRegistry {
 
         // invariant: numRegisteredEndpoints <= MAX_ENDPOINTS
         assert(_numRegisteredEndpoints.num <= MAX_ENDPOINTS);
-
     }
 
     // @dev Check that the endpoint is in a valid state.

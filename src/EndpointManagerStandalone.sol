@@ -6,11 +6,7 @@ import "./interfaces/IEndpointStandalone.sol";
 import "./EndpointManager.sol";
 import "./EndpointRegistry.sol";
 
-contract EndpointManagerStandalone is
-    IEndpointManagerStandalone,
-    EndpointManager,
-    EndpointRegistry
-{
+contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManager {
     constructor(address token, Mode mode, uint16 chainId) EndpointManager(token, mode, chainId) {
         _checkThresholdInvariants();
     }
@@ -55,7 +51,6 @@ contract EndpointManagerStandalone is
         // this makes the system more secure in the event that the user forgets
         // to call setThreshold().
         _threshold.num += 1;
-
     }
 
     function removeEndpoint(address endpoint) external onlyOwner {
@@ -67,7 +62,6 @@ contract EndpointManagerStandalone is
         if (_enabledEndpoints.length < _threshold.num) {
             _threshold.num = uint8(_enabledEndpoints.length);
         }
-
     }
 
     function quoteDeliveryPrice(uint16 recipientChain) public view override returns (uint256) {
@@ -108,39 +102,26 @@ contract EndpointManagerStandalone is
         external
         onlyEndpoint
     {
-        mapping(address => EndpointInfo) storage endpointInfos = _getEndpointInfosStorage();
         bytes32 managerMessageHash = EndpointStructs.endpointManagerMessageDigest(payload);
 
         // set the attested flag for this endpoint.
         // TODO: this allows an endpoint to attest to a message multiple times.
         // This is fine, because attestation is idempotent (bitwise or 1), but
         // maybe we want to revert anyway?
-        // TODO: factor out the bitmap logic into helper functions (or even a library)
-        managerMessageAttestations[managerMessageHash].attestedEndpoints |=
-            uint64(1 << endpointInfos[msg.sender].index);
+        _setEndpointAttestedToMessage(managerMessageHash, msg.sender);
 
-        uint8 attestationCount = messageAttestations(managerMessageHash);
-
-        // end early if the threshold hasn't been met.
-        // otherwise, continue with execution for the message type.
-        if (attestationCount < getThreshold()) {
-            return;
+        if (isMessageApproved(managerMessageHash)) {
+            _executeMsg(payload);
         }
-
-        return _executeMsg(payload);
-    }
-
-    function computeManagerMessageHash(bytes memory payload) public pure returns (bytes32) {
-        return keccak256(payload);
     }
 
     // @dev Count the number of attestations from enabled endpoints for a given message.
-    function messageAttestations(bytes32 managerMessageHash) public view returns (uint8 count) {
-        _EnabledEndpointBitmap storage _enabledEndpointBitmap = _getEndpointBitmapStorage();
+    function messageAttestations(bytes32 digest) public view returns (uint8 count) {
+        return countSetBits(_getMessageAttestations(digest));
+    }
 
-        uint64 attestedEndpoints = managerMessageAttestations[managerMessageHash].attestedEndpoints;
-
-        return countSetBits(attestedEndpoints & _enabledEndpointBitmap.bitmap);
+    function isMessageApproved(bytes32 digest) public view override returns (bool) {
+        return messageAttestations(digest) >= getThreshold();
     }
 
     // @dev Count the number of set bits in a uint64

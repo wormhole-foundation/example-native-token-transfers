@@ -250,7 +250,7 @@ contract TestEndpointManager is Test {
 
         e1.receiveMessage(message);
 
-        bytes32 hash = endpointManager.computeManagerMessageHash(message);
+        bytes32 hash = EndpointStructs.endpointManagerMessageDigest(m);
         assertEq(endpointManager.messageAttestations(hash), 1);
     }
 
@@ -267,7 +267,7 @@ contract TestEndpointManager is Test {
         e1.receiveMessage(message);
         e1.receiveMessage(message);
 
-        bytes32 hash = endpointManager.computeManagerMessageHash(message);
+        bytes32 hash = EndpointStructs.endpointManagerMessageDigest(m);
         // can't double vote
         assertEq(endpointManager.messageAttestations(hash), 1);
     }
@@ -286,7 +286,7 @@ contract TestEndpointManager is Test {
         endpointManager.setThreshold(1);
         endpointManager.removeEndpoint(address(e1));
 
-        bytes32 hash = endpointManager.computeManagerMessageHash(message);
+        bytes32 hash = EndpointStructs.endpointManagerMessageDigest(m);
         // a disabled endpoint's vote no longer counts
         assertEq(endpointManager.messageAttestations(hash), 0);
 
@@ -343,7 +343,7 @@ contract TestEndpointManager is Test {
         // replay protection
         bytes4 selector = bytes4(keccak256("MessageAlreadyExecuted(bytes32)"));
         vm.expectRevert(
-            abi.encodeWithSelector(selector, endpointManager.computeManagerMessageHash(message))
+            abi.encodeWithSelector(selector, EndpointStructs.endpointManagerMessageDigest(m))
         );
         e2.receiveMessage(message);
     }

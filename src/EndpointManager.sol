@@ -15,9 +15,15 @@ import "./libraries/EndpointHelpers.sol";
 import "./interfaces/IEndpointManager.sol";
 import "./interfaces/IEndpointToken.sol";
 import "./Endpoint.sol";
+import "./EndpointRegistry.sol";
 
 // TODO: rename this (it's really the business logic)
-abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, ReentrancyGuardUpgradeable {
+abstract contract EndpointManager is
+    IEndpointManager,
+    EndpointRegistry,
+    OwnableUpgradeable,
+    ReentrancyGuardUpgradeable
+{
     using BytesParsing for bytes;
     using SafeERC20 for IERC20;
 
@@ -65,6 +71,30 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
     function setSibling(uint16 siblingChainId, bytes32 siblingContract) external virtual;
+
+    // TODO: do we want additional information (like chain etc)
+    function isMessageApproved(bytes32 digest) public view virtual returns (bool);
+
+    function _setEndpointAttestedToMessage(bytes32 digest, uint8 index) internal {
+        managerMessageAttestations[digest].attestedEndpoints |= uint64(1 << index);
+    }
+
+    function _setEndpointAttestedToMessage(bytes32 digest, address endpoint) internal {
+        _setEndpointAttestedToMessage(digest, _getEndpointInfosStorage()[endpoint].index);
+    }
+
+    /// @dev Returns the bitmap of attestations from enabled endpoints for a given message.
+    function _getMessageAttestations(bytes32 digest) internal view returns (uint64) {
+        uint64 enabledEndpointBitmap = _getEnabledEndpointsBitmap();
+        return managerMessageAttestations[digest].attestedEndpoints & enabledEndpointBitmap;
+    }
+
+    function _getEnabledEndpointAttestedToMessage(
+        bytes32 digest,
+        uint8 index
+    ) internal view returns (bool) {
+        return _getMessageAttestations(digest) & uint64(1 << index) != 0;
+    }
 
     /// @notice Called by the user to send the token cross-chain.
     ///         This function will either lock or burn the sender's tokens.
@@ -176,12 +206,18 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
 
     /// @dev Called after a message has been sufficiently verified to execute the command in the message.
     ///      This function will decode the payload as an EndpointManagerMessage to extract the sequence, msgType, and other parameters.
+    /// TODO: we could make this public. all the security checks are done here
     function _executeMsg(EndpointStructs.EndpointManagerMessage memory message) internal {
         // verify chain has not forked
         checkFork(_evmChainId);
 
-        bytes32 managerMessageHash = EndpointStructs.endpointManagerMessageDigest(message);
-        _replayProtect(managerMessageHash);
+        bytes32 digest = EndpointStructs.endpointManagerMessageDigest(message);
+
+        if (!isMessageApproved(digest)) {
+            revert MessageNotApproved(digest);
+        }
+
+        _replayProtect(digest);
 
         // for msgType == 1, parse the payload as a NativeTokenTransfer.
         // for other msgTypes, revert (unsupported for now)
