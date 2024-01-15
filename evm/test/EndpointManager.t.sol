@@ -15,6 +15,18 @@ contract EndpointManagerContract is EndpointManagerStandalone {
         Mode mode,
         uint16 chainId
     ) EndpointManagerStandalone(token, mode, chainId) {}
+
+    /// We create a dummy storage variable here with standard solidity slot assignment.
+    /// Then we check that its assigned slot is 0, i.e. that the super contract doesn't
+    /// define any storage variables (and instead uses deterministic slots).
+    /// See `test_noAutomaticSlot` below.
+    uint256 my_slot;
+
+    function lastSlot() public pure returns (bytes32 result) {
+        assembly ("memory-safe") {
+            result := my_slot.slot
+        }
+    }
 }
 
 contract DummyEndpoint is EndpointStandalone {
@@ -414,5 +426,11 @@ contract TestEndpointManager is Test {
         bytes4 selector = bytes4(keccak256("LengthMismatch(uint256,uint256)"));
         vm.expectRevert(abi.encodeWithSelector(selector, 24, 20));
         endpointManager.bytesToAddress(b);
+    }
+
+    // === storage
+
+    function test_noAutomaticSlot() public {
+        assertEq(EndpointManagerContract(address(endpointManager)).lastSlot(), 0x0);
     }
 }
