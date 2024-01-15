@@ -166,16 +166,16 @@ abstract contract EndpointManager is
             EndpointStructs.encodeNativeTokenTransfer(nativeTokenTransfer);
 
         // construct the ManagerMessage payload
-        _sequence = useSequence();
+        uint64 sequence = useSequence();
         bytes memory encodedManagerPayload = EndpointStructs.encodeEndpointManagerMessage(
-            EndpointStructs.EndpointManagerMessage(_chainId, _sequence, 1, encodedTransferPayload)
+            EndpointStructs.EndpointManagerMessage(_chainId, sequence, 1, encodedTransferPayload)
         );
 
         // send the message
         sendMessage(recipientChain, encodedManagerPayload);
 
         // return the sequence number
-        return _sequence;
+        return sequence;
     }
 
     function normalizeAmount(uint256 amount, uint8 decimals) internal pure returns (uint256) {
