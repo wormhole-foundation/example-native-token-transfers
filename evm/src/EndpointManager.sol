@@ -208,6 +208,9 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         pure
         returns (bytes memory encoded)
     {
+        if (m.payload.length > type(uint16).max) {
+            revert PayloadTooLong(m.payload.length);
+        }
         uint16 payloadLength = uint16(m.payload.length);
         return abi.encodePacked(m.chainId, m.sequence, m.msgType, payloadLength, m.payload);
     }
@@ -237,6 +240,9 @@ abstract contract EndpointManager is IEndpointManager, OwnableUpgradeable, Reent
         pure
         returns (bytes memory encoded)
     {
+        if (m.to.length > type(uint16).max) {
+            revert PayloadTooLong(m.to.length);
+        }
         uint16 toLength = uint16(m.to.length);
         return abi.encodePacked(m.amount, toLength, m.to, m.toChain);
     }

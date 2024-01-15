@@ -21,6 +21,8 @@ interface IEndpointManager {
     event EndpointAdded(address endpoint);
     event EndpointRemoved(address endpoint);
 
+    error PayloadTooLong(uint256 size);
+
     function transfer(
         uint256 amount,
         uint16 recipientChain,
