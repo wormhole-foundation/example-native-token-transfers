@@ -121,7 +121,8 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
     }
 
     function isMessageApproved(bytes32 digest) public view override returns (bool) {
-        return messageAttestations(digest) >= getThreshold();
+        uint8 threshold = getThreshold();
+        return messageAttestations(digest) >= threshold && threshold > 0;
     }
 
     // @dev Count the number of set bits in a uint64
