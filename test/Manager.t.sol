@@ -7,6 +7,7 @@ import "../src/ManagerStandalone.sol";
 import "../src/EndpointStandalone.sol";
 import "../src/interfaces/IManager.sol";
 import "../src/interfaces/IManagerEvents.sol";
+import {Utils} from "./libraries/Utils.sol";
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
@@ -454,6 +455,17 @@ contract TestManager is Test, IManagerEvents {
 
     function test_noAutomaticSlot() public {
         assertEq(ManagerContract(address(manager)).lastSlot(), 0x0);
+    }
+
+    function test_constructor() public {
+        vm.startStateDiffRecording();
+
+        new EndpointManagerContract(address(0x123), EndpointManager.Mode.LOCKING, 1, 1 days);
+
+        require(
+            !Utils.writesToStorage(vm.stopAndReturnStateDiff()),
+            "upgradeable contract constructor should not write to storage"
+        );
     }
 
     // === token transfer rate limiting
