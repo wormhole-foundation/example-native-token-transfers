@@ -562,8 +562,7 @@ abstract contract EndpointManager is
             _getInboundQueueStorage()[queueSequence] = InboundQueuedTransfer({
                 amount: nativeTransferAmount,
                 recipient: transferRecipient,
-                txTimestamp: block.timestamp,
-                isSet: true
+                txTimestamp: block.timestamp
             });
 
             // end execution early
@@ -576,7 +575,7 @@ abstract contract EndpointManager is
     function completeInboundQueuedTransfer(uint64 queueSequence) external payable nonReentrant {
         // find the message in the queue
         InboundQueuedTransfer memory queuedTransfer = _getInboundQueueStorage()[queueSequence];
-        if (!queuedTransfer.isSet) {
+        if (queuedTransfer.txTimestamp == 0) {
             revert QueuedTransferNotFound(queueSequence);
         }
 

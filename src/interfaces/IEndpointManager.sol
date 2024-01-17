@@ -33,7 +33,6 @@ interface IEndpointManager {
         uint256 amount;
         address recipient;
         uint256 txTimestamp;
-        bool isSet;
     }
 
     function transfer(
