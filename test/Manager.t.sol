@@ -114,8 +114,7 @@ contract TestManager is Test, IManagerEvents {
         address notOwner = address(0x123);
         vm.startPrank(notOwner);
 
-        bytes4 selector = bytes4(keccak256("OwnableUnauthorizedAccount(address)"));
-        vm.expectRevert(abi.encodeWithSelector(selector, notOwner));
+        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", notOwner));
         manager.transferOwnership(address(0x456));
     }
 
@@ -133,11 +132,10 @@ contract TestManager is Test, IManagerEvents {
         address notOwner = address(0x123);
         vm.startPrank(notOwner);
 
-        bytes4 selector = bytes4(keccak256("OwnableUnauthorizedAccount(address)"));
-        vm.expectRevert(abi.encodeWithSelector(selector, notOwner));
+        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", notOwner));
         manager.setEndpoint(address(e));
 
-        vm.expectRevert(abi.encodeWithSelector(selector, notOwner));
+        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", notOwner));
         manager.removeEndpoint(address(e));
     }
 
@@ -145,8 +143,7 @@ contract TestManager is Test, IManagerEvents {
         DummyEndpoint e = new DummyEndpoint(address(manager));
         manager.setEndpoint(address(e));
 
-        bytes4 selector = bytes4(keccak256("EndpointAlreadyEnabled(address)"));
-        vm.expectRevert(abi.encodeWithSelector(selector, address(e)));
+        vm.expectRevert(abi.encodeWithSignature("EndpointAlreadyEnabled(address)", address(e)));
         manager.setEndpoint(address(e));
     }
 
@@ -183,8 +180,7 @@ contract TestManager is Test, IManagerEvents {
 
     function test_cantSetThresholdTooHigh() public {
         // no endpoints set, so can't set threshold to 1
-        bytes4 selector = bytes4(keccak256("ThresholdTooHigh(uint256,uint256)"));
-        vm.expectRevert(abi.encodeWithSelector(selector, 1, 0));
+        vm.expectRevert(abi.encodeWithSignature("ThresholdTooHigh(uint256,uint256)", 1, 0));
         manager.setThreshold(1);
     }
 
@@ -203,8 +199,7 @@ contract TestManager is Test, IManagerEvents {
         DummyEndpoint e = new DummyEndpoint(address(manager));
         manager.setEndpoint(address(e));
 
-        bytes4 selector = bytes4(keccak256("ZeroThreshold()"));
-        vm.expectRevert(abi.encodeWithSelector(selector));
+        vm.expectRevert(abi.encodeWithSignature("ZeroThreshold()"));
         manager.setThreshold(0);
     }
 
@@ -212,8 +207,7 @@ contract TestManager is Test, IManagerEvents {
         address notOwner = address(0x123);
         vm.startPrank(notOwner);
 
-        bytes4 selector = bytes4(keccak256("OwnableUnauthorizedAccount(address)"));
-        vm.expectRevert(abi.encodeWithSelector(selector, notOwner));
+        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", notOwner));
         manager.setThreshold(1);
     }
 
@@ -236,8 +230,7 @@ contract TestManager is Test, IManagerEvents {
         );
         bytes memory message = EndpointStructs.encodeManagerMessage(m);
 
-        bytes4 selector = bytes4(keccak256("CallerNotEndpoint(address)"));
-        vm.expectRevert(abi.encodeWithSelector(selector, address(e1)));
+        vm.expectRevert(abi.encodeWithSignature("CallerNotEndpoint(address)", address(e1)));
         e1.receiveMessage(message);
     }
 
@@ -371,8 +364,11 @@ contract TestManager is Test, IManagerEvents {
         assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
 
         // replay protection
-        bytes4 selector = bytes4(keccak256("MessageAlreadyExecuted(bytes32)"));
-        vm.expectRevert(abi.encodeWithSelector(selector, EndpointStructs.managerMessageDigest(m)));
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "MessageAlreadyExecuted(bytes32)", EndpointStructs.managerMessageDigest(m)
+            )
+        );
         e2.receiveMessage(message);
     }
 
@@ -404,9 +400,10 @@ contract TestManager is Test, IManagerEvents {
 
         bytes memory junk = "junk";
 
-        bytes4 selector = bytes4(keccak256("LengthMismatch(uint256,uint256)"));
         vm.expectRevert(
-            abi.encodeWithSelector(selector, message.length + junk.length, message.length)
+            abi.encodeWithSignature(
+                "LengthMismatch(uint256,uint256)", message.length + junk.length, message.length
+            )
         );
         EndpointStructs.parseManagerMessage(abi.encodePacked(message, junk));
     }
@@ -431,9 +428,10 @@ contract TestManager is Test, IManagerEvents {
 
         bytes memory junk = "junk";
 
-        bytes4 selector = bytes4(keccak256("LengthMismatch(uint256,uint256)"));
         vm.expectRevert(
-            abi.encodeWithSelector(selector, message.length + junk.length, message.length)
+            abi.encodeWithSignature(
+                "LengthMismatch(uint256,uint256)", message.length + junk.length, message.length
+            )
         );
         EndpointStructs.parseNativeTokenTransfer(abi.encodePacked(message, junk));
     }
@@ -446,21 +444,21 @@ contract TestManager is Test, IManagerEvents {
     function test_bytesToAddress_junk(address a) public {
         bytes memory b = abi.encodePacked(a, "junk");
 
-        bytes4 selector = bytes4(keccak256("LengthMismatch(uint256,uint256)"));
-        vm.expectRevert(abi.encodeWithSelector(selector, 24, 20));
+        vm.expectRevert(abi.encodeWithSignature("LengthMismatch(uint256,uint256)", 24, 20));
         manager.bytesToAddress(b);
     }
 
     // === storage
 
     function test_noAutomaticSlot() public {
-        assertEq(ManagerContract(address(manager)).lastSlot(), 0x0);
+        ManagerContract c = new ManagerContract(address(0x123), Manager.Mode.LOCKING, 1, 1 days);
+        assertEq(c.lastSlot(), 0x0);
     }
 
     function test_constructor() public {
         vm.startStateDiffRecording();
 
-        new EndpointManagerContract(address(0x123), EndpointManager.Mode.LOCKING, 1, 1 days);
+        new EndpointManagerStandalone(address(0x123), EndpointManager.Mode.LOCKING, 1, 1 days);
 
         require(
             !Utils.writesToStorage(vm.stopAndReturnStateDiff()),
