@@ -87,13 +87,14 @@ abstract contract EndpointManager is
     /**
      * @dev The duration it takes for the limits to fully replenish
      */
-    uint256 public constant _RATE_LIMIT_DURATION = 1 days;
+    uint256 public immutable _rateLimitDuration;
 
-    constructor(address tokenAddress, Mode mode, uint16 chainId) {
+    constructor(address tokenAddress, Mode mode, uint16 chainId, uint256 rateLimitDuration) {
         _token = tokenAddress;
         _mode = mode;
         _chainId = chainId;
         _evmChainId = block.chainid;
+        _rateLimitDuration = rateLimitDuration;
     }
 
     function initialize() public initializer {
@@ -143,7 +144,7 @@ abstract contract EndpointManager is
         _getOutboundLimitParamsStorage().currentCapacity =
             _calculateNewCurrentCapacity(limit, oldLimit, currentCapacity);
 
-        _getOutboundLimitParamsStorage().ratePerSecond = limit / _RATE_LIMIT_DURATION;
+        _getOutboundLimitParamsStorage().ratePerSecond = limit / _rateLimitDuration;
         _getOutboundLimitParamsStorage().lastTxTimestamp = block.timestamp;
     }
 
@@ -166,9 +167,9 @@ abstract contract EndpointManager is
         capacity = rateLimitParams.currentCapacity;
         if (capacity == rateLimitParams.limit) {
             return capacity;
-        } else if (rateLimitParams.lastTxTimestamp + _RATE_LIMIT_DURATION <= block.timestamp) {
+        } else if (rateLimitParams.lastTxTimestamp + _rateLimitDuration <= block.timestamp) {
             capacity = rateLimitParams.limit;
-        } else if (rateLimitParams.lastTxTimestamp + _RATE_LIMIT_DURATION > block.timestamp) {
+        } else if (rateLimitParams.lastTxTimestamp + _rateLimitDuration > block.timestamp) {
             uint256 timePassed = block.timestamp - rateLimitParams.lastTxTimestamp;
             uint256 calculatedCapacity = capacity + (timePassed * rateLimitParams.ratePerSecond);
             capacity = calculatedCapacity > rateLimitParams.limit

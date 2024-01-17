@@ -14,8 +14,9 @@ contract EndpointManagerContract is EndpointManagerStandalone {
     constructor(
         address token,
         Mode mode,
-        uint16 chainId
-    ) EndpointManagerStandalone(token, mode, chainId) {}
+        uint16 chainId,
+        uint256 rateLimitDuration
+    ) EndpointManagerStandalone(token, mode, chainId, rateLimitDuration) {}
 
     /// We create a dummy storage variable here with standard solidity slot assignment.
     /// Then we check that its assigned slot is 0, i.e. that the super contract doesn't
@@ -75,7 +76,7 @@ contract TestEndpointManager is Test {
     function setUp() public {
         DummyToken t = new DummyToken();
         endpointManager =
-            new EndpointManagerContract(address(t), EndpointManager.Mode.LOCKING, chainId);
+            new EndpointManagerContract(address(t), EndpointManager.Mode.LOCKING, chainId, 1 days);
         endpointManager.initialize();
         // deploy sample token contract
         // deploy wormhole contract
@@ -472,7 +473,7 @@ contract TestEndpointManager is Test {
 
         assertEq(outboundLimitParams.limit, limit);
         assertEq(outboundLimitParams.currentCapacity, limit);
-        assertEq(outboundLimitParams.ratePerSecond, limit / endpointManager._RATE_LIMIT_DURATION());
+        assertEq(outboundLimitParams.ratePerSecond, limit / endpointManager._rateLimitDuration());
         assertEq(outboundLimitParams.lastTxTimestamp, 1);
     }
 
@@ -510,7 +511,7 @@ contract TestEndpointManager is Test {
         assertEq(outboundLimitParams.lastTxTimestamp, 1);
         assertEq(outboundLimitParams.currentCapacity, 2 * 10 ** decimals);
         assertEq(
-            outboundLimitParams.ratePerSecond, higherLimit / endpointManager._RATE_LIMIT_DURATION()
+            outboundLimitParams.ratePerSecond, higherLimit / endpointManager._rateLimitDuration()
         );
     }
 
@@ -548,7 +549,7 @@ contract TestEndpointManager is Test {
         assertEq(outboundLimitParams.lastTxTimestamp, 1);
         assertEq(outboundLimitParams.currentCapacity, 0);
         assertEq(
-            outboundLimitParams.ratePerSecond, lowerLimit / endpointManager._RATE_LIMIT_DURATION()
+            outboundLimitParams.ratePerSecond, lowerLimit / endpointManager._rateLimitDuration()
         );
     }
 
@@ -563,7 +564,7 @@ contract TestEndpointManager is Test {
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
         uint256 outboundLimit = 4 * 10 ** decimals;
-        uint256 oldRps = outboundLimit / endpointManager._RATE_LIMIT_DURATION();
+        uint256 oldRps = outboundLimit / endpointManager._rateLimitDuration();
         endpointManager.setOutboundLimit(outboundLimit);
 
         vm.startPrank(user_A);
@@ -596,7 +597,7 @@ contract TestEndpointManager is Test {
             (1 * 10 ** decimals) + (1 * 10 ** decimals) + oldRps * (sixHoursLater - 1)
         );
         assertEq(
-            outboundLimitParams.ratePerSecond, higherLimit / endpointManager._RATE_LIMIT_DURATION()
+            outboundLimitParams.ratePerSecond, higherLimit / endpointManager._rateLimitDuration()
         );
     }
 
@@ -639,7 +640,7 @@ contract TestEndpointManager is Test {
         // capacity should be: 0
         assertEq(outboundLimitParams.currentCapacity, 0);
         assertEq(
-            outboundLimitParams.ratePerSecond, lowerLimit / endpointManager._RATE_LIMIT_DURATION()
+            outboundLimitParams.ratePerSecond, lowerLimit / endpointManager._rateLimitDuration()
         );
     }
 
@@ -654,7 +655,7 @@ contract TestEndpointManager is Test {
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
         uint256 outboundLimit = 5 * 10 ** decimals;
-        uint256 oldRps = outboundLimit / endpointManager._RATE_LIMIT_DURATION();
+        uint256 oldRps = outboundLimit / endpointManager._rateLimitDuration();
         endpointManager.setOutboundLimit(outboundLimit);
 
         vm.startPrank(user_A);
@@ -687,7 +688,7 @@ contract TestEndpointManager is Test {
             (3 * 10 ** decimals) - (1 * 10 ** decimals) + oldRps * (sixHoursLater - 1)
         );
         assertEq(
-            outboundLimitParams.ratePerSecond, lowerLimit / endpointManager._RATE_LIMIT_DURATION()
+            outboundLimitParams.ratePerSecond, lowerLimit / endpointManager._rateLimitDuration()
         );
     }
 
