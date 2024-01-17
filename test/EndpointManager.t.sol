@@ -785,14 +785,17 @@ contract TestEndpointManager is Test {
         assertEq(qt.recipientChain, chainId);
         assertEq(qt.recipient, toWormholeFormat(user_B));
         assertEq(qt.txTimestamp, 1);
-        assertEq(qt.isSet, true);
+
+        // assert that the contract also locked funds from the user
+        assertEq(token.balanceOf(address(user_A)), 0);
+        assertEq(token.balanceOf(address(endpointManager)), transferAmount);
 
         // change block time to (duration - 1) seconds later
         vm.warp(endpointManager._rateLimitDuration());
 
         // assert that transfer still can't be completed
-        bytes4 stillQueuedSelector = bytes4(keccak256("OutboundQueuedTransferStillQueued(uint256)"));
-        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 1));
+        bytes4 stillQueuedSelector = bytes4(keccak256("OutboundQueuedTransferStillQueued(uint64,uint256)"));
+        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, 1));
         endpointManager.completeOutboundQueuedTransfer(0);
 
         // now complete transfer

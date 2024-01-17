@@ -255,13 +255,13 @@ abstract contract EndpointManager is
     {
         // find the message in the queue
         OutboundQueuedTransfer memory queuedTransfer = _getOutboundQueueStorage()[queueSequence];
-        if (!queuedTransfer.isSet) {
+        if (queuedTransfer.txTimestamp == 0) {
             revert OutboundQueuedTransferNotFound(queueSequence);
         }
 
         // check that > RATE_LIMIT_DURATION has elapsed
         if (block.timestamp - queuedTransfer.txTimestamp < _rateLimitDuration) {
-            revert OutboundQueuedTransferStillQueued(queuedTransfer.txTimestamp);
+            revert OutboundQueuedTransferStillQueued(queueSequence, queuedTransfer.txTimestamp);
         }
 
         // remove transfer from the queue
@@ -272,7 +272,7 @@ abstract contract EndpointManager is
             queuedTransfer.amount,
             queuedTransfer.recipientChain,
             queuedTransfer.recipient,
-            true,
+            false,
             false
         );
     }
@@ -286,26 +286,20 @@ abstract contract EndpointManager is
         bytes32 recipient,
         bool shouldQueue
     ) external payable nonReentrant returns (uint64 msgSequence) {
-        return _transfer(amount, recipientChain, recipient, false, shouldQueue);
+        return _transfer(amount, recipientChain, recipient, true, shouldQueue);
     }
 
     function _transfer(
         uint256 amount,
         uint16 recipientChain,
         bytes32 recipient,
-        bool shouldSkipRateLimit,
+        bool shouldCheckRateLimit,
         bool shouldQueue
     ) internal returns (uint64 msgSequence) {
         // check up front that msg.value will cover the delivery price
         uint256 totalPriceQuote = quoteDeliveryPrice(recipientChain);
         if (msg.value < totalPriceQuote) {
             revert DeliveryPaymentTooLow(totalPriceQuote, msg.value);
-        }
-
-        // refund user extra excess value from msg.value
-        uint256 excessValue = totalPriceQuote - msg.value;
-        if (excessValue > 0) {
-            payable(msg.sender).transfer(excessValue);
         }
 
         // query tokens decimals
@@ -319,7 +313,36 @@ abstract contract EndpointManager is
             revert ZeroAmount();
         }
 
-        if (!shouldSkipRateLimit) {
+        if (shouldCheckRateLimit) {
+            // Lock/burn tokens before checking rate limits
+            if (_mode == Mode.LOCKING) {
+                // use transferFrom to pull tokens from the user and lock them
+                // query own token balance before transfer
+                uint256 balanceBefore = getTokenBalanceOf(_token, address(this));
+
+                // transfer tokens
+                IERC20(_token).safeTransferFrom(msg.sender, address(this), amount);
+
+                // query own token balance after transfer
+                uint256 balanceAfter = getTokenBalanceOf(_token, address(this));
+
+                // correct amount for potential transfer fees
+                amount = balanceAfter - balanceBefore;
+            } else {
+                // query sender's token balance before transfer
+                uint256 balanceBefore = getTokenBalanceOf(_token, msg.sender);
+
+                // call the token's burn function to burn the sender's token
+                ERC20Burnable(_token).burnFrom(msg.sender, amount);
+
+                // query sender's token balance after transfer
+                uint256 balanceAfter = getTokenBalanceOf(_token, msg.sender);
+
+                // correct amount for potential burn fees
+                amount = balanceAfter - balanceBefore;
+            }
+
+            // now check rate limits
             bool didConsumeAmount = _consumeOutboundAmount(amount);
             if (shouldQueue && !didConsumeAmount) {
                 // queue up and return
@@ -329,8 +352,7 @@ abstract contract EndpointManager is
                     amount: amount,
                     recipientChain: recipientChain,
                     recipient: recipient,
-                    txTimestamp: block.timestamp,
-                    isSet: true
+                    txTimestamp: block.timestamp
                 });
 
                 // refund the price quote back to sender
@@ -343,31 +365,10 @@ abstract contract EndpointManager is
             }
         }
 
-        if (_mode == Mode.LOCKING) {
-            // use transferFrom to pull tokens from the user and lock them
-            // query own token balance before transfer
-            uint256 balanceBefore = getTokenBalanceOf(_token, address(this));
-
-            // transfer tokens
-            IERC20(_token).safeTransferFrom(msg.sender, address(this), amount);
-
-            // query own token balance after transfer
-            uint256 balanceAfter = getTokenBalanceOf(_token, address(this));
-
-            // correct amount for potential transfer fees
-            amount = balanceAfter - balanceBefore;
-        } else {
-            // query sender's token balance before transfer
-            uint256 balanceBefore = getTokenBalanceOf(_token, msg.sender);
-
-            // call the token's burn function to burn the sender's token
-            ERC20Burnable(_token).burnFrom(msg.sender, amount);
-
-            // query sender's token balance after transfer
-            uint256 balanceAfter = getTokenBalanceOf(_token, msg.sender);
-
-            // correct amount for potential burn fees
-            amount = balanceAfter - balanceBefore;
+        // refund user extra excess value from msg.value
+        uint256 excessValue = totalPriceQuote - msg.value;
+        if (excessValue > 0) {
+            payable(msg.sender).transfer(excessValue);
         }
 
         // normalize amount decimals

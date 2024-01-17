@@ -12,7 +12,7 @@ interface IEndpointManager {
     error InvalidAddressLength(uint256 length);
     error NotEnoughOutboundCapacity(uint256 currentCapacity, uint256 amount);
     error OutboundQueuedTransferNotFound(uint64 queueSequence);
-    error OutboundQueuedTransferStillQueued(uint256 transferTimestamp);
+    error OutboundQueuedTransferStillQueued(uint64 queueSequence, uint256 transferTimestamp);
 
     struct RateLimitParams {
         uint256 limit;
@@ -26,7 +26,6 @@ interface IEndpointManager {
         uint16 recipientChain;
         bytes32 recipient;
         uint256 txTimestamp;
-        bool isSet;
     }
 
     function transfer(
