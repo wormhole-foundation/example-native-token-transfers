@@ -247,36 +247,6 @@ abstract contract EndpointManager is
         return true;
     }
 
-    function completeOutboundQueuedTransfer(uint64 queueSequence)
-        external
-        payable
-        nonReentrant
-        returns (uint64 msgSequence)
-    {
-        // find the message in the queue
-        OutboundQueuedTransfer memory queuedTransfer = _getOutboundQueueStorage()[queueSequence];
-        if (!queuedTransfer.isSet) {
-            revert OutboundQueuedTransferNotFound(queueSequence);
-        }
-
-        // check that > RATE_LIMIT_DURATION has elapsed
-        if (block.timestamp - queuedTransfer.txTimestamp < _rateLimitDuration) {
-            revert OutboundQueuedTransferStillQueued(queuedTransfer.txTimestamp);
-        }
-
-        // remove transfer from the queue
-        delete _getOutboundQueueStorage()[queueSequence];
-
-        // run it through the transfer logic and skip the rate limit
-        return _transfer(
-            queuedTransfer.amount,
-            queuedTransfer.recipientChain,
-            queuedTransfer.recipient,
-            true,
-            false
-        );
-    }
-
     function _isOutboundAmountRateLimited(uint256 amount) internal view returns (bool) {
         uint256 currentCapacity = getCurrentOutboundCapacity();
         if (currentCapacity < amount) {
