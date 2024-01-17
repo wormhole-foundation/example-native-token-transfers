@@ -44,16 +44,13 @@ abstract contract EndpointManager is
         uint64 num;
     }
 
-    struct _QueueSequence {
-        uint64 num;
-    }
-
     /// =============== STORAGE ===============================================
 
     bytes32 public constant MESSAGE_ATTESTATIONS_SLOT =
         bytes32(uint256(keccak256("ntt.messageAttestations")) - 1);
 
-    bytes32 public constant SEQUENCE_SLOT = bytes32(uint256(keccak256("ntt.sequence")) - 1);
+    bytes32 public constant MESSAGE_SEQUENCE_SLOT =
+        bytes32(uint256(keccak256("ntt.messageSequence")) - 1);
 
     bytes32 public constant OUTBOUND_LIMIT_PARAMS_SLOT =
         bytes32(uint256(keccak256("ntt.outboundLimitParams")) - 1);
@@ -63,6 +60,14 @@ abstract contract EndpointManager is
 
     bytes32 public constant OUTBOUND_QUEUE_SEQUENCE_SLOT =
         bytes32(uint256(keccak256("ntt.outboundQueueSequence")) - 1);
+
+    bytes32 public constant INBOUND_LIMIT_PARAMS_SLOT =
+        bytes32(uint256(keccak256("ntt.inboundLimitParams")) - 1);
+
+    bytes32 public constant INBOUND_QUEUE_SLOT = bytes32(uint256(keccak256("ntt.inboundQueue")) - 1);
+
+    bytes32 public constant INBOUND_QUEUE_SEQUENCE_SLOT =
+        bytes32(uint256(keccak256("ntt.inboundQueueSequence")) - 1);
 
     function _getMessageAttestationsStorage()
         internal
@@ -75,8 +80,8 @@ abstract contract EndpointManager is
         }
     }
 
-    function _getSequenceStorage() internal pure returns (_Sequence storage $) {
-        uint256 slot = uint256(SEQUENCE_SLOT);
+    function _getMessageSequenceStorage() internal pure returns (_Sequence storage $) {
+        uint256 slot = uint256(MESSAGE_SEQUENCE_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
         }
@@ -100,8 +105,37 @@ abstract contract EndpointManager is
         }
     }
 
-    function _getOutboundQueueSequenceStorage() internal pure returns (_QueueSequence storage $) {
+    function _getOutboundQueueSequenceStorage() internal pure returns (_Sequence storage $) {
         uint256 slot = uint256(OUTBOUND_QUEUE_SEQUENCE_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
+    function _getInboundLimitParamsStorage()
+        internal
+        pure
+        returns (mapping(uint16 => RateLimitParams) storage $)
+    {
+        uint256 slot = uint256(INBOUND_LIMIT_PARAMS_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
+    function _getInboundQueueStorage()
+        internal
+        pure
+        returns (mapping(uint64 => InboundQueuedTransfer) storage $)
+    {
+        uint256 slot = uint256(INBOUND_QUEUE_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
+    function _getInboundQueueSequenceStorage() internal pure returns (_Sequence storage $) {
+        uint256 slot = uint256(INBOUND_QUEUE_SEQUENCE_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
         }
@@ -164,16 +198,20 @@ abstract contract EndpointManager is
         return _getMessageAttestations(digest) & uint64(1 << index) != 0;
     }
 
-    function setOutboundLimit(uint256 limit) external onlyOwner {
-        uint256 oldLimit = _getOutboundLimitParamsStorage().limit;
-        uint256 currentCapacity = getCurrentOutboundCapacity();
-        _getOutboundLimitParamsStorage().limit = limit;
+    function _setLimit(uint256 limit, RateLimitParams storage rateLimitParams) internal {
+        uint256 oldLimit = rateLimitParams.limit;
+        uint256 currentCapacity = _getCurrentCapacity(rateLimitParams);
+        rateLimitParams.limit = limit;
 
-        _getOutboundLimitParamsStorage().currentCapacity =
+        rateLimitParams.currentCapacity =
             _calculateNewCurrentCapacity(limit, oldLimit, currentCapacity);
 
-        _getOutboundLimitParamsStorage().ratePerSecond = limit / _rateLimitDuration;
-        _getOutboundLimitParamsStorage().lastTxTimestamp = block.timestamp;
+        rateLimitParams.ratePerSecond = limit / _rateLimitDuration;
+        rateLimitParams.lastTxTimestamp = block.timestamp;
+    }
+
+    function setOutboundLimit(uint256 limit) external onlyOwner {
+        _setLimit(limit, _getOutboundLimitParamsStorage());
     }
 
     function getOutboundLimitParams() public pure returns (RateLimitParams memory) {
@@ -190,6 +228,26 @@ abstract contract EndpointManager is
         returns (OutboundQueuedTransfer memory)
     {
         return _getOutboundQueueStorage()[queueSequence];
+    }
+
+    function setInboundLimit(uint256 limit, uint16 chainId) external onlyOwner {
+        _setLimit(limit, _getInboundLimitParamsStorage()[chainId]);
+    }
+
+    function getInboundLimitParams(uint16 chainId) public view returns (RateLimitParams memory) {
+        return _getInboundLimitParamsStorage()[chainId];
+    }
+
+    function getCurrentInboundCapacity(uint16 chainId) public view returns (uint256) {
+        return _getCurrentCapacity(getInboundLimitParams(chainId));
+    }
+
+    function getInboundQueuedTransfer(uint64 queueSequence)
+        public
+        view
+        returns (InboundQueuedTransfer memory)
+    {
+        return _getInboundQueueStorage()[queueSequence];
     }
 
     /**
@@ -238,12 +296,30 @@ abstract contract EndpointManager is
     }
 
     function _consumeOutboundAmount(uint256 amount) internal returns (bool didConsume) {
-        uint256 currentCapacity = getCurrentOutboundCapacity();
-        if (currentCapacity < amount) {
+        return _consumeRateLimitAmount(
+            amount, getCurrentOutboundCapacity(), _getOutboundLimitParamsStorage()
+        );
+    }
+
+    function _consumeInboundAmount(
+        uint256 amount,
+        uint16 chainId
+    ) internal returns (bool didConsume) {
+        return _consumeRateLimitAmount(
+            amount, getCurrentInboundCapacity(chainId), _getInboundLimitParamsStorage()[chainId]
+        );
+    }
+
+    function _consumeRateLimitAmount(
+        uint256 amount,
+        uint256 capacity,
+        RateLimitParams storage rateLimitParams
+    ) internal returns (bool) {
+        if (capacity < amount) {
             return false;
         }
-        _getOutboundLimitParamsStorage().lastTxTimestamp = block.timestamp;
-        _getOutboundLimitParamsStorage().currentCapacity = currentCapacity - amount;
+        rateLimitParams.lastTxTimestamp = block.timestamp;
+        rateLimitParams.currentCapacity = capacity - amount;
         return true;
     }
 
@@ -278,12 +354,12 @@ abstract contract EndpointManager is
         // find the message in the queue
         OutboundQueuedTransfer memory queuedTransfer = _getOutboundQueueStorage()[queueSequence];
         if (queuedTransfer.txTimestamp == 0) {
-            revert OutboundQueuedTransferNotFound(queueSequence);
+            revert QueuedTransferNotFound(queueSequence);
         }
 
         // check that > RATE_LIMIT_DURATION has elapsed
         if (block.timestamp - queuedTransfer.txTimestamp < _rateLimitDuration) {
-            revert OutboundQueuedTransferStillQueued(queueSequence, queuedTransfer.txTimestamp);
+            revert QueuedTransferStillQueued(queueSequence, queuedTransfer.txTimestamp);
         }
 
         // remove transfer from the queue
@@ -370,7 +446,7 @@ abstract contract EndpointManager is
             bool isAmountRateLimited = _isOutboundAmountRateLimited(amount);
             if (shouldQueue && isAmountRateLimited) {
                 // queue up and return
-                uint64 queueSequence = useOutboundQueueSequence();
+                uint64 queueSequence = _useOutboundQueueSequence();
                 _enqueueOutboundTransfer(queueSequence, amount, recipientChain, recipient);
 
                 // refund the price quote back to sender
@@ -402,7 +478,7 @@ abstract contract EndpointManager is
             EndpointStructs.encodeNativeTokenTransfer(nativeTokenTransfer);
 
         // construct the ManagerMessage payload
-        uint64 sequence = useSequence();
+        uint64 sequence = _useMessageSequence();
         bytes memory encodedManagerPayload = EndpointStructs.encodeEndpointManagerMessage(
             EndpointStructs.EndpointManagerMessage(_chainId, sequence, 1, encodedTransferPayload)
         );
@@ -477,39 +553,90 @@ abstract contract EndpointManager is
 
         address transferRecipient = bytesToAddress(nativeTokenTransfer.to);
 
+        // Check inbound rate limits
+        bool didLimitPass = _consumeInboundAmount(nativeTransferAmount, message.chainId);
+        if (!didLimitPass) {
+            // queue up the transfer
+            uint64 queueSequence = _useInboundQueueSequence();
+
+            _getInboundQueueStorage()[queueSequence] = InboundQueuedTransfer({
+                amount: nativeTransferAmount,
+                recipient: transferRecipient,
+                txTimestamp: block.timestamp,
+                isSet: true
+            });
+
+            // end execution early
+            return;
+        }
+
+        _mintOrUnlockToRecipient(transferRecipient, nativeTransferAmount);
+    }
+
+    function completeInboundQueuedTransfer(uint64 queueSequence) external payable nonReentrant {
+        // find the message in the queue
+        InboundQueuedTransfer memory queuedTransfer = _getInboundQueueStorage()[queueSequence];
+        if (!queuedTransfer.isSet) {
+            revert QueuedTransferNotFound(queueSequence);
+        }
+
+        // check that > RATE_LIMIT_DURATION has elapsed
+        if (block.timestamp - queuedTransfer.txTimestamp < _rateLimitDuration) {
+            revert QueuedTransferStillQueued(queueSequence, queuedTransfer.txTimestamp);
+        }
+
+        // remove transfer from the queue
+        delete _getInboundQueueStorage()[queueSequence];
+
+        // run it through the mint/unlock logic
+        _mintOrUnlockToRecipient(queuedTransfer.recipient, queuedTransfer.amount);
+    }
+
+    function _mintOrUnlockToRecipient(address recipient, uint256 amount) internal {
         if (_mode == Mode.LOCKING) {
             // unlock tokens to the specified recipient
-            IERC20(_token).safeTransfer(transferRecipient, nativeTransferAmount);
+            IERC20(_token).safeTransfer(recipient, amount);
         } else {
             // mint tokens to the specified recipient
-            IEndpointToken(_token).mint(transferRecipient, nativeTransferAmount);
+            IEndpointToken(_token).mint(recipient, amount);
         }
     }
 
-    function nextSequence() public view returns (uint64) {
-        return _getSequenceStorage().num;
+    function nextMessageSequence() external view returns (uint64) {
+        return _nextSequenceNum(_getMessageSequenceStorage());
     }
 
-    function useSequence() internal returns (uint64 currentSequence) {
-        currentSequence = nextSequence();
-        incrementSequence();
+    function nextOutboundQueueSequence() external view returns (uint64) {
+        return _nextSequenceNum(_getOutboundQueueSequenceStorage());
     }
 
-    function incrementSequence() internal {
-        _getSequenceStorage().num++;
+    function nextInboundQueueSequence() external view returns (uint64) {
+        return _nextSequenceNum(_getInboundQueueSequenceStorage());
     }
 
-    function nextOutboundQueueSequence() public view returns (uint64) {
-        return _getOutboundQueueSequenceStorage().num;
+    function _useMessageSequence() internal returns (uint64) {
+        return _useSequenceNum(_getMessageSequenceStorage());
     }
 
-    function useOutboundQueueSequence() internal returns (uint64 currentSequence) {
-        currentSequence = nextOutboundQueueSequence();
-        incrementOutboundQueueSequence();
+    function _useOutboundQueueSequence() internal returns (uint64) {
+        return _useSequenceNum(_getOutboundQueueSequenceStorage());
     }
 
-    function incrementOutboundQueueSequence() internal {
-        _getOutboundQueueSequenceStorage().num++;
+    function _useInboundQueueSequence() internal returns (uint64) {
+        return _useSequenceNum(_getInboundQueueSequenceStorage());
+    }
+
+    function _useSequenceNum(_Sequence storage seq) internal returns (uint64 currentSequence) {
+        currentSequence = _nextSequenceNum(seq);
+        _incrementSequenceNum(seq);
+    }
+
+    function _nextSequenceNum(_Sequence storage seq) internal view returns (uint64) {
+        return seq.num;
+    }
+
+    function _incrementSequenceNum(_Sequence storage seq) internal {
+        seq.num++;
     }
 
     function getTokenBalanceOf(

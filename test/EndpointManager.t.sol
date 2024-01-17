@@ -337,6 +337,7 @@ contract TestEndpointManager is Test {
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
         endpointManager.setOutboundLimit(type(uint256).max);
+        endpointManager.setInboundLimit(type(uint256).max, 0);
 
         vm.startPrank(user_A);
 
@@ -794,8 +795,7 @@ contract TestEndpointManager is Test {
         vm.warp(endpointManager._rateLimitDuration());
 
         // assert that transfer still can't be completed
-        bytes4 stillQueuedSelector =
-            bytes4(keccak256("OutboundQueuedTransferStillQueued(uint64,uint256)"));
+        bytes4 stillQueuedSelector = bytes4(keccak256("QueuedTransferStillQueued(uint64,uint256)"));
         vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, 1));
         endpointManager.completeOutboundQueuedTransfer(0);
 
@@ -805,7 +805,7 @@ contract TestEndpointManager is Test {
         assertEq(seq, 0);
 
         // now ensure transfer was removed from queue
-        bytes4 notFoundSelector = bytes4(keccak256("OutboundQueuedTransferNotFound(uint64)"));
+        bytes4 notFoundSelector = bytes4(keccak256("QueuedTransferNotFound(uint64)"));
         vm.expectRevert(abi.encodeWithSelector(notFoundSelector, 0));
         endpointManager.completeOutboundQueuedTransfer(0);
     }
