@@ -51,6 +51,9 @@ abstract contract EndpointManager is
 
     bytes32 public constant SEQUENCE_SLOT = bytes32(uint256(keccak256("ntt.sequence")) - 1);
 
+    bytes32 public constant OUTBOUND_LIMIT_PARAMS_SLOT =
+        bytes32(uint256(keccak256("ntt.outboundLimitParams")) - 1);
+
     function _getMessageAttestationsStorage()
         internal
         pure
@@ -69,6 +72,13 @@ abstract contract EndpointManager is
         }
     }
 
+    function _getOutboundLimitParamsStorage() internal pure returns (RateLimitParams storage $) {
+        uint256 slot = uint256(OUTBOUND_LIMIT_PARAMS_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
     address immutable _token;
     Mode immutable _mode;
     uint16 immutable _chainId;
@@ -78,8 +88,6 @@ abstract contract EndpointManager is
      * @dev The duration it takes for the limits to fully replenish
      */
     uint256 public constant _RATE_LIMIT_DURATION = 1 days;
-
-    RateLimitParams outboundLimitParams;
 
     constructor(address tokenAddress, Mode mode, uint16 chainId) {
         _token = tokenAddress;
@@ -128,23 +136,23 @@ abstract contract EndpointManager is
     }
 
     function setOutboundLimit(uint256 limit) external onlyOwner {
-        uint256 oldLimit = outboundLimitParams.limit;
+        uint256 oldLimit = _getOutboundLimitParamsStorage().limit;
         uint256 currentCapacity = getCurrentOutboundCapacity();
-        outboundLimitParams.limit = limit;
+        _getOutboundLimitParamsStorage().limit = limit;
 
-        outboundLimitParams.currentCapacity =
+        _getOutboundLimitParamsStorage().currentCapacity =
             _calculateNewCurrentCapacity(limit, oldLimit, currentCapacity);
 
-        outboundLimitParams.ratePerSecond = limit / _RATE_LIMIT_DURATION;
-        outboundLimitParams.lastTxTimestamp = block.timestamp;
+        _getOutboundLimitParamsStorage().ratePerSecond = limit / _RATE_LIMIT_DURATION;
+        _getOutboundLimitParamsStorage().lastTxTimestamp = block.timestamp;
     }
 
-    function getOutboundLimitParams() external view returns (RateLimitParams memory) {
-        return outboundLimitParams;
+    function getOutboundLimitParams() public pure returns (RateLimitParams memory) {
+        return _getOutboundLimitParamsStorage();
     }
 
     function getCurrentOutboundCapacity() public view returns (uint256) {
-        return _getCurrentCapacity(outboundLimitParams);
+        return _getCurrentCapacity(getOutboundLimitParams());
     }
 
     /**
@@ -197,8 +205,8 @@ abstract contract EndpointManager is
         if (currentCapacity < amount) {
             revert NotEnoughOutboundCapacity(currentCapacity, amount);
         }
-        outboundLimitParams.lastTxTimestamp = block.timestamp;
-        outboundLimitParams.currentCapacity = currentCapacity - amount;
+        _getOutboundLimitParamsStorage().lastTxTimestamp = block.timestamp;
+        _getOutboundLimitParamsStorage().currentCapacity = currentCapacity - amount;
     }
 
     /// @notice Called by the user to send the token cross-chain.

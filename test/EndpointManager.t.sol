@@ -300,6 +300,8 @@ contract TestEndpointManager is Test {
         address user_A = address(0x123);
         address user_B = address(0x456);
 
+        endpointManager.setOutboundLimit(type(uint256).max);
+
         DummyToken token = DummyToken(endpointManager.token());
 
         uint256 decimals = token.decimals();
