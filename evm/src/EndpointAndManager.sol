@@ -8,7 +8,12 @@ import "./EndpointRegistry.sol";
 abstract contract EndpointAndManager is Endpoint, EndpointManager {
     uint8 constant ENDPOINT_INDEX = 0;
 
-    constructor(address token, Mode mode, uint16 chainId) EndpointManager(token, mode, chainId) {
+    constructor(
+        address token,
+        Mode mode,
+        uint16 chainId,
+        uint256 rateLimitDuration
+    ) EndpointManager(token, mode, chainId, rateLimitDuration) {
         uint8 index = _setEndpoint(address(this));
         assert(index == ENDPOINT_INDEX);
     }

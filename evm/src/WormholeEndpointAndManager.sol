@@ -9,10 +9,11 @@ contract WormholeEndpointAndManager is EndpointAndManager, WormholeEndpoint {
         address token,
         Mode mode,
         uint16 chainId,
+        uint256 rateLimitDuration,
         address wormholeCoreBridge,
         address wormholeRelayerAddr
     )
-        EndpointAndManager(token, mode, chainId)
+        EndpointAndManager(token, mode, chainId, rateLimitDuration)
         WormholeEndpoint(wormholeCoreBridge, wormholeRelayerAddr)
     {}
 }

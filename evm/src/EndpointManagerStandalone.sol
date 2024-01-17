@@ -7,7 +7,12 @@ import "./EndpointManager.sol";
 import "./EndpointRegistry.sol";
 
 contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManager {
-    constructor(address token, Mode mode, uint16 chainId) EndpointManager(token, mode, chainId) {
+    constructor(
+        address token,
+        Mode mode,
+        uint16 chainId,
+        uint256 rateLimitDuration
+    ) EndpointManager(token, mode, chainId, rateLimitDuration) {
         _checkThresholdInvariants();
     }
 

@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import "../src/EndpointManagerStandalone.sol";
 import "../src/EndpointStandalone.sol";
+import "../src/interfaces/IEndpointManager.sol";
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
@@ -13,8 +14,9 @@ contract EndpointManagerContract is EndpointManagerStandalone {
     constructor(
         address token,
         Mode mode,
-        uint16 chainId
-    ) EndpointManagerStandalone(token, mode, chainId) {}
+        uint16 chainId,
+        uint256 rateLimitDuration
+    ) EndpointManagerStandalone(token, mode, chainId, rateLimitDuration) {}
 
     /// We create a dummy storage variable here with standard solidity slot assignment.
     /// Then we check that its assigned slot is 0, i.e. that the super contract doesn't
@@ -74,7 +76,7 @@ contract TestEndpointManager is Test {
     function setUp() public {
         DummyToken t = new DummyToken();
         endpointManager =
-            new EndpointManagerContract(address(t), EndpointManager.Mode.LOCKING, chainId);
+            new EndpointManagerContract(address(t), EndpointManager.Mode.LOCKING, chainId, 1 days);
         endpointManager.initialize();
         // deploy sample token contract
         // deploy wormhole contract
@@ -299,6 +301,8 @@ contract TestEndpointManager is Test {
         address user_A = address(0x123);
         address user_B = address(0x456);
 
+        endpointManager.setOutboundLimit(type(uint256).max);
+
         DummyToken token = DummyToken(endpointManager.token());
 
         uint256 decimals = token.decimals();
@@ -329,6 +333,7 @@ contract TestEndpointManager is Test {
         uint256 decimals = token.decimals();
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
+        endpointManager.setOutboundLimit(type(uint256).max);
 
         vm.startPrank(user_A);
 
@@ -455,5 +460,291 @@ contract TestEndpointManager is Test {
 
     function test_noAutomaticSlot() public {
         assertEq(EndpointManagerContract(address(endpointManager)).lastSlot(), 0x0);
+    }
+
+    // === token transfer rate limiting
+
+    function test_outboundRateLimit_setLimitSimple() public {
+        uint256 limit = 1 * 10 ** 6;
+        endpointManager.setOutboundLimit(limit);
+
+        IEndpointManager.RateLimitParams memory outboundLimitParams =
+            endpointManager.getOutboundLimitParams();
+
+        assertEq(outboundLimitParams.limit, limit);
+        assertEq(outboundLimitParams.currentCapacity, limit);
+        assertEq(outboundLimitParams.ratePerSecond, limit / endpointManager._rateLimitDuration());
+        assertEq(outboundLimitParams.lastTxTimestamp, 1);
+    }
+
+    function test_outboundRateLimit_setHigherLimit() public {
+        // transfer 3 tokens
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(endpointManager.token());
+
+        uint256 decimals = token.decimals();
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+        uint256 outboundLimit = 4 * 10 ** decimals;
+        endpointManager.setOutboundLimit(outboundLimit);
+
+        vm.startPrank(user_A);
+
+        uint256 transferAmount = 3 * 10 ** decimals;
+        token.approve(address(endpointManager), transferAmount);
+        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B));
+
+        vm.stopPrank();
+
+        // update the outbound limit to 5 tokens
+        vm.startPrank(address(this));
+
+        uint256 higherLimit = 5 * 10 ** decimals;
+        endpointManager.setOutboundLimit(higherLimit);
+
+        IEndpointManager.RateLimitParams memory outboundLimitParams =
+            endpointManager.getOutboundLimitParams();
+
+        assertEq(outboundLimitParams.limit, higherLimit);
+        assertEq(outboundLimitParams.lastTxTimestamp, 1);
+        assertEq(outboundLimitParams.currentCapacity, 2 * 10 ** decimals);
+        assertEq(
+            outboundLimitParams.ratePerSecond, higherLimit / endpointManager._rateLimitDuration()
+        );
+    }
+
+    function test_outboundRateLimit_setLowerLimit() public {
+        // transfer 3 tokens
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(endpointManager.token());
+
+        uint256 decimals = token.decimals();
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+        uint256 outboundLimit = 4 * 10 ** decimals;
+        endpointManager.setOutboundLimit(outboundLimit);
+
+        vm.startPrank(user_A);
+
+        uint256 transferAmount = 3 * 10 ** decimals;
+        token.approve(address(endpointManager), transferAmount);
+        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B));
+
+        vm.stopPrank();
+
+        // update the outbound limit to 5 tokens
+        vm.startPrank(address(this));
+
+        uint256 lowerLimit = 2 * 10 ** decimals;
+        endpointManager.setOutboundLimit(lowerLimit);
+
+        IEndpointManager.RateLimitParams memory outboundLimitParams =
+            endpointManager.getOutboundLimitParams();
+
+        assertEq(outboundLimitParams.limit, lowerLimit);
+        assertEq(outboundLimitParams.lastTxTimestamp, 1);
+        assertEq(outboundLimitParams.currentCapacity, 0);
+        assertEq(
+            outboundLimitParams.ratePerSecond, lowerLimit / endpointManager._rateLimitDuration()
+        );
+    }
+
+    function test_outboundRateLimit_setHigherLimit_duration() public {
+        // transfer 3 tokens
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(endpointManager.token());
+
+        uint256 decimals = token.decimals();
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+        uint256 outboundLimit = 4 * 10 ** decimals;
+        uint256 oldRps = outboundLimit / endpointManager._rateLimitDuration();
+        endpointManager.setOutboundLimit(outboundLimit);
+
+        vm.startPrank(user_A);
+
+        uint256 transferAmount = 3 * 10 ** decimals;
+        token.approve(address(endpointManager), transferAmount);
+        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B));
+
+        vm.stopPrank();
+
+        // change block timestamp to be 6 hours later
+        uint256 sixHoursLater = 21601;
+        vm.warp(sixHoursLater);
+
+        // update the outbound limit to 5 tokens
+        vm.startPrank(address(this));
+
+        uint256 higherLimit = 5 * 10 ** decimals;
+        endpointManager.setOutboundLimit(higherLimit);
+
+        IEndpointManager.RateLimitParams memory outboundLimitParams =
+            endpointManager.getOutboundLimitParams();
+
+        assertEq(outboundLimitParams.limit, higherLimit);
+        assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
+        // capacity should be:
+        // difference in limits + remaining capacity after t1 + the amount that's refreshed (based on the old rps)
+        assertEq(
+            outboundLimitParams.currentCapacity,
+            (1 * 10 ** decimals) + (1 * 10 ** decimals) + oldRps * (sixHoursLater - 1)
+        );
+        assertEq(
+            outboundLimitParams.ratePerSecond, higherLimit / endpointManager._rateLimitDuration()
+        );
+    }
+
+    function test_outboundRateLimit_setLowerLimit_durationCaseOne() public {
+        // transfer 3 tokens
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(endpointManager.token());
+
+        uint256 decimals = token.decimals();
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+        uint256 outboundLimit = 5 * 10 ** decimals;
+        endpointManager.setOutboundLimit(outboundLimit);
+
+        vm.startPrank(user_A);
+
+        uint256 transferAmount = 4 * 10 ** decimals;
+        token.approve(address(endpointManager), transferAmount);
+        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B));
+
+        vm.stopPrank();
+
+        // change block timestamp to be 3 hours later
+        uint256 sixHoursLater = 10801;
+        vm.warp(sixHoursLater);
+
+        // update the outbound limit to 5 tokens
+        vm.startPrank(address(this));
+
+        uint256 lowerLimit = 3 * 10 ** decimals;
+        endpointManager.setOutboundLimit(lowerLimit);
+
+        IEndpointManager.RateLimitParams memory outboundLimitParams =
+            endpointManager.getOutboundLimitParams();
+
+        assertEq(outboundLimitParams.limit, lowerLimit);
+        assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
+        // capacity should be: 0
+        assertEq(outboundLimitParams.currentCapacity, 0);
+        assertEq(
+            outboundLimitParams.ratePerSecond, lowerLimit / endpointManager._rateLimitDuration()
+        );
+    }
+
+    function test_outboundRateLimit_setLowerLimit_durationCaseTwo() public {
+        // transfer 3 tokens
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(endpointManager.token());
+
+        uint256 decimals = token.decimals();
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+        uint256 outboundLimit = 5 * 10 ** decimals;
+        uint256 oldRps = outboundLimit / endpointManager._rateLimitDuration();
+        endpointManager.setOutboundLimit(outboundLimit);
+
+        vm.startPrank(user_A);
+
+        uint256 transferAmount = 2 * 10 ** decimals;
+        token.approve(address(endpointManager), transferAmount);
+        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B));
+
+        vm.stopPrank();
+
+        // change block timestamp to be 6 hours later
+        uint256 sixHoursLater = 21601;
+        vm.warp(sixHoursLater);
+
+        // update the outbound limit to 5 tokens
+        vm.startPrank(address(this));
+
+        uint256 lowerLimit = 4 * 10 ** decimals;
+        endpointManager.setOutboundLimit(lowerLimit);
+
+        IEndpointManager.RateLimitParams memory outboundLimitParams =
+            endpointManager.getOutboundLimitParams();
+
+        assertEq(outboundLimitParams.limit, lowerLimit);
+        assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
+        // capacity should be:
+        // remaining capacity after t1 - difference in limits + the amount that's refreshed (based on the old rps)
+        assertEq(
+            outboundLimitParams.currentCapacity,
+            (3 * 10 ** decimals) - (1 * 10 ** decimals) + oldRps * (sixHoursLater - 1)
+        );
+        assertEq(
+            outboundLimitParams.ratePerSecond, lowerLimit / endpointManager._rateLimitDuration()
+        );
+    }
+
+    function test_outboundRateLimit_singleHit() public {
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(endpointManager.token());
+
+        uint256 decimals = token.decimals();
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+        uint256 outboundLimit = 1 * 10 ** decimals;
+        endpointManager.setOutboundLimit(outboundLimit);
+
+        vm.startPrank(user_A);
+
+        uint256 transferAmount = 3 * 10 ** decimals;
+        token.approve(address(endpointManager), transferAmount);
+
+        bytes4 selector = bytes4(keccak256("NotEnoughOutboundCapacity(uint256,uint256)"));
+        vm.expectRevert(abi.encodeWithSelector(selector, outboundLimit, transferAmount));
+        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B));
+    }
+
+    function test_outboundRateLimit_multiHit() public {
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(endpointManager.token());
+
+        uint256 decimals = token.decimals();
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+        uint256 outboundLimit = 4 * 10 ** decimals;
+        endpointManager.setOutboundLimit(outboundLimit);
+
+        vm.startPrank(user_A);
+
+        uint256 transferAmount = 3 * 10 ** decimals;
+        token.approve(address(endpointManager), transferAmount);
+        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B));
+
+        // assert that first transfer went through
+        assertEq(token.balanceOf(address(user_A)), 2 * 10 ** decimals);
+        assertEq(token.balanceOf(address(endpointManager)), transferAmount);
+
+        // assert currentCapacity is updated
+        uint256 newCapacity = outboundLimit - transferAmount;
+        assertEq(endpointManager.getCurrentOutboundCapacity(), newCapacity);
+
+        uint256 badTransferAmount = 2 * 10 ** decimals;
+        token.approve(address(endpointManager), badTransferAmount);
+
+        bytes4 selector = bytes4(keccak256("NotEnoughOutboundCapacity(uint256,uint256)"));
+        vm.expectRevert(abi.encodeWithSelector(selector, newCapacity, badTransferAmount));
+        endpointManager.transfer(badTransferAmount, chainId, toWormholeFormat(user_B));
     }
 }
