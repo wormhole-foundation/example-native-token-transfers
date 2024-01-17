@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.6.12 <0.9.0;
 
-import "./interfaces/IEndpointManagerStandalone.sol";
+import "./interfaces/IManagerStandalone.sol";
 import "./interfaces/IEndpointStandalone.sol";
-import "./EndpointManager.sol";
+import "./Manager.sol";
 import "./EndpointRegistry.sol";
 
-contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManager {
+contract ManagerStandalone is IManagerStandalone, Manager {
     constructor(
         address token,
         Mode mode,
         uint16 chainId,
         uint256 rateLimitDuration
-    ) EndpointManager(token, mode, chainId, rateLimitDuration) {
+    ) Manager(token, mode, chainId, rateLimitDuration) {
         _checkThresholdInvariants();
     }
 
@@ -103,11 +103,11 @@ contract EndpointManagerStandalone is IEndpointManagerStandalone, EndpointManage
     /// @dev Called by an Endpoint contract to deliver a verified attestation.
     ///      This function enforces attestation threshold and replay logic for messages.
     ///      Once all validations are complete, this function calls _executeMsg to execute the command specified by the message.
-    function attestationReceived(EndpointStructs.EndpointManagerMessage memory payload)
+    function attestationReceived(EndpointStructs.ManagerMessage memory payload)
         external
         onlyEndpoint
     {
-        bytes32 managerMessageHash = EndpointStructs.endpointManagerMessageDigest(payload);
+        bytes32 managerMessageHash = EndpointStructs.managerMessageDigest(payload);
 
         // set the attested flag for this endpoint.
         // TODO: this allows an endpoint to attest to a message multiple times.
