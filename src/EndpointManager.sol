@@ -46,10 +46,6 @@ abstract contract EndpointManager is
         uint64 num;
     }
 
-    struct _QueueSequence {
-        uint64 num;
-    }
-
     /// =============== STORAGE ===============================================
 
     bytes32 public constant MESSAGE_ATTESTATIONS_SLOT =
