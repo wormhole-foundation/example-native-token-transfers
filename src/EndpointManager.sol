@@ -77,14 +77,7 @@ abstract contract EndpointManager is
     /**
      * @dev The duration it takes for the limits to fully replenish
      */
-    uint256 private constant _RATE_LIMIT_DURATION = 1 days;
-
-    struct RateLimitParams {
-        uint256 limit;
-        uint256 currentCapacity;
-        uint256 lastTxTimestamp;
-        uint256 ratePerSecond;
-    }
+    uint256 public constant _RATE_LIMIT_DURATION = 1 days;
 
     RateLimitParams outboundLimitParams;
 
@@ -146,6 +139,10 @@ abstract contract EndpointManager is
         outboundLimitParams.lastTxTimestamp = block.timestamp;
     }
 
+    function getOutboundLimitParams() external view returns (RateLimitParams memory) {
+        return outboundLimitParams;
+    }
+
     function getCurrentOutboundCapacity() public view returns (uint256) {
         return _getCurrentCapacity(outboundLimitParams);
     }
@@ -177,21 +174,21 @@ abstract contract EndpointManager is
      *
      * @param newLimit The new limit
      * @param oldLimit The old limit
-     * @param currentLimit The current limit
+     * @param currentCapacity The current capacity
      */
     function _calculateNewCurrentCapacity(
         uint256 newLimit,
         uint256 oldLimit,
-        uint256 currentLimit
+        uint256 currentCapacity
     ) internal pure returns (uint256 newCurrentCapacity) {
         uint256 difference;
 
         if (oldLimit > newLimit) {
             difference = oldLimit - newLimit;
-            newCurrentCapacity = currentLimit > difference ? currentLimit - difference : 0;
+            newCurrentCapacity = currentCapacity > difference ? currentCapacity - difference : 0;
         } else {
             difference = newLimit - oldLimit;
-            newCurrentCapacity = currentLimit + difference;
+            newCurrentCapacity = currentCapacity + difference;
         }
     }
 

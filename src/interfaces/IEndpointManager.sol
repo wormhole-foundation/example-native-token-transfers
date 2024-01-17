@@ -12,6 +12,13 @@ interface IEndpointManager {
     error InvalidAddressLength(uint256 length);
     error NotEnoughOutboundCapacity(uint256 currentCapacity, uint256 amount);
 
+    struct RateLimitParams {
+        uint256 limit;
+        uint256 currentCapacity;
+        uint256 lastTxTimestamp;
+        uint256 ratePerSecond;
+    }
+
     function transfer(
         uint256 amount,
         uint16 recipientChain,
@@ -23,6 +30,8 @@ interface IEndpointManager {
     function setSibling(uint16 siblingChainId, bytes32 siblingContract) external;
 
     function setOutboundLimit(uint256 limit) external;
+
+    function getOutboundLimitParams() external view returns (RateLimitParams memory);
 
     function getCurrentOutboundCapacity() external view returns (uint256);
 
