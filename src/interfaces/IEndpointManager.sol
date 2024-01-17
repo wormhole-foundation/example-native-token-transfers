@@ -11,6 +11,8 @@ interface IEndpointManager {
     error ZeroAmount();
     error InvalidAddressLength(uint256 length);
     error NotEnoughOutboundCapacity(uint256 currentCapacity, uint256 amount);
+    error OutboundQueuedTransferNotFound(uint64 queueSequence);
+    error OutboundQueuedTransferStillQueued(uint256 transferTimestamp);
 
     struct RateLimitParams {
         uint256 limit;
@@ -19,11 +21,25 @@ interface IEndpointManager {
         uint256 ratePerSecond;
     }
 
+    struct OutboundQueuedTransfer {
+        uint256 amount;
+        uint16 recipientChain;
+        bytes32 recipient;
+        uint256 txTimestamp;
+        bool isSet;
+    }
+
     function transfer(
         uint256 amount,
         uint16 recipientChain,
-        bytes32 recipient
+        bytes32 recipient,
+        bool shouldQueue
     ) external payable returns (uint64 msgId);
+
+    function completeOutboundQueuedTransfer(uint64 queueSequence)
+        external
+        payable
+        returns (uint64 msgSequence);
 
     function quoteDeliveryPrice(uint16 recipientChain) external view returns (uint256);
 
@@ -35,7 +51,14 @@ interface IEndpointManager {
 
     function getCurrentOutboundCapacity() external view returns (uint256);
 
+    function getOutboundQueuedTransfer(uint64 queueSequence)
+        external
+        view
+        returns (OutboundQueuedTransfer memory);
+
     function nextSequence() external view returns (uint64);
+
+    function nextOutboundQueueSequence() external view returns (uint64);
 
     function token() external view returns (address);
 }
