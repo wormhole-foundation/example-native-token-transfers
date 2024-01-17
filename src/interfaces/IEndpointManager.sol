@@ -47,7 +47,11 @@ interface IEndpointManager {
         payable
         returns (uint64 msgSequence);
 
+<<<<<<< HEAD
     function completeInboundQueuedTransfer(uint64 queueSequence) external;
+=======
+    function completeInboundQueuedTransfer(uint64 queueSequence) external payable;
+>>>>>>> EndpointManager: add inbound rate limiting logic with queue
 
     function quoteDeliveryPrice(uint16 recipientChain) external view returns (uint256);
 
