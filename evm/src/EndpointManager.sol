@@ -51,6 +51,9 @@ abstract contract EndpointManager is
 
     bytes32 public constant SEQUENCE_SLOT = bytes32(uint256(keccak256("ntt.sequence")) - 1);
 
+    bytes32 public constant OUTBOUND_LIMIT_PARAMS_SLOT =
+        bytes32(uint256(keccak256("ntt.outboundLimitParams")) - 1);
+
     function _getMessageAttestationsStorage()
         internal
         pure
@@ -69,16 +72,29 @@ abstract contract EndpointManager is
         }
     }
 
+    function _getOutboundLimitParamsStorage() internal pure returns (RateLimitParams storage $) {
+        uint256 slot = uint256(OUTBOUND_LIMIT_PARAMS_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
     address immutable _token;
     Mode immutable _mode;
     uint16 immutable _chainId;
     uint256 immutable _evmChainId;
 
-    constructor(address tokenAddress, Mode mode, uint16 chainId) {
+    /**
+     * @dev The duration it takes for the limits to fully replenish
+     */
+    uint256 public immutable _rateLimitDuration;
+
+    constructor(address tokenAddress, Mode mode, uint16 chainId, uint256 rateLimitDuration) {
         _token = tokenAddress;
         _mode = mode;
         _chainId = chainId;
         _evmChainId = block.chainid;
+        _rateLimitDuration = rateLimitDuration;
     }
 
     function initialize() public initializer {
@@ -120,6 +136,80 @@ abstract contract EndpointManager is
         return _getMessageAttestations(digest) & uint64(1 << index) != 0;
     }
 
+    function setOutboundLimit(uint256 limit) external onlyOwner {
+        uint256 oldLimit = _getOutboundLimitParamsStorage().limit;
+        uint256 currentCapacity = getCurrentOutboundCapacity();
+        _getOutboundLimitParamsStorage().limit = limit;
+
+        _getOutboundLimitParamsStorage().currentCapacity =
+            _calculateNewCurrentCapacity(limit, oldLimit, currentCapacity);
+
+        _getOutboundLimitParamsStorage().ratePerSecond = limit / _rateLimitDuration;
+        _getOutboundLimitParamsStorage().lastTxTimestamp = block.timestamp;
+    }
+
+    function getOutboundLimitParams() public pure returns (RateLimitParams memory) {
+        return _getOutboundLimitParamsStorage();
+    }
+
+    function getCurrentOutboundCapacity() public view returns (uint256) {
+        return _getCurrentCapacity(getOutboundLimitParams());
+    }
+
+    /**
+     * @dev Gets the current capacity for a parameterized rate limits struct
+     */
+    function _getCurrentCapacity(RateLimitParams memory rateLimitParams)
+        internal
+        view
+        returns (uint256 capacity)
+    {
+        capacity = rateLimitParams.currentCapacity;
+        if (capacity == rateLimitParams.limit) {
+            return capacity;
+        } else if (rateLimitParams.lastTxTimestamp + _rateLimitDuration <= block.timestamp) {
+            capacity = rateLimitParams.limit;
+        } else if (rateLimitParams.lastTxTimestamp + _rateLimitDuration > block.timestamp) {
+            uint256 timePassed = block.timestamp - rateLimitParams.lastTxTimestamp;
+            uint256 calculatedCapacity = capacity + (timePassed * rateLimitParams.ratePerSecond);
+            capacity = calculatedCapacity > rateLimitParams.limit
+                ? rateLimitParams.limit
+                : calculatedCapacity;
+        }
+    }
+
+    /**
+     * @dev Updates the current capacity
+     *
+     * @param newLimit The new limit
+     * @param oldLimit The old limit
+     * @param currentCapacity The current capacity
+     */
+    function _calculateNewCurrentCapacity(
+        uint256 newLimit,
+        uint256 oldLimit,
+        uint256 currentCapacity
+    ) internal pure returns (uint256 newCurrentCapacity) {
+        uint256 difference;
+
+        if (oldLimit > newLimit) {
+            difference = oldLimit - newLimit;
+            newCurrentCapacity = currentCapacity > difference ? currentCapacity - difference : 0;
+        } else {
+            difference = newLimit - oldLimit;
+            newCurrentCapacity = currentCapacity + difference;
+        }
+    }
+
+    function _consumeOutboundAmount(uint256 amount) internal {
+        uint256 currentCapacity = getCurrentOutboundCapacity();
+        if (currentCapacity < amount) {
+            revert NotEnoughOutboundCapacity(currentCapacity, amount);
+        }
+        _getOutboundLimitParamsStorage().lastTxTimestamp = block.timestamp;
+        _getOutboundLimitParamsStorage().currentCapacity = currentCapacity - amount;
+    }
+
     /// @notice Called by the user to send the token cross-chain.
     ///         This function will either lock or burn the sender's tokens.
     ///         Finally, this function will call into the Endpoint contracts to send a message with the incrementing sequence number, msgType = 1y, and the token transfer payload.
@@ -150,6 +240,9 @@ abstract contract EndpointManager is
         if (amount == 0) {
             revert ZeroAmount();
         }
+
+        // check outbound rate limits up front
+        _consumeOutboundAmount(amount);
 
         if (_mode == Mode.LOCKING) {
             // use transferFrom to pull tokens from the user and lock them
