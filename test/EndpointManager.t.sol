@@ -794,7 +794,8 @@ contract TestEndpointManager is Test {
         vm.warp(endpointManager._rateLimitDuration());
 
         // assert that transfer still can't be completed
-        bytes4 stillQueuedSelector = bytes4(keccak256("OutboundQueuedTransferStillQueued(uint64,uint256)"));
+        bytes4 stillQueuedSelector =
+            bytes4(keccak256("OutboundQueuedTransferStillQueued(uint64,uint256)"));
         vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, 1));
         endpointManager.completeOutboundQueuedTransfer(0);
 
