@@ -4,14 +4,16 @@ pragma solidity >=0.6.12 <0.9.0;
 import "forge-std/Test.sol";
 
 import "../src/ManagerStandalone.sol";
+import "../src/EndpointAndManager.sol";
 import "../src/EndpointStandalone.sol";
 import "../src/interfaces/IManager.sol";
 import "../src/interfaces/IManagerEvents.sol";
 import {Utils} from "./libraries/Utils.sol";
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-// @dev A non-abstract EndpointManager contract
+// @dev A non-abstract Manager contract
 contract ManagerContract is ManagerStandalone {
     constructor(
         address token,
@@ -34,7 +36,54 @@ contract ManagerContract is ManagerStandalone {
 }
 
 contract DummyEndpoint is EndpointStandalone {
+    event MessagePublished(uint16 recipientChain, bytes payload);
+
     constructor(address manager) EndpointStandalone(manager) {}
+
+    function _quoteDeliveryPrice(uint16 /* recipientChain */ )
+        internal
+        pure
+        override
+        returns (uint256)
+    {
+        return 0;
+    }
+
+    function _sendMessage(uint16 recipientChain, bytes memory payload) internal override {
+        emit MessagePublished(recipientChain, payload);
+    }
+
+    function _verifyMessage(bytes memory encodedMessage)
+        internal
+        pure
+        override
+        returns (bytes memory)
+    {
+        return encodedMessage;
+    }
+
+    function parseMessageFromLogs(Vm.Log[] memory logs)
+        public
+        pure
+        returns (uint16 recipientChain, bytes memory payload)
+    {}
+}
+
+contract EndpointAndManagerContract is EndpointAndManager, Implementation {
+    constructor(
+        address token,
+        Mode mode,
+        uint16 chainId,
+        uint256 rateLimitDuration
+    ) EndpointAndManager(token, mode, chainId, rateLimitDuration) {}
+
+    function _migrate() internal override {
+        __EndpointAndManager_init();
+    }
+
+    function _initialize() internal override {
+        __EndpointAndManager_init();
+    }
 
     function _quoteDeliveryPrice(uint16 /* recipientChain */ )
         internal
@@ -57,13 +106,17 @@ contract DummyEndpoint is EndpointStandalone {
     {
         return encodedMessage;
     }
+
+    function upgrade(address newImplementation) external onlyOwner {
+        _upgrade(newImplementation);
+    }
 }
 
 contract DummyToken is ERC20 {
     constructor() ERC20("DummyToken", "DTKN") {}
 
     // NOTE: this is purposefully not called mint() to so we can test that in
-    // locking mode the EndpointManager contract doesn't call mint (or burn)
+    // locking mode the Manager contract doesn't call mint (or burn)
     function mintDummy(address to, uint256 amount) public {
         _mint(to, amount);
     }
@@ -77,14 +130,18 @@ contract TestManager is Test, IManagerEvents {
 
     function setUp() public {
         DummyToken t = new DummyToken();
-        manager = new ManagerContract(address(t), Manager.Mode.LOCKING, chainId, 1 days);
+        ManagerStandalone implementation =
+            new ManagerStandalone(address(t), Manager.Mode.LOCKING, chainId, 1 days);
+
+        manager = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
         manager.initialize();
+
         // deploy sample token contract
         // deploy wormhole contract
         // wormhole = deployWormholeForTest();
         // deploy endpoint contracts
         // instantiate endpoint manager contract
-        // endpointManager = new EndpointManagerContract();
+        // manager = new ManagerContract();
     }
 
     // === pure unit tests
@@ -221,6 +278,58 @@ contract TestManager is Test, IManagerEvents {
         return (e1, e2);
     }
 
+    function _attestEndpointsHelper(
+        address from,
+        address to,
+        uint64 sequence,
+        Endpoint[] memory endpoints
+    ) internal returns (EndpointStructs.ManagerMessage memory) {
+        DummyToken token = DummyToken(manager.token());
+
+        uint256 decimals = token.decimals();
+
+        token.mintDummy(from, 5 * 10 ** decimals);
+        manager.setOutboundLimit(type(uint256).max);
+        manager.setInboundLimit(type(uint256.max), 0);
+
+        uint256 from_balanceBefore = token.balanceOf(from);
+        uint256 manager_balanceBefore = token.balanceOf(address(manager));
+
+        vm.startPrank(from);
+
+        token.approve(address(manager), 3 * 10 ** decimals);
+        // we add 500 dust to check that the rounding code works.
+        // TODO: parse recorded logs
+        manager.transfer(3 * 10 ** decimals + 500, chainId, toWormholeFormat(to));
+
+        vm.stopPrank();
+
+        assertEq(token.balanceOf(from), from_balanceBefore - 3 * 10 ** decimals);
+        assertEq(token.balanceOf(address(manager)), manager_balanceBefore + 3 * 10 ** decimals);
+
+        EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
+            0,
+            sequence,
+            1,
+            EndpointStructs.encodeNativeTokenTransfer(
+                EndpointStructs.NativeTokenTransfer({
+                    amount: 50,
+                    to: abi.encodePacked(to),
+                    toChain: chainId
+                })
+            )
+        );
+
+        bytes memory message = EndpointStructs.encodeManagerMessage(m);
+
+        for (uint256 i; i < endpoints.length; i++) {
+            Endpoint e = endpoints[i];
+            e.receiveMessage(message);
+        }
+
+        return m;
+    }
+
     function test_onlyEnabledEndpointsCanAttest() public {
         (DummyEndpoint e1,) = setup_endpoints();
         manager.removeEndpoint(address(e1));
@@ -272,14 +381,12 @@ contract TestManager is Test, IManagerEvents {
         (DummyEndpoint e1,) = setup_endpoints();
         manager.setThreshold(2);
 
-        EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
-            0, 0, 1, abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
-        );
+        Endpoint[] memory endpoints = new Endpoint[](1);
+        endpoints[0] = e1;
 
-        bytes memory message = EndpointStructs.encodeManagerMessage(m);
+        EndpointStructs.ManagerMessage memory m =
+            _attestEndpointsHelper(address(0x123), address(0x456), 0, endpoints);
 
-        e1.receiveMessage(message);
-        manager.setThreshold(1);
         manager.removeEndpoint(address(e1));
 
         bytes32 hash = EndpointStructs.managerMessageDigest(m);
@@ -326,40 +433,13 @@ contract TestManager is Test, IManagerEvents {
 
         uint256 decimals = token.decimals();
 
-        token.mintDummy(address(user_A), 5 * 10 ** decimals);
-        manager.setOutboundLimit(type(uint256).max);
-        manager.setInboundLimit(type(uint256).max, 0);
+        Endpoint[] memory endpoints = new Endpoint[](2);
+        endpoints[0] = e1;
+        endpoints[1] = e2;
 
-        vm.startPrank(user_A);
-
-        token.approve(address(manager), 3 * 10 ** decimals);
-        // we add 500 dust to check that the rounding code works.
-        manager.transfer(3 * 10 ** decimals + 500, chainId, toWormholeFormat(user_B), false);
-
-        assertEq(token.balanceOf(address(user_A)), 2 * 10 ** decimals);
-        assertEq(token.balanceOf(address(manager)), 3 * 10 ** decimals);
-
-        EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
-            0,
-            0,
-            1,
-            EndpointStructs.encodeNativeTokenTransfer(
-                EndpointStructs.NativeTokenTransfer({
-                    amount: 50,
-                    to: abi.encodePacked(user_B),
-                    toChain: chainId
-                })
-            )
-        );
-
+        EndpointStructs.ManagerMessage memory m =
+            _attestEndpointsHelper(user_A, user_B, 0, endpoints);
         bytes memory message = EndpointStructs.encodeManagerMessage(m);
-
-        e1.receiveMessage(message);
-
-        // no quorum yet
-        assertEq(token.balanceOf(address(user_B)), 0);
-
-        e2.receiveMessage(message);
 
         assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
 
@@ -458,12 +538,9 @@ contract TestManager is Test, IManagerEvents {
     function test_constructor() public {
         vm.startStateDiffRecording();
 
-        new EndpointManagerStandalone(address(0x123), EndpointManager.Mode.LOCKING, 1, 1 days);
+        new ManagerStandalone(address(0x123), Manager.Mode.LOCKING, 1, 1 days);
 
-        require(
-            !Utils.writesToStorage(vm.stopAndReturnStateDiff()),
-            "upgradeable contract constructor should not write to storage"
-        );
+        Utils.assertSafeUpgradeableConstructor(vm.stopAndReturnStateDiff());
     }
 
     // === token transfer rate limiting
@@ -873,5 +950,85 @@ contract TestManager is Test, IManagerEvents {
         bytes4 selector = bytes4(keccak256("MessageAlreadyExecuted(bytes32)"));
         vm.expectRevert(abi.encodeWithSelector(selector, EndpointStructs.managerMessageDigest(m)));
         e2.receiveMessage(message);
+    }
+
+    // === upgradeability
+
+    function test_upgrade() public {
+        // The testing strategy here is as follows:
+        // - Step 1: we deploy the standalone contract with two endpoints and
+        //           receive a message through it
+        // - Step 2: we upgrade it to the EndointAndManager contract and receive
+        //           a message through it
+        // - Step 3: we upgrade back to the standalone contract (with two
+        //           endpoints) and receive a message through it
+        //
+        // This ensures that the storage slots don't get clobbered through the upgrades, and also that
+
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(manager.token());
+        uint256 decimals = token.decimals();
+
+        // Step 1
+        // (contract is deployed by setUp())
+
+        (Endpoint e1, Endpoint e2) = setup_endpoints();
+
+        Endpoint[] memory endpoints = new Endpoint[](2);
+        endpoints[0] = e1;
+        endpoints[1] = e2;
+
+        EndpointStructs.ManagerMessage memory m =
+            _attestEndpointsHelper(user_A, user_B, 0, endpoints);
+        bytes memory message = EndpointStructs.encodeManagerMessage(m);
+
+        assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
+
+        // Step 2
+
+        EndpointAndManager endpointAndManagerImpl =
+            new EndpointAndManagerContract(manager.token(), Manager.Mode.LOCKING, chainId, 1 days);
+        manager.upgrade(address(endpointAndManagerImpl));
+
+        endpoints = new Endpoint[](1);
+        endpoints[0] = Endpoint(address(manager));
+
+        // replay protection
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "MessageAlreadyExecuted(bytes32)", EndpointStructs.managerMessageDigest(m)
+            )
+        );
+        Endpoint(address(manager)).receiveMessage(message);
+
+        _attestEndpointsHelper(user_A, user_B, 1, endpoints);
+        EndpointStructs.encodeManagerMessage(m);
+
+        assertEq(token.balanceOf(address(user_B)), 100 * 10 ** (decimals - 8));
+
+        // Step 3
+
+        ManagerStandalone managerImpl =
+            new ManagerStandalone(manager.token(), Manager.Mode.LOCKING, chainId, 1 days);
+        manager.upgrade(address(managerImpl));
+
+        endpoints = new Endpoint[](2);
+        endpoints[0] = e1;
+        // attest with e1 twice (just two make sure it's still not accepted)
+        endpoints[1] = e1;
+
+        _attestEndpointsHelper(user_A, user_B, 2, endpoints);
+
+        // balance is the same as before
+        assertEq(token.balanceOf(address(user_B)), 100 * 10 ** (decimals - 8));
+
+        endpoints = new Endpoint[](1);
+        endpoints[0] = e2;
+
+        m = _attestEndpointsHelper(user_A, user_B, 2, endpoints);
+
+        assertEq(token.balanceOf(address(user_B)), 150 * 10 ** (decimals - 8));
     }
 }
