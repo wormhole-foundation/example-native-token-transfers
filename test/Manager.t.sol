@@ -12,6 +12,8 @@ import {Utils} from "./libraries/Utils.sol";
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
+import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 
 // @dev A non-abstract Manager contract
 contract ManagerContract is ManagerStandalone {
@@ -127,8 +129,17 @@ contract DummyToken is ERC20 {
 contract TestManager is Test, IManagerEvents {
     ManagerStandalone manager;
     uint16 constant chainId = 7;
+    uint256 constant DEVNET_GUARDIAN_PK =
+        0xcfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0;
+    WormholeSimulator guardian;
 
     function setUp() public {
+        string memory url = "https://ethereum-goerli.publicnode.com";
+        IWormhole wormhole = IWormhole(0x706abc4E45D419950511e474C7B9Ed348A4a716c);
+        vm.createSelectFork(url);
+
+        guardian = new WormholeSimulator(address(wormhole), DEVNET_GUARDIAN_PK);
+
         DummyToken t = new DummyToken();
         ManagerStandalone implementation =
             new ManagerStandalone(address(t), Manager.Mode.LOCKING, chainId, 1 days);
