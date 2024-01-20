@@ -572,7 +572,7 @@ abstract contract EndpointManager is
         _mintOrUnlockToRecipient(transferRecipient, nativeTransferAmount);
     }
 
-    function completeInboundQueuedTransfer(uint64 queueSequence) external payable nonReentrant {
+    function completeInboundQueuedTransfer(uint64 queueSequence) external nonReentrant {
         // find the message in the queue
         InboundQueuedTransfer memory queuedTransfer = _getInboundQueueStorage()[queueSequence];
         if (queuedTransfer.txTimestamp == 0) {

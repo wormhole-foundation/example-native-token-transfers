@@ -31,8 +31,8 @@ interface IEndpointManager {
 
     struct InboundQueuedTransfer {
         uint256 amount;
-        address recipient;
         uint256 txTimestamp;
+        address recipient;
     }
 
     function transfer(
@@ -47,7 +47,7 @@ interface IEndpointManager {
         payable
         returns (uint64 msgSequence);
 
-    function completeInboundQueuedTransfer(uint64 queueSequence) external payable;
+    function completeInboundQueuedTransfer(uint64 queueSequence) external;
 
     function quoteDeliveryPrice(uint16 recipientChain) external view returns (uint256);
 
