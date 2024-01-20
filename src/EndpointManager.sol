@@ -13,6 +13,7 @@ import "./libraries/external/ReentrancyGuardUpgradeable.sol";
 import "./libraries/EndpointStructs.sol";
 import "./libraries/EndpointHelpers.sol";
 import "./interfaces/IEndpointManager.sol";
+import "./interfaces/IEndpointManagerEvents.sol";
 import "./interfaces/IEndpointToken.sol";
 import "./Endpoint.sol";
 import "./EndpointRegistry.sol";
@@ -20,6 +21,7 @@ import "./EndpointRegistry.sol";
 // TODO: rename this (it's really the business logic)
 abstract contract EndpointManager is
     IEndpointManager,
+    IEndpointManagerEvents,
     EndpointRegistry,
     OwnableUpgradeable,
     ReentrancyGuardUpgradeable
@@ -564,6 +566,8 @@ abstract contract EndpointManager is
                 recipient: transferRecipient,
                 txTimestamp: block.timestamp
             });
+
+            emit InboundTransferQueued(queueSequence);
 
             // end execution early
             return;
