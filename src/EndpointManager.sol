@@ -356,7 +356,7 @@ abstract contract EndpointManager is
                 });
 
                 // refund the price quote back to sender
-                payable(msg.sender).transfer(totalPriceQuote);
+                payable(msg.sender).transfer(msg.value);
 
                 // return the sequence in the queue
                 return queueSequence;

@@ -23,9 +23,9 @@ interface IEndpointManager {
 
     struct OutboundQueuedTransfer {
         uint256 amount;
-        uint16 recipientChain;
         bytes32 recipient;
         uint256 txTimestamp;
+        uint16 recipientChain;
     }
 
     function transfer(
