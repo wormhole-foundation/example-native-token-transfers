@@ -44,6 +44,10 @@ abstract contract EndpointManager is
         uint64 num;
     }
 
+    struct _QueueSequence {
+        uint64 num;
+    }
+
     /// =============== STORAGE ===============================================
 
     bytes32 public constant MESSAGE_ATTESTATIONS_SLOT =
@@ -53,6 +57,12 @@ abstract contract EndpointManager is
 
     bytes32 public constant OUTBOUND_LIMIT_PARAMS_SLOT =
         bytes32(uint256(keccak256("ntt.outboundLimitParams")) - 1);
+
+    bytes32 public constant OUTBOUND_QUEUE_SLOT =
+        bytes32(uint256(keccak256("ntt.outboundQueue")) - 1);
+
+    bytes32 public constant OUTBOUND_QUEUE_SEQUENCE_SLOT =
+        bytes32(uint256(keccak256("ntt.outboundQueueSequence")) - 1);
 
     function _getMessageAttestationsStorage()
         internal
@@ -74,6 +84,24 @@ abstract contract EndpointManager is
 
     function _getOutboundLimitParamsStorage() internal pure returns (RateLimitParams storage $) {
         uint256 slot = uint256(OUTBOUND_LIMIT_PARAMS_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
+    function _getOutboundQueueStorage()
+        internal
+        pure
+        returns (mapping(uint64 => OutboundQueuedTransfer) storage $)
+    {
+        uint256 slot = uint256(OUTBOUND_QUEUE_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
+    function _getOutboundQueueSequenceStorage() internal pure returns (_QueueSequence storage $) {
+        uint256 slot = uint256(OUTBOUND_QUEUE_SEQUENCE_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
         }
@@ -156,6 +184,14 @@ abstract contract EndpointManager is
         return _getCurrentCapacity(getOutboundLimitParams());
     }
 
+    function getOutboundQueuedTransfer(uint64 queueSequence)
+        public
+        view
+        returns (OutboundQueuedTransfer memory)
+    {
+        return _getOutboundQueueStorage()[queueSequence];
+    }
+
     /**
      * @dev Gets the current capacity for a parameterized rate limits struct
      */
@@ -210,24 +246,81 @@ abstract contract EndpointManager is
         _getOutboundLimitParamsStorage().currentCapacity = currentCapacity - amount;
     }
 
+    function _isOutboundAmountRateLimited(uint256 amount) internal view returns (bool) {
+        uint256 currentCapacity = getCurrentOutboundCapacity();
+        if (currentCapacity < amount) {
+            return true;
+        }
+        return false;
+    }
+
+    function _enqueueOutboundTransfer(
+        uint64 queueSequence,
+        uint256 amount,
+        uint16 recipientChain,
+        bytes32 recipient
+    ) internal {
+        _getOutboundQueueStorage()[queueSequence] = OutboundQueuedTransfer({
+            amount: amount,
+            recipientChain: recipientChain,
+            recipient: recipient,
+            txTimestamp: block.timestamp
+        });
+    }
+
+    function completeOutboundQueuedTransfer(uint64 queueSequence)
+        external
+        payable
+        nonReentrant
+        returns (uint64 msgSequence)
+    {
+        // find the message in the queue
+        OutboundQueuedTransfer memory queuedTransfer = _getOutboundQueueStorage()[queueSequence];
+        if (queuedTransfer.txTimestamp == 0) {
+            revert OutboundQueuedTransferNotFound(queueSequence);
+        }
+
+        // check that > RATE_LIMIT_DURATION has elapsed
+        if (block.timestamp - queuedTransfer.txTimestamp < _rateLimitDuration) {
+            revert OutboundQueuedTransferStillQueued(queueSequence, queuedTransfer.txTimestamp);
+        }
+
+        // remove transfer from the queue
+        delete _getOutboundQueueStorage()[queueSequence];
+
+        // run it through the transfer logic and skip the rate limit
+        return _transfer(
+            queuedTransfer.amount,
+            queuedTransfer.recipientChain,
+            queuedTransfer.recipient,
+            false,
+            false
+        );
+    }
+
     /// @notice Called by the user to send the token cross-chain.
     ///         This function will either lock or burn the sender's tokens.
     ///         Finally, this function will call into the Endpoint contracts to send a message with the incrementing sequence number, msgType = 1y, and the token transfer payload.
     function transfer(
         uint256 amount,
         uint16 recipientChain,
-        bytes32 recipient
+        bytes32 recipient,
+        bool shouldQueue
     ) external payable nonReentrant returns (uint64 msgSequence) {
+        return _transfer(amount, recipientChain, recipient, true, shouldQueue);
+    }
+
+    function _transfer(
+        uint256 amount,
+        uint16 recipientChain,
+        bytes32 recipient,
+        bool shouldCheckRateLimit,
+        bool shouldQueue
+    ) internal returns (uint64 msgSequence) {
         // check up front that msg.value will cover the delivery price
         uint256 totalPriceQuote = quoteDeliveryPrice(recipientChain);
         if (msg.value < totalPriceQuote) {
             revert DeliveryPaymentTooLow(totalPriceQuote, msg.value);
-        }
-
-        // refund user extra excess value from msg.value
-        uint256 excessValue = totalPriceQuote - msg.value;
-        if (excessValue > 0) {
-            payable(msg.sender).transfer(excessValue);
         }
 
         // query tokens decimals
@@ -241,34 +334,59 @@ abstract contract EndpointManager is
             revert ZeroAmount();
         }
 
-        // check outbound rate limits up front
-        _consumeOutboundAmount(amount);
+        if (shouldCheckRateLimit) {
+            // Lock/burn tokens before checking rate limits
+            if (_mode == Mode.LOCKING) {
+                // use transferFrom to pull tokens from the user and lock them
+                // query own token balance before transfer
+                uint256 balanceBefore = getTokenBalanceOf(_token, address(this));
 
-        if (_mode == Mode.LOCKING) {
-            // use transferFrom to pull tokens from the user and lock them
-            // query own token balance before transfer
-            uint256 balanceBefore = getTokenBalanceOf(_token, address(this));
+                // transfer tokens
+                IERC20(_token).safeTransferFrom(msg.sender, address(this), amount);
 
-            // transfer tokens
-            IERC20(_token).safeTransferFrom(msg.sender, address(this), amount);
+                // query own token balance after transfer
+                uint256 balanceAfter = getTokenBalanceOf(_token, address(this));
 
-            // query own token balance after transfer
-            uint256 balanceAfter = getTokenBalanceOf(_token, address(this));
+                // correct amount for potential transfer fees
+                amount = balanceAfter - balanceBefore;
+            } else if (_mode == Mode.BURNING) {
+                // query sender's token balance before transfer
+                uint256 balanceBefore = getTokenBalanceOf(_token, msg.sender);
 
-            // correct amount for potential transfer fees
-            amount = balanceAfter - balanceBefore;
-        } else {
-            // query sender's token balance before transfer
-            uint256 balanceBefore = getTokenBalanceOf(_token, msg.sender);
+                // call the token's burn function to burn the sender's token
+                ERC20Burnable(_token).burnFrom(msg.sender, amount);
 
-            // call the token's burn function to burn the sender's token
-            ERC20Burnable(_token).burnFrom(msg.sender, amount);
+                // query sender's token balance after transfer
+                uint256 balanceAfter = getTokenBalanceOf(_token, msg.sender);
 
-            // query sender's token balance after transfer
-            uint256 balanceAfter = getTokenBalanceOf(_token, msg.sender);
+                // correct amount for potential burn fees
+                amount = balanceAfter - balanceBefore;
+            } else {
+                revert InvalidMode(uint8(_mode));
+            }
 
-            // correct amount for potential burn fees
-            amount = balanceAfter - balanceBefore;
+            // now check rate limits
+            bool isAmountRateLimited = _isOutboundAmountRateLimited(amount);
+            if (shouldQueue && isAmountRateLimited) {
+                // queue up and return
+                uint64 queueSequence = useOutboundQueueSequence();
+                _enqueueOutboundTransfer(queueSequence, amount, recipientChain, recipient);
+
+                // refund the price quote back to sender
+                payable(msg.sender).transfer(msg.value);
+
+                // return the sequence in the queue
+                return queueSequence;
+            }
+
+            // otherwise, consume the outbound amount
+            _consumeOutboundAmount(amount);
+        }
+
+        // refund user extra excess value from msg.value
+        uint256 excessValue = totalPriceQuote - msg.value;
+        if (excessValue > 0) {
+            payable(msg.sender).transfer(excessValue);
         }
 
         // normalize amount decimals
@@ -378,6 +496,19 @@ abstract contract EndpointManager is
 
     function incrementSequence() internal {
         _getSequenceStorage().num++;
+    }
+
+    function nextOutboundQueueSequence() public view returns (uint64) {
+        return _getOutboundQueueSequenceStorage().num;
+    }
+
+    function useOutboundQueueSequence() internal returns (uint64 currentSequence) {
+        currentSequence = nextOutboundQueueSequence();
+        incrementOutboundQueueSequence();
+    }
+
+    function incrementOutboundQueueSequence() internal {
+        _getOutboundQueueSequenceStorage().num++;
     }
 
     function getTokenBalanceOf(

@@ -313,9 +313,12 @@ contract TestEndpointManager is Test {
 
         token.approve(address(endpointManager), 3 * 10 ** decimals);
 
-        uint64 s1 = endpointManager.transfer(1 * 10 ** decimals, chainId, toWormholeFormat(user_B));
-        uint64 s2 = endpointManager.transfer(1 * 10 ** decimals, chainId, toWormholeFormat(user_B));
-        uint64 s3 = endpointManager.transfer(1 * 10 ** decimals, chainId, toWormholeFormat(user_B));
+        uint64 s1 =
+            endpointManager.transfer(1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false);
+        uint64 s2 =
+            endpointManager.transfer(1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false);
+        uint64 s3 =
+            endpointManager.transfer(1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false);
 
         assertEq(s1, 0);
         assertEq(s2, 1);
@@ -339,7 +342,7 @@ contract TestEndpointManager is Test {
 
         token.approve(address(endpointManager), 3 * 10 ** decimals);
         // we add 500 dust to check that the rounding code works.
-        endpointManager.transfer(3 * 10 ** decimals + 500, chainId, toWormholeFormat(user_B));
+        endpointManager.transfer(3 * 10 ** decimals + 500, chainId, toWormholeFormat(user_B), false);
 
         assertEq(token.balanceOf(address(user_A)), 2 * 10 ** decimals);
         assertEq(token.balanceOf(address(endpointManager)), 3 * 10 ** decimals);
@@ -494,7 +497,7 @@ contract TestEndpointManager is Test {
 
         uint256 transferAmount = 3 * 10 ** decimals;
         token.approve(address(endpointManager), transferAmount);
-        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B));
+        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
 
         vm.stopPrank();
 
@@ -532,7 +535,7 @@ contract TestEndpointManager is Test {
 
         uint256 transferAmount = 3 * 10 ** decimals;
         token.approve(address(endpointManager), transferAmount);
-        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B));
+        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
 
         vm.stopPrank();
 
@@ -571,7 +574,7 @@ contract TestEndpointManager is Test {
 
         uint256 transferAmount = 3 * 10 ** decimals;
         token.approve(address(endpointManager), transferAmount);
-        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B));
+        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
 
         vm.stopPrank();
 
@@ -618,7 +621,7 @@ contract TestEndpointManager is Test {
 
         uint256 transferAmount = 4 * 10 ** decimals;
         token.approve(address(endpointManager), transferAmount);
-        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B));
+        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
 
         vm.stopPrank();
 
@@ -662,7 +665,7 @@ contract TestEndpointManager is Test {
 
         uint256 transferAmount = 2 * 10 ** decimals;
         token.approve(address(endpointManager), transferAmount);
-        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B));
+        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
 
         vm.stopPrank();
 
@@ -711,7 +714,7 @@ contract TestEndpointManager is Test {
 
         bytes4 selector = bytes4(keccak256("NotEnoughOutboundCapacity(uint256,uint256)"));
         vm.expectRevert(abi.encodeWithSelector(selector, outboundLimit, transferAmount));
-        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B));
+        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
     }
 
     function test_outboundRateLimit_multiHit() public {
@@ -730,7 +733,7 @@ contract TestEndpointManager is Test {
 
         uint256 transferAmount = 3 * 10 ** decimals;
         token.approve(address(endpointManager), transferAmount);
-        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B));
+        endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
 
         // assert that first transfer went through
         assertEq(token.balanceOf(address(user_A)), 2 * 10 ** decimals);
@@ -745,6 +748,65 @@ contract TestEndpointManager is Test {
 
         bytes4 selector = bytes4(keccak256("NotEnoughOutboundCapacity(uint256,uint256)"));
         vm.expectRevert(abi.encodeWithSelector(selector, newCapacity, badTransferAmount));
-        endpointManager.transfer(badTransferAmount, chainId, toWormholeFormat(user_B));
+        endpointManager.transfer(badTransferAmount, chainId, toWormholeFormat(user_B), false);
+    }
+
+    // make a transfer with shouldQueue == true
+    // check that it hits rate limit and gets inserted into the queue
+    // test that it remains in queue after < _rateLimitDuration
+    // test that it exits queue after >= _rateLimitDuration
+    // test that it's removed from queue and can't be replayed
+    function test_outboundRateLimit_queue() public {
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(endpointManager.token());
+
+        uint256 decimals = token.decimals();
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+        uint256 outboundLimit = 4 * 10 ** decimals;
+        endpointManager.setOutboundLimit(outboundLimit);
+
+        vm.startPrank(user_A);
+
+        uint256 transferAmount = 5 * 10 ** decimals;
+        token.approve(address(endpointManager), transferAmount);
+
+        // transfer with shouldQueue == true
+        uint64 qSeq =
+            endpointManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), true);
+
+        // assert that the transfer got queued up
+        assertEq(qSeq, 0);
+        IEndpointManager.OutboundQueuedTransfer memory qt =
+            endpointManager.getOutboundQueuedTransfer(0);
+        assertEq(qt.amount, transferAmount);
+        assertEq(qt.recipientChain, chainId);
+        assertEq(qt.recipient, toWormholeFormat(user_B));
+        assertEq(qt.txTimestamp, 1);
+
+        // assert that the contract also locked funds from the user
+        assertEq(token.balanceOf(address(user_A)), 0);
+        assertEq(token.balanceOf(address(endpointManager)), transferAmount);
+
+        // change block time to (duration - 1) seconds later
+        vm.warp(endpointManager._rateLimitDuration());
+
+        // assert that transfer still can't be completed
+        bytes4 stillQueuedSelector =
+            bytes4(keccak256("OutboundQueuedTransferStillQueued(uint64,uint256)"));
+        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, 1));
+        endpointManager.completeOutboundQueuedTransfer(0);
+
+        // now complete transfer
+        vm.warp(endpointManager._rateLimitDuration() + 1);
+        uint64 seq = endpointManager.completeOutboundQueuedTransfer(0);
+        assertEq(seq, 0);
+
+        // now ensure transfer was removed from queue
+        bytes4 notFoundSelector = bytes4(keccak256("OutboundQueuedTransferNotFound(uint64)"));
+        vm.expectRevert(abi.encodeWithSelector(notFoundSelector, 0));
+        endpointManager.completeOutboundQueuedTransfer(0);
     }
 }
