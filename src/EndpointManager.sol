@@ -237,14 +237,35 @@ abstract contract EndpointManager is
         }
     }
 
-    function _consumeOutboundAmount(uint256 amount) internal returns (bool didConsume) {
+    function _consumeOutboundAmount(uint256 amount) internal {
         uint256 currentCapacity = getCurrentOutboundCapacity();
         if (currentCapacity < amount) {
-            return false;
+            revert NotEnoughOutboundCapacity(currentCapacity, amount);
         }
         _getOutboundLimitParamsStorage().lastTxTimestamp = block.timestamp;
         _getOutboundLimitParamsStorage().currentCapacity = currentCapacity - amount;
-        return true;
+    }
+
+    function _isOutboundAmountRateLimited(uint256 amount) internal view returns (bool) {
+        uint256 currentCapacity = getCurrentOutboundCapacity();
+        if (currentCapacity < amount) {
+            return true;
+        }
+        return false;
+    }
+
+    function _enqueueOutboundTransfer(
+        uint64 queueSequence,
+        uint256 amount,
+        uint16 recipientChain,
+        bytes32 recipient
+    ) internal {
+        _getOutboundQueueStorage()[queueSequence] = OutboundQueuedTransfer({
+            amount: amount,
+            recipientChain: recipientChain,
+            recipient: recipient,
+            txTimestamp: block.timestamp
+        });
     }
 
     function completeOutboundQueuedTransfer(uint64 queueSequence)
@@ -328,7 +349,7 @@ abstract contract EndpointManager is
 
                 // correct amount for potential transfer fees
                 amount = balanceAfter - balanceBefore;
-            } else {
+            } else if (_mode == Mode.BURNING) {
                 // query sender's token balance before transfer
                 uint256 balanceBefore = getTokenBalanceOf(_token, msg.sender);
 
@@ -340,29 +361,26 @@ abstract contract EndpointManager is
 
                 // correct amount for potential burn fees
                 amount = balanceAfter - balanceBefore;
+            } else {
+                revert InvalidMode(uint8(_mode));
             }
 
             // now check rate limits
-            bool didConsumeAmount = _consumeOutboundAmount(amount);
-            if (shouldQueue && !didConsumeAmount) {
+            bool isAmountRateLimited = _isOutboundAmountRateLimited(amount);
+            if (shouldQueue && isAmountRateLimited) {
                 // queue up and return
                 uint64 queueSequence = useOutboundQueueSequence();
-
-                _getOutboundQueueStorage()[queueSequence] = OutboundQueuedTransfer({
-                    amount: amount,
-                    recipientChain: recipientChain,
-                    recipient: recipient,
-                    txTimestamp: block.timestamp
-                });
+                _enqueueOutboundTransfer(queueSequence, amount, recipientChain, recipient);
 
                 // refund the price quote back to sender
                 payable(msg.sender).transfer(msg.value);
 
                 // return the sequence in the queue
                 return queueSequence;
-            } else if (!didConsumeAmount) {
-                revert NotEnoughOutboundCapacity(getCurrentOutboundCapacity(), amount);
             }
+
+            // otherwise, consume the outbound amount
+            _consumeOutboundAmount(amount);
         }
 
         // refund user extra excess value from msg.value

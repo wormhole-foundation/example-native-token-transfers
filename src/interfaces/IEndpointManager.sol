@@ -13,6 +13,7 @@ interface IEndpointManager {
     error NotEnoughOutboundCapacity(uint256 currentCapacity, uint256 amount);
     error OutboundQueuedTransferNotFound(uint64 queueSequence);
     error OutboundQueuedTransferStillQueued(uint64 queueSequence, uint256 transferTimestamp);
+    error InvalidMode(uint8 mode);
 
     struct RateLimitParams {
         uint256 limit;
