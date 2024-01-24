@@ -353,6 +353,18 @@ abstract contract EndpointManager is
         });
     }
 
+    function _enqueueInboundTransfer(uint256 amount, address recipient, uint16 chainId) internal {
+        uint64 queueSequence = _useInboundQueueSequence();
+
+        _getInboundQueueStorage()[queueSequence] = InboundQueuedTransfer({
+            amount: amount,
+            recipient: recipient,
+            txTimestamp: block.timestamp
+        });
+
+        emit InboundTransferQueued(queueSequence, chainId);
+    }
+
     function completeOutboundQueuedTransfer(uint64 queueSequence)
         external
         payable
@@ -565,15 +577,7 @@ abstract contract EndpointManager is
         bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, message.chainId);
         if (isRateLimited) {
             // queue up the transfer
-            uint64 queueSequence = _useInboundQueueSequence();
-
-            _getInboundQueueStorage()[queueSequence] = InboundQueuedTransfer({
-                amount: nativeTransferAmount,
-                recipient: transferRecipient,
-                txTimestamp: block.timestamp
-            });
-
-            emit InboundTransferQueued(queueSequence, message.chainId);
+            _enqueueInboundTransfer(nativeTransferAmount, transferRecipient, message.chainId);
 
             // end execution early
             return;
@@ -608,9 +612,11 @@ abstract contract EndpointManager is
         if (_mode == Mode.LOCKING) {
             // unlock tokens to the specified recipient
             IERC20(_token).safeTransfer(recipient, amount);
-        } else {
+        } else if (_mode == Mode.BURNING) {
             // mint tokens to the specified recipient
             IEndpointToken(_token).mint(recipient, amount);
+        } else {
+            revert InvalidMode(uint8(_mode));
         }
     }
 
