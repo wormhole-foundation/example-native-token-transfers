@@ -573,7 +573,7 @@ abstract contract EndpointManager is
                 txTimestamp: block.timestamp
             });
 
-            emit InboundTransferQueued(queueSequence);
+            emit InboundTransferQueued(queueSequence, message.chainId);
 
             // end execution early
             return;

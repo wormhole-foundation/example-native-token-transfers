@@ -855,7 +855,7 @@ contract TestEndpointManager is Test, IEndpointManagerEvents {
         assertEq(token.balanceOf(address(user_B)), 0);
 
         vm.expectEmit(address(endpointManager));
-        emit InboundTransferQueued(0);
+        emit InboundTransferQueued(0, 0);
         e2.receiveMessage(message);
 
         // now we have quorum but it'll hit limit
