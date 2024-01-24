@@ -11,9 +11,9 @@ interface IEndpointManager {
     error ZeroAmount();
     error InvalidAddressLength(uint256 length);
     error NotEnoughOutboundCapacity(uint256 currentCapacity, uint256 amount);
-    error OutboundQueuedTransferNotFound(uint64 queueSequence);
-    error OutboundQueuedTransferStillQueued(uint64 queueSequence, uint256 transferTimestamp);
     error InvalidMode(uint8 mode);
+    error QueuedTransferNotFound(uint64 queueSequence);
+    error QueuedTransferStillQueued(uint64 queueSequence, uint256 transferTimestamp);
 
     struct RateLimitParams {
         uint256 limit;
@@ -29,6 +29,12 @@ interface IEndpointManager {
         uint16 recipientChain;
     }
 
+    struct InboundQueuedTransfer {
+        uint256 amount;
+        uint256 txTimestamp;
+        address recipient;
+    }
+
     function transfer(
         uint256 amount,
         uint16 recipientChain,
@@ -40,6 +46,8 @@ interface IEndpointManager {
         external
         payable
         returns (uint64 msgSequence);
+
+    function completeInboundQueuedTransfer(uint64 queueSequence) external;
 
     function quoteDeliveryPrice(uint16 recipientChain) external view returns (uint256);
 
@@ -56,9 +64,22 @@ interface IEndpointManager {
         view
         returns (OutboundQueuedTransfer memory);
 
-    function nextSequence() external view returns (uint64);
+    function setInboundLimit(uint256 limit, uint16 chainId) external;
+
+    function getInboundLimitParams(uint16 chainId) external view returns (RateLimitParams memory);
+
+    function getCurrentInboundCapacity(uint16 chainId) external view returns (uint256);
+
+    function getInboundQueuedTransfer(uint64 queueSequence)
+        external
+        view
+        returns (InboundQueuedTransfer memory);
+
+    function nextMessageSequence() external view returns (uint64);
 
     function nextOutboundQueueSequence() external view returns (uint64);
+
+    function nextInboundQueueSequence() external view returns (uint64);
 
     function token() external view returns (address);
 }
