@@ -297,17 +297,14 @@ abstract contract EndpointManager is
         }
     }
 
-    function _consumeOutboundAmount(uint256 amount) internal returns (bool didConsume) {
-        return _consumeRateLimitAmount(
+    function _consumeOutboundAmount(uint256 amount) internal {
+        _consumeRateLimitAmount(
             amount, getCurrentOutboundCapacity(), _getOutboundLimitParamsStorage()
         );
     }
 
-    function _consumeInboundAmount(
-        uint256 amount,
-        uint16 chainId
-    ) internal returns (bool didConsume) {
-        return _consumeRateLimitAmount(
+    function _consumeInboundAmount(uint256 amount, uint16 chainId) internal {
+        _consumeRateLimitAmount(
             amount, getCurrentInboundCapacity(chainId), _getInboundLimitParamsStorage()[chainId]
         );
     }
@@ -316,18 +313,27 @@ abstract contract EndpointManager is
         uint256 amount,
         uint256 capacity,
         RateLimitParams storage rateLimitParams
-    ) internal returns (bool) {
+    ) internal {
         if (capacity < amount) {
-            return false;
+            revert NotEnoughOutboundCapacity(capacity, amount);
         }
         rateLimitParams.lastTxTimestamp = block.timestamp;
         rateLimitParams.currentCapacity = capacity - amount;
-        return true;
     }
 
     function _isOutboundAmountRateLimited(uint256 amount) internal view returns (bool) {
-        uint256 currentCapacity = getCurrentOutboundCapacity();
-        if (currentCapacity < amount) {
+        return _isAmountRateLimited(getCurrentOutboundCapacity(), amount);
+    }
+
+    function _isInboundAmountRateLimited(
+        uint256 amount,
+        uint16 chainId
+    ) internal view returns (bool) {
+        return _isAmountRateLimited(getCurrentInboundCapacity(chainId), amount);
+    }
+
+    function _isAmountRateLimited(uint256 capacity, uint256 amount) internal pure returns (bool) {
+        if (capacity < amount) {
             return true;
         }
         return false;
@@ -556,8 +562,8 @@ abstract contract EndpointManager is
         address transferRecipient = bytesToAddress(nativeTokenTransfer.to);
 
         // Check inbound rate limits
-        bool didLimitPass = _consumeInboundAmount(nativeTransferAmount, message.chainId);
-        if (!didLimitPass) {
+        bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, message.chainId);
+        if (isRateLimited) {
             // queue up the transfer
             uint64 queueSequence = _useInboundQueueSequence();
 
@@ -572,6 +578,9 @@ abstract contract EndpointManager is
             // end execution early
             return;
         }
+
+        // consume the amount for the inbound rate limit
+        _consumeInboundAmount(nativeTransferAmount, message.chainId);
 
         _mintOrUnlockToRecipient(transferRecipient, nativeTransferAmount);
     }
