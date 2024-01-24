@@ -13,6 +13,30 @@ contract TestImplementation is Implementation {
     }
 
     function _migrate() internal override {
+    }
+
+    function upgrade(address newImplementation) external {
+        _upgrade(newImplementation);
+    }
+
+    function otherInitializer() external initializer {
+        // this one is not protected by the 'onlyDelegateCall' modifier, it
+        // should still fail as a direct call
+    }
+
+    function incrementCounter() public onlyInitializing {
+        // this should fail if called outside of initialization (including migration)
+        upgradeCount++;
+    }
+}
+
+contract TestImplementation2 is Implementation {
+    uint256 public upgradeCount;
+
+    function _initialize() internal override {
+    }
+
+    function _migrate() internal override {
         incrementCounter();
     }
 
@@ -71,13 +95,14 @@ contract ImplementationTest is Test {
     function test_upgradeProxy() public {
         TestImplementation impl = new TestImplementation();
         TestImplementation proxy = TestImplementation(address(new ERC1967Proxy(address(impl), "")));
+        TestImplementation2 impl2 = new TestImplementation2();
 
         proxy.initialize();
-        proxy.upgrade(address(impl));
+        proxy.upgrade(address(impl2));
 
         assertEq(proxy.upgradeCount(), 1);
 
-        proxy.upgrade(address(impl));
+        proxy.upgrade(address(impl2));
         assertEq(proxy.upgradeCount(), 2);
     }
 

@@ -80,7 +80,6 @@ contract EndpointAndManagerContract is EndpointAndManager, Implementation {
     ) EndpointAndManager(token, mode, chainId, rateLimitDuration) {}
 
     function _migrate() internal override {
-        __EndpointAndManager_init();
     }
 
     function _initialize() internal override {

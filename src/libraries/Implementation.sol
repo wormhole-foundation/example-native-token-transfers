@@ -72,11 +72,7 @@ abstract contract Implementation is Initializable, ERC1967Upgrade {
         assert(!_migrating.isMigrating);
         _migrating.isMigrating = true;
 
-        (bool success, bytes memory reason) =
-            newImplementation.delegatecall(abi.encodeWithSignature("migrate()"));
-        if (!success) {
-            revert(string(reason));
-        }
+        this.migrate();
 
         _migrating.isMigrating = false;
     }
