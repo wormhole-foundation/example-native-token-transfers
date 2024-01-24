@@ -340,17 +340,18 @@ abstract contract EndpointManager is
     }
 
     function _enqueueOutboundTransfer(
-        uint64 queueSequence,
         uint256 amount,
         uint16 recipientChain,
         bytes32 recipient
-    ) internal {
+    ) internal returns (uint64) {
+        uint64 queueSequence = _useOutboundQueueSequence();
         _getOutboundQueueStorage()[queueSequence] = OutboundQueuedTransfer({
             amount: amount,
             recipientChain: recipientChain,
             recipient: recipient,
             txTimestamp: block.timestamp
         });
+        return queueSequence;
     }
 
     function _enqueueInboundTransfer(uint256 amount, address recipient, uint16 chainId) internal {
@@ -466,8 +467,7 @@ abstract contract EndpointManager is
             bool isAmountRateLimited = _isOutboundAmountRateLimited(amount);
             if (shouldQueue && isAmountRateLimited) {
                 // queue up and return
-                uint64 queueSequence = _useOutboundQueueSequence();
-                _enqueueOutboundTransfer(queueSequence, amount, recipientChain, recipient);
+                uint64 queueSequence = _enqueueOutboundTransfer(amount, recipientChain, recipient);
 
                 // refund the price quote back to sender
                 payable(msg.sender).transfer(msg.value);
