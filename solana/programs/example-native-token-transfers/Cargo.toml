@@ -1,0 +1,24 @@
+[package]
+name = "example-native-token-transfers"
+version = "0.1.0"
+description = "Example implementation of native token transfer standard"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "example_native_token_transfers"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+ahash = "=0.8.6"
+
+anchor-lang = "0.28.0"
+anchor-spl = "0.28.0"
+wormhole-anchor-sdk = "0.1.0-alpha.2"
+wormhole-io = "0.1.3"
