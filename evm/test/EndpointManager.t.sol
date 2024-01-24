@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 import "../src/EndpointManagerStandalone.sol";
 import "../src/EndpointStandalone.sol";
 import "../src/interfaces/IEndpointManager.sol";
+import "../src/interfaces/IEndpointManagerEvents.sol";
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
@@ -69,7 +70,7 @@ contract DummyToken is ERC20 {
 
 // TODO: set this up so the common functionality tests can be run against both
 // the standalone and the integrated version of the endpoint manager
-contract TestEndpointManager is Test {
+contract TestEndpointManager is Test, IEndpointManagerEvents {
     EndpointManagerStandalone endpointManager;
     uint16 constant chainId = 7;
 
@@ -337,6 +338,7 @@ contract TestEndpointManager is Test {
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
         endpointManager.setOutboundLimit(type(uint256).max);
+        endpointManager.setInboundLimit(type(uint256).max, 0);
 
         vm.startPrank(user_A);
 
@@ -794,8 +796,7 @@ contract TestEndpointManager is Test {
         vm.warp(endpointManager._rateLimitDuration());
 
         // assert that transfer still can't be completed
-        bytes4 stillQueuedSelector =
-            bytes4(keccak256("OutboundQueuedTransferStillQueued(uint64,uint256)"));
+        bytes4 stillQueuedSelector = bytes4(keccak256("QueuedTransferStillQueued(uint64,uint256)"));
         vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, 1));
         endpointManager.completeOutboundQueuedTransfer(0);
 
@@ -805,8 +806,94 @@ contract TestEndpointManager is Test {
         assertEq(seq, 0);
 
         // now ensure transfer was removed from queue
-        bytes4 notFoundSelector = bytes4(keccak256("OutboundQueuedTransferNotFound(uint64)"));
+        bytes4 notFoundSelector = bytes4(keccak256("QueuedTransferNotFound(uint64)"));
         vm.expectRevert(abi.encodeWithSelector(notFoundSelector, 0));
         endpointManager.completeOutboundQueuedTransfer(0);
+    }
+
+    function test_inboundRateLimit() public {
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        (DummyEndpoint e1, DummyEndpoint e2) = setup_endpoints();
+
+        DummyToken token = DummyToken(endpointManager.token());
+
+        uint256 decimals = token.decimals();
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+        endpointManager.setOutboundLimit(type(uint256).max);
+        endpointManager.setInboundLimit(5, 0);
+
+        vm.startPrank(user_A);
+
+        token.approve(address(endpointManager), 3 * 10 ** decimals);
+        // we add 500 dust to check that the rounding code works.
+        endpointManager.transfer(3 * 10 ** decimals + 500, chainId, toWormholeFormat(user_B), false);
+
+        assertEq(token.balanceOf(address(user_A)), 2 * 10 ** decimals);
+        assertEq(token.balanceOf(address(endpointManager)), 3 * 10 ** decimals);
+
+        EndpointStructs.EndpointManagerMessage memory m = EndpointStructs.EndpointManagerMessage(
+            0,
+            0,
+            1,
+            EndpointStructs.encodeNativeTokenTransfer(
+                EndpointStructs.NativeTokenTransfer({
+                    amount: 50,
+                    to: abi.encodePacked(user_B),
+                    toChain: chainId
+                })
+            )
+        );
+
+        bytes memory message = EndpointStructs.encodeEndpointManagerMessage(m);
+
+        e1.receiveMessage(message);
+
+        // no quorum yet
+        assertEq(token.balanceOf(address(user_B)), 0);
+
+        vm.expectEmit(address(endpointManager));
+        emit InboundTransferQueued(0, 0);
+        e2.receiveMessage(message);
+
+        // now we have quorum but it'll hit limit
+        assertEq(endpointManager.nextInboundQueueSequence(), 1);
+        IEndpointManager.InboundQueuedTransfer memory qt =
+            endpointManager.getInboundQueuedTransfer(0);
+        assertEq(qt.amount, 50 * 10 ** (decimals - 8));
+        assertEq(qt.txTimestamp, 1);
+        assertEq(qt.recipient, user_B);
+
+        // assert that the user doesn't have funds yet
+        assertEq(token.balanceOf(address(user_B)), 0);
+
+        // change block time to (duration - 1) seconds later
+        vm.warp(endpointManager._rateLimitDuration());
+
+        // assert that transfer still can't be completed
+        bytes4 stillQueuedSelector = bytes4(keccak256("QueuedTransferStillQueued(uint64,uint256)"));
+        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, 1));
+        endpointManager.completeInboundQueuedTransfer(0);
+
+        // now complete transfer
+        vm.warp(endpointManager._rateLimitDuration() + 1);
+        endpointManager.completeInboundQueuedTransfer(0);
+
+        // assert transfer no longer in queue
+        bytes4 notQueuedSelector = bytes4(keccak256("QueuedTransferNotFound(uint64)"));
+        vm.expectRevert(abi.encodeWithSelector(notQueuedSelector, 0));
+        endpointManager.completeInboundQueuedTransfer(0);
+
+        // assert user now has funds
+        assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
+
+        // replay protection
+        bytes4 selector = bytes4(keccak256("MessageAlreadyExecuted(bytes32)"));
+        vm.expectRevert(
+            abi.encodeWithSelector(selector, EndpointStructs.endpointManagerMessageDigest(m))
+        );
+        e2.receiveMessage(message);
     }
 }
