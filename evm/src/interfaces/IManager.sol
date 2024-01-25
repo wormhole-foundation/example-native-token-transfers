@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.6.12 <0.9.0;
 
-interface IEndpointManager {
+interface IManager {
     error DeliveryPaymentTooLow(uint256 requiredPayment, uint256 providedPayment);
     error MessageAttestationAlreadyReceived(bytes32 msgHash, address endpoint);
     error MessageAlreadyExecuted(bytes32 msgHash);
     error MessageNotApproved(bytes32 msgHash);
-    error UnexpectedEndpointManagerMessageType(uint8 msgType);
+    error UnexpectedManagerMessageType(uint8 msgType);
     error InvalidTargetChain(uint16 targetChain, uint16 thisChain);
     error ZeroAmount();
     error InvalidAddressLength(uint256 length);
