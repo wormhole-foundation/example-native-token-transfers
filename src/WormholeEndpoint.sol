@@ -63,7 +63,15 @@ abstract contract WormholeEndpoint is Endpoint {
         }
     }
 
-    function _verifyMessage(bytes memory encodedMessage) internal override returns (bytes memory) {
+    /// @notice Receive an attested message from the verification layer
+    ///         This function should verify the encodedVm and then deliver the attestation to the endpoint manager contract.
+    function _receiveMessage(bytes memory encodedMessage) internal {
+        bytes memory payload = _verifyMessage(encodedMessage);
+        EndpointStructs.ManagerMessage memory parsed = EndpointStructs.parseManagerMessage(payload);
+        _deliverToManager(parsed);
+    }
+
+    function _verifyMessage(bytes memory encodedMessage) internal returns (bytes memory) {
         // verify VAA against Wormhole Core Bridge contract
         (IWormhole.VM memory vm, bool valid, string memory reason) =
             wormhole().parseAndVerifyVM(encodedMessage);
