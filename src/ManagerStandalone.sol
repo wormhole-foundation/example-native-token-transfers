@@ -109,14 +109,6 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         }
     }
 
-    function setSibling(
-        uint16 siblingChainId,
-        bytes32 siblingContract
-    ) external override onlyOwner {
-        // TODO -- how to properly do this??
-        // this function should specify which endpoint the sibling is for
-    }
-
     /// @dev Called by an Endpoint contract to deliver a verified attestation.
     ///      This function enforces attestation threshold and replay logic for messages.
     ///      Once all validations are complete, this function calls _executeMsg to execute the command specified by the message.

@@ -16,4 +16,8 @@ contract WormholeEndpointAndManager is EndpointAndManager, WormholeEndpoint {
         EndpointAndManager(token, mode, chainId, rateLimitDuration)
         WormholeEndpoint(wormholeCoreBridge, wormholeRelayerAddr)
     {}
+
+    function setSibling(uint16 siblingChainId, bytes32 siblingContract) external onlyOwner {
+        _setSibling(siblingChainId, siblingContract);
+    }
 }
