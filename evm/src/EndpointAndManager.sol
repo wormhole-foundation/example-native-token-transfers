@@ -2,10 +2,10 @@
 pragma solidity >=0.6.12 <0.9.0;
 
 import "./Endpoint.sol";
-import "./EndpointManager.sol";
+import "./Manager.sol";
 import "./EndpointRegistry.sol";
 
-abstract contract EndpointAndManager is Endpoint, EndpointManager {
+abstract contract EndpointAndManager is Endpoint, Manager {
     uint8 constant ENDPOINT_INDEX = 0;
 
     constructor(
@@ -13,7 +13,7 @@ abstract contract EndpointAndManager is Endpoint, EndpointManager {
         Mode mode,
         uint16 chainId,
         uint256 rateLimitDuration
-    ) EndpointManager(token, mode, chainId, rateLimitDuration) {
+    ) Manager(token, mode, chainId, rateLimitDuration) {
         uint8 index = _setEndpoint(address(this));
         assert(index == ENDPOINT_INDEX);
     }
@@ -26,11 +26,8 @@ abstract contract EndpointAndManager is Endpoint, EndpointManager {
         return _sendMessage(recipientChain, payload);
     }
 
-    function _deliverToManager(EndpointStructs.EndpointManagerMessage memory payload)
-        internal
-        override
-    {
-        bytes32 digest = EndpointStructs.endpointManagerMessageDigest(payload);
+    function _deliverToManager(EndpointStructs.ManagerMessage memory payload) internal override {
+        bytes32 digest = EndpointStructs.managerMessageDigest(payload);
         _setEndpointAttestedToMessage(digest, ENDPOINT_INDEX);
 
         return _executeMsg(payload);

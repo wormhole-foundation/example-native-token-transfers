@@ -12,16 +12,16 @@ import "./libraries/external/OwnableUpgradeable.sol";
 import "./libraries/external/ReentrancyGuardUpgradeable.sol";
 import "./libraries/EndpointStructs.sol";
 import "./libraries/EndpointHelpers.sol";
-import "./interfaces/IEndpointManager.sol";
-import "./interfaces/IEndpointManagerEvents.sol";
+import "./interfaces/IManager.sol";
+import "./interfaces/IManagerEvents.sol";
 import "./interfaces/IEndpointToken.sol";
 import "./Endpoint.sol";
 import "./EndpointRegistry.sol";
 
 // TODO: rename this (it's really the business logic)
-abstract contract EndpointManager is
-    IEndpointManager,
-    IEndpointManagerEvents,
+abstract contract Manager is
+    IManager,
+    IManagerEvents,
     EndpointRegistry,
     OwnableUpgradeable,
     ReentrancyGuardUpgradeable
@@ -499,8 +499,8 @@ abstract contract EndpointManager is
 
         // construct the ManagerMessage payload
         uint64 sequence = _useMessageSequence();
-        bytes memory encodedManagerPayload = EndpointStructs.encodeEndpointManagerMessage(
-            EndpointStructs.EndpointManagerMessage(_chainId, sequence, 1, encodedTransferPayload)
+        bytes memory encodedManagerPayload = EndpointStructs.encodeManagerMessage(
+            EndpointStructs.ManagerMessage(_chainId, sequence, 1, encodedTransferPayload)
         );
 
         // send the message
@@ -537,13 +537,13 @@ abstract contract EndpointManager is
     }
 
     /// @dev Called after a message has been sufficiently verified to execute the command in the message.
-    ///      This function will decode the payload as an EndpointManagerMessage to extract the sequence, msgType, and other parameters.
+    ///      This function will decode the payload as an ManagerMessage to extract the sequence, msgType, and other parameters.
     /// TODO: we could make this public. all the security checks are done here
-    function _executeMsg(EndpointStructs.EndpointManagerMessage memory message) internal {
+    function _executeMsg(EndpointStructs.ManagerMessage memory message) internal {
         // verify chain has not forked
         checkFork(_evmChainId);
 
-        bytes32 digest = EndpointStructs.endpointManagerMessageDigest(message);
+        bytes32 digest = EndpointStructs.managerMessageDigest(message);
 
         if (!isMessageApproved(digest)) {
             revert MessageNotApproved(digest);
@@ -554,7 +554,7 @@ abstract contract EndpointManager is
         // for msgType == 1, parse the payload as a NativeTokenTransfer.
         // for other msgTypes, revert (unsupported for now)
         if (message.msgType != 1) {
-            revert UnexpectedEndpointManagerMessageType(message.msgType);
+            revert UnexpectedManagerMessageType(message.msgType);
         }
         EndpointStructs.NativeTokenTransfer memory nativeTokenTransfer =
             EndpointStructs.parseNativeTokenTransfer(message.payload);
