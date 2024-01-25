@@ -14,7 +14,7 @@ library EndpointStructs {
     ///     - msgType - 1 byte
     ///     - payloadLength - 2 bytes
     ///     - payload - `payloadLength` bytes
-    struct EndpointManagerMessage {
+    struct ManagerMessage {
         /// @notice chainId that message originates from
         uint16 chainId;
         /// @notice unique sequence number
@@ -25,15 +25,11 @@ library EndpointStructs {
         bytes payload;
     }
 
-    function endpointManagerMessageDigest(EndpointManagerMessage memory m)
-        public
-        pure
-        returns (bytes32)
-    {
-        return keccak256(encodeEndpointManagerMessage(m));
+    function managerMessageDigest(ManagerMessage memory m) public pure returns (bytes32) {
+        return keccak256(encodeManagerMessage(m));
     }
 
-    function encodeEndpointManagerMessage(EndpointManagerMessage memory m)
+    function encodeManagerMessage(ManagerMessage memory m)
         public
         pure
         returns (bytes memory encoded)
@@ -46,14 +42,14 @@ library EndpointStructs {
     }
 
     /*
-     * @dev Parse a EndpointManagerMessage.
+     * @dev Parse a ManagerMessage.
      *
      * @params encoded The byte array corresponding to the encoded message
      */
-    function parseEndpointManagerMessage(bytes memory encoded)
+    function parseManagerMessage(bytes memory encoded)
         public
         pure
-        returns (EndpointManagerMessage memory managerMessage)
+        returns (ManagerMessage memory managerMessage)
     {
         uint256 offset = 0;
         (managerMessage.chainId, offset) = encoded.asUint16Unchecked(offset);
@@ -115,7 +111,7 @@ library EndpointStructs {
         /// @notice Magic string (constant value set by messaging provider) that idenfies the payload as an endpoint-emitted payload.
         ///         Note that this is not a security critical field. It's meant to be used by messaging providers to identify which messages are Endpoint-related.
         bytes32 endpointId;
-        /// @notice Payload provided to the Endpoint contract by the EndpointManager contract.
+        /// @notice Payload provided to the Endpoint contract by the Manager contract.
         bytes managerPayload;
         /// @notice Custom payload which messaging providers can use to pass bridge-specific information, if needed.
         bytes endpointPayload;

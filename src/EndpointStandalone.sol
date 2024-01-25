@@ -2,7 +2,7 @@
 pragma solidity >=0.6.12 <0.9.0;
 
 import "./Endpoint.sol";
-import "./interfaces/IEndpointManagerStandalone.sol";
+import "./interfaces/IManagerStandalone.sol";
 import "./interfaces/IEndpointStandalone.sol";
 
 abstract contract EndpointStandalone is IEndpointStandalone, Endpoint {
@@ -33,12 +33,9 @@ abstract contract EndpointStandalone is IEndpointStandalone, Endpoint {
         return _quoteDeliveryPrice(targetChain);
     }
 
-    function _deliverToManager(EndpointStructs.EndpointManagerMessage memory payload)
-        internal
-        override
-    {
+    function _deliverToManager(EndpointStructs.ManagerMessage memory payload) internal override {
         // forward the VAA payload to the endpoint manager contract
-        IEndpointManagerStandalone(_manager).attestationReceived(payload);
+        IManagerStandalone(_manager).attestationReceived(payload);
     }
 
     function setSibling(uint16 chainId, bytes32 siblingContract) external onlyManager {

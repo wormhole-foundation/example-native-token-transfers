@@ -14,16 +14,13 @@ abstract contract Endpoint is IEndpoint {
     ///         This function should verify the encodedVm and then call attestationReceived on the endpoint manager contract.
     function receiveMessage(bytes memory encodedMessage) external {
         bytes memory payload = _verifyMessage(encodedMessage);
-        EndpointStructs.EndpointManagerMessage memory parsed =
-            EndpointStructs.parseEndpointManagerMessage(payload);
+        EndpointStructs.ManagerMessage memory parsed = EndpointStructs.parseManagerMessage(payload);
         _deliverToManager(parsed);
     }
 
     function _verifyMessage(bytes memory encodedMessage) internal virtual returns (bytes memory);
 
-    function _deliverToManager(EndpointStructs.EndpointManagerMessage memory payload)
-        internal
-        virtual;
+    function _deliverToManager(EndpointStructs.ManagerMessage memory payload) internal virtual;
 
     function _quoteDeliveryPrice(uint16 targetChain) internal view virtual returns (uint256);
 
