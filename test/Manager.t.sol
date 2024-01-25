@@ -307,9 +307,8 @@ contract TestManager is Test, IManagerEvents {
         vm.startPrank(from);
 
         token.approve(address(manager), 3 * 10 ** decimals);
-        // we add 500 dust to check that the rounding code works.
         // TODO: parse recorded logs
-        manager.transfer(3 * 10 ** decimals + 500, chainId, toWormholeFormat(to), false);
+        manager.transfer(3 * 10 ** decimals, chainId, toWormholeFormat(to), false);
 
         vm.stopPrank();
 
@@ -565,6 +564,35 @@ contract TestManager is Test, IManagerEvents {
         Utils.assertSafeUpgradeableConstructor(vm.stopAndReturnStateDiff());
     }
 
+    // === token transfer logic
+
+    function test_dustReverts() public {
+        // transfer 3 tokens
+        address from = address(0x123);
+        address to = address(0x456);
+
+        DummyToken token = DummyToken(manager.token());
+
+        uint256 decimals = token.decimals();
+
+        token.mintDummy(from, 5 * 10 ** decimals);
+        manager.setOutboundLimit(type(uint256).max);
+        manager.setInboundLimit(type(uint256).max, 0);
+
+        vm.startPrank(from);
+
+        token.approve(address(manager), 3 * 10 ** decimals);
+
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "TransferAmountHasDust(uint256,uint256)", 3 * 10 ** decimals + 500, 500
+            )
+        );
+        manager.transfer(3 * 10 ** decimals + 500, chainId, toWormholeFormat(to), false);
+
+        vm.stopPrank();
+    }
+
     // === token transfer rate limiting
 
     function test_outboundRateLimit_setLimitSimple() public {
@@ -796,7 +824,7 @@ contract TestManager is Test, IManagerEvents {
         uint256 transferAmount = 3 * 10 ** decimals;
         token.approve(address(manager), transferAmount);
 
-        bytes4 selector = bytes4(keccak256("NotEnoughOutboundCapacity(uint256,uint256)"));
+        bytes4 selector = bytes4(keccak256("NotEnoughCapacity(uint256,uint256)"));
         vm.expectRevert(abi.encodeWithSelector(selector, outboundLimit, transferAmount));
         manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
     }
@@ -830,7 +858,7 @@ contract TestManager is Test, IManagerEvents {
         uint256 badTransferAmount = 2 * 10 ** decimals;
         token.approve(address(manager), badTransferAmount);
 
-        bytes4 selector = bytes4(keccak256("NotEnoughOutboundCapacity(uint256,uint256)"));
+        bytes4 selector = bytes4(keccak256("NotEnoughCapacity(uint256,uint256)"));
         vm.expectRevert(abi.encodeWithSelector(selector, newCapacity, badTransferAmount));
         manager.transfer(badTransferAmount, chainId, toWormholeFormat(user_B), false);
     }
@@ -909,8 +937,7 @@ contract TestManager is Test, IManagerEvents {
         vm.startPrank(user_A);
 
         token.approve(address(manager), 3 * 10 ** decimals);
-        // we add 500 dust to check that the rounding code works.
-        manager.transfer(3 * 10 ** decimals + 500, chainId, toWormholeFormat(user_B), false);
+        manager.transfer(3 * 10 ** decimals, chainId, toWormholeFormat(user_B), false);
 
         assertEq(token.balanceOf(address(user_A)), 2 * 10 ** decimals);
         assertEq(token.balanceOf(address(manager)), 3 * 10 ** decimals);
