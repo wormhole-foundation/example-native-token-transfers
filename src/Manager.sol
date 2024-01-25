@@ -143,7 +143,6 @@ abstract contract Manager is
         }
     }
 
-
     // TODO: should we store this in storage? otherwise they can change during
     // each upgrade
     address immutable _token;

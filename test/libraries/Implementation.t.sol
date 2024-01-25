@@ -12,8 +12,7 @@ contract TestImplementation is Implementation {
         upgradeCount = 0;
     }
 
-    function _migrate() internal override {
-    }
+    function _migrate() internal override {}
 
     function upgrade(address newImplementation) external {
         _upgrade(newImplementation);
@@ -33,8 +32,7 @@ contract TestImplementation is Implementation {
 contract TestImplementation2 is Implementation {
     uint256 public upgradeCount;
 
-    function _initialize() internal override {
-    }
+    function _initialize() internal override {}
 
     function _migrate() internal override {
         incrementCounter();

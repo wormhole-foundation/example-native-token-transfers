@@ -79,8 +79,7 @@ contract EndpointAndManagerContract is EndpointAndManager, Implementation {
         uint256 rateLimitDuration
     ) EndpointAndManager(token, mode, chainId, rateLimitDuration) {}
 
-    function _migrate() internal override {
-    }
+    function _migrate() internal override {}
 
     function _initialize() internal override {
         __EndpointAndManager_init();
@@ -131,11 +130,13 @@ contract TestManager is Test, IManagerEvents {
     uint256 constant DEVNET_GUARDIAN_PK =
         0xcfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0;
     WormholeSimulator guardian;
+    uint256 initialBlockTimestamp;
 
     function setUp() public {
         string memory url = "https://ethereum-goerli.publicnode.com";
         IWormhole wormhole = IWormhole(0x706abc4E45D419950511e474C7B9Ed348A4a716c);
         vm.createSelectFork(url);
+        initialBlockTimestamp = vm.getBlockTimestamp();
 
         guardian = new WormholeSimulator(address(wormhole), DEVNET_GUARDIAN_PK);
 
@@ -300,7 +301,7 @@ contract TestManager is Test, IManagerEvents {
 
         token.mintDummy(from, 5 * 10 ** decimals);
         manager.setOutboundLimit(type(uint256).max);
-        manager.setInboundLimit(type(uint256.max), 0);
+        manager.setInboundLimit(type(uint256).max, 0);
 
         uint256 from_balanceBefore = token.balanceOf(from);
         uint256 manager_balanceBefore = token.balanceOf(address(manager));
@@ -310,7 +311,7 @@ contract TestManager is Test, IManagerEvents {
         token.approve(address(manager), 3 * 10 ** decimals);
         // we add 500 dust to check that the rounding code works.
         // TODO: parse recorded logs
-        manager.transfer(3 * 10 ** decimals + 500, chainId, toWormholeFormat(to));
+        manager.transfer(3 * 10 ** decimals + 500, chainId, toWormholeFormat(to), false);
 
         vm.stopPrank();
 
@@ -564,7 +565,7 @@ contract TestManager is Test, IManagerEvents {
         assertEq(outboundLimitParams.limit, limit);
         assertEq(outboundLimitParams.currentCapacity, limit);
         assertEq(outboundLimitParams.ratePerSecond, limit / manager._rateLimitDuration());
-        assertEq(outboundLimitParams.lastTxTimestamp, 1);
+        assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
     }
 
     function test_outboundRateLimit_setHigherLimit() public {
@@ -597,7 +598,7 @@ contract TestManager is Test, IManagerEvents {
         IManager.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
         assertEq(outboundLimitParams.limit, higherLimit);
-        assertEq(outboundLimitParams.lastTxTimestamp, 1);
+        assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
         assertEq(outboundLimitParams.currentCapacity, 2 * 10 ** decimals);
         assertEq(outboundLimitParams.ratePerSecond, higherLimit / manager._rateLimitDuration());
     }
@@ -632,7 +633,7 @@ contract TestManager is Test, IManagerEvents {
         IManager.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
         assertEq(outboundLimitParams.limit, lowerLimit);
-        assertEq(outboundLimitParams.lastTxTimestamp, 1);
+        assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
         assertEq(outboundLimitParams.currentCapacity, 0);
         assertEq(outboundLimitParams.ratePerSecond, lowerLimit / manager._rateLimitDuration());
     }
@@ -660,7 +661,7 @@ contract TestManager is Test, IManagerEvents {
         vm.stopPrank();
 
         // change block timestamp to be 6 hours later
-        uint256 sixHoursLater = 21601;
+        uint256 sixHoursLater = initialBlockTimestamp + 6 hours;
         vm.warp(sixHoursLater);
 
         // update the outbound limit to 5 tokens
@@ -677,7 +678,7 @@ contract TestManager is Test, IManagerEvents {
         // difference in limits + remaining capacity after t1 + the amount that's refreshed (based on the old rps)
         assertEq(
             outboundLimitParams.currentCapacity,
-            (1 * 10 ** decimals) + (1 * 10 ** decimals) + oldRps * (sixHoursLater - 1)
+            (1 * 10 ** decimals) + (1 * 10 ** decimals) + oldRps * (6 hours)
         );
         assertEq(outboundLimitParams.ratePerSecond, higherLimit / manager._rateLimitDuration());
     }
@@ -704,7 +705,7 @@ contract TestManager is Test, IManagerEvents {
         vm.stopPrank();
 
         // change block timestamp to be 3 hours later
-        uint256 sixHoursLater = 10801;
+        uint256 sixHoursLater = initialBlockTimestamp + 3 hours;
         vm.warp(sixHoursLater);
 
         // update the outbound limit to 5 tokens
@@ -745,7 +746,7 @@ contract TestManager is Test, IManagerEvents {
         vm.stopPrank();
 
         // change block timestamp to be 6 hours later
-        uint256 sixHoursLater = 21601;
+        uint256 sixHoursLater = initialBlockTimestamp + 6 hours;
         vm.warp(sixHoursLater);
 
         // update the outbound limit to 5 tokens
@@ -762,7 +763,7 @@ contract TestManager is Test, IManagerEvents {
         // remaining capacity after t1 - difference in limits + the amount that's refreshed (based on the old rps)
         assertEq(
             outboundLimitParams.currentCapacity,
-            (3 * 10 ** decimals) - (1 * 10 ** decimals) + oldRps * (sixHoursLater - 1)
+            (3 * 10 ** decimals) - (1 * 10 ** decimals) + oldRps * (6 hours)
         );
         assertEq(outboundLimitParams.ratePerSecond, lowerLimit / manager._rateLimitDuration());
     }
@@ -854,22 +855,23 @@ contract TestManager is Test, IManagerEvents {
         assertEq(qt.amount, transferAmount);
         assertEq(qt.recipientChain, chainId);
         assertEq(qt.recipient, toWormholeFormat(user_B));
-        assertEq(qt.txTimestamp, 1);
+        assertEq(qt.txTimestamp, initialBlockTimestamp);
 
         // assert that the contract also locked funds from the user
         assertEq(token.balanceOf(address(user_A)), 0);
         assertEq(token.balanceOf(address(manager)), transferAmount);
 
-        // change block time to (duration - 1) seconds later
-        vm.warp(manager._rateLimitDuration());
+        // elapse rate limit duration - 1
+        uint256 durationElapsedTime = initialBlockTimestamp + manager._rateLimitDuration();
+        vm.warp(durationElapsedTime - 1);
 
         // assert that transfer still can't be completed
         bytes4 stillQueuedSelector = bytes4(keccak256("QueuedTransferStillQueued(uint64,uint256)"));
-        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, 1));
+        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, initialBlockTimestamp));
         manager.completeOutboundQueuedTransfer(0);
 
         // now complete transfer
-        vm.warp(manager._rateLimitDuration() + 1);
+        vm.warp(durationElapsedTime);
         uint64 seq = manager.completeOutboundQueuedTransfer(0);
         assertEq(seq, 0);
 
@@ -930,22 +932,23 @@ contract TestManager is Test, IManagerEvents {
         assertEq(manager.nextInboundQueueSequence(), 1);
         IManager.InboundQueuedTransfer memory qt = manager.getInboundQueuedTransfer(0);
         assertEq(qt.amount, 50 * 10 ** (decimals - 8));
-        assertEq(qt.txTimestamp, 1);
+        assertEq(qt.txTimestamp, initialBlockTimestamp);
         assertEq(qt.recipient, user_B);
 
         // assert that the user doesn't have funds yet
         assertEq(token.balanceOf(address(user_B)), 0);
 
         // change block time to (duration - 1) seconds later
-        vm.warp(manager._rateLimitDuration());
+        uint256 durationElapsedTime = initialBlockTimestamp + manager._rateLimitDuration();
+        vm.warp(durationElapsedTime - 1);
 
         // assert that transfer still can't be completed
         bytes4 stillQueuedSelector = bytes4(keccak256("QueuedTransferStillQueued(uint64,uint256)"));
-        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, 1));
+        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, initialBlockTimestamp));
         manager.completeInboundQueuedTransfer(0);
 
         // now complete transfer
-        vm.warp(manager._rateLimitDuration() + 1);
+        vm.warp(durationElapsedTime);
         manager.completeInboundQueuedTransfer(0);
 
         // assert transfer no longer in queue
