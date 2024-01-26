@@ -202,7 +202,7 @@ abstract contract EndpointRegistry {
     /// @dev Check that the endpoint manager is in a valid state.
     /// Checking these invariants is somewhat costly, but we only need to do it
     /// when modifying the endpoints, which happens infrequently.
-    function _checkEndpointsInvariants() private view {
+    function _checkEndpointsInvariants() internal view {
         // TODO: add custom errors for each invariant
         _NumRegisteredEndpoints storage _numRegisteredEndpoints =
             _getNumRegisteredEndpointsStorage();

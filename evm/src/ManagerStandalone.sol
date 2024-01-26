@@ -5,8 +5,9 @@ import "./interfaces/IManagerStandalone.sol";
 import "./interfaces/IEndpointStandalone.sol";
 import "./Manager.sol";
 import "./EndpointRegistry.sol";
+import "./libraries/Implementation.sol";
 
-contract ManagerStandalone is IManagerStandalone, Manager {
+contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
     constructor(
         address token,
         Mode mode,
@@ -14,6 +15,22 @@ contract ManagerStandalone is IManagerStandalone, Manager {
         uint256 rateLimitDuration
     ) Manager(token, mode, chainId, rateLimitDuration) {
         _checkThresholdInvariants();
+    }
+
+    function _initialize() internal override {
+        __Manager_init();
+        _checkThresholdInvariants();
+        _checkEndpointsInvariants();
+    }
+
+    function _migrate() internal override {
+        // TODO: document (migration code)
+        _checkThresholdInvariants();
+        _checkEndpointsInvariants();
+    }
+
+    function upgrade(address newImplementation) external onlyOwner {
+        _upgrade(newImplementation);
     }
 
     struct _Threshold {

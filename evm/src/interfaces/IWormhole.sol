@@ -3,6 +3,7 @@
 
 pragma solidity ^0.8.0;
 
+// TODO: just pull in from the sdk?
 interface IWormhole {
     struct GuardianSet {
         address[] keys;
