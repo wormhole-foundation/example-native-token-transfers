@@ -18,6 +18,10 @@ abstract contract EndpointAndManager is Endpoint, Manager {
         assert(index == ENDPOINT_INDEX);
     }
 
+    function __EndpointAndManager_init() internal onlyInitializing {
+        __Manager_init();
+    }
+
     function quoteDeliveryPrice(uint16 recipientChain) public view override returns (uint256) {
         return _quoteDeliveryPrice(recipientChain);
     }
@@ -39,7 +43,7 @@ abstract contract EndpointAndManager is Endpoint, Manager {
 
     // override this function to avoid a storage lookup. The endpoint is always enabled
     function _getEnabledEndpointsBitmap() internal pure override returns (uint64) {
-        return 0x1;
+        return uint64(1 << ENDPOINT_INDEX);
     }
 
     function setSibling(
