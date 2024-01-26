@@ -12,6 +12,8 @@ library EndpointStructs {
     ///     - chainId - 2 bytes
     ///     - sequence - 8 bytes
     ///     - msgType - 1 byte
+    ///     - senderLength - 2 bytes
+    ///     - sender - `senderLength` bytes
     ///     - payloadLength - 2 bytes
     ///     - payload - `payloadLength` bytes
     struct ManagerMessage {
@@ -21,6 +23,8 @@ library EndpointStructs {
         uint64 sequence;
         /// @notice type of the message, which determines how the payload should be decoded.
         uint8 msgType;
+        /// @notice original message sender address.
+        bytes sender;
         /// @notice payload that corresponds to the type.
         bytes payload;
     }
@@ -34,11 +38,17 @@ library EndpointStructs {
         pure
         returns (bytes memory encoded)
     {
+        if (m.sender.length > type(uint16).max) {
+            revert PayloadTooLong(m.sender.length);
+        }
+        uint16 senderLength = uint16(m.sender.length);
         if (m.payload.length > type(uint16).max) {
             revert PayloadTooLong(m.payload.length);
         }
         uint16 payloadLength = uint16(m.payload.length);
-        return abi.encodePacked(m.chainId, m.sequence, m.msgType, payloadLength, m.payload);
+        return abi.encodePacked(
+            m.chainId, m.sequence, m.msgType, senderLength, m.sender, payloadLength, m.payload
+        );
     }
 
     /*
@@ -55,6 +65,9 @@ library EndpointStructs {
         (managerMessage.chainId, offset) = encoded.asUint16Unchecked(offset);
         (managerMessage.sequence, offset) = encoded.asUint64Unchecked(offset);
         (managerMessage.msgType, offset) = encoded.asUint8Unchecked(offset);
+        uint256 senderLength;
+        (senderLength, offset) = encoded.asUint16Unchecked(offset);
+        (managerMessage.sender, offset) = encoded.sliceUnchecked(offset, senderLength);
         uint256 payloadLength;
         (payloadLength, offset) = encoded.asUint16Unchecked(offset);
         (managerMessage.payload, offset) = encoded.sliceUnchecked(offset, payloadLength);
