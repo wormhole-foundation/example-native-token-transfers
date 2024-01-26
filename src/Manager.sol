@@ -502,8 +502,11 @@ abstract contract Manager is
 
         // construct the ManagerMessage payload
         uint64 sequence = _useMessageSequence();
+        bytes memory senderBytes = abi.encodePacked(msg.sender);
         bytes memory encodedManagerPayload = EndpointStructs.encodeManagerMessage(
-            EndpointStructs.ManagerMessage(_chainId, sequence, 1, encodedTransferPayload)
+            EndpointStructs.ManagerMessage(
+                _chainId, sequence, 1, senderBytes, encodedTransferPayload
+            )
         );
 
         // send the message
