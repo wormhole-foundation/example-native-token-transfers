@@ -143,6 +143,8 @@ abstract contract Manager is
         }
     }
 
+    // TODO: should we store this in storage? otherwise they can change during
+    // each upgrade
     address immutable _token;
     Mode immutable _mode;
     uint16 immutable _chainId;
@@ -161,9 +163,10 @@ abstract contract Manager is
         _rateLimitDuration = rateLimitDuration;
     }
 
-    function initialize() public initializer {
+    function __Manager_init() internal onlyInitializing {
         // TODO: shouldn't be msg.sender but a separate (contract) address that's passed in the initializer
         __Ownable_init(msg.sender);
+        // TODO: check if it's safe to not initialise reentrancy guard
         __ReentrancyGuard_init();
     }
 
