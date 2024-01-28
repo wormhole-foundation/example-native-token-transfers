@@ -319,6 +319,7 @@ contract TestManager is Test, IManagerEvents {
             0,
             sequence,
             1,
+            abi.encodePacked(address(manager)),
             abi.encodePacked(from),
             EndpointStructs.encodeNativeTokenTransfer(
                 EndpointStructs.NativeTokenTransfer({
@@ -347,6 +348,7 @@ contract TestManager is Test, IManagerEvents {
             0,
             0,
             1,
+            abi.encodePacked(address(manager)),
             abi.encodePacked(address(0)),
             abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
         );
@@ -364,6 +366,7 @@ contract TestManager is Test, IManagerEvents {
             0,
             0,
             1,
+            abi.encodePacked(address(manager)),
             abi.encodePacked(address(0)),
             abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
         );
@@ -384,6 +387,7 @@ contract TestManager is Test, IManagerEvents {
             0,
             0,
             1,
+            abi.encodePacked(address(manager)),
             abi.encodePacked(address(0)),
             abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
         );
@@ -946,6 +950,7 @@ contract TestManager is Test, IManagerEvents {
             0,
             0,
             1,
+            abi.encodePacked(address(manager)),
             abi.encodePacked(user_A),
             EndpointStructs.encodeNativeTokenTransfer(
                 EndpointStructs.NativeTokenTransfer({
