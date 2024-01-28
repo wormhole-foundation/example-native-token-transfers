@@ -29,6 +29,7 @@ abstract contract WormholeEndpoint is Endpoint {
     error InvalidSibling(uint16 chainId, bytes32 siblingAddress);
     error TransferAlreadyCompleted(bytes32 vaaHash);
     error InvalidSiblingZeroAddress();
+    error InvalidSiblingChainIdZero();
 
     constructor(address wormholeCoreBridge, address wormholeRelayerAddr) {
         _wormholeCoreBridge = wormholeCoreBridge;
@@ -131,6 +132,9 @@ abstract contract WormholeEndpoint is Endpoint {
     }
 
     function _setSibling(uint16 chainId, bytes32 siblingContract) internal {
+        if (chainId == 0) {
+            revert InvalidSiblingChainIdZero();
+        }
         if (siblingContract == bytes32(0)) {
             revert InvalidSiblingZeroAddress();
         }
