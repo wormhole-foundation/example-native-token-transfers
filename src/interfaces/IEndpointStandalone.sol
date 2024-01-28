@@ -7,4 +7,8 @@ interface IEndpointStandalone {
     function quoteDeliveryPrice(uint16 recipientChain) external view returns (uint256);
 
     function sendMessage(uint16 recipientChain, bytes memory payload) external payable;
+
+    function getEndpointManager() external returns (address);
+
+    function upgrade(address newImplementation) external;
 }

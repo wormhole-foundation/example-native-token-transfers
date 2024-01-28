@@ -33,6 +33,10 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         _upgrade(newImplementation);
     }
 
+    function upgradeEndpoint(address endpoint, address newImplementation) external onlyOwner {
+        IEndpointStandalone(endpoint).upgrade(newImplementation);
+    }
+
     struct _Threshold {
         uint8 num;
     }
