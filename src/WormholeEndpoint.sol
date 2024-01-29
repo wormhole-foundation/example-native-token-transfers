@@ -18,6 +18,9 @@ abstract contract WormholeEndpoint is Endpoint {
     // Mapping of consumed VAAs
     mapping(bytes32 => bool) _consumedVAAs;
 
+    // Mapping of siblings on other chains
+    mapping(uint16 => bytes32) _siblings;
+
     event ReceivedMessage(
         bytes32 digest, uint16 emitterChainId, bytes32 emitterAddress, uint64 sequence
     );
@@ -25,6 +28,8 @@ abstract contract WormholeEndpoint is Endpoint {
     error InvalidVaa(string reason);
     error InvalidSibling(uint16 chainId, bytes32 siblingAddress);
     error TransferAlreadyCompleted(bytes32 vaaHash);
+    error InvalidSiblingZeroAddress();
+    error InvalidSiblingChainIdZero();
 
     constructor(address wormholeCoreBridge, address wormholeRelayerAddr) {
         _wormholeCoreBridge = wormholeCoreBridge;
@@ -63,7 +68,15 @@ abstract contract WormholeEndpoint is Endpoint {
         }
     }
 
-    function _verifyMessage(bytes memory encodedMessage) internal override returns (bytes memory) {
+    /// @notice Receive an attested message from the verification layer
+    ///         This function should verify the encodedVm and then deliver the attestation to the endpoint manager contract.
+    function _receiveMessage(bytes memory encodedMessage) internal {
+        bytes memory payload = _verifyMessage(encodedMessage);
+        EndpointStructs.ManagerMessage memory parsed = EndpointStructs.parseManagerMessage(payload);
+        _deliverToManager(parsed);
+    }
+
+    function _verifyMessage(bytes memory encodedMessage) internal returns (bytes memory) {
         // verify VAA against Wormhole Core Bridge contract
         (IWormhole.VM memory vm, bool valid, string memory reason) =
             wormhole().parseAndVerifyVM(encodedMessage);
@@ -100,7 +113,7 @@ abstract contract WormholeEndpoint is Endpoint {
 
     function _verifyBridgeVM(IWormhole.VM memory vm) internal view returns (bool) {
         checkFork(_wormholeEndpoint_evmChainId);
-        return super.getSibling(vm.emitterChainId) == vm.emitterAddress;
+        return getSibling(vm.emitterChainId) == vm.emitterAddress;
     }
 
     function isVAAConsumed(bytes32 hash) public view returns (bool) {
@@ -109,5 +122,22 @@ abstract contract WormholeEndpoint is Endpoint {
 
     function _setVAAConsumed(bytes32 hash) internal {
         _consumedVAAs[hash] = true;
+    }
+
+    /// @notice Get the corresponding Endpoint contract on other chains that have been registered via governance.
+    ///         This design should be extendable to other chains, so each Endpoint would be potentially concerned with Endpoints on multiple other chains
+    ///         Note that siblings are registered under wormhole chainID values
+    function getSibling(uint16 chainId) public view returns (bytes32) {
+        return _siblings[chainId];
+    }
+
+    function _setSibling(uint16 chainId, bytes32 siblingContract) internal {
+        if (chainId == 0) {
+            revert InvalidSiblingChainIdZero();
+        }
+        if (siblingContract == bytes32(0)) {
+            revert InvalidSiblingZeroAddress();
+        }
+        _siblings[chainId] = siblingContract;
     }
 }

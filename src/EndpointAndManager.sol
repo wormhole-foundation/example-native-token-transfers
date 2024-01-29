@@ -45,11 +45,4 @@ abstract contract EndpointAndManager is Endpoint, Manager {
     function _getEnabledEndpointsBitmap() internal pure override returns (uint64) {
         return uint64(1 << ENDPOINT_INDEX);
     }
-
-    function setSibling(
-        uint16 siblingChainId,
-        bytes32 siblingContract
-    ) external override onlyOwner {
-        _setSibling(siblingChainId, siblingContract);
-    }
 }
