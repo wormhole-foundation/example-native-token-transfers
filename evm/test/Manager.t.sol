@@ -37,7 +37,11 @@ contract ManagerContract is ManagerStandalone {
     }
 }
 
-contract DummyEndpoint is EndpointStandalone {
+interface IEndpointReceiver {
+    function receiveMessage(bytes memory encodedMessage) external;
+}
+
+contract DummyEndpoint is EndpointStandalone, IEndpointReceiver {
     event MessagePublished(uint16 recipientChain, bytes payload);
 
     constructor(address manager) EndpointStandalone(manager) {}
@@ -55,13 +59,10 @@ contract DummyEndpoint is EndpointStandalone {
         emit MessagePublished(recipientChain, payload);
     }
 
-    function _verifyMessage(bytes memory encodedMessage)
-        internal
-        pure
-        override
-        returns (bytes memory)
-    {
-        return encodedMessage;
+    function receiveMessage(bytes memory encodedMessage) external {
+        EndpointStructs.ManagerMessage memory parsed =
+            EndpointStructs.parseManagerMessage(encodedMessage);
+        _deliverToManager(parsed);
     }
 
     function parseMessageFromLogs(Vm.Log[] memory logs)
@@ -71,7 +72,7 @@ contract DummyEndpoint is EndpointStandalone {
     {}
 }
 
-contract EndpointAndManagerContract is EndpointAndManager, Implementation {
+contract EndpointAndManagerContract is EndpointAndManager, Implementation, IEndpointReceiver {
     constructor(
         address token,
         Mode mode,
@@ -98,13 +99,10 @@ contract EndpointAndManagerContract is EndpointAndManager, Implementation {
         // do nothing
     }
 
-    function _verifyMessage(bytes memory encodedMessage)
-        internal
-        pure
-        override
-        returns (bytes memory)
-    {
-        return encodedMessage;
+    function receiveMessage(bytes memory encodedMessage) external {
+        EndpointStructs.ManagerMessage memory parsed =
+            EndpointStructs.parseManagerMessage(encodedMessage);
+        _deliverToManager(parsed);
     }
 
     function upgrade(address newImplementation) external onlyOwner {
@@ -293,7 +291,7 @@ contract TestManager is Test, IManagerEvents {
         address from,
         address to,
         uint64 sequence,
-        Endpoint[] memory endpoints
+        IEndpointReceiver[] memory endpoints
     ) internal returns (EndpointStructs.ManagerMessage memory) {
         DummyToken token = DummyToken(manager.token());
 
@@ -335,7 +333,7 @@ contract TestManager is Test, IManagerEvents {
         bytes memory message = EndpointStructs.encodeManagerMessage(m);
 
         for (uint256 i; i < endpoints.length; i++) {
-            Endpoint e = endpoints[i];
+            IEndpointReceiver e = endpoints[i];
             e.receiveMessage(message);
         }
 
@@ -405,7 +403,7 @@ contract TestManager is Test, IManagerEvents {
         (DummyEndpoint e1,) = setup_endpoints();
         manager.setThreshold(2);
 
-        Endpoint[] memory endpoints = new Endpoint[](1);
+        IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](1);
         endpoints[0] = e1;
 
         EndpointStructs.ManagerMessage memory m =
@@ -457,7 +455,7 @@ contract TestManager is Test, IManagerEvents {
 
         uint256 decimals = token.decimals();
 
-        Endpoint[] memory endpoints = new Endpoint[](2);
+        IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
         endpoints[0] = e1;
         endpoints[1] = e2;
 
@@ -1001,9 +999,9 @@ contract TestManager is Test, IManagerEvents {
         // Step 1
         // (contract is deployed by setUp())
 
-        (Endpoint e1, Endpoint e2) = setup_endpoints();
+        (IEndpointReceiver e1, IEndpointReceiver e2) = setup_endpoints();
 
-        Endpoint[] memory endpoints = new Endpoint[](2);
+        IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
         endpoints[0] = e1;
         endpoints[1] = e2;
 
@@ -1019,8 +1017,8 @@ contract TestManager is Test, IManagerEvents {
             new EndpointAndManagerContract(manager.token(), Manager.Mode.LOCKING, chainId, 1 days);
         manager.upgrade(address(endpointAndManagerImpl));
 
-        endpoints = new Endpoint[](1);
-        endpoints[0] = Endpoint(address(manager));
+        endpoints = new IEndpointReceiver[](1);
+        endpoints[0] = IEndpointReceiver(address(manager));
 
         // replay protection
         vm.expectRevert(
@@ -1028,7 +1026,7 @@ contract TestManager is Test, IManagerEvents {
                 "MessageAlreadyExecuted(bytes32)", EndpointStructs.managerMessageDigest(m)
             )
         );
-        Endpoint(address(manager)).receiveMessage(message);
+        IEndpointReceiver(address(manager)).receiveMessage(message);
 
         _attestEndpointsHelper(user_A, user_B, 1, endpoints);
         EndpointStructs.encodeManagerMessage(m);
@@ -1041,7 +1039,7 @@ contract TestManager is Test, IManagerEvents {
             new ManagerStandalone(manager.token(), Manager.Mode.LOCKING, chainId, 1 days);
         manager.upgrade(address(managerImpl));
 
-        endpoints = new Endpoint[](2);
+        endpoints = new IEndpointReceiver[](2);
         endpoints[0] = e1;
         // attest with e1 twice (just two make sure it's still not accepted)
         endpoints[1] = e1;
@@ -1051,7 +1049,7 @@ contract TestManager is Test, IManagerEvents {
         // balance is the same as before
         assertEq(token.balanceOf(address(user_B)), 100 * 10 ** (decimals - 8));
 
-        endpoints = new Endpoint[](1);
+        endpoints = new IEndpointReceiver[](1);
         endpoints[0] = e2;
 
         m = _attestEndpointsHelper(user_A, user_B, 2, endpoints);

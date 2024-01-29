@@ -51,8 +51,6 @@ interface IManager {
 
     function quoteDeliveryPrice(uint16 recipientChain) external view returns (uint256);
 
-    function setSibling(uint16 siblingChainId, bytes32 siblingContract) external;
-
     function setOutboundLimit(uint256 limit) external;
 
     function getOutboundLimitParams() external view returns (RateLimitParams memory);
