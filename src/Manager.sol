@@ -447,6 +447,9 @@ abstract contract Manager is
 
         // now check rate limits
         bool isAmountRateLimited = _isOutboundAmountRateLimited(amount);
+        if (!shouldQueue && isAmountRateLimited) {
+            revert NotEnoughCapacity(getCurrentOutboundCapacity(), amount);
+        }
         if (shouldQueue && isAmountRateLimited) {
             // queue up and return
             uint64 queueSequence = _enqueueOutboundTransfer(amount, recipientChain, recipient);
