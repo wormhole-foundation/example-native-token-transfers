@@ -176,9 +176,6 @@ abstract contract Manager is
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
     function sendMessage(uint16 recipientChain, bytes memory payload) internal virtual;
 
-    /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
-    function setSibling(uint16 siblingChainId, bytes32 siblingContract) external virtual;
-
     // TODO: do we want additional information (like chain etc)
     function isMessageApproved(bytes32 digest) public view virtual returns (bool);
 

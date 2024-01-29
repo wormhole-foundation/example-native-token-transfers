@@ -37,8 +37,4 @@ abstract contract EndpointStandalone is IEndpointStandalone, Endpoint {
         // forward the VAA payload to the endpoint manager contract
         IManagerStandalone(_manager).attestationReceived(payload);
     }
-
-    function setSibling(uint16 chainId, bytes32 siblingContract) external onlyManager {
-        _setSibling(chainId, siblingContract);
-    }
 }
