@@ -314,9 +314,6 @@ abstract contract Manager is
         uint256 capacity,
         RateLimitParams storage rateLimitParams
     ) internal {
-        if (capacity < amount) {
-            revert NotEnoughCapacity(capacity, amount);
-        }
         rateLimitParams.lastTxTimestamp = block.timestamp;
         rateLimitParams.currentCapacity = capacity - amount;
     }
