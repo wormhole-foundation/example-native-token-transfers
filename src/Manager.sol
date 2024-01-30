@@ -511,7 +511,7 @@ abstract contract Manager is
         bytes memory senderBytes = abi.encodePacked(msg.sender);
         bytes memory encodedManagerPayload = EndpointStructs.encodeManagerMessage(
             EndpointStructs.ManagerMessage(
-                _chainId, sequence, 1, sourceManagerBytes, senderBytes, encodedTransferPayload
+                _chainId, sequence, sourceManagerBytes, senderBytes, 1, encodedTransferPayload
             )
         );
 

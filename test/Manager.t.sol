@@ -321,9 +321,9 @@ contract TestManager is Test, IManagerEvents {
         EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
             SENDING_CHAIN_ID,
             sequence,
-            1,
             abi.encodePacked(address(manager)),
             abi.encodePacked(from),
+            1,
             EndpointStructs.encodeNativeTokenTransfer(
                 EndpointStructs.NativeTokenTransfer({
                     amount: 50,
@@ -350,9 +350,9 @@ contract TestManager is Test, IManagerEvents {
         EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
             0,
             0,
-            1,
             abi.encodePacked(address(manager)),
             abi.encodePacked(address(0)),
+            1,
             abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
         );
         bytes memory message = EndpointStructs.encodeManagerMessage(m);
@@ -368,9 +368,9 @@ contract TestManager is Test, IManagerEvents {
         EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
             0,
             0,
-            1,
             abi.encodePacked(address(manager)),
             abi.encodePacked(address(0)),
+            1,
             abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
         );
 
@@ -389,9 +389,9 @@ contract TestManager is Test, IManagerEvents {
         EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
             0,
             0,
-            1,
             abi.encodePacked(address(manager)),
             abi.encodePacked(address(0)),
+            1,
             abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
         );
 
