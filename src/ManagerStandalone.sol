@@ -97,7 +97,10 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         return totalPriceQuote;
     }
 
-    function sendMessage(uint16 recipientChain, bytes memory payload) internal override {
+    function _sendMessageToEndpoint(
+        uint16 recipientChain,
+        bytes memory payload
+    ) internal override {
         address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
         // call into endpoint contracts to send the message
         for (uint256 i = 0; i < _enabledEndpoints.length; i++) {

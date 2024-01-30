@@ -174,7 +174,7 @@ abstract contract Manager is
     function quoteDeliveryPrice(uint16 recipientChain) public view virtual returns (uint256);
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
-    function sendMessage(uint16 recipientChain, bytes memory payload) internal virtual;
+    function _sendMessageToEndpoint(uint16 recipientChain, bytes memory payload) internal virtual;
 
     // TODO: do we want additional information (like chain etc)
     function isMessageApproved(bytes32 digest) public view virtual returns (bool);
@@ -314,9 +314,6 @@ abstract contract Manager is
         uint256 capacity,
         RateLimitParams storage rateLimitParams
     ) internal {
-        if (capacity < amount) {
-            revert NotEnoughOutboundCapacity(capacity, amount);
-        }
         rateLimitParams.lastTxTimestamp = block.timestamp;
         rateLimitParams.currentCapacity = capacity - amount;
     }
@@ -388,11 +385,7 @@ abstract contract Manager is
 
         // run it through the transfer logic and skip the rate limit
         return _transfer(
-            queuedTransfer.amount,
-            queuedTransfer.recipientChain,
-            queuedTransfer.recipient,
-            false,
-            false
+            queuedTransfer.amount, queuedTransfer.recipientChain, queuedTransfer.recipient
         );
     }
 
@@ -405,15 +398,76 @@ abstract contract Manager is
         bytes32 recipient,
         bool shouldQueue
     ) external payable nonReentrant returns (uint64 msgSequence) {
-        return _transfer(amount, recipientChain, recipient, true, shouldQueue);
+        // query tokens decimals
+        (, bytes memory queriedDecimals) = _token.staticcall(abi.encodeWithSignature("decimals()"));
+        uint8 decimals = abi.decode(queriedDecimals, (uint8));
+
+        // don't deposit dust that can not be bridged due to the decimal shift
+        uint256 newAmount = deNormalizeAmount(normalizeAmount(amount, decimals), decimals);
+        if (amount != newAmount) {
+            revert TransferAmountHasDust(amount, amount - newAmount);
+        }
+
+        if (amount == 0) {
+            revert ZeroAmount();
+        }
+
+        // Lock/burn tokens before checking rate limits
+        if (_mode == Mode.LOCKING) {
+            // use transferFrom to pull tokens from the user and lock them
+            // query own token balance before transfer
+            uint256 balanceBefore = getTokenBalanceOf(_token, address(this));
+
+            // transfer tokens
+            IERC20(_token).safeTransferFrom(msg.sender, address(this), amount);
+
+            // query own token balance after transfer
+            uint256 balanceAfter = getTokenBalanceOf(_token, address(this));
+
+            // correct amount for potential transfer fees
+            amount = balanceAfter - balanceBefore;
+        } else if (_mode == Mode.BURNING) {
+            // query sender's token balance before transfer
+            uint256 balanceBefore = getTokenBalanceOf(_token, msg.sender);
+
+            // call the token's burn function to burn the sender's token
+            ERC20Burnable(_token).burnFrom(msg.sender, amount);
+
+            // query sender's token balance after transfer
+            uint256 balanceAfter = getTokenBalanceOf(_token, msg.sender);
+
+            // correct amount for potential burn fees
+            amount = balanceAfter - balanceBefore;
+        } else {
+            revert InvalidMode(uint8(_mode));
+        }
+
+        // now check rate limits
+        bool isAmountRateLimited = _isOutboundAmountRateLimited(amount);
+        if (!shouldQueue && isAmountRateLimited) {
+            revert NotEnoughCapacity(getCurrentOutboundCapacity(), amount);
+        }
+        if (shouldQueue && isAmountRateLimited) {
+            // queue up and return
+            uint64 queueSequence = _enqueueOutboundTransfer(amount, recipientChain, recipient);
+
+            // refund the price quote back to sender
+            payable(msg.sender).transfer(msg.value);
+
+            // return the sequence in the queue
+            return queueSequence;
+        }
+
+        // otherwise, consume the outbound amount
+        _consumeOutboundAmount(amount);
+
+        return _transfer(amount, recipientChain, recipient);
     }
 
     function _transfer(
         uint256 amount,
         uint16 recipientChain,
-        bytes32 recipient,
-        bool shouldCheckRateLimit,
-        bool shouldQueue
+        bytes32 recipient
     ) internal returns (uint64 msgSequence) {
         // check up front that msg.value will cover the delivery price
         uint256 totalPriceQuote = quoteDeliveryPrice(recipientChain);
@@ -421,70 +475,15 @@ abstract contract Manager is
             revert DeliveryPaymentTooLow(totalPriceQuote, msg.value);
         }
 
-        // query tokens decimals
-        (, bytes memory queriedDecimals) = _token.staticcall(abi.encodeWithSignature("decimals()"));
-        uint8 decimals = abi.decode(queriedDecimals, (uint8));
-
-        // don't deposit dust that can not be bridged due to the decimal shift
-        amount = deNormalizeAmount(normalizeAmount(amount, decimals), decimals);
-
-        if (amount == 0) {
-            revert ZeroAmount();
-        }
-
-        if (shouldCheckRateLimit) {
-            // Lock/burn tokens before checking rate limits
-            if (_mode == Mode.LOCKING) {
-                // use transferFrom to pull tokens from the user and lock them
-                // query own token balance before transfer
-                uint256 balanceBefore = getTokenBalanceOf(_token, address(this));
-
-                // transfer tokens
-                IERC20(_token).safeTransferFrom(msg.sender, address(this), amount);
-
-                // query own token balance after transfer
-                uint256 balanceAfter = getTokenBalanceOf(_token, address(this));
-
-                // correct amount for potential transfer fees
-                amount = balanceAfter - balanceBefore;
-            } else if (_mode == Mode.BURNING) {
-                // query sender's token balance before transfer
-                uint256 balanceBefore = getTokenBalanceOf(_token, msg.sender);
-
-                // call the token's burn function to burn the sender's token
-                ERC20Burnable(_token).burnFrom(msg.sender, amount);
-
-                // query sender's token balance after transfer
-                uint256 balanceAfter = getTokenBalanceOf(_token, msg.sender);
-
-                // correct amount for potential burn fees
-                amount = balanceAfter - balanceBefore;
-            } else {
-                revert InvalidMode(uint8(_mode));
-            }
-
-            // now check rate limits
-            bool isAmountRateLimited = _isOutboundAmountRateLimited(amount);
-            if (shouldQueue && isAmountRateLimited) {
-                // queue up and return
-                uint64 queueSequence = _enqueueOutboundTransfer(amount, recipientChain, recipient);
-
-                // refund the price quote back to sender
-                payable(msg.sender).transfer(msg.value);
-
-                // return the sequence in the queue
-                return queueSequence;
-            }
-
-            // otherwise, consume the outbound amount
-            _consumeOutboundAmount(amount);
-        }
-
         // refund user extra excess value from msg.value
         uint256 excessValue = totalPriceQuote - msg.value;
         if (excessValue > 0) {
             payable(msg.sender).transfer(excessValue);
         }
+
+        // query tokens decimals
+        (, bytes memory queriedDecimals) = _token.staticcall(abi.encodeWithSignature("decimals()"));
+        uint8 decimals = abi.decode(queriedDecimals, (uint8));
 
         // normalize amount decimals
         uint256 normalizedAmount = normalizeAmount(amount, decimals);
@@ -507,7 +506,7 @@ abstract contract Manager is
         );
 
         // send the message
-        sendMessage(recipientChain, encodedManagerPayload);
+        _sendMessageToEndpoint(recipientChain, encodedManagerPayload);
 
         // return the sequence number
         return sequence;

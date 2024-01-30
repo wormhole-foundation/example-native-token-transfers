@@ -3,6 +3,7 @@ pragma solidity >=0.6.12 <0.9.0;
 
 interface IManager {
     error DeliveryPaymentTooLow(uint256 requiredPayment, uint256 providedPayment);
+    error TransferAmountHasDust(uint256 amount, uint256 dust);
     error MessageAttestationAlreadyReceived(bytes32 msgHash, address endpoint);
     error MessageAlreadyExecuted(bytes32 msgHash);
     error MessageNotApproved(bytes32 msgHash);
@@ -10,7 +11,7 @@ interface IManager {
     error InvalidTargetChain(uint16 targetChain, uint16 thisChain);
     error ZeroAmount();
     error InvalidAddressLength(uint256 length);
-    error NotEnoughOutboundCapacity(uint256 currentCapacity, uint256 amount);
+    error NotEnoughCapacity(uint256 currentCapacity, uint256 amount);
     error InvalidMode(uint8 mode);
     error QueuedTransferNotFound(uint64 queueSequence);
     error QueuedTransferStillQueued(uint64 queueSequence, uint256 transferTimestamp);
