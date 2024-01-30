@@ -125,6 +125,7 @@ contract DummyToken is ERC20 {
 contract TestManager is Test, IManagerEvents {
     ManagerStandalone manager;
     uint16 constant chainId = 7;
+    uint16 constant SENDING_CHAIN_ID = 1;
     uint256 constant DEVNET_GUARDIAN_PK =
         0xcfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0;
     WormholeSimulator guardian;
@@ -291,6 +292,7 @@ contract TestManager is Test, IManagerEvents {
         address from,
         address to,
         uint64 sequence,
+        uint256 inboundLimit,
         IEndpointReceiver[] memory endpoints
     ) internal returns (EndpointStructs.ManagerMessage memory) {
         DummyToken token = DummyToken(manager.token());
@@ -298,8 +300,9 @@ contract TestManager is Test, IManagerEvents {
         uint256 decimals = token.decimals();
 
         token.mintDummy(from, 5 * 10 ** decimals);
+        manager.setSibling(SENDING_CHAIN_ID, abi.encodePacked(address(manager)));
         manager.setOutboundLimit(type(uint256).max);
-        manager.setInboundLimit(type(uint256).max, 0);
+        manager.setInboundLimit(inboundLimit, SENDING_CHAIN_ID);
 
         uint256 from_balanceBefore = token.balanceOf(from);
         uint256 manager_balanceBefore = token.balanceOf(address(manager));
@@ -316,9 +319,10 @@ contract TestManager is Test, IManagerEvents {
         assertEq(token.balanceOf(address(manager)), manager_balanceBefore + 3 * 10 ** decimals);
 
         EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
-            0,
+            SENDING_CHAIN_ID,
             sequence,
             1,
+            abi.encodePacked(address(manager)),
             abi.encodePacked(from),
             EndpointStructs.encodeNativeTokenTransfer(
                 EndpointStructs.NativeTokenTransfer({
@@ -347,6 +351,7 @@ contract TestManager is Test, IManagerEvents {
             0,
             0,
             1,
+            abi.encodePacked(address(manager)),
             abi.encodePacked(address(0)),
             abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
         );
@@ -364,6 +369,7 @@ contract TestManager is Test, IManagerEvents {
             0,
             0,
             1,
+            abi.encodePacked(address(manager)),
             abi.encodePacked(address(0)),
             abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
         );
@@ -384,6 +390,7 @@ contract TestManager is Test, IManagerEvents {
             0,
             0,
             1,
+            abi.encodePacked(address(manager)),
             abi.encodePacked(address(0)),
             abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
         );
@@ -406,7 +413,7 @@ contract TestManager is Test, IManagerEvents {
         endpoints[0] = e1;
 
         EndpointStructs.ManagerMessage memory m =
-            _attestEndpointsHelper(address(0x123), address(0x456), 0, endpoints);
+            _attestEndpointsHelper(address(0x123), address(0x456), 0, type(uint256).max, endpoints);
 
         manager.removeEndpoint(address(e1));
 
@@ -459,7 +466,7 @@ contract TestManager is Test, IManagerEvents {
         endpoints[1] = e2;
 
         EndpointStructs.ManagerMessage memory m =
-            _attestEndpointsHelper(user_A, user_B, 0, endpoints);
+            _attestEndpointsHelper(user_A, user_B, 0, type(uint256).max, endpoints);
         bytes memory message = EndpointStructs.encodeManagerMessage(m);
 
         assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
@@ -577,7 +584,7 @@ contract TestManager is Test, IManagerEvents {
 
         token.mintDummy(from, 5 * 10 ** decimals);
         manager.setOutboundLimit(type(uint256).max);
-        manager.setInboundLimit(type(uint256).max, 0);
+        manager.setInboundLimit(type(uint256).max, SENDING_CHAIN_ID);
 
         vm.startPrank(from);
 
@@ -930,41 +937,18 @@ contract TestManager is Test, IManagerEvents {
 
         uint256 decimals = token.decimals();
 
-        token.mintDummy(address(user_A), 5 * 10 ** decimals);
-        manager.setOutboundLimit(type(uint256).max);
-        manager.setInboundLimit(5, 0);
+        IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](1);
+        endpoints[0] = e1;
 
-        vm.startPrank(user_A);
-
-        token.approve(address(manager), 3 * 10 ** decimals);
-        manager.transfer(3 * 10 ** decimals, chainId, toWormholeFormat(user_B), false);
-
-        assertEq(token.balanceOf(address(user_A)), 2 * 10 ** decimals);
-        assertEq(token.balanceOf(address(manager)), 3 * 10 ** decimals);
-
-        EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
-            0,
-            0,
-            1,
-            abi.encodePacked(user_A),
-            EndpointStructs.encodeNativeTokenTransfer(
-                EndpointStructs.NativeTokenTransfer({
-                    amount: 50,
-                    to: abi.encodePacked(user_B),
-                    toChain: chainId
-                })
-            )
-        );
-
+        EndpointStructs.ManagerMessage memory m =
+            _attestEndpointsHelper(user_A, user_B, 0, 5, endpoints);
         bytes memory message = EndpointStructs.encodeManagerMessage(m);
-
-        e1.receiveMessage(message);
 
         // no quorum yet
         assertEq(token.balanceOf(address(user_B)), 0);
 
         vm.expectEmit(address(manager));
-        emit InboundTransferQueued(0, 0);
+        emit InboundTransferQueued(0, SENDING_CHAIN_ID);
         e2.receiveMessage(message);
 
         // now we have quorum but it'll hit limit
@@ -1033,7 +1017,7 @@ contract TestManager is Test, IManagerEvents {
         endpoints[1] = e2;
 
         EndpointStructs.ManagerMessage memory m =
-            _attestEndpointsHelper(user_A, user_B, 0, endpoints);
+            _attestEndpointsHelper(user_A, user_B, 0, type(uint256).max, endpoints);
         bytes memory message = EndpointStructs.encodeManagerMessage(m);
 
         assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
@@ -1055,7 +1039,7 @@ contract TestManager is Test, IManagerEvents {
         );
         IEndpointReceiver(address(manager)).receiveMessage(message);
 
-        _attestEndpointsHelper(user_A, user_B, 1, endpoints);
+        _attestEndpointsHelper(user_A, user_B, 1, type(uint256).max, endpoints);
         EndpointStructs.encodeManagerMessage(m);
 
         assertEq(token.balanceOf(address(user_B)), 100 * 10 ** (decimals - 8));
@@ -1071,7 +1055,7 @@ contract TestManager is Test, IManagerEvents {
         // attest with e1 twice (just two make sure it's still not accepted)
         endpoints[1] = e1;
 
-        _attestEndpointsHelper(user_A, user_B, 2, endpoints);
+        _attestEndpointsHelper(user_A, user_B, 2, type(uint256).max, endpoints);
 
         // balance is the same as before
         assertEq(token.balanceOf(address(user_B)), 100 * 10 ** (decimals - 8));
@@ -1079,7 +1063,7 @@ contract TestManager is Test, IManagerEvents {
         endpoints = new IEndpointReceiver[](1);
         endpoints[0] = e2;
 
-        m = _attestEndpointsHelper(user_A, user_B, 2, endpoints);
+        m = _attestEndpointsHelper(user_A, user_B, 2, type(uint256).max, endpoints);
 
         assertEq(token.balanceOf(address(user_B)), 150 * 10 ** (decimals - 8));
     }
