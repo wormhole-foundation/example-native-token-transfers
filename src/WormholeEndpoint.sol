@@ -26,10 +26,10 @@ abstract contract WormholeEndpoint is Endpoint {
     );
 
     error InvalidVaa(string reason);
-    error InvalidSibling(uint16 chainId, bytes32 siblingAddress);
+    error InvalidWormholeSibling(uint16 chainId, bytes32 siblingAddress);
     error TransferAlreadyCompleted(bytes32 vaaHash);
-    error InvalidSiblingZeroAddress();
-    error InvalidSiblingChainIdZero();
+    error InvalidWormholeSiblingZeroAddress();
+    error InvalidWormholeSiblingChainIdZero();
 
     constructor(address wormholeCoreBridge, address wormholeRelayerAddr) {
         _wormholeCoreBridge = wormholeCoreBridge;
@@ -60,7 +60,7 @@ abstract contract WormholeEndpoint is Endpoint {
         } else {
             wormholeRelayer().sendPayloadToEvm{value: msg.value}(
                 recipientChain,
-                fromWormholeFormat(getSibling(recipientChain)),
+                fromWormholeFormat(getWormholeSibling(recipientChain)),
                 payload,
                 0,
                 _GAS_LIMIT
@@ -88,7 +88,7 @@ abstract contract WormholeEndpoint is Endpoint {
 
         // ensure that the message came from a registered sibling contract
         if (!_verifyBridgeVM(vm)) {
-            revert InvalidSibling(vm.emitterChainId, vm.emitterAddress);
+            revert InvalidWormholeSibling(vm.emitterChainId, vm.emitterAddress);
         }
 
         // save the VAA hash in storage to protect against replay attacks.
@@ -113,7 +113,7 @@ abstract contract WormholeEndpoint is Endpoint {
 
     function _verifyBridgeVM(IWormhole.VM memory vm) internal view returns (bool) {
         checkFork(_wormholeEndpoint_evmChainId);
-        return getSibling(vm.emitterChainId) == vm.emitterAddress;
+        return getWormholeSibling(vm.emitterChainId) == vm.emitterAddress;
     }
 
     function isVAAConsumed(bytes32 hash) public view returns (bool) {
@@ -127,16 +127,16 @@ abstract contract WormholeEndpoint is Endpoint {
     /// @notice Get the corresponding Endpoint contract on other chains that have been registered via governance.
     ///         This design should be extendable to other chains, so each Endpoint would be potentially concerned with Endpoints on multiple other chains
     ///         Note that siblings are registered under wormhole chainID values
-    function getSibling(uint16 chainId) public view returns (bytes32) {
+    function getWormholeSibling(uint16 chainId) public view returns (bytes32) {
         return _siblings[chainId];
     }
 
-    function _setSibling(uint16 chainId, bytes32 siblingContract) internal {
+    function _setWormholeSibling(uint16 chainId, bytes32 siblingContract) internal {
         if (chainId == 0) {
-            revert InvalidSiblingChainIdZero();
+            revert InvalidWormholeSiblingChainIdZero();
         }
         if (siblingContract == bytes32(0)) {
-            revert InvalidSiblingZeroAddress();
+            revert InvalidWormholeSiblingZeroAddress();
         }
         _siblings[chainId] = siblingContract;
     }

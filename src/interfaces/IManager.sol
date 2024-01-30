@@ -15,6 +15,10 @@ interface IManager {
     error InvalidMode(uint8 mode);
     error QueuedTransferNotFound(uint64 queueSequence);
     error QueuedTransferStillQueued(uint64 queueSequence, uint256 transferTimestamp);
+    error InvalidSibling(uint16 chainId, bytes siblingAddress);
+    error InvalidSiblingChainIdZero();
+    error InvalidSiblingZeroLength();
+    error InvalidSiblingZeroBytes();
 
     struct RateLimitParams {
         uint256 limit;

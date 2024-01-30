@@ -12,6 +12,8 @@ library EndpointStructs {
     ///     - chainId - 2 bytes
     ///     - sequence - 8 bytes
     ///     - msgType - 1 byte
+    ///     - sourceManagerLength - 2 bytes
+    ///     - sourceManager - `sourceManagerLength` bytes
     ///     - senderLength - 2 bytes
     ///     - sender - `senderLength` bytes
     ///     - payloadLength - 2 bytes
@@ -23,6 +25,8 @@ library EndpointStructs {
         uint64 sequence;
         /// @notice type of the message, which determines how the payload should be decoded.
         uint8 msgType;
+        /// @notice manager contract address that this message originates from.
+        bytes sourceManager;
         /// @notice original message sender address.
         bytes sender;
         /// @notice payload that corresponds to the type.
@@ -38,6 +42,10 @@ library EndpointStructs {
         pure
         returns (bytes memory encoded)
     {
+        if (m.sourceManager.length > type(uint16).max) {
+            revert PayloadTooLong(m.sourceManager.length);
+        }
+        uint16 sourceManagerLength = uint16(m.sourceManager.length);
         if (m.sender.length > type(uint16).max) {
             revert PayloadTooLong(m.sender.length);
         }
@@ -47,7 +55,15 @@ library EndpointStructs {
         }
         uint16 payloadLength = uint16(m.payload.length);
         return abi.encodePacked(
-            m.chainId, m.sequence, m.msgType, senderLength, m.sender, payloadLength, m.payload
+            m.chainId,
+            m.sequence,
+            m.msgType,
+            sourceManagerLength,
+            m.sourceManager,
+            senderLength,
+            m.sender,
+            payloadLength,
+            m.payload
         );
     }
 
@@ -65,6 +81,9 @@ library EndpointStructs {
         (managerMessage.chainId, offset) = encoded.asUint16Unchecked(offset);
         (managerMessage.sequence, offset) = encoded.asUint64Unchecked(offset);
         (managerMessage.msgType, offset) = encoded.asUint8Unchecked(offset);
+        uint256 sourceManagerLength;
+        (sourceManagerLength, offset) = encoded.asUint16Unchecked(offset);
+        (managerMessage.sourceManager, offset) = encoded.sliceUnchecked(offset, sourceManagerLength);
         uint256 senderLength;
         (senderLength, offset) = encoded.asUint16Unchecked(offset);
         (managerMessage.sender, offset) = encoded.sliceUnchecked(offset, senderLength);

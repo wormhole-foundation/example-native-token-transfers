@@ -54,6 +54,8 @@ abstract contract Manager is
     bytes32 public constant MESSAGE_SEQUENCE_SLOT =
         bytes32(uint256(keccak256("ntt.messageSequence")) - 1);
 
+    bytes32 public constant SIBLINGS_SLOT = bytes32(uint256(keccak256("ntt.siblings")) - 1);
+
     bytes32 public constant OUTBOUND_LIMIT_PARAMS_SLOT =
         bytes32(uint256(keccak256("ntt.outboundLimitParams")) - 1);
 
@@ -84,6 +86,13 @@ abstract contract Manager is
 
     function _getMessageSequenceStorage() internal pure returns (_Sequence storage $) {
         uint256 slot = uint256(MESSAGE_SEQUENCE_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
+    function _getSiblingsStorage() internal pure returns (mapping(uint16 => bytes) storage $) {
+        uint256 slot = uint256(SIBLINGS_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
         }
@@ -498,10 +507,11 @@ abstract contract Manager is
 
         // construct the ManagerMessage payload
         uint64 sequence = _useMessageSequence();
+        bytes memory sourceManagerBytes = abi.encodePacked(address(this));
         bytes memory senderBytes = abi.encodePacked(msg.sender);
         bytes memory encodedManagerPayload = EndpointStructs.encodeManagerMessage(
             EndpointStructs.ManagerMessage(
-                _chainId, sequence, 1, senderBytes, encodedTransferPayload
+                _chainId, sequence, 1, sourceManagerBytes, senderBytes, encodedTransferPayload
             )
         );
 
@@ -544,6 +554,11 @@ abstract contract Manager is
     function _executeMsg(EndpointStructs.ManagerMessage memory message) internal {
         // verify chain has not forked
         checkFork(_evmChainId);
+
+        // verify message came from a sibling manager contract
+        if (!_areBytesEqual(getSibling(message.chainId), message.sourceManager)) {
+            revert InvalidSibling(message.chainId, message.sourceManager);
+        }
 
         bytes32 digest = EndpointStructs.managerMessageDigest(message);
 
@@ -680,5 +695,45 @@ abstract contract Manager is
 
     function isMessageExecuted(bytes32 digest) public view returns (bool) {
         return _getMessageAttestationsStorage()[digest].executed;
+    }
+
+    function getSibling(uint16 chainId) public view returns (bytes memory) {
+        return _getSiblingsStorage()[chainId];
+    }
+
+    function setSibling(uint16 chainId, bytes memory siblingContract) external onlyOwner {
+        if (chainId == 0) {
+            revert InvalidSiblingChainIdZero();
+        }
+        if (siblingContract.length == 0) {
+            revert InvalidSiblingZeroLength();
+        }
+        if (_isAllZeros(siblingContract)) {
+            revert InvalidSiblingZeroBytes();
+        }
+        _getSiblingsStorage()[chainId] = siblingContract;
+    }
+
+    function _isAllZeros(bytes memory payload) internal pure returns (bool) {
+        for (uint256 i = 0; i < payload.length; i++) {
+            if (payload[i] != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function _areBytesEqual(bytes memory a, bytes memory b) internal pure returns (bool) {
+        if (a.length != b.length) {
+            return false;
+        }
+
+        for (uint256 i = 0; i < a.length; i++) {
+            if (a[i] != b[i]) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
