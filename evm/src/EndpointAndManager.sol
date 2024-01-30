@@ -26,7 +26,10 @@ abstract contract EndpointAndManager is Endpoint, Manager {
         return _quoteDeliveryPrice(recipientChain);
     }
 
-    function sendMessage(uint16 recipientChain, bytes memory payload) internal override {
+    function _sendMessageToEndpoint(
+        uint16 recipientChain,
+        bytes memory payload
+    ) internal override {
         return _sendMessage(recipientChain, payload);
     }
 
