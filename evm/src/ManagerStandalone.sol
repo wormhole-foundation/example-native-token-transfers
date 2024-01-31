@@ -29,8 +29,21 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         _checkEndpointsInvariants();
     }
 
+    /// @dev When we add new immutables, this function should be updated
+    function _checkImmutables() internal view override {
+        assert(this.token() == token);
+        assert(this.mode() == mode);
+        assert(this.chainId() == chainId);
+        assert(this.evmChainId() == evmChainId);
+        assert(this.rateLimitDuration() == rateLimitDuration);
+    }
+
     function upgrade(address newImplementation) external onlyOwner {
         _upgrade(newImplementation);
+    }
+
+    function upgradeEndpoint(address endpoint, address newImplementation) external onlyOwner {
+        IEndpointStandalone(endpoint).upgrade(newImplementation);
     }
 
     struct _Threshold {

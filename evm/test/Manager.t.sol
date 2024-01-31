@@ -72,19 +72,13 @@ contract DummyEndpoint is EndpointStandalone, IEndpointReceiver {
     {}
 }
 
-contract EndpointAndManagerContract is EndpointAndManager, Implementation, IEndpointReceiver {
+contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
     constructor(
         address token,
         Mode mode,
         uint16 chainId,
         uint256 rateLimitDuration
     ) EndpointAndManager(token, mode, chainId, rateLimitDuration) {}
-
-    function _migrate() internal override {}
-
-    function _initialize() internal override {
-        __EndpointAndManager_init();
-    }
 
     function _quoteDeliveryPrice(uint16 /* recipientChain */ )
         internal
@@ -103,10 +97,6 @@ contract EndpointAndManagerContract is EndpointAndManager, Implementation, IEndp
         EndpointStructs.ManagerMessage memory parsed =
             EndpointStructs.parseManagerMessage(encodedMessage);
         _deliverToManager(parsed);
-    }
-
-    function upgrade(address newImplementation) external onlyOwner {
-        _upgrade(newImplementation);
     }
 }
 
@@ -610,7 +600,7 @@ contract TestManager is Test, IManagerEvents {
 
         assertEq(outboundLimitParams.limit, limit);
         assertEq(outboundLimitParams.currentCapacity, limit);
-        assertEq(outboundLimitParams.ratePerSecond, limit / manager._rateLimitDuration());
+        assertEq(outboundLimitParams.ratePerSecond, limit / manager.rateLimitDuration());
         assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
     }
 
@@ -646,7 +636,7 @@ contract TestManager is Test, IManagerEvents {
         assertEq(outboundLimitParams.limit, higherLimit);
         assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
         assertEq(outboundLimitParams.currentCapacity, 2 * 10 ** decimals);
-        assertEq(outboundLimitParams.ratePerSecond, higherLimit / manager._rateLimitDuration());
+        assertEq(outboundLimitParams.ratePerSecond, higherLimit / manager.rateLimitDuration());
     }
 
     function test_outboundRateLimit_setLowerLimit() public {
@@ -681,7 +671,7 @@ contract TestManager is Test, IManagerEvents {
         assertEq(outboundLimitParams.limit, lowerLimit);
         assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
         assertEq(outboundLimitParams.currentCapacity, 0);
-        assertEq(outboundLimitParams.ratePerSecond, lowerLimit / manager._rateLimitDuration());
+        assertEq(outboundLimitParams.ratePerSecond, lowerLimit / manager.rateLimitDuration());
     }
 
     function test_outboundRateLimit_setHigherLimit_duration() public {
@@ -695,7 +685,7 @@ contract TestManager is Test, IManagerEvents {
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
         uint256 outboundLimit = 4 * 10 ** decimals;
-        uint256 oldRps = outboundLimit / manager._rateLimitDuration();
+        uint256 oldRps = outboundLimit / manager.rateLimitDuration();
         manager.setOutboundLimit(outboundLimit);
 
         vm.startPrank(user_A);
@@ -726,7 +716,7 @@ contract TestManager is Test, IManagerEvents {
             outboundLimitParams.currentCapacity,
             (1 * 10 ** decimals) + (1 * 10 ** decimals) + oldRps * (6 hours)
         );
-        assertEq(outboundLimitParams.ratePerSecond, higherLimit / manager._rateLimitDuration());
+        assertEq(outboundLimitParams.ratePerSecond, higherLimit / manager.rateLimitDuration());
     }
 
     function test_outboundRateLimit_setLowerLimit_durationCaseOne() public {
@@ -766,7 +756,7 @@ contract TestManager is Test, IManagerEvents {
         assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
         // capacity should be: 0
         assertEq(outboundLimitParams.currentCapacity, 0);
-        assertEq(outboundLimitParams.ratePerSecond, lowerLimit / manager._rateLimitDuration());
+        assertEq(outboundLimitParams.ratePerSecond, lowerLimit / manager.rateLimitDuration());
     }
 
     function test_outboundRateLimit_setLowerLimit_durationCaseTwo() public {
@@ -780,7 +770,7 @@ contract TestManager is Test, IManagerEvents {
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
         uint256 outboundLimit = 5 * 10 ** decimals;
-        uint256 oldRps = outboundLimit / manager._rateLimitDuration();
+        uint256 oldRps = outboundLimit / manager.rateLimitDuration();
         manager.setOutboundLimit(outboundLimit);
 
         vm.startPrank(user_A);
@@ -811,7 +801,7 @@ contract TestManager is Test, IManagerEvents {
             outboundLimitParams.currentCapacity,
             (3 * 10 ** decimals) - (1 * 10 ** decimals) + oldRps * (6 hours)
         );
-        assertEq(outboundLimitParams.ratePerSecond, lowerLimit / manager._rateLimitDuration());
+        assertEq(outboundLimitParams.ratePerSecond, lowerLimit / manager.rateLimitDuration());
     }
 
     function test_outboundRateLimit_singleHit() public {
@@ -872,8 +862,8 @@ contract TestManager is Test, IManagerEvents {
 
     // make a transfer with shouldQueue == true
     // check that it hits rate limit and gets inserted into the queue
-    // test that it remains in queue after < _rateLimitDuration
-    // test that it exits queue after >= _rateLimitDuration
+    // test that it remains in queue after < rateLimitDuration
+    // test that it exits queue after >= rateLimitDuration
     // test that it's removed from queue and can't be replayed
     function test_outboundRateLimit_queue() public {
         address user_A = address(0x123);
@@ -908,7 +898,7 @@ contract TestManager is Test, IManagerEvents {
         assertEq(token.balanceOf(address(manager)), transferAmount);
 
         // elapse rate limit duration - 1
-        uint256 durationElapsedTime = initialBlockTimestamp + manager._rateLimitDuration();
+        uint256 durationElapsedTime = initialBlockTimestamp + manager.rateLimitDuration();
         vm.warp(durationElapsedTime - 1);
 
         // assert that transfer still can't be completed
@@ -962,7 +952,7 @@ contract TestManager is Test, IManagerEvents {
         assertEq(token.balanceOf(address(user_B)), 0);
 
         // change block time to (duration - 1) seconds later
-        uint256 durationElapsedTime = initialBlockTimestamp + manager._rateLimitDuration();
+        uint256 durationElapsedTime = initialBlockTimestamp + manager.rateLimitDuration();
         vm.warp(durationElapsedTime - 1);
 
         // assert that transfer still can't be completed

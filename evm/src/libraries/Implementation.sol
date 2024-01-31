@@ -25,14 +25,28 @@ abstract contract Implementation is Initializable, ERC1967Upgrade {
         _;
     }
 
-    bytes32 public constant MIGRATING_SLOT = bytes32(uint256(keccak256("ntt.migrating")) - 1);
-
     struct _Migrating {
         bool isMigrating;
     }
 
+    struct _Bool {
+        bool value;
+    }
+
+    bytes32 public constant MIGRATING_SLOT = bytes32(uint256(keccak256("ntt.migrating")) - 1);
+
+    bytes32 public constant MIGRATES_IMMUTABLES_SLOT =
+        bytes32(uint256(keccak256("ntt.migratesImmutables")) - 1);
+
     function _getMigratingStorage() private pure returns (_Migrating storage $) {
         uint256 slot = uint256(MIGRATING_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
+    function _getMigratesImmutablesStorage() internal pure returns (_Bool storage $) {
+        uint256 slot = uint256(MIGRATES_IMMUTABLES_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
         }
@@ -61,6 +75,8 @@ abstract contract Implementation is Initializable, ERC1967Upgrade {
 
     function _initialize() internal virtual;
 
+    function _checkImmutables() internal view virtual;
+
     function _upgrade(address newImplementation) internal {
         _checkDelegateCall();
         _upgradeTo(newImplementation);
@@ -73,7 +89,19 @@ abstract contract Implementation is Initializable, ERC1967Upgrade {
         _migrating.isMigrating = true;
 
         this.migrate();
+        if (!this.getMigratesImmutables()) {
+            _checkImmutables();
+        }
+        _setMigratesImmutables(false);
 
         _migrating.isMigrating = false;
+    }
+
+    function getMigratesImmutables() public view returns (bool) {
+        return _getMigratesImmutablesStorage().value;
+    }
+
+    function _setMigratesImmutables(bool value) internal {
+        _getMigratesImmutablesStorage().value = value;
     }
 }
