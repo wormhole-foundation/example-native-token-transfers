@@ -8,7 +8,5 @@ interface IEndpointStandalone {
 
     function sendMessage(uint16 recipientChain, bytes memory payload) external payable;
 
-    function getEndpointManager() external returns (address);
-
     function upgrade(address newImplementation) external;
 }

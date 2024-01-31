@@ -5,32 +5,26 @@ import "./Endpoint.sol";
 import "./interfaces/IManagerStandalone.sol";
 import "./interfaces/IEndpointStandalone.sol";
 import "./libraries/Implementation.sol";
+import "./libraries/ImmutableMigrator.sol";
 import "./libraries/external/ReentrancyGuardUpgradeable.sol";
 
 abstract contract EndpointStandalone is
     IEndpointStandalone,
     Endpoint,
     Implementation,
+    ImmutableMigrator,
     ReentrancyGuardUpgradeable
 {
-    bytes32 public constant ENDPOINT_MANAGER_SLOT =
-        bytes32(uint256(keccak256("endpoint.manager")) - 1);
-
     /// @dev updating bridgeManager requires a new Endpoint deployment.
     /// Projects should implement their own governance to remove the old Endpoint contract address and then add the new one.
-    function _getEndpointManagerStorage() internal pure returns (_Address storage $) {
-        uint256 slot = uint256(ENDPOINT_MANAGER_SLOT);
-        assembly ("memory-safe") {
-            $.slot := slot
-        }
-    }
+    address public immutable manager;
 
-    constructor(address manager) {
-        _getEndpointManagerStorage().addr = manager;
+    constructor(address _manager) {
+        manager = _manager;
     }
 
     modifier onlyManager() {
-        if (msg.sender != getEndpointManager()) {
+        if (msg.sender != manager) {
             revert CallerNotManager(msg.sender);
         }
         _;
@@ -45,6 +39,10 @@ abstract contract EndpointStandalone is
 
     function upgrade(address newImplementation) external onlyManager {
         _upgrade(newImplementation);
+        if (!this.migratesImmutables()) {
+            assert(this.manager() == manager);
+        }
+        _setMigratesImmutables(false);
     }
 
     /// @notice Called by the BridgeManager contract to send a cross-chain message.
@@ -61,10 +59,6 @@ abstract contract EndpointStandalone is
 
     function _deliverToManager(EndpointStructs.ManagerMessage memory payload) internal override {
         // forward the VAA payload to the endpoint manager contract
-        IManagerStandalone(getEndpointManager()).attestationReceived(payload);
-    }
-
-    function getEndpointManager() public view returns (address) {
-        return _getEndpointManagerStorage().addr;
+        IManagerStandalone(manager).attestationReceived(payload);
     }
 }

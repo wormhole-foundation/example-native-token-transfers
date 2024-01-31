@@ -154,10 +154,10 @@ abstract contract Manager is
 
     // TODO: should we store this in storage? otherwise they can change during
     // each upgrade
-    address immutable _token;
-    Mode immutable _mode;
-    uint16 immutable _chainId;
-    uint256 immutable _evmChainId;
+    address public immutable _token;
+    Mode public immutable _mode;
+    uint16 public immutable _chainId;
+    uint256 public immutable _evmChainId;
 
     /**
      * @dev The duration it takes for the limits to fully replenish

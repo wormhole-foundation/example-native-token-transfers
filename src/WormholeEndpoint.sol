@@ -18,57 +18,13 @@ abstract contract WormholeEndpoint is Endpoint {
     error InvalidWormholeSiblingZeroAddress();
     error InvalidWormholeSiblingChainIdZero();
 
-    struct _UInt256 {
-        uint256 num;
-    }
-
     /// =============== STORAGE ===============================================
-
-    bytes32 public constant WORMHOLE_GAS_LIMIT_SLOT =
-        bytes32(uint256(keccak256("whEndpoint.gasLimit")) - 1);
-
-    bytes32 public constant WORMHOLE_CORE_BRIDGE_SLOT =
-        bytes32(uint256(keccak256("whEndpoint.wormholeCoreBridge")) - 1);
-
-    bytes32 public constant WORMHOLE_RELAYER_SLOT =
-        bytes32(uint256(keccak256("whEndpoint.wormholeRelayer")) - 1);
-
-    bytes32 public constant WORMHOLE_EVM_CHAIN_ID_SLOT =
-        bytes32(uint256(keccak256("whEndpoint.evmChainId")) - 1);
 
     bytes32 public constant WORMHOLE_CONSUMED_VAAS_SLOT =
         bytes32(uint256(keccak256("whEndpoint.consumedVAAs")) - 1);
 
     bytes32 public constant WORMHOLE_SIBLINGS_SLOT =
         bytes32(uint256(keccak256("whEndpoint.siblings")) - 1);
-
-    function _getWormholeGasLimitStorage() internal pure returns (_UInt256 storage $) {
-        uint256 slot = uint256(WORMHOLE_GAS_LIMIT_SLOT);
-        assembly ("memory-safe") {
-            $.slot := slot
-        }
-    }
-
-    function _getWormholeCoreBridgeStorage() internal pure returns (_Address storage $) {
-        uint256 slot = uint256(WORMHOLE_CORE_BRIDGE_SLOT);
-        assembly ("memory-safe") {
-            $.slot := slot
-        }
-    }
-
-    function _getWormholeRelayerStorage() internal pure returns (_Address storage $) {
-        uint256 slot = uint256(WORMHOLE_RELAYER_SLOT);
-        assembly ("memory-safe") {
-            $.slot := slot
-        }
-    }
-
-    function _getWormholeEvmChainIdStorage() internal pure returns (_UInt256 storage $) {
-        uint256 slot = uint256(WORMHOLE_EVM_CHAIN_ID_SLOT);
-        assembly ("memory-safe") {
-            $.slot := slot
-        }
-    }
 
     function _getWormholeConsumedVAAsStorage()
         internal
@@ -92,11 +48,17 @@ abstract contract WormholeEndpoint is Endpoint {
         }
     }
 
+    // TODO -- fix this after some testing
+    uint256 constant _GAS_LIMIT = 500000;
+
+    address immutable _wormholeCoreBridge;
+    address immutable _wormholeRelayerAddr;
+    uint256 immutable _wormholeEndpoint_evmChainId;
+
     constructor(address wormholeCoreBridge, address wormholeRelayerAddr) {
-        _getWormholeGasLimitStorage().num = 500000;
-        _getWormholeCoreBridgeStorage().addr = wormholeCoreBridge;
-        _getWormholeRelayerStorage().addr = wormholeRelayerAddr;
-        _getWormholeEvmChainIdStorage().num = block.chainid;
+        _wormholeCoreBridge = wormholeCoreBridge;
+        _wormholeRelayerAddr = wormholeRelayerAddr;
+        _wormholeEndpoint_evmChainId = block.chainid;
     }
 
     function _quoteDeliveryPrice(uint16 targetChain)
@@ -110,9 +72,7 @@ abstract contract WormholeEndpoint is Endpoint {
             return 0;
         }
 
-        (uint256 cost,) = wormholeRelayer().quoteEVMDeliveryPrice(
-            targetChain, 0, _getWormholeGasLimitStorage().num
-        );
+        (uint256 cost,) = wormholeRelayer().quoteEVMDeliveryPrice(targetChain, 0, _GAS_LIMIT);
 
         return cost;
     }
@@ -127,7 +87,7 @@ abstract contract WormholeEndpoint is Endpoint {
                 fromWormholeFormat(getWormholeSibling(recipientChain)),
                 payload,
                 0,
-                _getWormholeGasLimitStorage().num
+                _GAS_LIMIT
             );
         }
     }
@@ -168,15 +128,15 @@ abstract contract WormholeEndpoint is Endpoint {
     }
 
     function wormhole() public view returns (IWormhole) {
-        return IWormhole(_getWormholeCoreBridgeStorage().addr);
+        return IWormhole(_wormholeCoreBridge);
     }
 
     function wormholeRelayer() public view returns (IWormholeRelayer) {
-        return IWormholeRelayer(_getWormholeRelayerStorage().addr);
+        return IWormholeRelayer(_wormholeRelayerAddr);
     }
 
     function _verifyBridgeVM(IWormhole.VM memory vm) internal view returns (bool) {
-        checkFork(_getWormholeEvmChainIdStorage().num);
+        checkFork(_wormholeEndpoint_evmChainId);
         return getWormholeSibling(vm.emitterChainId) == vm.emitterAddress;
     }
 

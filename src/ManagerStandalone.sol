@@ -6,8 +6,9 @@ import "./interfaces/IEndpointStandalone.sol";
 import "./Manager.sol";
 import "./EndpointRegistry.sol";
 import "./libraries/Implementation.sol";
+import "./libraries/ImmutableMigrator.sol";
 
-contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
+contract ManagerStandalone is IManagerStandalone, Manager, Implementation, ImmutableMigrator {
     constructor(
         address token,
         Mode mode,
@@ -31,6 +32,14 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
 
     function upgrade(address newImplementation) external onlyOwner {
         _upgrade(newImplementation);
+        if (!this.migratesImmutables()) {
+            assert(this._token() == _token);
+            assert(this._mode() == _mode);
+            assert(this._chainId() == _chainId);
+            assert(this._evmChainId() == _evmChainId);
+            assert(this._rateLimitDuration() == _rateLimitDuration);
+        }
+        _setMigratesImmutables(false);
     }
 
     function upgradeEndpoint(address endpoint, address newImplementation) external onlyOwner {
