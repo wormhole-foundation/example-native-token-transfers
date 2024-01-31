@@ -4,8 +4,9 @@ pragma solidity >=0.6.12 <0.9.0;
 import "./Endpoint.sol";
 import "./Manager.sol";
 import "./EndpointRegistry.sol";
+import "./libraries/Implementation.sol";
 
-abstract contract EndpointAndManager is Endpoint, Manager {
+abstract contract EndpointAndManager is Endpoint, Manager, Implementation {
     uint8 constant ENDPOINT_INDEX = 0;
 
     constructor(
@@ -18,8 +19,23 @@ abstract contract EndpointAndManager is Endpoint, Manager {
         assert(index == ENDPOINT_INDEX);
     }
 
-    function __EndpointAndManager_init() internal onlyInitializing {
+    function _initialize() internal override {
         __Manager_init();
+    }
+
+    function _migrate() internal override {}
+
+    /// @dev When we add new immutables, this function should be updated
+    function _checkImmutables() internal view override {
+        assert(this.token() == token);
+        assert(this.mode() == mode);
+        assert(this.chainId() == chainId);
+        assert(this.evmChainId() == evmChainId);
+        assert(this.rateLimitDuration() == rateLimitDuration);
+    }
+
+    function upgrade(address newImplementation) external onlyOwner {
+        _upgrade(newImplementation);
     }
 
     function quoteDeliveryPrice(uint16 recipientChain) public view override returns (uint256) {
