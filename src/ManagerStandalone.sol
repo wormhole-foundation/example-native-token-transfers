@@ -30,16 +30,16 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation, Immut
         _checkEndpointsInvariants();
     }
 
+    function _checkImmutables() internal view override {
+        assert(this._token() == _token);
+        assert(this._mode() == _mode);
+        assert(this._chainId() == _chainId);
+        assert(this._evmChainId() == _evmChainId);
+        assert(this._rateLimitDuration() == _rateLimitDuration);
+    }
+
     function upgrade(address newImplementation) external onlyOwner {
         _upgrade(newImplementation);
-        if (!this.getMigratesImmutables()) {
-            assert(this._token() == _token);
-            assert(this._mode() == _mode);
-            assert(this._chainId() == _chainId);
-            assert(this._evmChainId() == _evmChainId);
-            assert(this._rateLimitDuration() == _rateLimitDuration);
-        }
-        _setMigratesImmutables(false);
     }
 
     function upgradeEndpoint(address endpoint, address newImplementation) external onlyOwner {

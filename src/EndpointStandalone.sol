@@ -37,12 +37,12 @@ abstract contract EndpointStandalone is
 
     function _migrate() internal override {}
 
+    function _checkImmutables() internal view override {
+        assert(this.manager() == manager);
+    }
+
     function upgrade(address newImplementation) external onlyManager {
         _upgrade(newImplementation);
-        if (!this.getMigratesImmutables()) {
-            assert(this.manager() == manager);
-        }
-        _setMigratesImmutables(false);
     }
 
     /// @notice Called by the BridgeManager contract to send a cross-chain message.

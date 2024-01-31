@@ -72,19 +72,13 @@ contract DummyEndpoint is EndpointStandalone, IEndpointReceiver {
     {}
 }
 
-contract EndpointAndManagerContract is EndpointAndManager, Implementation, IEndpointReceiver {
+contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
     constructor(
         address token,
         Mode mode,
         uint16 chainId,
         uint256 rateLimitDuration
     ) EndpointAndManager(token, mode, chainId, rateLimitDuration) {}
-
-    function _migrate() internal override {}
-
-    function _initialize() internal override {
-        __EndpointAndManager_init();
-    }
 
     function _quoteDeliveryPrice(uint16 /* recipientChain */ )
         internal
@@ -103,10 +97,6 @@ contract EndpointAndManagerContract is EndpointAndManager, Implementation, IEndp
         EndpointStructs.ManagerMessage memory parsed =
             EndpointStructs.parseManagerMessage(encodedMessage);
         _deliverToManager(parsed);
-    }
-
-    function upgrade(address newImplementation) external onlyOwner {
-        _upgrade(newImplementation);
     }
 }
 
