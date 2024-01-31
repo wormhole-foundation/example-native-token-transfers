@@ -15,12 +15,6 @@ abstract contract WormholeEndpoint is Endpoint {
     address immutable _wormholeRelayerAddr;
     uint256 immutable _wormholeEndpoint_evmChainId;
 
-    // Mapping of consumed VAAs
-    mapping(bytes32 => bool) _consumedVAAs;
-
-    // Mapping of siblings on other chains
-    mapping(uint16 => bytes32) _siblings;
-
     event ReceivedMessage(
         bytes32 digest, uint16 emitterChainId, bytes32 emitterAddress, uint64 sequence
     );
@@ -30,6 +24,36 @@ abstract contract WormholeEndpoint is Endpoint {
     error TransferAlreadyCompleted(bytes32 vaaHash);
     error InvalidWormholeSiblingZeroAddress();
     error InvalidWormholeSiblingChainIdZero();
+
+    /// =============== STORAGE ===============================================
+
+    bytes32 public constant WORMHOLE_CONSUMED_VAAS_SLOT =
+        bytes32(uint256(keccak256("whEndpoint.consumedVAAs")) - 1);
+
+    bytes32 public constant WORMHOLE_SIBLINGS_SLOT =
+        bytes32(uint256(keccak256("whEndpoint.siblings")) - 1);
+
+    function _getWormholeConsumedVAAsStorage()
+        internal
+        pure
+        returns (mapping(bytes32 => bool) storage $)
+    {
+        uint256 slot = uint256(WORMHOLE_CONSUMED_VAAS_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
+    function _getWormholeSiblingsStorage()
+        internal
+        pure
+        returns (mapping(uint16 => bytes32) storage $)
+    {
+        uint256 slot = uint256(WORMHOLE_SIBLINGS_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
 
     constructor(address wormholeCoreBridge, address wormholeRelayerAddr) {
         _wormholeCoreBridge = wormholeCoreBridge;
@@ -117,18 +141,18 @@ abstract contract WormholeEndpoint is Endpoint {
     }
 
     function isVAAConsumed(bytes32 hash) public view returns (bool) {
-        return _consumedVAAs[hash];
+        return _getWormholeConsumedVAAsStorage()[hash];
     }
 
     function _setVAAConsumed(bytes32 hash) internal {
-        _consumedVAAs[hash] = true;
+        _getWormholeConsumedVAAsStorage()[hash] = true;
     }
 
     /// @notice Get the corresponding Endpoint contract on other chains that have been registered via governance.
     ///         This design should be extendable to other chains, so each Endpoint would be potentially concerned with Endpoints on multiple other chains
     ///         Note that siblings are registered under wormhole chainID values
     function getWormholeSibling(uint16 chainId) public view returns (bytes32) {
-        return _siblings[chainId];
+        return _getWormholeSiblingsStorage()[chainId];
     }
 
     function _setWormholeSibling(uint16 chainId, bytes32 siblingContract) internal {
@@ -138,6 +162,6 @@ abstract contract WormholeEndpoint is Endpoint {
         if (siblingContract == bytes32(0)) {
             revert InvalidWormholeSiblingZeroAddress();
         }
-        _siblings[chainId] = siblingContract;
+        _getWormholeSiblingsStorage()[chainId] = siblingContract;
     }
 }

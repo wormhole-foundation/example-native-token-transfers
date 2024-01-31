@@ -29,6 +29,16 @@ abstract contract Manager is
     using BytesParsing for bytes;
     using SafeERC20 for IERC20;
 
+    address public immutable token;
+    Mode public immutable mode;
+    uint16 public immutable chainId;
+    uint256 public immutable evmChainId;
+
+    /**
+     * @dev The duration it takes for the limits to fully replenish
+     */
+    uint256 public immutable rateLimitDuration;
+
     enum Mode {
         LOCKING,
         BURNING
@@ -152,24 +162,12 @@ abstract contract Manager is
         }
     }
 
-    // TODO: should we store this in storage? otherwise they can change during
-    // each upgrade
-    address immutable _token;
-    Mode immutable _mode;
-    uint16 immutable _chainId;
-    uint256 immutable _evmChainId;
-
-    /**
-     * @dev The duration it takes for the limits to fully replenish
-     */
-    uint256 public immutable _rateLimitDuration;
-
-    constructor(address tokenAddress, Mode mode, uint16 chainId, uint256 rateLimitDuration) {
-        _token = tokenAddress;
-        _mode = mode;
-        _chainId = chainId;
-        _evmChainId = block.chainid;
-        _rateLimitDuration = rateLimitDuration;
+    constructor(address _token, Mode _mode, uint16 _chainId, uint256 _rateLimitDuration) {
+        token = _token;
+        mode = _mode;
+        chainId = _chainId;
+        evmChainId = block.chainid;
+        rateLimitDuration = _rateLimitDuration;
     }
 
     function __Manager_init() internal onlyInitializing {
@@ -217,7 +215,7 @@ abstract contract Manager is
         rateLimitParams.currentCapacity =
             _calculateNewCurrentCapacity(limit, oldLimit, currentCapacity);
 
-        rateLimitParams.ratePerSecond = limit / _rateLimitDuration;
+        rateLimitParams.ratePerSecond = limit / rateLimitDuration;
         rateLimitParams.lastTxTimestamp = block.timestamp;
     }
 
@@ -241,16 +239,16 @@ abstract contract Manager is
         return _getOutboundQueueStorage()[queueSequence];
     }
 
-    function setInboundLimit(uint256 limit, uint16 chainId) external onlyOwner {
-        _setLimit(limit, _getInboundLimitParamsStorage()[chainId]);
+    function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
+        _setLimit(limit, _getInboundLimitParamsStorage()[chainId_]);
     }
 
-    function getInboundLimitParams(uint16 chainId) public view returns (RateLimitParams memory) {
-        return _getInboundLimitParamsStorage()[chainId];
+    function getInboundLimitParams(uint16 chainId_) public view returns (RateLimitParams memory) {
+        return _getInboundLimitParamsStorage()[chainId_];
     }
 
-    function getCurrentInboundCapacity(uint16 chainId) public view returns (uint256) {
-        return _getCurrentCapacity(getInboundLimitParams(chainId));
+    function getCurrentInboundCapacity(uint16 chainId_) public view returns (uint256) {
+        return _getCurrentCapacity(getInboundLimitParams(chainId_));
     }
 
     function getInboundQueuedTransfer(uint64 queueSequence)
@@ -272,9 +270,9 @@ abstract contract Manager is
         capacity = rateLimitParams.currentCapacity;
         if (capacity == rateLimitParams.limit) {
             return capacity;
-        } else if (rateLimitParams.lastTxTimestamp + _rateLimitDuration <= block.timestamp) {
+        } else if (rateLimitParams.lastTxTimestamp + rateLimitDuration <= block.timestamp) {
             capacity = rateLimitParams.limit;
-        } else if (rateLimitParams.lastTxTimestamp + _rateLimitDuration > block.timestamp) {
+        } else if (rateLimitParams.lastTxTimestamp + rateLimitDuration > block.timestamp) {
             uint256 timePassed = block.timestamp - rateLimitParams.lastTxTimestamp;
             uint256 calculatedCapacity = capacity + (timePassed * rateLimitParams.ratePerSecond);
             capacity = calculatedCapacity > rateLimitParams.limit
@@ -312,9 +310,9 @@ abstract contract Manager is
         );
     }
 
-    function _consumeInboundAmount(uint256 amount, uint16 chainId) internal {
+    function _consumeInboundAmount(uint256 amount, uint16 chainId_) internal {
         _consumeRateLimitAmount(
-            amount, getCurrentInboundCapacity(chainId), _getInboundLimitParamsStorage()[chainId]
+            amount, getCurrentInboundCapacity(chainId_), _getInboundLimitParamsStorage()[chainId_]
         );
     }
 
@@ -333,9 +331,9 @@ abstract contract Manager is
 
     function _isInboundAmountRateLimited(
         uint256 amount,
-        uint16 chainId
+        uint16 chainId_
     ) internal view returns (bool) {
-        return _isAmountRateLimited(getCurrentInboundCapacity(chainId), amount);
+        return _isAmountRateLimited(getCurrentInboundCapacity(chainId_), amount);
     }
 
     function _isAmountRateLimited(uint256 capacity, uint256 amount) internal pure returns (bool) {
@@ -360,7 +358,7 @@ abstract contract Manager is
         return queueSequence;
     }
 
-    function _enqueueInboundTransfer(uint256 amount, address recipient, uint16 chainId) internal {
+    function _enqueueInboundTransfer(uint256 amount, address recipient, uint16 chainId_) internal {
         uint64 queueSequence = _useInboundQueueSequence();
 
         _getInboundQueueStorage()[queueSequence] = InboundQueuedTransfer({
@@ -369,7 +367,7 @@ abstract contract Manager is
             txTimestamp: block.timestamp
         });
 
-        emit InboundTransferQueued(queueSequence, chainId);
+        emit InboundTransferQueued(queueSequence, chainId_);
     }
 
     function completeOutboundQueuedTransfer(uint64 queueSequence)
@@ -385,7 +383,7 @@ abstract contract Manager is
         }
 
         // check that > RATE_LIMIT_DURATION has elapsed
-        if (block.timestamp - queuedTransfer.txTimestamp < _rateLimitDuration) {
+        if (block.timestamp - queuedTransfer.txTimestamp < rateLimitDuration) {
             revert QueuedTransferStillQueued(queueSequence, queuedTransfer.txTimestamp);
         }
 
@@ -408,7 +406,7 @@ abstract contract Manager is
         bool shouldQueue
     ) external payable nonReentrant returns (uint64 msgSequence) {
         // query tokens decimals
-        (, bytes memory queriedDecimals) = _token.staticcall(abi.encodeWithSignature("decimals()"));
+        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
         uint8 decimals = abi.decode(queriedDecimals, (uint8));
 
         // don't deposit dust that can not be bridged due to the decimal shift
@@ -422,33 +420,33 @@ abstract contract Manager is
         }
 
         // Lock/burn tokens before checking rate limits
-        if (_mode == Mode.LOCKING) {
+        if (mode == Mode.LOCKING) {
             // use transferFrom to pull tokens from the user and lock them
             // query own token balance before transfer
-            uint256 balanceBefore = getTokenBalanceOf(_token, address(this));
+            uint256 balanceBefore = getTokenBalanceOf(token, address(this));
 
             // transfer tokens
-            IERC20(_token).safeTransferFrom(msg.sender, address(this), amount);
+            IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
             // query own token balance after transfer
-            uint256 balanceAfter = getTokenBalanceOf(_token, address(this));
+            uint256 balanceAfter = getTokenBalanceOf(token, address(this));
 
             // correct amount for potential transfer fees
             amount = balanceAfter - balanceBefore;
-        } else if (_mode == Mode.BURNING) {
+        } else if (mode == Mode.BURNING) {
             // query sender's token balance before transfer
-            uint256 balanceBefore = getTokenBalanceOf(_token, msg.sender);
+            uint256 balanceBefore = getTokenBalanceOf(token, msg.sender);
 
             // call the token's burn function to burn the sender's token
-            ERC20Burnable(_token).burnFrom(msg.sender, amount);
+            ERC20Burnable(token).burnFrom(msg.sender, amount);
 
             // query sender's token balance after transfer
-            uint256 balanceAfter = getTokenBalanceOf(_token, msg.sender);
+            uint256 balanceAfter = getTokenBalanceOf(token, msg.sender);
 
             // correct amount for potential burn fees
             amount = balanceAfter - balanceBefore;
         } else {
-            revert InvalidMode(uint8(_mode));
+            revert InvalidMode(uint8(mode));
         }
 
         // now check rate limits
@@ -491,7 +489,7 @@ abstract contract Manager is
         }
 
         // query tokens decimals
-        (, bytes memory queriedDecimals) = _token.staticcall(abi.encodeWithSignature("decimals()"));
+        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
         uint8 decimals = abi.decode(queriedDecimals, (uint8));
 
         // normalize amount decimals
@@ -511,7 +509,7 @@ abstract contract Manager is
         bytes memory senderBytes = abi.encodePacked(msg.sender);
         bytes memory encodedManagerPayload = EndpointStructs.encodeManagerMessage(
             EndpointStructs.ManagerMessage(
-                _chainId, sequence, 1, sourceManagerBytes, senderBytes, encodedTransferPayload
+                chainId, sequence, 1, sourceManagerBytes, senderBytes, encodedTransferPayload
             )
         );
 
@@ -553,7 +551,7 @@ abstract contract Manager is
     /// TODO: we could make this public. all the security checks are done here
     function _executeMsg(EndpointStructs.ManagerMessage memory message) internal {
         // verify chain has not forked
-        checkFork(_evmChainId);
+        checkFork(evmChainId);
 
         // verify message came from a sibling manager contract
         if (!_areBytesEqual(getSibling(message.chainId), message.sourceManager)) {
@@ -577,14 +575,14 @@ abstract contract Manager is
             EndpointStructs.parseNativeTokenTransfer(message.payload);
 
         // verify that the destination chain is valid
-        if (nativeTokenTransfer.toChain != _chainId) {
-            revert InvalidTargetChain(nativeTokenTransfer.toChain, _chainId);
+        if (nativeTokenTransfer.toChain != chainId) {
+            revert InvalidTargetChain(nativeTokenTransfer.toChain, chainId);
         }
 
         // calculate proper amount of tokens to unlock/mint to recipient
         // query the decimals of the token contract that's tied to this manager
         // adjust the decimals of the amount in the nativeTokenTransfer payload accordingly
-        (, bytes memory queriedDecimals) = _token.staticcall(abi.encodeWithSignature("decimals()"));
+        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
         uint8 decimals = abi.decode(queriedDecimals, (uint8));
         uint256 nativeTransferAmount = deNormalizeAmount(nativeTokenTransfer.amount, decimals);
 
@@ -614,7 +612,7 @@ abstract contract Manager is
         }
 
         // check that > RATE_LIMIT_DURATION has elapsed
-        if (block.timestamp - queuedTransfer.txTimestamp < _rateLimitDuration) {
+        if (block.timestamp - queuedTransfer.txTimestamp < rateLimitDuration) {
             revert QueuedTransferStillQueued(queueSequence, queuedTransfer.txTimestamp);
         }
 
@@ -626,14 +624,14 @@ abstract contract Manager is
     }
 
     function _mintOrUnlockToRecipient(address recipient, uint256 amount) internal {
-        if (_mode == Mode.LOCKING) {
+        if (mode == Mode.LOCKING) {
             // unlock tokens to the specified recipient
-            IERC20(_token).safeTransfer(recipient, amount);
-        } else if (_mode == Mode.BURNING) {
+            IERC20(token).safeTransfer(recipient, amount);
+        } else if (mode == Mode.BURNING) {
             // mint tokens to the specified recipient
-            IEndpointToken(_token).mint(recipient, amount);
+            IEndpointToken(token).mint(recipient, amount);
         } else {
-            revert InvalidMode(uint8(_mode));
+            revert InvalidMode(uint8(mode));
         }
     }
 
@@ -683,10 +681,6 @@ abstract contract Manager is
         return abi.decode(queriedBalance, (uint256));
     }
 
-    function token() external view override returns (address) {
-        return _token;
-    }
-
     function bytesToAddress(bytes memory b) public pure returns (address) {
         (address addr, uint256 offset) = b.asAddress(0);
         b.checkLength(offset);
@@ -697,12 +691,12 @@ abstract contract Manager is
         return _getMessageAttestationsStorage()[digest].executed;
     }
 
-    function getSibling(uint16 chainId) public view returns (bytes memory) {
-        return _getSiblingsStorage()[chainId];
+    function getSibling(uint16 chainId_) public view returns (bytes memory) {
+        return _getSiblingsStorage()[chainId_];
     }
 
-    function setSibling(uint16 chainId, bytes memory siblingContract) external onlyOwner {
-        if (chainId == 0) {
+    function setSibling(uint16 chainId_, bytes memory siblingContract) external onlyOwner {
+        if (chainId_ == 0) {
             revert InvalidSiblingChainIdZero();
         }
         if (siblingContract.length == 0) {
@@ -711,7 +705,7 @@ abstract contract Manager is
         if (_isAllZeros(siblingContract)) {
             revert InvalidSiblingZeroBytes();
         }
-        _getSiblingsStorage()[chainId] = siblingContract;
+        _getSiblingsStorage()[chainId_] = siblingContract;
     }
 
     function _isAllZeros(bytes memory payload) internal pure returns (bool) {
