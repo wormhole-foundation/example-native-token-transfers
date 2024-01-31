@@ -30,6 +30,7 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation, Immut
         _checkEndpointsInvariants();
     }
 
+    /// @dev When we add new immutables, this function should be updated
     function _checkImmutables() internal view override {
         assert(this._token() == _token);
         assert(this._mode() == _mode);

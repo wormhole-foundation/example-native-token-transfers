@@ -25,6 +25,7 @@ abstract contract EndpointAndManager is Endpoint, Manager, Implementation {
 
     function _migrate() internal override {}
 
+    /// @dev When we add new immutables, this function should be updated
     function _checkImmutables() internal view override {
         assert(this._token() == _token);
         assert(this._mode() == _mode);
