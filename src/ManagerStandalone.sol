@@ -6,9 +6,8 @@ import "./interfaces/IEndpointStandalone.sol";
 import "./Manager.sol";
 import "./EndpointRegistry.sol";
 import "./libraries/Implementation.sol";
-import "./libraries/ImmutableMigrator.sol";
 
-contract ManagerStandalone is IManagerStandalone, Manager, Implementation, ImmutableMigrator {
+contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
     constructor(
         address token,
         Mode mode,
@@ -32,11 +31,11 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation, Immut
 
     /// @dev When we add new immutables, this function should be updated
     function _checkImmutables() internal view override {
-        assert(this._token() == _token);
-        assert(this._mode() == _mode);
-        assert(this._chainId() == _chainId);
-        assert(this._evmChainId() == _evmChainId);
-        assert(this._rateLimitDuration() == _rateLimitDuration);
+        assert(this.token() == token);
+        assert(this.mode() == mode);
+        assert(this.chainId() == chainId);
+        assert(this.evmChainId() == evmChainId);
+        assert(this.rateLimitDuration() == rateLimitDuration);
     }
 
     function upgrade(address newImplementation) external onlyOwner {

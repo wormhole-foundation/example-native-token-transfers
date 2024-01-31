@@ -27,11 +27,11 @@ abstract contract EndpointAndManager is Endpoint, Manager, Implementation {
 
     /// @dev When we add new immutables, this function should be updated
     function _checkImmutables() internal view override {
-        assert(this._token() == _token);
-        assert(this._mode() == _mode);
-        assert(this._chainId() == _chainId);
-        assert(this._evmChainId() == _evmChainId);
-        assert(this._rateLimitDuration() == _rateLimitDuration);
+        assert(this.token() == token);
+        assert(this.mode() == mode);
+        assert(this.chainId() == chainId);
+        assert(this.evmChainId() == evmChainId);
+        assert(this.rateLimitDuration() == rateLimitDuration);
     }
 
     function upgrade(address newImplementation) external onlyOwner {

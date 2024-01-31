@@ -5,14 +5,12 @@ import "./Endpoint.sol";
 import "./interfaces/IManagerStandalone.sol";
 import "./interfaces/IEndpointStandalone.sol";
 import "./libraries/Implementation.sol";
-import "./libraries/ImmutableMigrator.sol";
 import "./libraries/external/ReentrancyGuardUpgradeable.sol";
 
 abstract contract EndpointStandalone is
     IEndpointStandalone,
     Endpoint,
     Implementation,
-    ImmutableMigrator,
     ReentrancyGuardUpgradeable
 {
     /// @dev updating bridgeManager requires a new Endpoint deployment.

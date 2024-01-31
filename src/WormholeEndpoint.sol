@@ -8,6 +8,13 @@ import "./interfaces/IWormhole.sol";
 import "./Endpoint.sol";
 
 abstract contract WormholeEndpoint is Endpoint {
+    // TODO -- fix this after some testing
+    uint256 constant _GAS_LIMIT = 500000;
+
+    address immutable _wormholeCoreBridge;
+    address immutable _wormholeRelayerAddr;
+    uint256 immutable _wormholeEndpoint_evmChainId;
+
     event ReceivedMessage(
         bytes32 digest, uint16 emitterChainId, bytes32 emitterAddress, uint64 sequence
     );
@@ -47,13 +54,6 @@ abstract contract WormholeEndpoint is Endpoint {
             $.slot := slot
         }
     }
-
-    // TODO -- fix this after some testing
-    uint256 constant _GAS_LIMIT = 500000;
-
-    address immutable _wormholeCoreBridge;
-    address immutable _wormholeRelayerAddr;
-    uint256 immutable _wormholeEndpoint_evmChainId;
 
     constructor(address wormholeCoreBridge, address wormholeRelayerAddr) {
         _wormholeCoreBridge = wormholeCoreBridge;
