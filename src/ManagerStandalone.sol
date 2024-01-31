@@ -32,7 +32,7 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation, Immut
 
     function upgrade(address newImplementation) external onlyOwner {
         _upgrade(newImplementation);
-        if (!this.migratesImmutables()) {
+        if (!this.getMigratesImmutables()) {
             assert(this._token() == _token);
             assert(this._mode() == _mode);
             assert(this._chainId() == _chainId);

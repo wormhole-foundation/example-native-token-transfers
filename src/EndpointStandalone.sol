@@ -39,7 +39,7 @@ abstract contract EndpointStandalone is
 
     function upgrade(address newImplementation) external onlyManager {
         _upgrade(newImplementation);
-        if (!this.migratesImmutables()) {
+        if (!this.getMigratesImmutables()) {
             assert(this.manager() == manager);
         }
         _setMigratesImmutables(false);

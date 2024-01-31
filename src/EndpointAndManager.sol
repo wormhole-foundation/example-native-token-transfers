@@ -4,8 +4,9 @@ pragma solidity >=0.6.12 <0.9.0;
 import "./Endpoint.sol";
 import "./Manager.sol";
 import "./EndpointRegistry.sol";
+import "./libraries/ImmutableMigrator.sol";
 
-abstract contract EndpointAndManager is Endpoint, Manager {
+abstract contract EndpointAndManager is Endpoint, Manager, ImmutableMigrator {
     uint8 constant ENDPOINT_INDEX = 0;
 
     constructor(
