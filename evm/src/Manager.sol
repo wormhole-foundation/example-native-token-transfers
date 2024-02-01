@@ -509,7 +509,7 @@ abstract contract Manager is
         bytes memory senderBytes = abi.encodePacked(msg.sender);
         bytes memory encodedManagerPayload = EndpointStructs.encodeManagerMessage(
             EndpointStructs.ManagerMessage(
-                chainId, sequence, 1, sourceManagerBytes, senderBytes, encodedTransferPayload
+                chainId, sequence, sourceManagerBytes, senderBytes, encodedTransferPayload
             )
         );
 
@@ -566,11 +566,6 @@ abstract contract Manager is
 
         _replayProtect(digest);
 
-        // for msgType == 1, parse the payload as a NativeTokenTransfer.
-        // for other msgTypes, revert (unsupported for now)
-        if (message.msgType != 1) {
-            revert UnexpectedManagerMessageType(message.msgType);
-        }
         EndpointStructs.NativeTokenTransfer memory nativeTokenTransfer =
             EndpointStructs.parseNativeTokenTransfer(message.payload);
 

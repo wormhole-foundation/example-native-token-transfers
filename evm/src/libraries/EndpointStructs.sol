@@ -11,7 +11,6 @@ library EndpointStructs {
     /// @dev The wire format is as follows:
     ///     - chainId - 2 bytes
     ///     - sequence - 8 bytes
-    ///     - msgType - 1 byte
     ///     - sourceManagerLength - 2 bytes
     ///     - sourceManager - `sourceManagerLength` bytes
     ///     - senderLength - 2 bytes
@@ -23,8 +22,6 @@ library EndpointStructs {
         uint16 chainId;
         /// @notice unique sequence number
         uint64 sequence;
-        /// @notice type of the message, which determines how the payload should be decoded.
-        uint8 msgType;
         /// @notice manager contract address that this message originates from.
         bytes sourceManager;
         /// @notice original message sender address.
@@ -57,7 +54,6 @@ library EndpointStructs {
         return abi.encodePacked(
             m.chainId,
             m.sequence,
-            m.msgType,
             sourceManagerLength,
             m.sourceManager,
             senderLength,
@@ -80,7 +76,6 @@ library EndpointStructs {
         uint256 offset = 0;
         (managerMessage.chainId, offset) = encoded.asUint16Unchecked(offset);
         (managerMessage.sequence, offset) = encoded.asUint64Unchecked(offset);
-        (managerMessage.msgType, offset) = encoded.asUint8Unchecked(offset);
         uint256 sourceManagerLength;
         (sourceManagerLength, offset) = encoded.asUint16Unchecked(offset);
         (managerMessage.sourceManager, offset) = encoded.sliceUnchecked(offset, sourceManagerLength);
