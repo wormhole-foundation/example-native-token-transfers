@@ -267,18 +267,11 @@ abstract contract Manager is
         view
         returns (uint256 capacity)
     {
-        capacity = rateLimitParams.currentCapacity;
-        if (capacity == rateLimitParams.limit) {
-            return capacity;
-        } else if (rateLimitParams.lastTxTimestamp + rateLimitDuration <= block.timestamp) {
-            capacity = rateLimitParams.limit;
-        } else if (rateLimitParams.lastTxTimestamp + rateLimitDuration > block.timestamp) {
-            uint256 timePassed = block.timestamp - rateLimitParams.lastTxTimestamp;
-            uint256 calculatedCapacity = capacity + (timePassed * rateLimitParams.ratePerSecond);
-            capacity = calculatedCapacity > rateLimitParams.limit
-                ? rateLimitParams.limit
-                : calculatedCapacity;
-        }
+        uint256 timePassed = block.timestamp - rateLimitParams.lastTxTimestamp;
+        uint256 calculatedCapacity =
+            rateLimitParams.currentCapacity + (timePassed * rateLimitParams.ratePerSecond);
+
+        return min(calculatedCapacity, rateLimitParams.limit);
     }
 
     /**
