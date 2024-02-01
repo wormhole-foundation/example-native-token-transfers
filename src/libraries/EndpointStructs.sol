@@ -7,6 +7,9 @@ library EndpointStructs {
     using BytesParsing for bytes;
 
     error PayloadTooLong(uint256 size);
+    error IncorrectPrefix(bytes4 prefix);
+
+    bytes4 constant NTT_PREFIX = 0x994E5454;
 
     /// @dev The wire format is as follows:
     ///     - chainId - 2 bytes
@@ -90,6 +93,7 @@ library EndpointStructs {
 
     /// Token Transfer payload corresponding to type == 1
     /// @dev The wire format is as follows:
+    ///    - NTT_PREFIX - 4 bytes
     ///    - amount - 32 bytes
     ///    - sourceTokenLength - 2 bytes
     ///    - sourceToken - `sourceTokenLength` bytes
@@ -120,8 +124,9 @@ library EndpointStructs {
             revert PayloadTooLong(m.to.length);
         }
         uint16 toLength = uint16(m.to.length);
-        return
-            abi.encodePacked(m.amount, sourceTokenLength, m.sourceToken, toLength, m.to, m.toChain);
+        return abi.encodePacked(
+            NTT_PREFIX, m.amount, sourceTokenLength, m.sourceToken, toLength, m.to, m.toChain
+        );
     }
 
     /*
@@ -135,6 +140,11 @@ library EndpointStructs {
         returns (NativeTokenTransfer memory nativeTokenTransfer)
     {
         uint256 offset = 0;
+        bytes4 prefix;
+        (prefix, offset) = encoded.asBytes4Unchecked(offset);
+        if (prefix != NTT_PREFIX) {
+            revert IncorrectPrefix(prefix);
+        }
         (nativeTokenTransfer.amount, offset) = encoded.asUint256Unchecked(offset);
         uint16 sourceTokenLength;
         (sourceTokenLength, offset) = encoded.asUint16Unchecked(offset);
