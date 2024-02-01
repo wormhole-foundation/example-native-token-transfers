@@ -80,9 +80,6 @@ abstract contract Manager is
 
     bytes32 public constant INBOUND_QUEUE_SLOT = bytes32(uint256(keccak256("ntt.inboundQueue")) - 1);
 
-    bytes32 public constant INBOUND_QUEUE_SEQUENCE_SLOT =
-        bytes32(uint256(keccak256("ntt.inboundQueueSequence")) - 1);
-
     function _getMessageAttestationsStorage()
         internal
         pure
@@ -147,16 +144,9 @@ abstract contract Manager is
     function _getInboundQueueStorage()
         internal
         pure
-        returns (mapping(uint64 => InboundQueuedTransfer) storage $)
+        returns (mapping(bytes32 => InboundQueuedTransfer) storage $)
     {
         uint256 slot = uint256(INBOUND_QUEUE_SLOT);
-        assembly ("memory-safe") {
-            $.slot := slot
-        }
-    }
-
-    function _getInboundQueueSequenceStorage() internal pure returns (_Sequence storage $) {
-        uint256 slot = uint256(INBOUND_QUEUE_SEQUENCE_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
         }
@@ -251,12 +241,12 @@ abstract contract Manager is
         return _getCurrentCapacity(getInboundLimitParams(chainId_));
     }
 
-    function getInboundQueuedTransfer(uint64 queueSequence)
+    function getInboundQueuedTransfer(bytes32 digest)
         public
         view
         returns (InboundQueuedTransfer memory)
     {
-        return _getInboundQueueStorage()[queueSequence];
+        return _getInboundQueueStorage()[digest];
     }
 
     /**
@@ -351,16 +341,14 @@ abstract contract Manager is
         return queueSequence;
     }
 
-    function _enqueueInboundTransfer(uint256 amount, address recipient, uint16 chainId_) internal {
-        uint64 queueSequence = _useInboundQueueSequence();
-
-        _getInboundQueueStorage()[queueSequence] = InboundQueuedTransfer({
+    function _enqueueInboundTransfer(bytes32 digest, uint256 amount, address recipient) internal {
+        _getInboundQueueStorage()[digest] = InboundQueuedTransfer({
             amount: amount,
             recipient: recipient,
             txTimestamp: block.timestamp
         });
 
-        emit InboundTransferQueued(queueSequence, chainId_);
+        emit InboundTransferQueued(digest);
     }
 
     function completeOutboundQueuedTransfer(uint64 queueSequence)
@@ -372,12 +360,12 @@ abstract contract Manager is
         // find the message in the queue
         OutboundQueuedTransfer memory queuedTransfer = _getOutboundQueueStorage()[queueSequence];
         if (queuedTransfer.txTimestamp == 0) {
-            revert QueuedTransferNotFound(queueSequence);
+            revert OutboundQueuedTransferNotFound(queueSequence);
         }
 
         // check that > RATE_LIMIT_DURATION has elapsed
         if (block.timestamp - queuedTransfer.txTimestamp < rateLimitDuration) {
-            revert QueuedTransferStillQueued(queueSequence, queuedTransfer.txTimestamp);
+            revert OutboundQueuedTransferStillQueued(queueSequence, queuedTransfer.txTimestamp);
         }
 
         // remove transfer from the queue
@@ -580,7 +568,7 @@ abstract contract Manager is
         bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, message.chainId);
         if (isRateLimited) {
             // queue up the transfer
-            _enqueueInboundTransfer(nativeTransferAmount, transferRecipient, message.chainId);
+            _enqueueInboundTransfer(digest, nativeTransferAmount, transferRecipient);
 
             // end execution early
             return;
@@ -592,20 +580,20 @@ abstract contract Manager is
         _mintOrUnlockToRecipient(transferRecipient, nativeTransferAmount);
     }
 
-    function completeInboundQueuedTransfer(uint64 queueSequence) external nonReentrant {
+    function completeInboundQueuedTransfer(bytes32 digest) external nonReentrant {
         // find the message in the queue
-        InboundQueuedTransfer memory queuedTransfer = _getInboundQueueStorage()[queueSequence];
+        InboundQueuedTransfer memory queuedTransfer = getInboundQueuedTransfer(digest);
         if (queuedTransfer.txTimestamp == 0) {
-            revert QueuedTransferNotFound(queueSequence);
+            revert InboundQueuedTransferNotFound(digest);
         }
 
         // check that > RATE_LIMIT_DURATION has elapsed
         if (block.timestamp - queuedTransfer.txTimestamp < rateLimitDuration) {
-            revert QueuedTransferStillQueued(queueSequence, queuedTransfer.txTimestamp);
+            revert InboundQueuedTransferStillQueued(digest, queuedTransfer.txTimestamp);
         }
 
         // remove transfer from the queue
-        delete _getInboundQueueStorage()[queueSequence];
+        delete _getInboundQueueStorage()[digest];
 
         // run it through the mint/unlock logic
         _mintOrUnlockToRecipient(queuedTransfer.recipient, queuedTransfer.amount);
@@ -631,20 +619,12 @@ abstract contract Manager is
         return _nextSequenceNum(_getOutboundQueueSequenceStorage());
     }
 
-    function nextInboundQueueSequence() external view returns (uint64) {
-        return _nextSequenceNum(_getInboundQueueSequenceStorage());
-    }
-
     function _useMessageSequence() internal returns (uint64) {
         return _useSequenceNum(_getMessageSequenceStorage());
     }
 
     function _useOutboundQueueSequence() internal returns (uint64) {
         return _useSequenceNum(_getOutboundQueueSequenceStorage());
-    }
-
-    function _useInboundQueueSequence() internal returns (uint64) {
-        return _useSequenceNum(_getInboundQueueSequenceStorage());
     }
 
     function _useSequenceNum(_Sequence storage seq) internal returns (uint64 currentSequence) {
