@@ -311,7 +311,6 @@ contract TestManager is Test, IManagerEvents {
         EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
             SENDING_CHAIN_ID,
             sequence,
-            1,
             abi.encodePacked(address(manager)),
             abi.encodePacked(from),
             EndpointStructs.encodeNativeTokenTransfer(
@@ -338,9 +337,8 @@ contract TestManager is Test, IManagerEvents {
         manager.removeEndpoint(address(e1));
 
         EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
+            SENDING_CHAIN_ID,
             0,
-            0,
-            1,
             abi.encodePacked(address(manager)),
             abi.encodePacked(address(0)),
             abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
@@ -356,9 +354,8 @@ contract TestManager is Test, IManagerEvents {
         manager.setThreshold(2);
 
         EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
+            SENDING_CHAIN_ID,
             0,
-            0,
-            1,
             abi.encodePacked(address(manager)),
             abi.encodePacked(address(0)),
             abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
@@ -377,9 +374,8 @@ contract TestManager is Test, IManagerEvents {
         manager.setThreshold(2);
 
         EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
+            SENDING_CHAIN_ID,
             0,
-            0,
-            1,
             abi.encodePacked(address(manager)),
             abi.encodePacked(address(0)),
             abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
@@ -489,7 +485,6 @@ contract TestManager is Test, IManagerEvents {
 
         assertEq(m.chainId, parsed.chainId);
         assertEq(m.sequence, parsed.sequence);
-        assertEq(m.msgType, parsed.msgType);
         assertEq(m.payload, parsed.payload);
     }
 
