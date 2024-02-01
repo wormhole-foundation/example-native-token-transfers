@@ -14,10 +14,8 @@ interface IManager {
     error InvalidMode(uint8 mode);
     error OutboundQueuedTransferNotFound(uint64 queueSequence);
     error OutboundQueuedTransferStillQueued(uint64 queueSequence, uint256 transferTimestamp);
-    error InboundQueuedTransferNotFound(uint16 sourceChainId, uint64 messageSequence);
-    error InboundQueuedTransferStillQueued(
-        uint16 sourceChainId, uint64 messageSequence, uint256 transferTimestamp
-    );
+    error InboundQueuedTransferNotFound(bytes32 digest);
+    error InboundQueuedTransferStillQueued(bytes32 digest, uint256 transferTimestamp);
     error InvalidSibling(uint16 chainId, bytes siblingAddress);
     error InvalidSiblingChainIdZero();
     error InvalidSiblingZeroLength();
@@ -55,7 +53,7 @@ interface IManager {
         payable
         returns (uint64 msgSequence);
 
-    function completeInboundQueuedTransfer(uint16 sourceChainId, uint64 messageSequence) external;
+    function completeInboundQueuedTransfer(bytes32 digest) external;
 
     function quoteDeliveryPrice(uint16 recipientChain) external view returns (uint256);
 
@@ -76,10 +74,10 @@ interface IManager {
 
     function getCurrentInboundCapacity(uint16 chainId) external view returns (uint256);
 
-    function getInboundQueuedTransfer(
-        uint16 sourceChainId,
-        uint64 messageSequence
-    ) external view returns (InboundQueuedTransfer memory);
+    function getInboundQueuedTransfer(bytes32 digest)
+        external
+        view
+        returns (InboundQueuedTransfer memory);
 
     function nextMessageSequence() external view returns (uint64);
 

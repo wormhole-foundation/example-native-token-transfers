@@ -144,7 +144,7 @@ abstract contract Manager is
     function _getInboundQueueStorage()
         internal
         pure
-        returns (mapping(uint16 => mapping(uint64 => InboundQueuedTransfer)) storage $)
+        returns (mapping(bytes32 => InboundQueuedTransfer) storage $)
     {
         uint256 slot = uint256(INBOUND_QUEUE_SLOT);
         assembly ("memory-safe") {
@@ -241,11 +241,12 @@ abstract contract Manager is
         return _getCurrentCapacity(getInboundLimitParams(chainId_));
     }
 
-    function getInboundQueuedTransfer(
-        uint16 sourceChainId,
-        uint64 msgSequence
-    ) public view returns (InboundQueuedTransfer memory) {
-        return _getInboundQueueStorage()[sourceChainId][msgSequence];
+    function getInboundQueuedTransfer(bytes32 digest)
+        public
+        view
+        returns (InboundQueuedTransfer memory)
+    {
+        return _getInboundQueueStorage()[digest];
     }
 
     /**
@@ -347,19 +348,14 @@ abstract contract Manager is
         return queueSequence;
     }
 
-    function _enqueueInboundTransfer(
-        uint16 sourceChainId,
-        uint64 msgSequence,
-        uint256 amount,
-        address recipient
-    ) internal {
-        _getInboundQueueStorage()[sourceChainId][msgSequence] = InboundQueuedTransfer({
+    function _enqueueInboundTransfer(bytes32 digest, uint256 amount, address recipient) internal {
+        _getInboundQueueStorage()[digest] = InboundQueuedTransfer({
             amount: amount,
             recipient: recipient,
             txTimestamp: block.timestamp
         });
 
-        emit InboundTransferQueued(sourceChainId, msgSequence);
+        emit InboundTransferQueued(digest);
     }
 
     function completeOutboundQueuedTransfer(uint64 queueSequence)
@@ -579,9 +575,7 @@ abstract contract Manager is
         bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, message.chainId);
         if (isRateLimited) {
             // queue up the transfer
-            _enqueueInboundTransfer(
-                message.chainId, message.sequence, nativeTransferAmount, transferRecipient
-            );
+            _enqueueInboundTransfer(digest, nativeTransferAmount, transferRecipient);
 
             // end execution early
             return;
@@ -593,26 +587,20 @@ abstract contract Manager is
         _mintOrUnlockToRecipient(transferRecipient, nativeTransferAmount);
     }
 
-    function completeInboundQueuedTransfer(
-        uint16 sourceChainId,
-        uint64 msgSequence
-    ) external nonReentrant {
+    function completeInboundQueuedTransfer(bytes32 digest) external nonReentrant {
         // find the message in the queue
-        InboundQueuedTransfer memory queuedTransfer =
-            getInboundQueuedTransfer(sourceChainId, msgSequence);
+        InboundQueuedTransfer memory queuedTransfer = getInboundQueuedTransfer(digest);
         if (queuedTransfer.txTimestamp == 0) {
-            revert InboundQueuedTransferNotFound(sourceChainId, msgSequence);
+            revert InboundQueuedTransferNotFound(digest);
         }
 
         // check that > RATE_LIMIT_DURATION has elapsed
         if (block.timestamp - queuedTransfer.txTimestamp < rateLimitDuration) {
-            revert InboundQueuedTransferStillQueued(
-                sourceChainId, msgSequence, queuedTransfer.txTimestamp
-            );
+            revert InboundQueuedTransferStillQueued(digest, queuedTransfer.txTimestamp);
         }
 
         // remove transfer from the queue
-        delete _getInboundQueueStorage()[sourceChainId][msgSequence];
+        delete _getInboundQueueStorage()[digest];
 
         // run it through the mint/unlock logic
         _mintOrUnlockToRecipient(queuedTransfer.recipient, queuedTransfer.amount);

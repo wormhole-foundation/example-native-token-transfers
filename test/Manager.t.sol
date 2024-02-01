@@ -928,18 +928,18 @@ contract TestManager is Test, IManagerEvents {
 
         EndpointStructs.ManagerMessage memory m =
             _attestEndpointsHelper(user_A, user_B, 0, 5, endpoints);
+        bytes32 digest = EndpointStructs.managerMessageDigest(m);
         bytes memory message = EndpointStructs.encodeManagerMessage(m);
 
         // no quorum yet
         assertEq(token.balanceOf(address(user_B)), 0);
 
         vm.expectEmit(address(manager));
-        emit InboundTransferQueued(SENDING_CHAIN_ID, 0);
+        emit InboundTransferQueued(digest);
         e2.receiveMessage(message);
 
         // now we have quorum but it'll hit limit
-        IManager.InboundQueuedTransfer memory qt =
-            manager.getInboundQueuedTransfer(SENDING_CHAIN_ID, 0);
+        IManager.InboundQueuedTransfer memory qt = manager.getInboundQueuedTransfer(digest);
         assertEq(qt.amount, 50 * 10 ** (decimals - 8));
         assertEq(qt.txTimestamp, initialBlockTimestamp);
         assertEq(qt.recipient, user_B);
@@ -953,20 +953,18 @@ contract TestManager is Test, IManagerEvents {
 
         // assert that transfer still can't be completed
         bytes4 stillQueuedSelector =
-            bytes4(keccak256("InboundQueuedTransferStillQueued(uint16,uint64,uint256)"));
-        vm.expectRevert(
-            abi.encodeWithSelector(stillQueuedSelector, SENDING_CHAIN_ID, 0, initialBlockTimestamp)
-        );
-        manager.completeInboundQueuedTransfer(SENDING_CHAIN_ID, 0);
+            bytes4(keccak256("InboundQueuedTransferStillQueued(bytes32,uint256)"));
+        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, digest, initialBlockTimestamp));
+        manager.completeInboundQueuedTransfer(digest);
 
         // now complete transfer
         vm.warp(durationElapsedTime);
-        manager.completeInboundQueuedTransfer(SENDING_CHAIN_ID, 0);
+        manager.completeInboundQueuedTransfer(digest);
 
         // assert transfer no longer in queue
-        bytes4 notQueuedSelector = bytes4(keccak256("InboundQueuedTransferNotFound(uint16,uint64)"));
-        vm.expectRevert(abi.encodeWithSelector(notQueuedSelector, SENDING_CHAIN_ID, 0));
-        manager.completeInboundQueuedTransfer(SENDING_CHAIN_ID, 0);
+        bytes4 notQueuedSelector = bytes4(keccak256("InboundQueuedTransferNotFound(bytes32)"));
+        vm.expectRevert(abi.encodeWithSelector(notQueuedSelector, digest));
+        manager.completeInboundQueuedTransfer(digest);
 
         // assert user now has funds
         assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
