@@ -91,12 +91,16 @@ library EndpointStructs {
     /// Token Transfer payload corresponding to type == 1
     /// @dev The wire format is as follows:
     ///    - amount - 32 bytes
+    ///    - sourceTokenLength - 2 bytes
+    ///    - sourceToken - `sourceTokenLength` bytes
     ///    - toLength - 2 bytes
     ///    - to - `toLength` bytes
     ///    - toChain - 2 bytes
     struct NativeTokenTransfer {
         /// @notice Amount being transferred (big-endian uint256)
         uint256 amount;
+        /// @notice Source chain token address.
+        bytes sourceToken;
         /// @notice Address of the recipient.
         bytes to;
         /// @notice Chain ID of the recipient
@@ -108,11 +112,16 @@ library EndpointStructs {
         pure
         returns (bytes memory encoded)
     {
+        if (m.sourceToken.length > type(uint16).max) {
+            revert PayloadTooLong(m.sourceToken.length);
+        }
+        uint16 sourceTokenLength = uint16(m.sourceToken.length);
         if (m.to.length > type(uint16).max) {
             revert PayloadTooLong(m.to.length);
         }
         uint16 toLength = uint16(m.to.length);
-        return abi.encodePacked(m.amount, toLength, m.to, m.toChain);
+        return
+            abi.encodePacked(m.amount, sourceTokenLength, m.sourceToken, toLength, m.to, m.toChain);
     }
 
     /*
@@ -127,6 +136,10 @@ library EndpointStructs {
     {
         uint256 offset = 0;
         (nativeTokenTransfer.amount, offset) = encoded.asUint256Unchecked(offset);
+        uint16 sourceTokenLength;
+        (sourceTokenLength, offset) = encoded.asUint16Unchecked(offset);
+        (nativeTokenTransfer.sourceToken, offset) =
+            encoded.sliceUnchecked(offset, sourceTokenLength);
         uint16 toLength;
         (toLength, offset) = encoded.asUint16Unchecked(offset);
         (nativeTokenTransfer.to, offset) = encoded.sliceUnchecked(offset, toLength);
