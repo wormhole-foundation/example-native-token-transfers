@@ -9,6 +9,8 @@ library EndpointStructs {
     error PayloadTooLong(uint256 size);
     error IncorrectPrefix(bytes4 prefix);
 
+    /// @dev Prefix for all NativeTokenTransfer payloads
+    ///      This is 0x99'N''T''T'
     bytes4 constant NTT_PREFIX = 0x994E5454;
 
     /// @dev The wire format is as follows:
