@@ -898,7 +898,8 @@ contract TestManager is Test, IManagerEvents {
         vm.warp(durationElapsedTime - 1);
 
         // assert that transfer still can't be completed
-        bytes4 stillQueuedSelector = bytes4(keccak256("QueuedTransferStillQueued(uint64,uint256)"));
+        bytes4 stillQueuedSelector =
+            bytes4(keccak256("OutboundQueuedTransferStillQueued(uint64,uint256)"));
         vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, initialBlockTimestamp));
         manager.completeOutboundQueuedTransfer(0);
 
@@ -908,7 +909,7 @@ contract TestManager is Test, IManagerEvents {
         assertEq(seq, 0);
 
         // now ensure transfer was removed from queue
-        bytes4 notFoundSelector = bytes4(keccak256("QueuedTransferNotFound(uint64)"));
+        bytes4 notFoundSelector = bytes4(keccak256("OutboundQueuedTransferNotFound(uint64)"));
         vm.expectRevert(abi.encodeWithSelector(notFoundSelector, 0));
         manager.completeOutboundQueuedTransfer(0);
     }
@@ -928,18 +929,18 @@ contract TestManager is Test, IManagerEvents {
 
         EndpointStructs.ManagerMessage memory m =
             _attestEndpointsHelper(user_A, user_B, 0, 5, endpoints);
+        bytes32 digest = EndpointStructs.managerMessageDigest(m);
         bytes memory message = EndpointStructs.encodeManagerMessage(m);
 
         // no quorum yet
         assertEq(token.balanceOf(address(user_B)), 0);
 
         vm.expectEmit(address(manager));
-        emit InboundTransferQueued(0, SENDING_CHAIN_ID);
+        emit InboundTransferQueued(digest);
         e2.receiveMessage(message);
 
         // now we have quorum but it'll hit limit
-        assertEq(manager.nextInboundQueueSequence(), 1);
-        IManager.InboundQueuedTransfer memory qt = manager.getInboundQueuedTransfer(0);
+        IManager.InboundQueuedTransfer memory qt = manager.getInboundQueuedTransfer(digest);
         assertEq(qt.amount, 50 * 10 ** (decimals - 8));
         assertEq(qt.txTimestamp, initialBlockTimestamp);
         assertEq(qt.recipient, user_B);
@@ -952,18 +953,19 @@ contract TestManager is Test, IManagerEvents {
         vm.warp(durationElapsedTime - 1);
 
         // assert that transfer still can't be completed
-        bytes4 stillQueuedSelector = bytes4(keccak256("QueuedTransferStillQueued(uint64,uint256)"));
-        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, initialBlockTimestamp));
-        manager.completeInboundQueuedTransfer(0);
+        bytes4 stillQueuedSelector =
+            bytes4(keccak256("InboundQueuedTransferStillQueued(bytes32,uint256)"));
+        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, digest, initialBlockTimestamp));
+        manager.completeInboundQueuedTransfer(digest);
 
         // now complete transfer
         vm.warp(durationElapsedTime);
-        manager.completeInboundQueuedTransfer(0);
+        manager.completeInboundQueuedTransfer(digest);
 
         // assert transfer no longer in queue
-        bytes4 notQueuedSelector = bytes4(keccak256("QueuedTransferNotFound(uint64)"));
-        vm.expectRevert(abi.encodeWithSelector(notQueuedSelector, 0));
-        manager.completeInboundQueuedTransfer(0);
+        bytes4 notQueuedSelector = bytes4(keccak256("InboundQueuedTransferNotFound(bytes32)"));
+        vm.expectRevert(abi.encodeWithSelector(notQueuedSelector, digest));
+        manager.completeInboundQueuedTransfer(digest);
 
         // assert user now has funds
         assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
