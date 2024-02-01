@@ -495,13 +495,13 @@ abstract contract Manager is
         // normalize amount decimals
         uint256 normalizedAmount = normalizeAmount(amount, decimals);
 
+        bytes memory sourceTokenBytes = abi.encodePacked(token);
         bytes memory recipientBytes = abi.encodePacked(recipient);
-
-        EndpointStructs.NativeTokenTransfer memory nativeTokenTransfer = EndpointStructs
-            .NativeTokenTransfer({amount: normalizedAmount, to: recipientBytes, toChain: recipientChain});
-
-        bytes memory encodedTransferPayload =
-            EndpointStructs.encodeNativeTokenTransfer(nativeTokenTransfer);
+        bytes memory encodedTransferPayload = EndpointStructs.encodeNativeTokenTransfer(
+            EndpointStructs.NativeTokenTransfer(
+                normalizedAmount, sourceTokenBytes, recipientBytes, recipientChain
+            )
+        );
 
         // construct the ManagerMessage payload
         uint64 sequence = _useMessageSequence();

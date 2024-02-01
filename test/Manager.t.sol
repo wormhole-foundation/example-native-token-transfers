@@ -316,6 +316,7 @@ contract TestManager is Test, IManagerEvents {
             EndpointStructs.encodeNativeTokenTransfer(
                 EndpointStructs.NativeTokenTransfer({
                     amount: 50,
+                    sourceToken: abi.encodePacked(token),
                     to: abi.encodePacked(to),
                     toChain: chainId
                 })
