@@ -271,8 +271,7 @@ abstract contract Manager is
         uint256 calculatedCapacity =
             rateLimitParams.currentCapacity + (timePassed * rateLimitParams.ratePerSecond);
 
-        return
-            calculatedCapacity > rateLimitParams.limit ? rateLimitParams.limit : calculatedCapacity;
+        return min(calculatedCapacity, rateLimitParams.limit);
     }
 
     /**
