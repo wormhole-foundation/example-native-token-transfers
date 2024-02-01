@@ -22,3 +22,6 @@ test:
 test-push0:
 	forge build --extra-output evm.bytecode.opcodes
 	@if grep -qr --include \*.json PUSH0 ./out; then echo "Contract uses PUSH0 instruction" 1>&2; exit 1; fi
+
+verify-push0:
+	@if grep -qr --include \*.json PUSH0 ./out; then echo "Contract uses PUSH0 instruction" 1>&2; exit 1; fi

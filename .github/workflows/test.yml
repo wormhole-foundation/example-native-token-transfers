@@ -39,7 +39,7 @@ jobs:
 
       - name: Check PUSH0 Opcode inclusion
         run: |
-          make test-push0
+          make verify-push0
         id: test-push0
 
       - name: Run Forge fmt
