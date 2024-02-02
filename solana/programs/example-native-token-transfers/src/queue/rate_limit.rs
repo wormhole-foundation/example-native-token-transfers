@@ -1,7 +1,6 @@
 use anchor_lang::{prelude::*, solana_program::clock::UnixTimestamp};
 
-#[account]
-#[derive(InitSpace)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
 pub struct RateLimitState {
     /// The maximum capacity of the rate limiter.
     limit: u64,
