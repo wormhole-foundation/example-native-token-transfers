@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+use crate::normalized_amount::NormalizedAmount;
+
 use super::rate_limit::RateLimitState;
 
 #[account]
@@ -7,7 +9,7 @@ use super::rate_limit::RateLimitState;
 // TODO: maybe remove the queue from the name? it's not always queued
 pub struct InboundQueuedTransfer {
     pub bump: u8,
-    pub amount: u64,
+    pub amount: NormalizedAmount,
     pub recipient_address: Pubkey,
     pub release_timestamp: i64,
     pub released: bool,

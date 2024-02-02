@@ -5,6 +5,7 @@ pub mod config;
 pub mod error;
 pub mod instructions;
 pub mod messages;
+pub mod normalized_amount;
 pub mod queue;
 pub mod sequence;
 

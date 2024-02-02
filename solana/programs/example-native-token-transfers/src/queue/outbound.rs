@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::chain_id::ChainId;
+use crate::{chain_id::ChainId, normalized_amount::NormalizedAmount};
 
 use super::rate_limit::RateLimitState;
 
@@ -10,7 +10,7 @@ use super::rate_limit::RateLimitState;
 pub struct OutboundQueuedTransfer {
     pub bump: u8,
     pub sequence: u64,
-    pub amount: u64,
+    pub amount: NormalizedAmount,
     pub recipient_chain: ChainId,
     // TODO: revise max length?
     #[max_len(120)]

@@ -3,7 +3,7 @@ use std::io;
 
 use wormhole_io::{Readable, TypePrefixedPayload, Writeable};
 
-use crate::chain_id::ChainId;
+use crate::{chain_id::ChainId, normalized_amount::NormalizedAmount};
 
 // TODO: might make sense to break this up into multiple files
 
@@ -77,8 +77,7 @@ pub struct NativeTokenTransfer {
     // TODO: should we use a U256 library here? might be pointless since we're
     // only looking at the least significant 64 bits (last since BE), and
     // requring the rest to be 0
-    // TODO: change to NormalizedAmount type
-    pub amount: u64,
+    pub amount: NormalizedAmount,
     pub to: Vec<u8>,
     // TODO: shouldn't we put this in the outer message?
     pub to_chain: ChainId,
@@ -138,6 +137,8 @@ impl Writeable for NativeTokenTransfer {
         amount.write(writer)?;
         (to.len() as u16).write(writer)?;
         writer.write_all(to)?;
-        to_chain.write(writer)
+        to_chain.write(writer)?;
+
+        Ok(())
     }
 }

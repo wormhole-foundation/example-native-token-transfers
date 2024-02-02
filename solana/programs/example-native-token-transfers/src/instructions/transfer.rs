@@ -4,6 +4,7 @@ use anchor_spl::token::{self, Token, TokenAccount};
 use crate::{
     chain_id::ChainId,
     config::Mode,
+    normalized_amount::NormalizedAmount,
     queue::outbound::{OutboundQueuedTransfer, OutboundRateLimit},
 };
 
@@ -21,7 +22,7 @@ pub struct Transfer<'info> {
         address = config.mint,
     )]
     /// CHECK: the mint address matches the config
-    pub mint: AccountInfo<'info>,
+    pub mint: Account<'info, anchor_spl::token::Mint>,
 
     #[account(
         mut,
@@ -103,6 +104,8 @@ pub fn transfer(ctx: Context<Transfer>, args: TransferArgs) -> Result<()> {
     }
 
     let now = clock::Clock::get()?.unix_timestamp;
+
+    let amount = NormalizedAmount::normalize(amount, accs.mint.decimals);
 
     // consume the rate limit, or delay the transfer if it's outside the limit
     let release_timestamp = accs.rate_limit.rate_limit.consume_or_delay(now, amount);

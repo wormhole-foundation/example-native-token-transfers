@@ -29,7 +29,7 @@ pub struct ReleaseInbound<'info> {
         address = config.mint,
     )]
     /// CHECK: the mint address matches the config
-    pub mint: AccountInfo<'info>,
+    pub mint: Account<'info, anchor_spl::token::Mint>,
 
     #[account(
         seeds = [b"token_minter"],
@@ -59,12 +59,12 @@ pub fn release_inbound(ctx: Context<ReleaseInbound>, _args: ReleaseInboundArgs) 
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             token::MintTo {
-                mint: ctx.accounts.mint.clone(),
+                mint: ctx.accounts.mint.to_account_info(),
                 to: ctx.accounts.recipient.clone(),
                 authority: ctx.accounts.mint_authority.clone(),
             },
             &[&[b"token_minter", &[ctx.bumps["token_minter"]]]],
         ),
-        enqueued.amount,
+        enqueued.amount.denormalize(ctx.accounts.mint.decimals),
     )
 }

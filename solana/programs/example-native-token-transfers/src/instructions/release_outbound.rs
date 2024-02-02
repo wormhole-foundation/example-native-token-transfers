@@ -77,8 +77,6 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, _args: ReleaseOutboundArg
 
     // TODO: record endpoint position
 
-    // TODO: normalise amounts.
-
     let message: ManagerMessage<NativeTokenTransfer> = ManagerMessage {
         chain_id: accs.config.chain_id,
         sequence: accs.enqueued.sequence,
