@@ -1,22 +1,19 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.6.12 <0.9.0;
 
-import "wormhole-solidity-sdk/Utils.sol";
+import "wormhole-solidity-sdk/WormholeRelayerSDK.sol";
 
 import "./libraries/EndpointHelpers.sol";
 import "./interfaces/IWormhole.sol";
+import "./interfaces/IWormholeEndpoint.sol";
 import "./Endpoint.sol";
 import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 
-abstract contract WormholeEndpoint is Endpoint {
+abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
     using BytesParsing for bytes;
 
     // TODO -- fix this after some testing
-    uint256 constant _GAS_LIMIT = 500000;
-
-    address immutable _wormholeCoreBridge;
-    address immutable _wormholeRelayerAddr;
-    uint256 immutable _wormholeEndpoint_evmChainId;
+    uint256 public constant GAS_LIMIT = 500000;
 
     /// @dev Prefix for all EndpointMessage payloads
     ///      This is 0x99'E''W''H'
@@ -37,6 +34,10 @@ abstract contract WormholeEndpoint is Endpoint {
     error InvalidWormholeSiblingZeroAddress();
     error InvalidWormholeSiblingChainIdZero();
 
+    IWormhole public immutable wormhole;
+    IWormholeRelayer public immutable wormholeRelayer;
+    uint256 public immutable wormholeEndpoint_evmChainId;
+
     /// =============== STORAGE ===============================================
 
     bytes32 public constant WORMHOLE_CONSUMED_VAAS_SLOT =
@@ -44,6 +45,12 @@ abstract contract WormholeEndpoint is Endpoint {
 
     bytes32 public constant WORMHOLE_SIBLINGS_SLOT =
         bytes32(uint256(keccak256("whEndpoint.siblings")) - 1);
+
+    bytes32 public constant WORMHOLE_RELAYING_ENABLED_CHAINS_SLOT =
+        bytes32(uint256(keccak256("whEndpoint.relayingEnabledChains")) - 1);
+
+    bytes32 public constant WORMHOLE_EVM_CHAIN_IDS =
+        bytes32(uint256(keccak256("whEndpoint.evmChainIds")) - 1);
 
     /// =============== GETTERS/SETTERS ========================================
 
@@ -69,10 +76,39 @@ abstract contract WormholeEndpoint is Endpoint {
         }
     }
 
+    function _getWormholeRelayingEnabledChainsStorage()
+        internal
+        pure
+        returns (mapping(uint16 => bool) storage $)
+    {
+        uint256 slot = uint256(WORMHOLE_RELAYING_ENABLED_CHAINS_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
+    function _getWormholeEvmChainIdsStorage()
+        internal
+        pure
+        returns (mapping(uint16 => bool) storage $)
+    {
+        uint256 slot = uint256(WORMHOLE_EVM_CHAIN_IDS);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
+    modifier onlyRelayer() {
+        if (msg.sender != address(wormholeRelayer)) {
+            revert CallerNotRelayer(msg.sender);
+        }
+        _;
+    }
+
     constructor(address wormholeCoreBridge, address wormholeRelayerAddr) {
-        _wormholeCoreBridge = wormholeCoreBridge;
-        _wormholeRelayerAddr = wormholeRelayerAddr;
-        _wormholeEndpoint_evmChainId = block.chainid;
+        wormhole = IWormhole(wormholeCoreBridge);
+        wormholeRelayer = IWormholeRelayer(wormholeRelayerAddr);
+        wormholeEndpoint_evmChainId = block.chainid;
     }
 
     function _quoteDeliveryPrice(uint16 targetChain)
@@ -81,14 +117,16 @@ abstract contract WormholeEndpoint is Endpoint {
         override
         returns (uint256 nativePriceQuote)
     {
-        // no delivery fee for solana (standard relaying is not yet live)
-        if (targetChain == 1) {
+        if (isWormholeRelayingEnabled(targetChain)) {
+            if (isWormholeEvmChain(targetChain)) {
+                (uint256 cost,) = wormholeRelayer.quoteEVMDeliveryPrice(targetChain, 0, GAS_LIMIT);
+                return cost;
+            } else {
+                revert RelayingNotImplemented(targetChain);
+            }
+        } else {
             return 0;
         }
-
-        (uint256 cost,) = wormholeRelayer().quoteEVMDeliveryPrice(targetChain, 0, _GAS_LIMIT);
-
-        return cost;
     }
 
     function wrapManagerMessageInEndpoint(bytes memory payload)
@@ -105,23 +143,26 @@ abstract contract WormholeEndpoint is Endpoint {
         return (EndpointStructs.encodeEndpointMessage(endpointMessage), endpointMessage);
     }
 
-    function _sendMessage(uint16 recipientChain, bytes memory payload) internal override {
+    function _sendMessage(uint16 recipientChain, bytes memory managerMessage) internal override {
         (
             bytes memory encodedEndpointPayload,
             EndpointStructs.EndpointMessage memory endpointMessage
-        ) = wrapManagerMessageInEndpoint(payload);
+        ) = wrapManagerMessageInEndpoint(managerMessage);
 
-        // do not use standard relaying for solana deliveries
-        if (recipientChain == 1) {
-            wormhole().publishMessage(0, encodedEndpointPayload, 1);
+        if (isWormholeRelayingEnabled(recipientChain)) {
+            if (isWormholeEvmChain(recipientChain)) {
+                wormholeRelayer.sendPayloadToEvm{value: msg.value}(
+                    recipientChain,
+                    fromWormholeFormat(getWormholeSibling(recipientChain)),
+                    encodedEndpointPayload,
+                    0,
+                    GAS_LIMIT
+                );
+            } else {
+                revert RelayingNotImplemented(recipientChain);
+            }
         } else {
-            wormholeRelayer().sendPayloadToEvm{value: msg.value}(
-                recipientChain,
-                fromWormholeFormat(getWormholeSibling(recipientChain)),
-                encodedEndpointPayload,
-                0,
-                _GAS_LIMIT
-            );
+            wormhole.publishMessage(0, encodedEndpointPayload, 1);
         }
 
         emit SendEndpointMessage(recipientChain, endpointMessage);
@@ -155,6 +196,37 @@ abstract contract WormholeEndpoint is Endpoint {
             encoded.sliceUnchecked(offset, managerPayloadLength);
     }
 
+    function receiveWormholeMessages(
+        bytes memory payload,
+        bytes[] memory additionalMessages,
+        bytes32 sourceAddress,
+        uint16 sourceChain,
+        bytes32 deliveryHash
+    ) external payable onlyRelayer {
+        if (getWormholeSibling(sourceChain) != sourceAddress) {
+            revert InvalidWormholeSibling(sourceChain, sourceAddress);
+        }
+
+        // VAA replay protection
+        // Note that this VAA is for the AR delivery, not for the raw message emitted by the source chain Endpoint contract.
+        // The VAAs received by this entrypoint are different than the VAA received by the _receiveMessage entrypoint.
+        if (isVAAConsumed(deliveryHash)) {
+            revert TransferAlreadyCompleted(deliveryHash);
+        }
+        _setVAAConsumed(deliveryHash);
+
+        // We don't honor additional message in this handler.
+        if (additionalMessages.length > 0) {
+            revert UnexpectedAdditionalMessages();
+        }
+
+        // emit `ReceivedRelayedMessage` event
+        emit ReceivedRelayedMessage(deliveryHash, sourceChain, sourceAddress);
+
+        EndpointStructs.ManagerMessage memory parsed = EndpointStructs.parseManagerMessage(payload);
+        _deliverToManager(parsed);
+    }
+
     /// @notice Receive an attested message from the verification layer
     ///         This function should verify the encodedVm and then deliver the attestation to the endpoint manager contract.
     function _receiveMessage(bytes memory encodedMessage) internal {
@@ -172,7 +244,7 @@ abstract contract WormholeEndpoint is Endpoint {
     function _verifyMessage(bytes memory encodedMessage) internal returns (bytes memory) {
         // verify VAA against Wormhole Core Bridge contract
         (IWormhole.VM memory vm, bool valid, string memory reason) =
-            wormhole().parseAndVerifyVM(encodedMessage);
+            wormhole.parseAndVerifyVM(encodedMessage);
 
         // ensure that the VAA is valid
         if (!valid) {
@@ -196,16 +268,8 @@ abstract contract WormholeEndpoint is Endpoint {
         return vm.payload;
     }
 
-    function wormhole() public view returns (IWormhole) {
-        return IWormhole(_wormholeCoreBridge);
-    }
-
-    function wormholeRelayer() public view returns (IWormholeRelayer) {
-        return IWormholeRelayer(_wormholeRelayerAddr);
-    }
-
     function _verifyBridgeVM(IWormhole.VM memory vm) internal view returns (bool) {
-        checkFork(_wormholeEndpoint_evmChainId);
+        checkFork(wormholeEndpoint_evmChainId);
         return getWormholeSibling(vm.emitterChainId) == vm.emitterAddress;
     }
 
@@ -226,7 +290,7 @@ abstract contract WormholeEndpoint is Endpoint {
 
     function _setWormholeSibling(uint16 chainId, bytes32 siblingContract) internal {
         if (chainId == 0) {
-            revert InvalidWormholeSiblingChainIdZero();
+            revert InvalidWormholeChainIdZero();
         }
         if (siblingContract == bytes32(0)) {
             revert InvalidWormholeSiblingZeroAddress();
@@ -237,5 +301,27 @@ abstract contract WormholeEndpoint is Endpoint {
         _getWormholeSiblingsStorage()[chainId] = siblingContract;
 
         emit SetWormholeSibling(chainId, oldSiblingContract, siblingContract);
+    }
+
+    function isWormholeRelayingEnabled(uint16 chainId) public view returns (bool) {
+        return _getWormholeRelayingEnabledChainsStorage()[chainId];
+    }
+
+    function _setIsWormholeRelayingEnabled(uint16 chainId, bool isEnabled) internal {
+        if (chainId == 0) {
+            revert InvalidWormholeChainIdZero();
+        }
+        _getWormholeRelayingEnabledChainsStorage()[chainId] = isEnabled;
+    }
+
+    function isWormholeEvmChain(uint16 chainId) public view returns (bool) {
+        return _getWormholeEvmChainIdsStorage()[chainId];
+    }
+
+    function _setIsWormholeEvmChain(uint16 chainId) internal {
+        if (chainId == 0) {
+            revert InvalidWormholeChainIdZero();
+        }
+        _getWormholeEvmChainIdsStorage()[chainId] = true;
     }
 }

@@ -23,4 +23,12 @@ contract WormholeEndpointAndManager is EndpointAndManager, WormholeEndpoint {
     ) external onlyOwner {
         _setWormholeSibling(siblingChainId, siblingContract);
     }
+
+    function setIsWormholeRelayingEnabled(uint16 chainId, bool isEnabled) external onlyOwner {
+        _setIsWormholeRelayingEnabled(chainId, isEnabled);
+    }
+
+    function setIsWormholeEvmChain(uint16 chainId) external onlyOwner {
+        _setIsWormholeEvmChain(chainId);
+    }
 }
