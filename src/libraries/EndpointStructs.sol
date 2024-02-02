@@ -160,12 +160,29 @@ library EndpointStructs {
     }
 
     struct EndpointMessage {
-        /// @notice Magic string (constant value set by messaging provider) that idenfies the payload as an endpoint-emitted payload.
-        ///         Note that this is not a security critical field. It's meant to be used by messaging providers to identify which messages are Endpoint-related.
-        bytes32 endpointId;
+        /// @notice
+        bytes4 prefix;
         /// @notice Payload provided to the Endpoint contract by the Manager contract.
         bytes managerPayload;
-        /// @notice Custom payload which messaging providers can use to pass bridge-specific information, if needed.
-        bytes endpointPayload;
+    }
+
+    /*
+     * @dev Encodes an Endpoint message for communication between the Manager and the Endpoint.
+     *
+     * @param m The EndpointMessage struct containing the message details.
+     * @return encoded The byte array corresponding to the encoded message.
+     * @throws PayloadTooLong if the length of endpointId, managerPayload, or endpointPayload exceeds the allowed maximum.
+     */
+    function encodeEndpointMessage(EndpointMessage memory m)
+        public
+        pure
+        returns (bytes memory encoded)
+    {
+        if (m.managerPayload.length > type(uint16).max) {
+            revert PayloadTooLong(m.managerPayload.length);
+        }
+
+        uint16 managerPayloadLength = uint16(m.managerPayload.length);
+        return abi.encodePacked(m.prefix, managerPayloadLength, m.managerPayload);
     }
 }
