@@ -433,6 +433,9 @@ abstract contract Manager is
             revert NotEnoughCapacity(getCurrentOutboundCapacity(), amount);
         }
         if (shouldQueue && isAmountRateLimited) {
+            // emit an event to notify the user that the transfer is rate limited
+            emit OutboundTransferRateLimited(msg.sender, amount, getCurrentOutboundCapacity());
+
             // queue up and return
             _enqueueOutboundTransfer(sequence, amount, recipientChain, recipient);
 
