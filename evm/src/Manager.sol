@@ -72,9 +72,6 @@ abstract contract Manager is
     bytes32 public constant OUTBOUND_QUEUE_SLOT =
         bytes32(uint256(keccak256("ntt.outboundQueue")) - 1);
 
-    bytes32 public constant OUTBOUND_QUEUE_SEQUENCE_SLOT =
-        bytes32(uint256(keccak256("ntt.outboundQueueSequence")) - 1);
-
     bytes32 public constant INBOUND_LIMIT_PARAMS_SLOT =
         bytes32(uint256(keccak256("ntt.inboundLimitParams")) - 1);
 
@@ -118,13 +115,6 @@ abstract contract Manager is
         returns (mapping(uint64 => OutboundQueuedTransfer) storage $)
     {
         uint256 slot = uint256(OUTBOUND_QUEUE_SLOT);
-        assembly ("memory-safe") {
-            $.slot := slot
-        }
-    }
-
-    function _getOutboundQueueSequenceStorage() internal pure returns (_Sequence storage $) {
-        uint256 slot = uint256(OUTBOUND_QUEUE_SEQUENCE_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
         }
@@ -327,18 +317,17 @@ abstract contract Manager is
     }
 
     function _enqueueOutboundTransfer(
+        uint64 sequence,
         uint256 amount,
         uint16 recipientChain,
         bytes32 recipient
-    ) internal returns (uint64) {
-        uint64 queueSequence = _useOutboundQueueSequence();
-        _getOutboundQueueStorage()[queueSequence] = OutboundQueuedTransfer({
+    ) internal {
+        _getOutboundQueueStorage()[sequence] = OutboundQueuedTransfer({
             amount: amount,
             recipientChain: recipientChain,
             recipient: recipient,
             txTimestamp: block.timestamp
         });
-        return queueSequence;
     }
 
     function _enqueueInboundTransfer(bytes32 digest, uint256 amount, address recipient) internal {
@@ -351,29 +340,32 @@ abstract contract Manager is
         emit InboundTransferQueued(digest);
     }
 
-    function completeOutboundQueuedTransfer(uint64 queueSequence)
+    function completeOutboundQueuedTransfer(uint64 messageSequence)
         external
         payable
         nonReentrant
-        returns (uint64 msgSequence)
+        returns (uint64)
     {
         // find the message in the queue
-        OutboundQueuedTransfer memory queuedTransfer = _getOutboundQueueStorage()[queueSequence];
+        OutboundQueuedTransfer memory queuedTransfer = _getOutboundQueueStorage()[messageSequence];
         if (queuedTransfer.txTimestamp == 0) {
-            revert OutboundQueuedTransferNotFound(queueSequence);
+            revert OutboundQueuedTransferNotFound(messageSequence);
         }
 
         // check that > RATE_LIMIT_DURATION has elapsed
         if (block.timestamp - queuedTransfer.txTimestamp < rateLimitDuration) {
-            revert OutboundQueuedTransferStillQueued(queueSequence, queuedTransfer.txTimestamp);
+            revert OutboundQueuedTransferStillQueued(messageSequence, queuedTransfer.txTimestamp);
         }
 
         // remove transfer from the queue
-        delete _getOutboundQueueStorage()[queueSequence];
+        delete _getOutboundQueueStorage()[messageSequence];
 
         // run it through the transfer logic and skip the rate limit
         return _transfer(
-            queuedTransfer.amount, queuedTransfer.recipientChain, queuedTransfer.recipient
+            messageSequence,
+            queuedTransfer.amount,
+            queuedTransfer.recipientChain,
+            queuedTransfer.recipient
         );
     }
 
@@ -430,6 +422,9 @@ abstract contract Manager is
             revert InvalidMode(uint8(mode));
         }
 
+        // get the sequence for this transfer
+        uint64 sequence = _useMessageSequence();
+
         // now check rate limits
         bool isAmountRateLimited = _isOutboundAmountRateLimited(amount);
         if (!shouldQueue && isAmountRateLimited) {
@@ -437,22 +432,23 @@ abstract contract Manager is
         }
         if (shouldQueue && isAmountRateLimited) {
             // queue up and return
-            uint64 queueSequence = _enqueueOutboundTransfer(amount, recipientChain, recipient);
+            _enqueueOutboundTransfer(sequence, amount, recipientChain, recipient);
 
             // refund the price quote back to sender
             payable(msg.sender).transfer(msg.value);
 
             // return the sequence in the queue
-            return queueSequence;
+            return sequence;
         }
 
         // otherwise, consume the outbound amount
         _consumeOutboundAmount(amount);
 
-        return _transfer(amount, recipientChain, recipient);
+        return _transfer(sequence, amount, recipientChain, recipient);
     }
 
     function _transfer(
+        uint64 sequence,
         uint256 amount,
         uint16 recipientChain,
         bytes32 recipient
@@ -485,7 +481,6 @@ abstract contract Manager is
         );
 
         // construct the ManagerMessage payload
-        uint64 sequence = _useMessageSequence();
         bytes memory sourceManagerBytes = abi.encodePacked(address(this));
         bytes memory senderBytes = abi.encodePacked(msg.sender);
         bytes memory encodedManagerPayload = EndpointStructs.encodeManagerMessage(
@@ -612,32 +607,12 @@ abstract contract Manager is
     }
 
     function nextMessageSequence() external view returns (uint64) {
-        return _nextSequenceNum(_getMessageSequenceStorage());
+        return _getMessageSequenceStorage().num;
     }
 
-    function nextOutboundQueueSequence() external view returns (uint64) {
-        return _nextSequenceNum(_getOutboundQueueSequenceStorage());
-    }
-
-    function _useMessageSequence() internal returns (uint64) {
-        return _useSequenceNum(_getMessageSequenceStorage());
-    }
-
-    function _useOutboundQueueSequence() internal returns (uint64) {
-        return _useSequenceNum(_getOutboundQueueSequenceStorage());
-    }
-
-    function _useSequenceNum(_Sequence storage seq) internal returns (uint64 currentSequence) {
-        currentSequence = _nextSequenceNum(seq);
-        _incrementSequenceNum(seq);
-    }
-
-    function _nextSequenceNum(_Sequence storage seq) internal view returns (uint64) {
-        return seq.num;
-    }
-
-    function _incrementSequenceNum(_Sequence storage seq) internal {
-        seq.num++;
+    function _useMessageSequence() internal returns (uint64 currentSequence) {
+        currentSequence = _getMessageSequenceStorage().num;
+        _getMessageSequenceStorage().num++;
     }
 
     function getTokenBalanceOf(
