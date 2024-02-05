@@ -161,7 +161,10 @@ abstract contract Manager is
     function quoteDeliveryPrice(uint16 recipientChain) public view virtual returns (uint256);
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
-    function _sendMessageToEndpoint(uint16 recipientChain, bytes memory payload) internal virtual;
+    function _sendMessageToEndpoint(
+        uint16 recipientChain,
+        bytes memory managerMessage
+    ) internal virtual;
 
     // TODO: do we want additional information (like chain etc)
     function isMessageApproved(bytes32 digest) public view virtual returns (bool);

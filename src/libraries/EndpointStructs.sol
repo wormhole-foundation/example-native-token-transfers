@@ -13,15 +13,16 @@ library EndpointStructs {
     ///      This is 0x99'N''T''T'
     bytes4 constant NTT_PREFIX = 0x994E5454;
 
-    /// @dev The wire format is as follows:
-    ///     - chainId - 2 bytes
-    ///     - sequence - 8 bytes
-    ///     - sourceManagerLength - 2 bytes
-    ///     - sourceManager - `sourceManagerLength` bytes
-    ///     - senderLength - 2 bytes
-    ///     - sender - `senderLength` bytes
-    ///     - payloadLength - 2 bytes
-    ///     - payload - `payloadLength` bytes
+    /// @dev Message emitted and received by the manager contract.
+    ///      The wire format is as follows:
+    ///      - chainId - 2 bytes
+    ///      - sequence - 8 bytes
+    ///      - sourceManagerLength - 2 bytes
+    ///      - sourceManager - `sourceManagerLength` bytes
+    ///      - senderLength - 2 bytes
+    ///      - sender - `senderLength` bytes
+    ///      - payloadLength - 2 bytes
+    ///      - payload - `payloadLength` bytes
     struct ManagerMessage {
         /// @notice chainId that message originates from
         uint16 chainId;
@@ -93,15 +94,15 @@ library EndpointStructs {
         encoded.checkLength(offset);
     }
 
-    /// Token Transfer payload corresponding to type == 1
-    /// @dev The wire format is as follows:
-    ///    - NTT_PREFIX - 4 bytes
-    ///    - amount - 32 bytes
-    ///    - sourceTokenLength - 2 bytes
-    ///    - sourceToken - `sourceTokenLength` bytes
-    ///    - toLength - 2 bytes
-    ///    - to - `toLength` bytes
-    ///    - toChain - 2 bytes
+    /// @dev Native Token Transfer payload.
+    ///      The wire format is as follows:
+    ///      - NTT_PREFIX - 4 bytes
+    ///      - amount - 32 bytes
+    ///      - sourceTokenLength - 2 bytes
+    ///      - sourceToken - `sourceTokenLength` bytes
+    ///      - toLength - 2 bytes
+    ///      - to - `toLength` bytes
+    ///      - toChain - 2 bytes
     struct NativeTokenTransfer {
         /// @notice Amount being transferred (big-endian uint256)
         uint256 amount;
