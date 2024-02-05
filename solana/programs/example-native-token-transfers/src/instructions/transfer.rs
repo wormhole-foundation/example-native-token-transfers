@@ -80,6 +80,8 @@ pub fn transfer(ctx: Context<Transfer>, args: TransferArgs) -> Result<()> {
         recipient_address,
     } = args;
 
+    let amount = NormalizedAmount::normalize(amount, accs.mint.decimals);
+
     match accs.config.mode {
         Mode::Burning => token_interface::burn(
             CpiContext::new(
@@ -90,7 +92,8 @@ pub fn transfer(ctx: Context<Transfer>, args: TransferArgs) -> Result<()> {
                     authority: accs.from_authority.to_account_info(),
                 },
             ),
-            amount,
+            // TODO: should we revert if we have dust?
+            amount.denormalize(accs.mint.decimals),
         )?,
 
         // TODO: implement locking mode. it will require a custody account.
@@ -104,8 +107,6 @@ pub fn transfer(ctx: Context<Transfer>, args: TransferArgs) -> Result<()> {
     }
 
     let now = clock::Clock::get()?.unix_timestamp;
-
-    let amount = NormalizedAmount::normalize(amount, accs.mint.decimals);
 
     // consume the rate limit, or delay the transfer if it's outside the limit
     let release_timestamp = accs.rate_limit.rate_limit.consume_or_delay(now, amount);
