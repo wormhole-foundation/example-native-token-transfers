@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, solana_program::clock};
 
-use crate::{chain_id::ChainId, normalized_amount::NormalizedAmount};
+use crate::{chain_id::ChainId, error::NTTError, normalized_amount::NormalizedAmount};
 
 use super::rate_limit::RateLimitState;
 
@@ -23,6 +23,21 @@ pub struct OutboundQueuedTransfer {
 
 impl OutboundQueuedTransfer {
     pub const SEED_PREFIX: &'static [u8] = b"outbound_queue";
+
+    pub fn release(&mut self) -> Result<()> {
+        let now = clock::Clock::get()?.unix_timestamp;
+        if self.release_timestamp > now {
+            return Err(NTTError::ReleaseTimestampNotReached.into());
+        }
+
+        if self.released {
+            return Err(NTTError::MessageAlreadySent.into());
+        }
+
+        self.released = true;
+
+        Ok(())
+    }
 }
 
 #[account]

@@ -47,13 +47,7 @@ pub struct ReleaseInboundArgs {}
 pub fn release_inbound(ctx: Context<ReleaseInbound>, _args: ReleaseInboundArgs) -> Result<()> {
     let enqueued = &mut ctx.accounts.enqueued;
 
-    let now = clock::Clock::get()?.unix_timestamp;
-
-    if enqueued.release_timestamp > now {
-        return Err(NTTError::ReleaseTimestampNotReached.into());
-    }
-
-    enqueued.released = true;
+    enqueued.release()?;
 
     token::mint_to(
         CpiContext::new_with_signer(

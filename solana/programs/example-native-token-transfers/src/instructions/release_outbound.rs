@@ -69,13 +69,8 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, _args: ReleaseOutboundArg
     let accs = ctx.accounts;
     let batch_id = 0;
 
-    let now = clock::Clock::get()?.unix_timestamp;
-
-    if accs.enqueued.release_timestamp > now {
-        return Err(NTTError::ReleaseTimestampNotReached.into());
-    }
-
     // TODO: record endpoint position
+    accs.enqueued.release()?;
 
     let message: ManagerMessage<NativeTokenTransfer> = ManagerMessage {
         chain_id: accs.config.chain_id,

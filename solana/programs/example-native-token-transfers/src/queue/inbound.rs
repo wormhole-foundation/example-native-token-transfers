@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::normalized_amount::NormalizedAmount;
+use crate::{error::NTTError, normalized_amount::NormalizedAmount};
 
 use super::rate_limit::RateLimitState;
 
@@ -17,6 +17,22 @@ pub struct InboundQueuedTransfer {
 
 impl InboundQueuedTransfer {
     pub const SEED_PREFIX: &'static [u8] = b"inbound_queue";
+
+    pub fn release(&mut self) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+
+        if self.release_timestamp > now {
+            return Err(NTTError::ReleaseTimestampNotReached.into());
+        }
+
+        if self.released {
+            return Err(NTTError::TransferAlreadyRedeemed.into());
+        }
+
+        self.released = true;
+
+        Ok(())
+    }
 }
 
 /// Inbound rate limit per chain.
