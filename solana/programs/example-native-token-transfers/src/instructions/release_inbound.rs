@@ -1,7 +1,7 @@
-use anchor_lang::{prelude::*, solana_program::clock};
+use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token};
 
-use crate::{config::Config, error::NTTError, queue::inbound::InboundQueuedTransfer};
+use crate::{config::Config, error::NTTError, queue::inbox::InboxItem};
 
 #[derive(Accounts)]
 pub struct ReleaseInbound<'info> {
@@ -12,16 +12,16 @@ pub struct ReleaseInbound<'info> {
 
     #[account(
         mut,
-        constraint = !enqueued.released @ NTTError::TransferAlreadyRedeemed,
+        constraint = !inbox_item.released @ NTTError::TransferAlreadyRedeemed,
     )]
-    pub enqueued: Account<'info, InboundQueuedTransfer>,
+    pub inbox_item: Account<'info, InboxItem>,
 
     #[account(
         mut,
-        address = enqueued.recipient_address,
+        address = inbox_item.recipient_address,
     )]
-    /// CHECK: the address is checked to match th recipient address in the
-    /// queued transfer
+    /// CHECK: the address is checked to match the recipient address in the
+    /// inbox item
     pub recipient: AccountInfo<'info>,
 
     #[account(
@@ -45,9 +45,9 @@ pub struct ReleaseInbound<'info> {
 pub struct ReleaseInboundArgs {}
 
 pub fn release_inbound(ctx: Context<ReleaseInbound>, _args: ReleaseInboundArgs) -> Result<()> {
-    let enqueued = &mut ctx.accounts.enqueued;
+    let inbox_item = &mut ctx.accounts.inbox_item;
 
-    enqueued.release()?;
+    inbox_item.release()?;
 
     token::mint_to(
         CpiContext::new_with_signer(
@@ -59,6 +59,6 @@ pub fn release_inbound(ctx: Context<ReleaseInbound>, _args: ReleaseInboundArgs) 
             },
             &[&[b"token_minter", &[ctx.bumps["token_minter"]]]],
         ),
-        enqueued.amount.denormalize(ctx.accounts.mint.decimals),
+        inbox_item.amount.denormalize(ctx.accounts.mint.decimals),
     )
 }

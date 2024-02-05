@@ -6,7 +6,7 @@ use crate::{
     config::Config,
     error::NTTError,
     messages::{ManagerMessage, NativeTokenTransfer},
-    queue::inbound::{InboundQueuedTransfer, InboundRateLimit},
+    queue::inbox::{InboundRateLimit, InboxItem},
 };
 
 #[account]
@@ -55,19 +55,19 @@ pub struct Redeem<'info> {
     #[account(
         init,
         payer = payer,
-        space = 8 + InboundQueuedTransfer::INIT_SPACE,
+        space = 8 + InboxItem::INIT_SPACE,
         seeds = [
-            InboundQueuedTransfer::SEED_PREFIX,
+            InboxItem::SEED_PREFIX,
             vaa.message().chain_id.id.to_be_bytes().as_ref(),
             vaa.message().sequence.to_be_bytes().as_ref(),
         ],
         bump,
     )]
     // NOTE: in order to handle multiple endpoints, we can just augment the
-    // queued transfer struct with a bitmap storing which endpoints have
+    // inbox item transfer struct with a bitmap storing which endpoints have
     // attested to the transfer. Then we only release it if there's quorum.
     // We would need to maybe_init this account in that case.
-    pub enqueued: Account<'info, InboundQueuedTransfer>,
+    pub inbox_item: Account<'info, InboxItem>,
 
     #[account(
         mut,
@@ -98,8 +98,8 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
 
     let release_timestamp = accs.rate_limit.rate_limit.consume_or_delay(now, amount);
 
-    accs.enqueued.set_inner(InboundQueuedTransfer {
-        bump: ctx.bumps["enqueued"],
+    accs.inbox_item.set_inner(InboxItem {
+        bump: ctx.bumps["inbox_item"],
         amount,
         recipient_address,
         release_timestamp,

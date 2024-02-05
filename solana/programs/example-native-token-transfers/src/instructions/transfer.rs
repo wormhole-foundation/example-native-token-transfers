@@ -5,7 +5,7 @@ use crate::{
     chain_id::ChainId,
     config::Mode,
     normalized_amount::NormalizedAmount,
-    queue::outbound::{OutboundQueuedTransfer, OutboundRateLimit},
+    queue::outbox::{OutboxItem, OutboxRateLimit},
 };
 
 // this will burn the funds and create an account that either allows sending the
@@ -46,20 +46,20 @@ pub struct Transfer<'info> {
     #[account(
         init,
         payer = payer,
-        space = 8 + OutboundQueuedTransfer::INIT_SPACE,
+        space = 8 + OutboxItem::INIT_SPACE,
         // TODO: this creates a race condition
         // when two people try to send a transfer at the same time
         // only one of them can claim the sequence number.
         // Not sure if there's a way around this, the PDA has to be seeded by
         // something unique to this transfer, so I think it has to include the
         // sequence number (everything else can be the same)
-        seeds = [OutboundQueuedTransfer::SEED_PREFIX, seq.sequence.to_be_bytes().as_ref()],
+        seeds = [OutboxItem::SEED_PREFIX, seq.sequence.to_be_bytes().as_ref()],
         bump,
     )]
-    pub enqueued: Account<'info, OutboundQueuedTransfer>,
+    pub outbox_item: Account<'info, OutboxItem>,
 
     #[account(mut)]
-    pub rate_limit: Account<'info, OutboundRateLimit>,
+    pub rate_limit: Account<'info, OutboxRateLimit>,
 
     pub system_program: Program<'info, System>,
 }
@@ -112,8 +112,8 @@ pub fn transfer(ctx: Context<Transfer>, args: TransferArgs) -> Result<()> {
 
     let sequence = accs.seq.next();
 
-    accs.enqueued.set_inner(OutboundQueuedTransfer {
-        bump: ctx.bumps["enqueued"],
+    accs.outbox_item.set_inner(OutboxItem {
+        bump: ctx.bumps["outbox_item"],
         sequence,
         amount,
         recipient_chain,

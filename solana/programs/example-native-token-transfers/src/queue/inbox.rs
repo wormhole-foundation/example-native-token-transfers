@@ -6,8 +6,8 @@ use super::rate_limit::RateLimitState;
 
 #[account]
 #[derive(InitSpace)]
-// TODO: maybe remove the queue from the name? it's not always queued
-pub struct InboundQueuedTransfer {
+// TODO: generalise this to arbitrary inbound messages (via a generic parameter in place of amount and recipient info)
+pub struct InboxItem {
     pub bump: u8,
     pub amount: NormalizedAmount,
     pub recipient_address: Pubkey,
@@ -15,8 +15,8 @@ pub struct InboundQueuedTransfer {
     pub released: bool,
 }
 
-impl InboundQueuedTransfer {
-    pub const SEED_PREFIX: &'static [u8] = b"inbound_queue";
+impl InboxItem {
+    pub const SEED_PREFIX: &'static [u8] = b"inbox_item";
 
     pub fn release(&mut self) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
@@ -45,5 +45,5 @@ pub struct InboundRateLimit {
 }
 
 impl InboundRateLimit {
-    pub const SEED_PREFIX: &'static [u8] = b"inbound_rate_limit";
+    pub const SEED_PREFIX: &'static [u8] = b"inbox_rate_limit";
 }

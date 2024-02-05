@@ -6,8 +6,8 @@ use super::rate_limit::RateLimitState;
 
 #[account]
 #[derive(InitSpace)]
-// TODO: maybe remove the queue from the name? it's not always queued
-pub struct OutboundQueuedTransfer {
+// TODO: generalise this to arbitrary outbound messages (via a generic parameter in place of amount and recipient info)
+pub struct OutboxItem {
     pub bump: u8,
     pub sequence: u64,
     pub amount: NormalizedAmount,
@@ -21,8 +21,8 @@ pub struct OutboundQueuedTransfer {
     pub released: bool,
 }
 
-impl OutboundQueuedTransfer {
-    pub const SEED_PREFIX: &'static [u8] = b"outbound_queue";
+impl OutboxItem {
+    pub const SEED_PREFIX: &'static [u8] = b"outbox_item";
 
     pub fn release(&mut self) -> Result<()> {
         let now = clock::Clock::get()?.unix_timestamp;
@@ -42,12 +42,12 @@ impl OutboundQueuedTransfer {
 
 #[account]
 #[derive(InitSpace)]
-pub struct OutboundRateLimit {
+pub struct OutboxRateLimit {
     pub rate_limit: RateLimitState,
 }
 
 /// Global rate limit for all outbound transfers to all chains.
 /// NOTE: only one of this account can exist, so we don't need to check the PDA.
-impl OutboundRateLimit {
-    pub const SEED_PREFIX: &'static [u8] = b"outbound_rate_limit";
+impl OutboxRateLimit {
+    pub const SEED_PREFIX: &'static [u8] = b"outbox_rate_limit";
 }

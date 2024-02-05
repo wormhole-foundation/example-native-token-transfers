@@ -1,3 +1,3 @@
-pub mod outbound;
-pub mod inbound;
+pub mod inbox;
+pub mod outbox;
 pub mod rate_limit;

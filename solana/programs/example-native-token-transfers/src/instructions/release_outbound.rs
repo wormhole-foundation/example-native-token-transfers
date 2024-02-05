@@ -1,4 +1,4 @@
-use anchor_lang::{prelude::*, solana_program::clock};
+use anchor_lang::prelude::*;
 
 use wormhole_anchor_sdk::wormhole;
 use wormhole_io::TypePrefixedPayload;
@@ -7,7 +7,7 @@ use crate::{
     config::Config,
     error::NTTError,
     messages::{ManagerMessage, NativeTokenTransfer},
-    queue::outbound::OutboundQueuedTransfer,
+    queue::outbox::OutboxItem,
 };
 
 #[derive(Accounts)]
@@ -19,13 +19,13 @@ pub struct ReleaseOutbound<'info> {
 
     #[account(
         mut,
-        constraint = !enqueued.released @ NTTError::MessageAlreadySent,
+        constraint = !outbox_item.released @ NTTError::MessageAlreadySent,
     )]
-    pub enqueued: Account<'info, OutboundQueuedTransfer>,
+    pub outbox_item: Account<'info, OutboxItem>,
 
     #[account(
         mut,
-        seeds = [b"message", enqueued.sequence.to_be_bytes().as_ref()],
+        seeds = [b"message", outbox_item.sequence.to_be_bytes().as_ref()],
         bump,
     )]
     /// CHECK: initialized and written to by wormhole core bridge
@@ -70,16 +70,16 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, _args: ReleaseOutboundArg
     let batch_id = 0;
 
     // TODO: record endpoint position
-    accs.enqueued.release()?;
+    accs.outbox_item.release()?;
 
     let message: ManagerMessage<NativeTokenTransfer> = ManagerMessage {
         chain_id: accs.config.chain_id,
-        sequence: accs.enqueued.sequence,
+        sequence: accs.outbox_item.sequence,
         sender: accs.emitter.key().to_bytes().to_vec(),
         payload: NativeTokenTransfer {
-            amount: accs.enqueued.amount,
-            to: accs.enqueued.recipient_address.clone(),
-            to_chain: accs.enqueued.recipient_chain,
+            amount: accs.outbox_item.amount,
+            to: accs.outbox_item.recipient_address.clone(),
+            to_chain: accs.outbox_item.recipient_chain,
         },
     };
 
@@ -101,7 +101,7 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, _args: ReleaseOutboundArg
                 &[b"emitter", &[ctx.bumps["emitter"]]],
                 &[
                     b"message",
-                    accs.enqueued.sequence.to_be_bytes().as_ref(),
+                    accs.outbox_item.sequence.to_be_bytes().as_ref(),
                     &[ctx.bumps["wormhole_message"]],
                 ],
             ],
