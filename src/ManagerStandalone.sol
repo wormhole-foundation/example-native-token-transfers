@@ -67,6 +67,8 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         _Threshold storage _threshold = _getThresholdStorage();
         _threshold.num = threshold;
         _checkThresholdInvariants();
+
+        emit ThresholdChanged(threshold);
     }
 
     /// @notice Returns the number of Endpoints that must attest to a msgId for
@@ -86,6 +88,8 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         // this makes the system more secure in the event that the user forgets
         // to call setThreshold().
         _threshold.num += 1;
+
+        emit EndpointAdded(endpoint, _threshold.num);
     }
 
     function removeEndpoint(address endpoint) external onlyOwner {

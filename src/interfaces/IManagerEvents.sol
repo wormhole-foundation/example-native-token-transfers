@@ -10,4 +10,6 @@ interface IManagerEvents {
     );
     event SiblingUpdated(uint16 indexed chainId_, bytes siblingContract);
     event MessageAttestedTo(bytes32 digest, address endpoint, uint8 index);
+    event ThresholdChanged(uint8 threshold);
+    event EndpointAdded(address endpoint, uint8 threshold);
 }
