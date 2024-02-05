@@ -494,6 +494,8 @@ abstract contract Manager is
         // send the message
         _sendMessageToEndpoint(recipientChain, encodedManagerPayload);
 
+        emit TransferSent(recipient, recipientChain, sequence);
+
         // return the sequence number
         return sequence;
     }
