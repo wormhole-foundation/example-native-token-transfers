@@ -29,6 +29,7 @@ abstract contract WormholeEndpoint is Endpoint {
     );
 
     event SendEndpointMessage(uint16 recipientChain, EndpointStructs.EndpointMessage message);
+    event SetWormholeSibling(uint16 chainId, bytes32 oldSiblingContract, bytes32 siblingContract);
 
     error InvalidVaa(string reason);
     error InvalidWormholeSibling(uint16 chainId, bytes32 siblingAddress);
@@ -101,9 +102,7 @@ abstract contract WormholeEndpoint is Endpoint {
             managerPayload: payload
         });
 
-        bytes memory encodedEndpointPayload = EndpointStructs.encodeEndpointMessage(endpointMessage);
-
-        return (encodedEndpointPayload, endpointMessage);
+        return (EndpointStructs.encodeEndpointMessage(endpointMessage), endpointMessage);
     }
 
     function _sendMessage(uint16 recipientChain, bytes memory payload) internal override {
@@ -232,6 +231,11 @@ abstract contract WormholeEndpoint is Endpoint {
         if (siblingContract == bytes32(0)) {
             revert InvalidWormholeSiblingZeroAddress();
         }
+
+        bytes32 oldSiblingContract = _getWormholeSiblingsStorage()[chainId];
+
         _getWormholeSiblingsStorage()[chainId] = siblingContract;
+
+        emit SetWormholeSibling(chainId, oldSiblingContract, siblingContract);
     }
 }

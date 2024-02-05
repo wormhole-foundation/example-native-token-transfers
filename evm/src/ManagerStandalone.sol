@@ -65,8 +65,12 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
 
     function setThreshold(uint8 threshold) external onlyOwner {
         _Threshold storage _threshold = _getThresholdStorage();
+        uint8 oldThreshold = _threshold.num;
+
         _threshold.num = threshold;
         _checkThresholdInvariants();
+
+        emit ThresholdChanged(oldThreshold, threshold);
     }
 
     /// @notice Returns the number of Endpoints that must attest to a msgId for
@@ -86,6 +90,8 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         // this makes the system more secure in the event that the user forgets
         // to call setThreshold().
         _threshold.num += 1;
+
+        emit EndpointAdded(endpoint, _threshold.num);
     }
 
     function removeEndpoint(address endpoint) external onlyOwner {
@@ -97,6 +103,8 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         if (_enabledEndpoints.length < _threshold.num) {
             _threshold.num = uint8(_enabledEndpoints.length);
         }
+
+        emit EndpointRemoved(endpoint, _threshold.num);
     }
 
     function quoteDeliveryPrice(uint16 recipientChain) public view override returns (uint256) {
