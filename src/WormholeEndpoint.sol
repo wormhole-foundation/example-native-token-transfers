@@ -21,19 +21,6 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
     ///         Note that this is not a security critical field. It's meant to be used by messaging providers to identify which messages are Endpoint-related.
     bytes4 constant WH_ENDPOINT_PAYLOAD_PREFIX = 0x9945FF10;
 
-    event ReceivedMessage(
-        bytes32 digest, uint16 emitterChainId, bytes32 emitterAddress, uint64 sequence
-    );
-
-    event SendEndpointMessage(uint16 recipientChain, EndpointStructs.EndpointMessage message);
-    event SetWormholeSibling(uint16 chainId, bytes32 oldSiblingContract, bytes32 siblingContract);
-
-    error InvalidVaa(string reason);
-    error InvalidWormholeSibling(uint16 chainId, bytes32 siblingAddress);
-    error TransferAlreadyCompleted(bytes32 vaaHash);
-    error InvalidWormholeSiblingZeroAddress();
-    error InvalidWormholeSiblingChainIdZero();
-
     IWormhole public immutable wormhole;
     IWormholeRelayer public immutable wormholeRelayer;
     uint256 public immutable wormholeEndpoint_evmChainId;
