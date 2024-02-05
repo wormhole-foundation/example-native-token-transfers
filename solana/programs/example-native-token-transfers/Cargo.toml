@@ -18,7 +18,7 @@ default = []
 [dependencies]
 ahash = "=0.8.6"
 
-anchor-lang = "0.28.0"
-anchor-spl = "0.28.0"
-wormhole-anchor-sdk = "0.1.0-alpha.2"
+anchor-lang = "0.29.0"
+anchor-spl = "0.29.0"
+wormhole-anchor-sdk = "0.29.0-alpha.1"
 wormhole-io = "0.1.3"

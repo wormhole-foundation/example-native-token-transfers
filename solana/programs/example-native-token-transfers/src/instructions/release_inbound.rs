@@ -57,7 +57,7 @@ pub fn release_inbound(ctx: Context<ReleaseInbound>, _args: ReleaseInboundArgs) 
                 to: ctx.accounts.recipient.clone(),
                 authority: ctx.accounts.mint_authority.clone(),
             },
-            &[&[b"token_minter", &[ctx.bumps["token_minter"]]]],
+            &[&[b"token_minter", &[ctx.bumps.mint_authority]]],
         ),
         inbox_item.amount.denormalize(ctx.accounts.mint.decimals),
     )

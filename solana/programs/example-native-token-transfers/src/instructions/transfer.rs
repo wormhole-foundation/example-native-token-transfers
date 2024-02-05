@@ -113,7 +113,7 @@ pub fn transfer(ctx: Context<Transfer>, args: TransferArgs) -> Result<()> {
     let sequence = accs.seq.next();
 
     accs.outbox_item.set_inner(OutboxItem {
-        bump: ctx.bumps["outbox_item"],
+        bump: ctx.bumps.outbox_item,
         sequence,
         amount,
         recipient_chain,

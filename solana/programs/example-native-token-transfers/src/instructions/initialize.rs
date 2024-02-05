@@ -31,7 +31,7 @@ pub struct InitializeArgs {
 
 pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> {
     ctx.accounts.config.set_inner(crate::config::Config {
-        bump: ctx.bumps["config"],
+        bump: ctx.bumps.config,
         mint: ctx.accounts.mint.key(),
         mode: crate::config::Mode::Locking,
         chain_id: ChainId { id: args.chain_id },

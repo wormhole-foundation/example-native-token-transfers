@@ -98,11 +98,11 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, _args: ReleaseOutboundArg
                 system_program: accs.system_program.to_account_info(),
             },
             &[
-                &[b"emitter", &[ctx.bumps["emitter"]]],
+                &[b"emitter", &[ctx.bumps.emitter]],
                 &[
                     b"message",
                     accs.outbox_item.sequence.to_be_bytes().as_ref(),
-                    &[ctx.bumps["wormhole_message"]],
+                    &[ctx.bumps.wormhole_message],
                 ],
             ],
         ),

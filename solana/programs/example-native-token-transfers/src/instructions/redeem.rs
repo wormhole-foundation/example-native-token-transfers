@@ -99,7 +99,7 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let release_timestamp = accs.rate_limit.rate_limit.consume_or_delay(now, amount);
 
     accs.inbox_item.set_inner(InboxItem {
-        bump: ctx.bumps["inbox_item"],
+        bump: ctx.bumps.inbox_item,
         amount,
         recipient_address,
         release_timestamp,
