@@ -499,7 +499,7 @@ abstract contract Manager is
         // send the message
         _sendMessageToEndpoint(recipientChain, encodedManagerPayload);
 
-        emit TransferSent(recipient, recipientChain, sequence);
+        emit TransferSent(recipient, amount, normalizedAmount, recipientChain, sequence);
 
         // return the sequence number
         return sequence;
@@ -658,9 +658,11 @@ abstract contract Manager is
             revert InvalidSiblingZeroBytes();
         }
 
+        bytes memory oldSiblingContract = _getSiblingsStorage()[chainId_];
+
         _getSiblingsStorage()[chainId_] = siblingContract;
 
-        emit SiblingUpdated(chainId_, siblingContract);
+        emit SiblingUpdated(chainId_, oldSiblingContract, siblingContract);
     }
 
     function _isAllZeros(bytes memory payload) internal pure returns (bool) {

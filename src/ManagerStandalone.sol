@@ -65,10 +65,12 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
 
     function setThreshold(uint8 threshold) external onlyOwner {
         _Threshold storage _threshold = _getThresholdStorage();
+        uint8 oldThreshold = _threshold.num;
+
         _threshold.num = threshold;
         _checkThresholdInvariants();
 
-        emit ThresholdChanged(threshold);
+        emit ThresholdChanged(oldThreshold, threshold);
     }
 
     /// @notice Returns the number of Endpoints that must attest to a msgId for
