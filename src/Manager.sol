@@ -328,6 +328,8 @@ abstract contract Manager is
             recipient: recipient,
             txTimestamp: block.timestamp
         });
+
+        emit OutboundTransferQueued(sequence);
     }
 
     function _enqueueInboundTransfer(bytes32 digest, uint256 amount, address recipient) internal {
