@@ -65,6 +65,13 @@ contract DummyEndpoint is EndpointStandalone, IEndpointReceiver {
         _deliverToManager(parsed);
     }
 
+    function _parseEndpointMessage(bytes memory encoded)
+        internal
+        pure
+        override
+        returns (EndpointStructs.EndpointMessage memory endpointMessage)
+    {}
+
     function parseMessageFromLogs(Vm.Log[] memory logs)
         public
         pure
@@ -92,6 +99,13 @@ contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
     function _sendMessage(uint16 recipientChain, bytes memory payload) internal pure override {
         // do nothing
     }
+
+    function _parseEndpointMessage(bytes memory encoded)
+        internal
+        pure
+        override
+        returns (EndpointStructs.EndpointMessage memory endpointMessage)
+    {}
 
     function receiveMessage(bytes memory encodedMessage) external {
         EndpointStructs.ManagerMessage memory parsed =
@@ -342,7 +356,7 @@ contract TestManager is Test, IManagerEvents {
             0,
             abi.encodePacked(address(manager)),
             abi.encodePacked(address(0)),
-            abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
+            abi.encode(EndpointStructs.EndpointMessage(0x9945FF10, "payload"))
         );
         bytes memory message = EndpointStructs.encodeManagerMessage(m);
 
@@ -359,7 +373,7 @@ contract TestManager is Test, IManagerEvents {
             0,
             abi.encodePacked(address(manager)),
             abi.encodePacked(address(0)),
-            abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
+            abi.encode(EndpointStructs.EndpointMessage(0x9945FF10, "payload"))
         );
 
         bytes memory message = EndpointStructs.encodeManagerMessage(m);
@@ -379,7 +393,7 @@ contract TestManager is Test, IManagerEvents {
             0,
             abi.encodePacked(address(manager)),
             abi.encodePacked(address(0)),
-            abi.encode(EndpointStructs.EndpointMessage("hello", "world", "payload"))
+            abi.encode(EndpointStructs.EndpointMessage(0x9945FF10, "payload"))
         );
 
         bytes memory message = EndpointStructs.encodeManagerMessage(m);
