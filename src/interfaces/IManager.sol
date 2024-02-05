@@ -81,7 +81,5 @@ interface IManager {
 
     function nextMessageSequence() external view returns (uint64);
 
-    function nextOutboundQueueSequence() external view returns (uint64);
-
     function token() external view returns (address);
 }
