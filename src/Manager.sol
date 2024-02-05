@@ -655,7 +655,10 @@ abstract contract Manager is
         if (_isAllZeros(siblingContract)) {
             revert InvalidSiblingZeroBytes();
         }
+
         _getSiblingsStorage()[chainId_] = siblingContract;
+
+        emit SiblingUpdated(chainId_, siblingContract);
     }
 
     function _isAllZeros(bytes memory payload) internal pure returns (bool) {

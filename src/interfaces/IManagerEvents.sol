@@ -8,4 +8,5 @@ interface IManagerEvents {
     event OutboundTransferRateLimited(
         address indexed sender, uint256 amount, uint256 currentCapacity
     );
+    event SiblingUpdated(uint16 indexed chainId_, bytes siblingContract);
 }
