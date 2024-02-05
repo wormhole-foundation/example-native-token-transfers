@@ -29,6 +29,7 @@ abstract contract WormholeEndpoint is Endpoint {
     );
 
     event SendEndpointMessage(uint16 recipientChain, EndpointStructs.EndpointMessage message);
+    event SetWormholeSibling(uint16 chainId, bytes32 siblingContract);
 
     error InvalidVaa(string reason);
     error InvalidWormholeSibling(uint16 chainId, bytes32 siblingAddress);
@@ -233,5 +234,7 @@ abstract contract WormholeEndpoint is Endpoint {
             revert InvalidWormholeSiblingZeroAddress();
         }
         _getWormholeSiblingsStorage()[chainId] = siblingContract;
+
+        emit SetWormholeSibling(chainId, siblingContract);
     }
 }
