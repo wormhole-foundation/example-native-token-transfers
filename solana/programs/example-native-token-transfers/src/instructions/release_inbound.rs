@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token};
+use anchor_spl::token_interface;
 
 use crate::{config::Config, error::NTTError, queue::inbox::InboxItem};
 
@@ -29,7 +29,7 @@ pub struct ReleaseInbound<'info> {
         address = config.mint,
     )]
     /// CHECK: the mint address matches the config
-    pub mint: Account<'info, anchor_spl::token::Mint>,
+    pub mint: InterfaceAccount<'info, token_interface::Mint>,
 
     #[account(
         seeds = [b"token_minter"],
@@ -38,7 +38,7 @@ pub struct ReleaseInbound<'info> {
     /// CHECK: the token program checks if this indeed the right authority for the mint
     pub mint_authority: AccountInfo<'info>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, token_interface::TokenInterface>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -49,10 +49,10 @@ pub fn release_inbound(ctx: Context<ReleaseInbound>, _args: ReleaseInboundArgs) 
 
     inbox_item.release()?;
 
-    token::mint_to(
+    token_interface::mint_to(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
-            token::MintTo {
+            token_interface::MintTo {
                 mint: ctx.accounts.mint.to_account_info(),
                 to: ctx.accounts.recipient.clone(),
                 authority: ctx.accounts.mint_authority.clone(),

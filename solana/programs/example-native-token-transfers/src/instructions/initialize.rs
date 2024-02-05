@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token_interface;
 
 use crate::chain_id::ChainId;
 
@@ -18,7 +19,7 @@ pub struct Initialize<'info> {
     pub config: Account<'info, crate::config::Config>,
 
     #[account()]
-    pub mint: Account<'info, anchor_spl::token::Mint>,
+    pub mint: InterfaceAccount<'info, token_interface::Mint>,
 
     system_program: Program<'info, System>,
     // TODO: initialize rate limits

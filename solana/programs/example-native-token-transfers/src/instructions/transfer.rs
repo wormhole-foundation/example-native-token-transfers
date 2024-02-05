@@ -1,5 +1,5 @@
 use anchor_lang::{prelude::*, solana_program::clock};
-use anchor_spl::token::{self, Token, TokenAccount};
+use anchor_spl::token_interface;
 
 use crate::{
     chain_id::ChainId,
@@ -22,19 +22,19 @@ pub struct Transfer<'info> {
         address = config.mint,
     )]
     /// CHECK: the mint address matches the config
-    pub mint: Account<'info, anchor_spl::token::Mint>,
+    pub mint: InterfaceAccount<'info, token_interface::Mint>,
 
     #[account(
         mut,
         token::mint = config.mint,
     )]
-    pub from: Account<'info, TokenAccount>,
+    pub from: InterfaceAccount<'info, token_interface::TokenAccount>,
 
     /// authority to burn the tokens (owner)
     /// CHECK: this is checked by the token program
     pub from_authority: Signer<'info>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, token_interface::TokenInterface>,
 
     #[account(
         mut,
@@ -81,10 +81,10 @@ pub fn transfer(ctx: Context<Transfer>, args: TransferArgs) -> Result<()> {
     } = args;
 
     match accs.config.mode {
-        Mode::Burning => token::burn(
+        Mode::Burning => token_interface::burn(
             CpiContext::new(
                 accs.token_program.to_account_info(),
-                token::Burn {
+                token_interface::Burn {
                     mint: accs.mint.to_account_info(),
                     from: accs.from.to_account_info(),
                     authority: accs.from_authority.to_account_info(),
