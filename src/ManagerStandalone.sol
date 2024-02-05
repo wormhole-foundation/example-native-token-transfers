@@ -101,6 +101,8 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         if (_enabledEndpoints.length < _threshold.num) {
             _threshold.num = uint8(_enabledEndpoints.length);
         }
+
+        emit EndpointRemoved(endpoint, _threshold.num);
     }
 
     function quoteDeliveryPrice(uint16 recipientChain) public view override returns (uint256) {
