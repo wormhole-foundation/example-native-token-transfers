@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache 2
-pragma solidity >=0.6.12 <0.9.0;
+pragma solidity >=0.8.0 <0.9.0;
 
 import "./external/Initializable.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
