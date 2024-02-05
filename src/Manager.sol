@@ -172,6 +172,8 @@ abstract contract Manager is
 
     function _setEndpointAttestedToMessage(bytes32 digest, address endpoint) internal {
         _setEndpointAttestedToMessage(digest, _getEndpointInfosStorage()[endpoint].index);
+
+        emit MessageAttestedTo(digest, endpoint, _getEndpointInfosStorage()[endpoint].index);
     }
 
     /// @dev Returns the bitmap of attestations from enabled endpoints for a given message.

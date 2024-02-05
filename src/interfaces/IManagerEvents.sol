@@ -9,4 +9,5 @@ interface IManagerEvents {
         address indexed sender, uint256 amount, uint256 currentCapacity
     );
     event SiblingUpdated(uint16 indexed chainId_, bytes siblingContract);
+    event MessageAttestedTo(bytes32 digest, address endpoint, uint8 index);
 }
