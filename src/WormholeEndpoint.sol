@@ -98,19 +98,19 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         wormholeEndpoint_evmChainId = block.chainid;
     }
 
+    function shouldRelayViaStandardRelaying(uint16 chainId) public view returns (bool) {
+        return isWormholeRelayingEnabled(chainId) && isWormholeEvmChain(chainId);
+    }
+
     function _quoteDeliveryPrice(uint16 targetChain)
         internal
         view
         override
         returns (uint256 nativePriceQuote)
     {
-        if (isWormholeRelayingEnabled(targetChain)) {
-            if (isWormholeEvmChain(targetChain)) {
-                (uint256 cost,) = wormholeRelayer.quoteEVMDeliveryPrice(targetChain, 0, GAS_LIMIT);
-                return cost;
-            } else {
-                revert RelayingNotImplemented(targetChain);
-            }
+        if (shouldRelayViaStandardRelaying(targetChain)) {
+            (uint256 cost,) = wormholeRelayer.quoteEVMDeliveryPrice(targetChain, 0, GAS_LIMIT);
+            return cost;
         } else {
             return 0;
         }
@@ -136,18 +136,14 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
             EndpointStructs.EndpointMessage memory endpointMessage
         ) = wrapManagerMessageInEndpoint(managerMessage);
 
-        if (isWormholeRelayingEnabled(recipientChain)) {
-            if (isWormholeEvmChain(recipientChain)) {
-                wormholeRelayer.sendPayloadToEvm{value: msg.value}(
-                    recipientChain,
-                    fromWormholeFormat(getWormholeSibling(recipientChain)),
-                    encodedEndpointPayload,
-                    0,
-                    GAS_LIMIT
-                );
-            } else {
-                revert RelayingNotImplemented(recipientChain);
-            }
+        if (shouldRelayViaStandardRelaying(recipientChain)) {
+            wormholeRelayer.sendPayloadToEvm{value: msg.value}(
+                recipientChain,
+                fromWormholeFormat(getWormholeSibling(recipientChain)),
+                encodedEndpointPayload,
+                0,
+                GAS_LIMIT
+            );
         } else {
             wormhole.publishMessage(0, encodedEndpointPayload, 1);
         }
@@ -299,6 +295,8 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
             revert InvalidWormholeChainIdZero();
         }
         _getWormholeRelayingEnabledChainsStorage()[chainId] = isEnabled;
+
+        emit SetIsWormholeRelayingEnabled(chainId, isEnabled);
     }
 
     function isWormholeEvmChain(uint16 chainId) public view returns (bool) {
@@ -310,5 +308,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
             revert InvalidWormholeChainIdZero();
         }
         _getWormholeEvmChainIdsStorage()[chainId] = true;
+
+        emit SetIsWormholeEvmChain(chainId);
     }
 }

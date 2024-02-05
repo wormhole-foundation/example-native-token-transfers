@@ -11,9 +11,10 @@ interface IWormholeEndpoint {
 
     event SendEndpointMessage(uint16 recipientChain, EndpointStructs.EndpointMessage message);
     event SetWormholeSibling(uint16 chainId, bytes32 oldSiblingContract, bytes32 siblingContract);
+    event SetIsWormholeRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
+    event SetIsWormholeEvmChain(uint16 chainId);
 
     error CallerNotRelayer(address caller);
-    error RelayingNotImplemented(uint16 recipientChain);
     error UnexpectedAdditionalMessages();
     error InvalidVaa(string reason);
     error InvalidWormholeSibling(uint16 chainId, bytes32 siblingAddress);
