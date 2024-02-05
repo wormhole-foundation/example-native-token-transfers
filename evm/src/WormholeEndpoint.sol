@@ -6,8 +6,11 @@ import "wormhole-solidity-sdk/Utils.sol";
 import "./libraries/EndpointHelpers.sol";
 import "./interfaces/IWormhole.sol";
 import "./Endpoint.sol";
+import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 
 abstract contract WormholeEndpoint is Endpoint {
+    using BytesParsing for bytes;
+
     // TODO -- fix this after some testing
     uint256 constant _GAS_LIMIT = 500000;
 
@@ -15,9 +18,17 @@ abstract contract WormholeEndpoint is Endpoint {
     address immutable _wormholeRelayerAddr;
     uint256 immutable _wormholeEndpoint_evmChainId;
 
+    /// @dev Prefix for all EndpointMessage payloads
+    ///      This is 0x99'E''W''H'
+    /// @notice Magic string (constant value set by messaging provider) that idenfies the payload as an endpoint-emitted payload.
+    ///         Note that this is not a security critical field. It's meant to be used by messaging providers to identify which messages are Endpoint-related.
+    bytes4 constant WH_ENDPOINT_PAYLOAD_PREFIX = 0x9945FF10;
+
     event ReceivedMessage(
         bytes32 digest, uint16 emitterChainId, bytes32 emitterAddress, uint64 sequence
     );
+
+    event SendEndpointMessage(uint16 recipientChain, EndpointStructs.EndpointMessage message);
 
     error InvalidVaa(string reason);
     error InvalidWormholeSibling(uint16 chainId, bytes32 siblingAddress);
@@ -32,6 +43,8 @@ abstract contract WormholeEndpoint is Endpoint {
 
     bytes32 public constant WORMHOLE_SIBLINGS_SLOT =
         bytes32(uint256(keccak256("whEndpoint.siblings")) - 1);
+
+    /// =============== GETTERS/SETTERS ========================================
 
     function _getWormholeConsumedVAAsStorage()
         internal
@@ -77,27 +90,84 @@ abstract contract WormholeEndpoint is Endpoint {
         return cost;
     }
 
+    function wrapManagerMessageInEndpoint(bytes memory payload)
+        internal
+        pure
+        returns (bytes memory encodedEndpointPayload, EndpointStructs.EndpointMessage memory)
+    {
+        // wrap payload in EndpointMessage
+        EndpointStructs.EndpointMessage memory endpointMessage = EndpointStructs.EndpointMessage({
+            prefix: WH_ENDPOINT_PAYLOAD_PREFIX,
+            managerPayload: payload
+        });
+
+        bytes memory encodedEndpointPayload = EndpointStructs.encodeEndpointMessage(endpointMessage);
+
+        return (encodedEndpointPayload, endpointMessage);
+    }
+
     function _sendMessage(uint16 recipientChain, bytes memory payload) internal override {
+        (
+            bytes memory encodedEndpointPayload,
+            EndpointStructs.EndpointMessage memory endpointMessage
+        ) = wrapManagerMessageInEndpoint(payload);
+
         // do not use standard relaying for solana deliveries
         if (recipientChain == 1) {
-            wormhole().publishMessage(0, payload, 1);
+            wormhole().publishMessage(0, encodedEndpointPayload, 1);
         } else {
             wormholeRelayer().sendPayloadToEvm{value: msg.value}(
                 recipientChain,
                 fromWormholeFormat(getWormholeSibling(recipientChain)),
-                payload,
+                encodedEndpointPayload,
                 0,
                 _GAS_LIMIT
             );
         }
+
+        emit SendEndpointMessage(recipientChain, endpointMessage);
+    }
+
+    /*
+    * @dev Parses an encoded message and extracts information into an EndpointMessage struct.
+    *
+    * @param encoded The encoded bytes containing information about the EndpointMessage.
+    * @return endpointMessage The parsed EndpointMessage struct.
+    * @throws IncorrectPrefix if the prefix of the encoded message does not match the expected prefix.
+    */
+    function _parseEndpointMessage(bytes memory encoded)
+        internal
+        pure
+        override
+        returns (EndpointStructs.EndpointMessage memory endpointMessage)
+    {
+        uint256 offset = 0;
+        bytes4 prefix;
+
+        (prefix, offset) = encoded.asBytes4Unchecked(offset);
+
+        if (prefix != WH_ENDPOINT_PAYLOAD_PREFIX) {
+            revert EndpointStructs.IncorrectPrefix(prefix);
+        }
+
+        uint16 managerPayloadLength;
+        (managerPayloadLength, offset) = encoded.asUint16Unchecked(offset);
+        (endpointMessage.managerPayload, offset) =
+            encoded.sliceUnchecked(offset, managerPayloadLength);
     }
 
     /// @notice Receive an attested message from the verification layer
     ///         This function should verify the encodedVm and then deliver the attestation to the endpoint manager contract.
     function _receiveMessage(bytes memory encodedMessage) internal {
         bytes memory payload = _verifyMessage(encodedMessage);
-        EndpointStructs.ManagerMessage memory parsed = EndpointStructs.parseManagerMessage(payload);
-        _deliverToManager(parsed);
+        // parse the encoded message payload from the Endpoint
+        EndpointStructs.EndpointMessage memory parsedEndpointMessage =
+            _parseEndpointMessage(payload);
+        // parse the encoded message payload from the Manager
+        EndpointStructs.ManagerMessage memory parsedManagerMessage =
+            EndpointStructs.parseManagerMessage(parsedEndpointMessage.managerPayload);
+
+        _deliverToManager(parsedManagerMessage);
     }
 
     function _verifyMessage(bytes memory encodedMessage) internal returns (bytes memory) {
