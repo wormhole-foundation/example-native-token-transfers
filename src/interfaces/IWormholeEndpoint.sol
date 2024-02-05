@@ -14,6 +14,7 @@ interface IWormholeEndpoint {
     event SetIsWormholeRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
     event SetIsWormholeEvmChain(uint16 chainId);
 
+    error InvalidRelayingConfig(uint16 chainId);
     error CallerNotRelayer(address caller);
     error UnexpectedAdditionalMessages();
     error InvalidVaa(string reason);

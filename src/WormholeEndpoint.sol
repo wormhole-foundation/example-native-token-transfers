@@ -98,7 +98,15 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         wormholeEndpoint_evmChainId = block.chainid;
     }
 
+    function checkInvalidRelayingConfig(uint16 chainId) public view {
+        bool invalidConfig = isWormholeRelayingEnabled(chainId) && !isWormholeEvmChain(chainId);
+        if (invalidConfig) {
+            revert InvalidRelayingConfig(chainId);
+        }
+    }
+
     function shouldRelayViaStandardRelaying(uint16 chainId) public view returns (bool) {
+        checkInvalidRelayingConfig(chainId);
         return isWormholeRelayingEnabled(chainId) && isWormholeEvmChain(chainId);
     }
 
