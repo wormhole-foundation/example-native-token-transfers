@@ -172,6 +172,8 @@ abstract contract Manager is
 
     function _setEndpointAttestedToMessage(bytes32 digest, address endpoint) internal {
         _setEndpointAttestedToMessage(digest, _getEndpointInfosStorage()[endpoint].index);
+
+        emit MessageAttestedTo(digest, endpoint, _getEndpointInfosStorage()[endpoint].index);
     }
 
     /// @dev Returns the bitmap of attestations from enabled endpoints for a given message.
@@ -328,6 +330,8 @@ abstract contract Manager is
             recipient: recipient,
             txTimestamp: block.timestamp
         });
+
+        emit OutboundTransferQueued(sequence);
     }
 
     function _enqueueInboundTransfer(bytes32 digest, uint256 amount, address recipient) internal {
@@ -431,6 +435,9 @@ abstract contract Manager is
             revert NotEnoughCapacity(getCurrentOutboundCapacity(), amount);
         }
         if (shouldQueue && isAmountRateLimited) {
+            // emit an event to notify the user that the transfer is rate limited
+            emit OutboundTransferRateLimited(msg.sender, amount, getCurrentOutboundCapacity());
+
             // queue up and return
             _enqueueOutboundTransfer(sequence, amount, recipientChain, recipient);
 
@@ -491,6 +498,8 @@ abstract contract Manager is
 
         // send the message
         _sendMessageToEndpoint(recipientChain, encodedManagerPayload);
+
+        emit TransferSent(recipient, amount, normalizedAmount, recipientChain, sequence);
 
         // return the sequence number
         return sequence;
@@ -648,7 +657,12 @@ abstract contract Manager is
         if (_isAllZeros(siblingContract)) {
             revert InvalidSiblingZeroBytes();
         }
+
+        bytes memory oldSiblingContract = _getSiblingsStorage()[chainId_];
+
         _getSiblingsStorage()[chainId_] = siblingContract;
+
+        emit SiblingUpdated(chainId_, oldSiblingContract, siblingContract);
     }
 
     function _isAllZeros(bytes memory payload) internal pure returns (bool) {
