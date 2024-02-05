@@ -436,7 +436,9 @@ abstract contract Manager is
         }
         if (shouldQueue && isAmountRateLimited) {
             // emit an event to notify the user that the transfer is rate limited
-            emit OutboundTransferRateLimited(msg.sender, amount, getCurrentOutboundCapacity());
+            emit OutboundTransferRateLimited(
+                msg.sender, sequence, amount, getCurrentOutboundCapacity()
+            );
 
             // queue up and return
             _enqueueOutboundTransfer(sequence, amount, recipientChain, recipient);
