@@ -102,9 +102,7 @@ abstract contract WormholeEndpoint is Endpoint {
             managerPayload: payload
         });
 
-        bytes memory encodedEndpointPayload = EndpointStructs.encodeEndpointMessage(endpointMessage);
-
-        return (encodedEndpointPayload, endpointMessage);
+        return (EndpointStructs.encodeEndpointMessage(endpointMessage), endpointMessage);
     }
 
     function _sendMessage(uint16 recipientChain, bytes memory payload) internal override {
