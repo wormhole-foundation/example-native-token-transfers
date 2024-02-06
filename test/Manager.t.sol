@@ -331,7 +331,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             abi.encodePacked(from),
             EndpointStructs.encodeNativeTokenTransfer(
                 EndpointStructs.NativeTokenTransfer({
-                    amount: 50,
+                    amount: NormalizedAmount.wrap(50),
                     sourceToken: abi.encodePacked(token),
                     to: abi.encodePacked(to),
                     toChain: chainId
@@ -526,7 +526,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         EndpointStructs.NativeTokenTransfer memory parsed =
             EndpointStructs.parseNativeTokenTransfer(message);
 
-        assertEq(m.amount, parsed.amount);
+        assertEq(NormalizedAmount.unwrap(m.amount), NormalizedAmount.unwrap(parsed.amount));
         assertEq(m.to, parsed.to);
         assertEq(m.toChain, parsed.toChain);
     }
