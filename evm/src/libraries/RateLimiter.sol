@@ -134,12 +134,23 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         view
         returns (NormalizedAmount capacity)
     {
-        uint64 timePassed = uint64(block.timestamp) - rateLimitParams.lastTxTimestamp;
-        NormalizedAmount ratePerSecond = rateLimitParams.limit.div(rateLimitDuration);
-        NormalizedAmount calculatedCapacity =
-            rateLimitParams.currentCapacity + (ratePerSecond.mul(timePassed));
+        // The capacity and rate limit are expressed as normalized amounts, i.e.
+        // 64-bit unsigned integers. The following operations upcast the 64-bit
+        // unsigned integers to 256-bit unsigned integers to avoid overflow.
+        // Specifically, the calculatedCapacity can overflow the u64 max.
+        // For example, if the limit is uint64.max, then the multiplication in calculatedCapacity
+        // will overflow when timePassed is greater than rateLimitDuration.
+        // Operating on uin256 avoids this issue. The overflow is cancelled out by the min operation,
+        // whose second argument is a uint64, so the result can safely be downcast to a uint64.
+        unchecked {
+            uint256 timePassed = block.timestamp - rateLimitParams.lastTxTimestamp;
+            uint256 ratePerSecond = rateLimitParams.limit.unwrap() / rateLimitDuration;
+            uint256 calculatedCapacity =
+                rateLimitParams.currentCapacity.unwrap() + (ratePerSecond * timePassed);
 
-        return calculatedCapacity.min(rateLimitParams.limit);
+            uint256 result = min(calculatedCapacity, rateLimitParams.limit.unwrap());
+            return NormalizedAmount.wrap(uint64(result));
+        }
     }
 
     /**
