@@ -7,7 +7,9 @@ import "../src/ManagerStandalone.sol";
 import "../src/EndpointAndManager.sol";
 import "../src/EndpointStandalone.sol";
 import "../src/interfaces/IManager.sol";
+import "../src/interfaces/IRateLimiter.sol";
 import "../src/interfaces/IManagerEvents.sol";
+import "../src/interfaces/IRateLimiterEvents.sol";
 import {Utils} from "./libraries/Utils.sol";
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
@@ -126,7 +128,7 @@ contract DummyToken is ERC20 {
 
 // TODO: set this up so the common functionality tests can be run against both
 // the standalone and the integrated version of the endpoint manager
-contract TestManager is Test, IManagerEvents {
+contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     ManagerStandalone manager;
     uint16 constant chainId = 7;
     uint16 constant SENDING_CHAIN_ID = 1;
@@ -606,7 +608,7 @@ contract TestManager is Test, IManagerEvents {
         uint256 limit = 1 * 10 ** 6;
         manager.setOutboundLimit(limit);
 
-        IManager.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
+        IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
         assertEq(outboundLimitParams.limit, limit);
         assertEq(outboundLimitParams.currentCapacity, limit);
@@ -641,7 +643,7 @@ contract TestManager is Test, IManagerEvents {
         uint256 higherLimit = 5 * 10 ** decimals;
         manager.setOutboundLimit(higherLimit);
 
-        IManager.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
+        IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
         assertEq(outboundLimitParams.limit, higherLimit);
         assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
@@ -676,7 +678,7 @@ contract TestManager is Test, IManagerEvents {
         uint256 lowerLimit = 2 * 10 ** decimals;
         manager.setOutboundLimit(lowerLimit);
 
-        IManager.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
+        IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
         assertEq(outboundLimitParams.limit, lowerLimit);
         assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
@@ -716,7 +718,7 @@ contract TestManager is Test, IManagerEvents {
         uint256 higherLimit = 5 * 10 ** decimals;
         manager.setOutboundLimit(higherLimit);
 
-        IManager.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
+        IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
         assertEq(outboundLimitParams.limit, higherLimit);
         assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
@@ -760,7 +762,7 @@ contract TestManager is Test, IManagerEvents {
         uint256 lowerLimit = 3 * 10 ** decimals;
         manager.setOutboundLimit(lowerLimit);
 
-        IManager.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
+        IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
         assertEq(outboundLimitParams.limit, lowerLimit);
         assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
@@ -801,7 +803,7 @@ contract TestManager is Test, IManagerEvents {
         uint256 lowerLimit = 4 * 10 ** decimals;
         manager.setOutboundLimit(lowerLimit);
 
-        IManager.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
+        IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
         assertEq(outboundLimitParams.limit, lowerLimit);
         assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
@@ -897,7 +899,7 @@ contract TestManager is Test, IManagerEvents {
 
         // assert that the transfer got queued up
         assertEq(qSeq, 0);
-        IManager.OutboundQueuedTransfer memory qt = manager.getOutboundQueuedTransfer(0);
+        IRateLimiter.OutboundQueuedTransfer memory qt = manager.getOutboundQueuedTransfer(0);
         assertEq(qt.amount, transferAmount);
         assertEq(qt.recipientChain, chainId);
         assertEq(qt.recipient, toWormholeFormat(user_B));
@@ -954,7 +956,7 @@ contract TestManager is Test, IManagerEvents {
         e2.receiveMessage(message);
 
         // now we have quorum but it'll hit limit
-        IManager.InboundQueuedTransfer memory qt = manager.getInboundQueuedTransfer(digest);
+        IRateLimiter.InboundQueuedTransfer memory qt = manager.getInboundQueuedTransfer(digest);
         assertEq(qt.amount, 50 * 10 ** (decimals - 8));
         assertEq(qt.txTimestamp, initialBlockTimestamp);
         assertEq(qt.recipient, user_B);
