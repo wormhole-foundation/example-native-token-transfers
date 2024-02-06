@@ -24,20 +24,20 @@ interface IManager {
     struct RateLimitParams {
         uint256 limit;
         uint256 currentCapacity;
-        uint256 lastTxTimestamp;
         uint256 ratePerSecond;
+        uint64 lastTxTimestamp;
     }
 
     struct OutboundQueuedTransfer {
         uint256 amount;
         bytes32 recipient;
-        uint256 txTimestamp;
+        uint64 txTimestamp;
         uint16 recipientChain;
     }
 
     struct InboundQueuedTransfer {
         uint256 amount;
-        uint256 txTimestamp;
+        uint64 txTimestamp;
         address recipient;
     }
 
