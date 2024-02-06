@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.0 <0.9.0;
 
+import "../libraries/NormalizedAmount.sol";
+
 interface IRateLimiterEvents {
     event InboundTransferQueued(bytes32 digest);
     event OutboundTransferQueued(uint64 queueSequence);

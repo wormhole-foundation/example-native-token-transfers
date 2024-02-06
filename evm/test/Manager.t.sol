@@ -130,6 +130,10 @@ contract DummyToken is ERC20 {
 // the standalone and the integrated version of the endpoint manager
 contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     ManagerStandalone manager;
+
+    using NormalizedAmountLib for uint256;
+    using NormalizedAmountLib for NormalizedAmount;
+
     uint16 constant chainId = 7;
     uint16 constant SENDING_CHAIN_ID = 1;
     uint256 constant DEVNET_GUARDIAN_PK =
@@ -298,17 +302,17 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         address from,
         address to,
         uint64 sequence,
-        uint256 inboundLimit,
+        NormalizedAmount inboundLimit,
         IEndpointReceiver[] memory endpoints
     ) internal returns (EndpointStructs.ManagerMessage memory) {
         DummyToken token = DummyToken(manager.token());
 
-        uint256 decimals = token.decimals();
+        uint8 decimals = token.decimals();
 
         token.mintDummy(from, 5 * 10 ** decimals);
         manager.setSibling(SENDING_CHAIN_ID, abi.encodePacked(address(manager)));
-        manager.setOutboundLimit(type(uint256).max);
-        manager.setInboundLimit(inboundLimit, SENDING_CHAIN_ID);
+        manager.setOutboundLimit(NormalizedAmount.wrap(type(uint64).max).denormalize(decimals));
+        manager.setInboundLimit(inboundLimit.denormalize(decimals), SENDING_CHAIN_ID);
 
         uint256 from_balanceBefore = token.balanceOf(from);
         uint256 manager_balanceBefore = token.balanceOf(address(manager));
@@ -415,8 +419,9 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](1);
         endpoints[0] = e1;
 
-        EndpointStructs.ManagerMessage memory m =
-            _attestEndpointsHelper(address(0x123), address(0x456), 0, type(uint256).max, endpoints);
+        EndpointStructs.ManagerMessage memory m = _attestEndpointsHelper(
+            address(0x123), address(0x456), 0, NormalizedAmount.wrap(type(uint64).max), endpoints
+        );
 
         manager.removeEndpoint(address(e1));
 
@@ -433,11 +438,11 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         address user_A = address(0x123);
         address user_B = address(0x456);
 
-        manager.setOutboundLimit(type(uint256).max);
-
         DummyToken token = DummyToken(manager.token());
 
-        uint256 decimals = token.decimals();
+        uint8 decimals = token.decimals();
+
+        manager.setOutboundLimit(NormalizedAmount.wrap(type(uint64).max).denormalize(decimals));
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
 
@@ -462,14 +467,15 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         DummyToken token = DummyToken(manager.token());
 
-        uint256 decimals = token.decimals();
+        uint8 decimals = token.decimals();
 
         IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
         endpoints[0] = e1;
         endpoints[1] = e2;
 
-        EndpointStructs.ManagerMessage memory m =
-            _attestEndpointsHelper(user_A, user_B, 0, type(uint256).max, endpoints);
+        EndpointStructs.ManagerMessage memory m = _attestEndpointsHelper(
+            user_A, user_B, 0, NormalizedAmount.wrap(type(uint64).max), endpoints
+        );
         bytes memory message = EndpointStructs.encodeManagerMessage(m);
 
         assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
@@ -582,11 +588,13 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         DummyToken token = DummyToken(manager.token());
 
-        uint256 decimals = token.decimals();
+        uint8 decimals = token.decimals();
 
         token.mintDummy(from, 5 * 10 ** decimals);
-        manager.setOutboundLimit(type(uint256).max);
-        manager.setInboundLimit(type(uint256).max, SENDING_CHAIN_ID);
+        manager.setOutboundLimit(NormalizedAmount.wrap(type(uint64).max).denormalize(decimals));
+        manager.setInboundLimit(
+            NormalizedAmount.wrap(type(uint64).max).denormalize(decimals), SENDING_CHAIN_ID
+        );
 
         vm.startPrank(from);
 
@@ -605,13 +613,16 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     // === token transfer rate limiting
 
     function test_outboundRateLimit_setLimitSimple() public {
+        DummyToken token = DummyToken(manager.token());
+        uint8 decimals = token.decimals();
+
         uint256 limit = 1 * 10 ** 6;
         manager.setOutboundLimit(limit);
 
         IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
-        assertEq(outboundLimitParams.limit, limit);
-        assertEq(outboundLimitParams.currentCapacity, limit);
+        assertEq(outboundLimitParams.limit.unwrap(), limit.normalize(decimals).unwrap());
+        assertEq(outboundLimitParams.currentCapacity.unwrap(), limit.normalize(decimals).unwrap());
         assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
     }
 
@@ -622,7 +633,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         DummyToken token = DummyToken(manager.token());
 
-        uint256 decimals = token.decimals();
+        uint8 decimals = token.decimals();
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
         uint256 outboundLimit = 4 * 10 ** decimals;
@@ -644,9 +655,12 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
-        assertEq(outboundLimitParams.limit, higherLimit);
+        assertEq(outboundLimitParams.limit.unwrap(), higherLimit.normalize(decimals).unwrap());
         assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
-        assertEq(outboundLimitParams.currentCapacity, 2 * 10 ** decimals);
+        assertEq(
+            outboundLimitParams.currentCapacity.unwrap(),
+            (2 * 10 ** decimals).normalize(decimals).unwrap()
+        );
     }
 
     function test_outboundRateLimit_setLowerLimit() public {
@@ -656,7 +670,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         DummyToken token = DummyToken(manager.token());
 
-        uint256 decimals = token.decimals();
+        uint8 decimals = token.decimals();
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
         uint256 outboundLimit = 4 * 10 ** decimals;
@@ -678,9 +692,9 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
-        assertEq(outboundLimitParams.limit, lowerLimit);
+        assertEq(outboundLimitParams.limit.denormalize(decimals), lowerLimit);
         assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
-        assertEq(outboundLimitParams.currentCapacity, 0);
+        assertEq(outboundLimitParams.currentCapacity.unwrap(), 0);
     }
 
     function test_outboundRateLimit_setHigherLimit_duration() public {
@@ -690,11 +704,11 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         DummyToken token = DummyToken(manager.token());
 
-        uint256 decimals = token.decimals();
+        uint8 decimals = token.decimals();
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
         uint256 outboundLimit = 4 * 10 ** decimals;
-        uint256 oldRps = outboundLimit / manager.rateLimitDuration();
+        NormalizedAmount oldRps = outboundLimit.normalize(decimals).div(manager.rateLimitDuration());
         manager.setOutboundLimit(outboundLimit);
 
         vm.startPrank(user_A);
@@ -717,13 +731,14 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
-        assertEq(outboundLimitParams.limit, higherLimit);
+        assertEq(outboundLimitParams.limit.unwrap(), higherLimit.normalize(decimals).unwrap());
         assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
         // capacity should be:
         // difference in limits + remaining capacity after t1 + the amount that's refreshed (based on the old rps)
         assertEq(
-            outboundLimitParams.currentCapacity,
-            (1 * 10 ** decimals) + (1 * 10 ** decimals) + oldRps * (6 hours)
+            outboundLimitParams.currentCapacity.unwrap(),
+            ((3 * 10 ** decimals) - (1 * 10 ** decimals) + oldRps.denormalize(decimals) * (6 hours))
+                .normalize(decimals).unwrap()
         );
     }
 
@@ -734,7 +749,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         DummyToken token = DummyToken(manager.token());
 
-        uint256 decimals = token.decimals();
+        uint8 decimals = token.decimals();
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
         uint256 outboundLimit = 5 * 10 ** decimals;
@@ -760,10 +775,10 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
-        assertEq(outboundLimitParams.limit, lowerLimit);
+        assertEq(outboundLimitParams.limit.unwrap(), lowerLimit.normalize(decimals).unwrap());
         assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
         // capacity should be: 0
-        assertEq(outboundLimitParams.currentCapacity, 0);
+        assertEq(outboundLimitParams.currentCapacity.unwrap(), 0);
     }
 
     function test_outboundRateLimit_setLowerLimit_durationCaseTwo() public {
@@ -773,11 +788,11 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         DummyToken token = DummyToken(manager.token());
 
-        uint256 decimals = token.decimals();
+        uint8 decimals = token.decimals();
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
         uint256 outboundLimit = 5 * 10 ** decimals;
-        uint256 oldRps = outboundLimit / manager.rateLimitDuration();
+        NormalizedAmount oldRps = outboundLimit.normalize(decimals).div(manager.rateLimitDuration());
         manager.setOutboundLimit(outboundLimit);
 
         vm.startPrank(user_A);
@@ -800,13 +815,14 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
-        assertEq(outboundLimitParams.limit, lowerLimit);
+        assertEq(outboundLimitParams.limit.unwrap(), lowerLimit.normalize(decimals).unwrap());
         assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
         // capacity should be:
         // remaining capacity after t1 - difference in limits + the amount that's refreshed (based on the old rps)
         assertEq(
-            outboundLimitParams.currentCapacity,
-            (3 * 10 ** decimals) - (1 * 10 ** decimals) + oldRps * (6 hours)
+            outboundLimitParams.currentCapacity.unwrap(),
+            ((3 * 10 ** decimals) - (1 * 10 ** decimals) + oldRps.denormalize(decimals) * (6 hours))
+                .normalize(decimals).unwrap()
         );
     }
 
@@ -816,7 +832,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         DummyToken token = DummyToken(manager.token());
 
-        uint256 decimals = token.decimals();
+        uint8 decimals = token.decimals();
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
         uint256 outboundLimit = 1 * 10 ** decimals;
@@ -838,7 +854,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         DummyToken token = DummyToken(manager.token());
 
-        uint256 decimals = token.decimals();
+        uint8 decimals = token.decimals();
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
         uint256 outboundLimit = 4 * 10 ** decimals;
@@ -855,14 +871,17 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         assertEq(token.balanceOf(address(manager)), transferAmount);
 
         // assert currentCapacity is updated
-        uint256 newCapacity = outboundLimit - transferAmount;
-        assertEq(manager.getCurrentOutboundCapacity(), newCapacity);
+        NormalizedAmount newCapacity =
+            outboundLimit.normalize(decimals) - transferAmount.normalize(decimals);
+        assertEq(manager.getCurrentOutboundCapacity(), newCapacity.denormalize(decimals));
 
         uint256 badTransferAmount = 2 * 10 ** decimals;
         token.approve(address(manager), badTransferAmount);
 
         bytes4 selector = bytes4(keccak256("NotEnoughCapacity(uint256,uint256)"));
-        vm.expectRevert(abi.encodeWithSelector(selector, newCapacity, badTransferAmount));
+        vm.expectRevert(
+            abi.encodeWithSelector(selector, newCapacity.denormalize(decimals), badTransferAmount)
+        );
         manager.transfer(badTransferAmount, chainId, toWormholeFormat(user_B), false);
     }
 
@@ -877,7 +896,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         DummyToken token = DummyToken(manager.token());
 
-        uint256 decimals = token.decimals();
+        uint8 decimals = token.decimals();
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
         uint256 outboundLimit = 4 * 10 ** decimals;
@@ -894,7 +913,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         // assert that the transfer got queued up
         assertEq(qSeq, 0);
         IRateLimiter.OutboundQueuedTransfer memory qt = manager.getOutboundQueuedTransfer(0);
-        assertEq(qt.amount, transferAmount);
+        assertEq(qt.amount.unwrap(), transferAmount.normalize(decimals).unwrap());
         assertEq(qt.recipientChain, chainId);
         assertEq(qt.recipient, toWormholeFormat(user_B));
         assertEq(qt.txTimestamp, initialBlockTimestamp);
@@ -932,13 +951,13 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         DummyToken token = DummyToken(manager.token());
 
-        uint256 decimals = token.decimals();
+        uint8 decimals = token.decimals();
 
         IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](1);
         endpoints[0] = e1;
 
         EndpointStructs.ManagerMessage memory m =
-            _attestEndpointsHelper(user_A, user_B, 0, 5, endpoints);
+            _attestEndpointsHelper(user_A, user_B, 0, uint256(5).normalize(decimals), endpoints);
         bytes32 digest = EndpointStructs.managerMessageDigest(m);
         bytes memory message = EndpointStructs.encodeManagerMessage(m);
 
@@ -951,7 +970,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         // now we have quorum but it'll hit limit
         IRateLimiter.InboundQueuedTransfer memory qt = manager.getInboundQueuedTransfer(digest);
-        assertEq(qt.amount, 50 * 10 ** (decimals - 8));
+        assertEq(qt.amount.unwrap(), 50);
         assertEq(qt.txTimestamp, initialBlockTimestamp);
         assertEq(qt.recipient, user_B);
 
@@ -1003,7 +1022,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         address user_B = address(0x456);
 
         DummyToken token = DummyToken(manager.token());
-        uint256 decimals = token.decimals();
+        uint8 decimals = token.decimals();
 
         // Step 1
         // (contract is deployed by setUp())
@@ -1014,8 +1033,9 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         endpoints[0] = e1;
         endpoints[1] = e2;
 
-        EndpointStructs.ManagerMessage memory m =
-            _attestEndpointsHelper(user_A, user_B, 0, type(uint256).max, endpoints);
+        EndpointStructs.ManagerMessage memory m = _attestEndpointsHelper(
+            user_A, user_B, 0, NormalizedAmount.wrap(type(uint64).max), endpoints
+        );
         bytes memory message = EndpointStructs.encodeManagerMessage(m);
 
         assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
@@ -1037,7 +1057,9 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         );
         IEndpointReceiver(address(manager)).receiveMessage(message);
 
-        _attestEndpointsHelper(user_A, user_B, 1, type(uint256).max, endpoints);
+        _attestEndpointsHelper(
+            user_A, user_B, 1, NormalizedAmount.wrap(type(uint64).max), endpoints
+        );
         EndpointStructs.encodeManagerMessage(m);
 
         assertEq(token.balanceOf(address(user_B)), 100 * 10 ** (decimals - 8));
@@ -1053,7 +1075,9 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         // attest with e1 twice (just two make sure it's still not accepted)
         endpoints[1] = e1;
 
-        _attestEndpointsHelper(user_A, user_B, 2, type(uint256).max, endpoints);
+        _attestEndpointsHelper(
+            user_A, user_B, 2, NormalizedAmount.wrap(type(uint64).max), endpoints
+        );
 
         // balance is the same as before
         assertEq(token.balanceOf(address(user_B)), 100 * 10 ** (decimals - 8));
@@ -1061,7 +1085,9 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         endpoints = new IEndpointReceiver[](1);
         endpoints[0] = e2;
 
-        m = _attestEndpointsHelper(user_A, user_B, 2, type(uint256).max, endpoints);
+        m = _attestEndpointsHelper(
+            user_A, user_B, 2, NormalizedAmount.wrap(type(uint64).max), endpoints
+        );
 
         assertEq(token.balanceOf(address(user_B)), 150 * 10 ** (decimals - 8));
     }
