@@ -385,14 +385,17 @@ abstract contract Manager is
         bytes32 recipient,
         bool shouldQueue
     ) external payable nonReentrant returns (uint64 msgSequence) {
-        // query tokens decimals
-        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
-        uint8 decimals = abi.decode(queriedDecimals, (uint8));
+        {
+            // query tokens decimals
+            (, bytes memory queriedDecimals) =
+                token.staticcall(abi.encodeWithSignature("decimals()"));
+            uint8 decimals = abi.decode(queriedDecimals, (uint8));
 
-        // don't deposit dust that can not be bridged due to the decimal shift
-        uint256 newAmount = deNormalizeAmount(normalizeAmount(amount, decimals), decimals);
-        if (amount != newAmount) {
-            revert TransferAmountHasDust(amount, amount - newAmount);
+            // don't deposit dust that can not be bridged due to the decimal shift
+            uint256 newAmount = deNormalizeAmount(normalizeAmount(amount, decimals), decimals);
+            if (amount != newAmount) {
+                revert TransferAmountHasDust(amount, amount - newAmount);
+            }
         }
 
         if (amount == 0) {
@@ -401,30 +404,34 @@ abstract contract Manager is
 
         // Lock/burn tokens before checking rate limits
         if (mode == Mode.LOCKING) {
-            // use transferFrom to pull tokens from the user and lock them
-            // query own token balance before transfer
-            uint256 balanceBefore = getTokenBalanceOf(token, address(this));
+            {
+                // use transferFrom to pull tokens from the user and lock them
+                // query own token balance before transfer
+                uint256 balanceBefore = getTokenBalanceOf(token, address(this));
 
-            // transfer tokens
-            IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+                // transfer tokens
+                IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
-            // query own token balance after transfer
-            uint256 balanceAfter = getTokenBalanceOf(token, address(this));
+                // query own token balance after transfer
+                uint256 balanceAfter = getTokenBalanceOf(token, address(this));
 
-            // correct amount for potential transfer fees
-            amount = balanceAfter - balanceBefore;
+                // correct amount for potential transfer fees
+                amount = balanceAfter - balanceBefore;
+            }
         } else if (mode == Mode.BURNING) {
-            // query sender's token balance before transfer
-            uint256 balanceBefore = getTokenBalanceOf(token, msg.sender);
+            {
+                // query sender's token balance before transfer
+                uint256 balanceBefore = getTokenBalanceOf(token, msg.sender);
 
-            // call the token's burn function to burn the sender's token
-            ERC20Burnable(token).burnFrom(msg.sender, amount);
+                // call the token's burn function to burn the sender's token
+                ERC20Burnable(token).burnFrom(msg.sender, amount);
 
-            // query sender's token balance after transfer
-            uint256 balanceAfter = getTokenBalanceOf(token, msg.sender);
+                // query sender's token balance after transfer
+                uint256 balanceAfter = getTokenBalanceOf(token, msg.sender);
 
-            // correct amount for potential burn fees
-            amount = balanceAfter - balanceBefore;
+                // correct amount for potential burn fees
+                amount = balanceAfter - balanceBefore;
+            }
         } else {
             revert InvalidMode(uint8(mode));
         }
@@ -432,25 +439,27 @@ abstract contract Manager is
         // get the sequence for this transfer
         uint64 sequence = _useMessageSequence();
 
-        // now check rate limits
-        bool isAmountRateLimited = _isOutboundAmountRateLimited(amount);
-        if (!shouldQueue && isAmountRateLimited) {
-            revert NotEnoughCapacity(getCurrentOutboundCapacity(), amount);
-        }
-        if (shouldQueue && isAmountRateLimited) {
-            // emit an event to notify the user that the transfer is rate limited
-            emit OutboundTransferRateLimited(
-                msg.sender, sequence, amount, getCurrentOutboundCapacity()
-            );
+        {
+            // now check rate limits
+            bool isAmountRateLimited = _isOutboundAmountRateLimited(amount);
+            if (!shouldQueue && isAmountRateLimited) {
+                revert NotEnoughCapacity(getCurrentOutboundCapacity(), amount);
+            }
+            if (shouldQueue && isAmountRateLimited) {
+                // emit an event to notify the user that the transfer is rate limited
+                emit OutboundTransferRateLimited(
+                    msg.sender, sequence, amount, getCurrentOutboundCapacity()
+                );
 
-            // queue up and return
-            _enqueueOutboundTransfer(sequence, amount, recipientChain, recipient);
+                // queue up and return
+                _enqueueOutboundTransfer(sequence, amount, recipientChain, recipient);
 
-            // refund the price quote back to sender
-            payable(msg.sender).transfer(msg.value);
+                // refund the price quote back to sender
+                payable(msg.sender).transfer(msg.value);
 
-            // return the sequence in the queue
-            return sequence;
+                // return the sequence in the queue
+                return sequence;
+            }
         }
 
         // otherwise, consume the outbound amount
@@ -465,41 +474,53 @@ abstract contract Manager is
         uint16 recipientChain,
         bytes32 recipient
     ) internal returns (uint64 msgSequence) {
-        // check up front that msg.value will cover the delivery price
-        uint256 totalPriceQuote = quoteDeliveryPrice(recipientChain);
-        if (msg.value < totalPriceQuote) {
-            revert DeliveryPaymentTooLow(totalPriceQuote, msg.value);
+        {
+            // check up front that msg.value will cover the delivery price
+            uint256 totalPriceQuote = quoteDeliveryPrice(recipientChain);
+            if (msg.value < totalPriceQuote) {
+                revert DeliveryPaymentTooLow(totalPriceQuote, msg.value);
+            }
+
+            // refund user extra excess value from msg.value
+            uint256 excessValue = totalPriceQuote - msg.value;
+            if (excessValue > 0) {
+                payable(msg.sender).transfer(excessValue);
+            }
         }
 
-        // refund user extra excess value from msg.value
-        uint256 excessValue = totalPriceQuote - msg.value;
-        if (excessValue > 0) {
-            payable(msg.sender).transfer(excessValue);
+        uint256 normalizedAmount;
+        {
+            // query tokens decimals
+            (, bytes memory queriedDecimals) =
+                token.staticcall(abi.encodeWithSignature("decimals()"));
+            uint8 decimals = abi.decode(queriedDecimals, (uint8));
+
+            // normalize amount decimals
+            normalizedAmount = normalizeAmount(amount, decimals);
         }
 
-        // query tokens decimals
-        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
-        uint8 decimals = abi.decode(queriedDecimals, (uint8));
-
-        // normalize amount decimals
-        uint256 normalizedAmount = normalizeAmount(amount, decimals);
-
-        bytes memory sourceTokenBytes = abi.encodePacked(token);
-        bytes memory recipientBytes = abi.encodePacked(recipient);
-        bytes memory encodedTransferPayload = EndpointStructs.encodeNativeTokenTransfer(
-            EndpointStructs.NativeTokenTransfer(
-                normalizedAmount, sourceTokenBytes, recipientBytes, recipientChain
-            )
-        );
+        bytes memory encodedTransferPayload;
+        {
+            bytes memory sourceTokenBytes = abi.encodePacked(token);
+            bytes memory recipientBytes = abi.encodePacked(recipient);
+            encodedTransferPayload = EndpointStructs.encodeNativeTokenTransfer(
+                EndpointStructs.NativeTokenTransfer(
+                    normalizedAmount, sourceTokenBytes, recipientBytes, recipientChain
+                )
+            );
+        }
 
         // construct the ManagerMessage payload
-        bytes memory sourceManagerBytes = abi.encodePacked(address(this));
-        bytes memory senderBytes = abi.encodePacked(msg.sender);
-        bytes memory encodedManagerPayload = EndpointStructs.encodeManagerMessage(
-            EndpointStructs.ManagerMessage(
-                chainId, sequence, sourceManagerBytes, senderBytes, encodedTransferPayload
-            )
-        );
+        bytes memory encodedManagerPayload;
+        {
+            bytes memory sourceManagerBytes = abi.encodePacked(address(this));
+            bytes memory senderBytes = abi.encodePacked(msg.sender);
+            encodedManagerPayload = EndpointStructs.encodeManagerMessage(
+                EndpointStructs.ManagerMessage(
+                    chainId, sequence, sourceManagerBytes, senderBytes, encodedTransferPayload
+                )
+            );
+        }
 
         // send the message
         _sendMessageToEndpoint(recipientChain, encodedManagerPayload);
@@ -573,14 +594,16 @@ abstract contract Manager is
 
         address transferRecipient = bytesToAddress(nativeTokenTransfer.to);
 
-        // Check inbound rate limits
-        bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, message.chainId);
-        if (isRateLimited) {
-            // queue up the transfer
-            _enqueueInboundTransfer(digest, nativeTransferAmount, transferRecipient);
+        {
+            // Check inbound rate limits
+            bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, message.chainId);
+            if (isRateLimited) {
+                // queue up the transfer
+                _enqueueInboundTransfer(digest, nativeTransferAmount, transferRecipient);
 
-            // end execution early
-            return;
+                // end execution early
+                return;
+            }
         }
 
         // consume the amount for the inbound rate limit
