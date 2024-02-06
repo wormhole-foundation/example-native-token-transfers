@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.0 <0.9.0;
 
+import "../libraries/NormalizedAmount.sol";
+
 interface IManager {
     error DeliveryPaymentTooLow(uint256 requiredPayment, uint256 providedPayment);
     error TransferAmountHasDust(uint256 amount, uint256 dust);

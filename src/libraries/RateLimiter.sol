@@ -4,11 +4,14 @@ pragma solidity >=0.8.0 <0.9.0;
 import "../interfaces/IRateLimiter.sol";
 import "../interfaces/IRateLimiterEvents.sol";
 import "./EndpointHelpers.sol";
+import "../libraries/NormalizedAmount.sol";
 
 abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
+    using NormalizedAmountLib for NormalizedAmount;
     /**
      * @dev The duration it takes for the limits to fully replenish
      */
+
     uint64 public immutable rateLimitDuration;
 
     /// =============== STORAGE ===============================================
@@ -68,9 +71,9 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         rateLimitDuration = _rateLimitDuration;
     }
 
-    function _setLimit(uint256 limit, RateLimitParams storage rateLimitParams) internal {
-        uint256 oldLimit = rateLimitParams.limit;
-        uint256 currentCapacity = _getCurrentCapacity(rateLimitParams);
+    function _setLimit(NormalizedAmount limit, RateLimitParams storage rateLimitParams) internal {
+        NormalizedAmount oldLimit = rateLimitParams.limit;
+        NormalizedAmount currentCapacity = _getCurrentCapacity(rateLimitParams);
         rateLimitParams.limit = limit;
 
         rateLimitParams.currentCapacity =
@@ -79,7 +82,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         rateLimitParams.lastTxTimestamp = uint64(block.timestamp);
     }
 
-    function _setOutboundLimit(uint256 limit) internal {
+    function _setOutboundLimit(NormalizedAmount limit) internal {
         _setLimit(limit, _getOutboundLimitParamsStorage());
     }
 
@@ -88,7 +91,9 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     }
 
     function getCurrentOutboundCapacity() public view returns (uint256) {
-        return _getCurrentCapacity(getOutboundLimitParams());
+        NormalizedAmount normalizedCapacity = _getCurrentCapacity(getOutboundLimitParams());
+        uint8 decimals = _tokenDecimals();
+        return normalizedCapacity.denormalize(decimals);
     }
 
     function getOutboundQueuedTransfer(uint64 queueSequence)
@@ -99,7 +104,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         return _getOutboundQueueStorage()[queueSequence];
     }
 
-    function _setInboundLimit(uint256 limit, uint16 chainId_) internal {
+    function _setInboundLimit(NormalizedAmount limit, uint16 chainId_) internal {
         _setLimit(limit, _getInboundLimitParamsStorage()[chainId_]);
     }
 
@@ -108,7 +113,9 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     }
 
     function getCurrentInboundCapacity(uint16 chainId_) public view returns (uint256) {
-        return _getCurrentCapacity(getInboundLimitParams(chainId_));
+        NormalizedAmount normalizedCapacity = _getCurrentCapacity(getInboundLimitParams(chainId_));
+        uint8 decimals = _tokenDecimals();
+        return normalizedCapacity.denormalize(decimals);
     }
 
     function getInboundQueuedTransfer(bytes32 digest)
@@ -125,13 +132,14 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     function _getCurrentCapacity(RateLimitParams memory rateLimitParams)
         internal
         view
-        returns (uint256 capacity)
+        returns (NormalizedAmount capacity)
     {
-        uint256 timePassed = block.timestamp - rateLimitParams.lastTxTimestamp;
-        uint256 ratePerSecond = rateLimitParams.limit / rateLimitDuration;
-        uint256 calculatedCapacity = rateLimitParams.currentCapacity + (timePassed * ratePerSecond);
+        uint64 timePassed = uint64(block.timestamp) - rateLimitParams.lastTxTimestamp;
+        NormalizedAmount ratePerSecond = rateLimitParams.limit.div(rateLimitDuration);
+        NormalizedAmount calculatedCapacity =
+            rateLimitParams.currentCapacity + (ratePerSecond.mul(timePassed));
 
-        return min(calculatedCapacity, rateLimitParams.limit);
+        return calculatedCapacity.min(rateLimitParams.limit);
     }
 
     /**
@@ -142,63 +150,67 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
      * @param currentCapacity The current capacity
      */
     function _calculateNewCurrentCapacity(
-        uint256 newLimit,
-        uint256 oldLimit,
-        uint256 currentCapacity
-    ) internal pure returns (uint256 newCurrentCapacity) {
-        uint256 difference;
+        NormalizedAmount newLimit,
+        NormalizedAmount oldLimit,
+        NormalizedAmount currentCapacity
+    ) internal pure returns (NormalizedAmount newCurrentCapacity) {
+        NormalizedAmount difference;
 
         if (oldLimit > newLimit) {
             difference = oldLimit - newLimit;
-            newCurrentCapacity = currentCapacity > difference ? currentCapacity - difference : 0;
+            newCurrentCapacity = currentCapacity > difference
+                ? currentCapacity - difference
+                : NormalizedAmount.wrap(0);
         } else {
             difference = newLimit - oldLimit;
             newCurrentCapacity = currentCapacity + difference;
         }
     }
 
-    function _consumeOutboundAmount(uint256 amount) internal {
+    function _consumeOutboundAmount(NormalizedAmount amount) internal {
         _consumeRateLimitAmount(
-            amount, getCurrentOutboundCapacity(), _getOutboundLimitParamsStorage()
+            amount, _getCurrentCapacity(getOutboundLimitParams()), _getOutboundLimitParamsStorage()
         );
     }
 
-    function _consumeInboundAmount(uint256 amount, uint16 chainId_) internal {
+    function _consumeInboundAmount(NormalizedAmount amount, uint16 chainId_) internal {
         _consumeRateLimitAmount(
-            amount, getCurrentInboundCapacity(chainId_), _getInboundLimitParamsStorage()[chainId_]
+            amount,
+            _getCurrentCapacity(getInboundLimitParams(chainId_)),
+            _getInboundLimitParamsStorage()[chainId_]
         );
     }
 
     function _consumeRateLimitAmount(
-        uint256 amount,
-        uint256 capacity,
+        NormalizedAmount amount,
+        NormalizedAmount capacity,
         RateLimitParams storage rateLimitParams
     ) internal {
         rateLimitParams.lastTxTimestamp = uint64(block.timestamp);
         rateLimitParams.currentCapacity = capacity - amount;
     }
 
-    function _isOutboundAmountRateLimited(uint256 amount) internal view returns (bool) {
-        return _isAmountRateLimited(getCurrentOutboundCapacity(), amount);
+    function _isOutboundAmountRateLimited(NormalizedAmount amount) internal view returns (bool) {
+        return _isAmountRateLimited(_getCurrentCapacity(getOutboundLimitParams()), amount);
     }
 
     function _isInboundAmountRateLimited(
-        uint256 amount,
+        NormalizedAmount amount,
         uint16 chainId_
     ) internal view returns (bool) {
-        return _isAmountRateLimited(getCurrentInboundCapacity(chainId_), amount);
+        return _isAmountRateLimited(_getCurrentCapacity(getInboundLimitParams(chainId_)), amount);
     }
 
-    function _isAmountRateLimited(uint256 capacity, uint256 amount) internal pure returns (bool) {
-        if (capacity < amount) {
-            return true;
-        }
-        return false;
+    function _isAmountRateLimited(
+        NormalizedAmount capacity,
+        NormalizedAmount amount
+    ) internal pure returns (bool) {
+        return capacity < amount;
     }
 
     function _enqueueOutboundTransfer(
         uint64 sequence,
-        uint256 amount,
+        NormalizedAmount amount,
         uint16 recipientChain,
         bytes32 recipient
     ) internal {
@@ -212,7 +224,11 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         emit OutboundTransferQueued(sequence);
     }
 
-    function _enqueueInboundTransfer(bytes32 digest, uint256 amount, address recipient) internal {
+    function _enqueueInboundTransfer(
+        bytes32 digest,
+        NormalizedAmount amount,
+        address recipient
+    ) internal {
         _getInboundQueueStorage()[digest] = InboundQueuedTransfer({
             amount: amount,
             recipient: recipient,
@@ -221,4 +237,6 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
 
         emit InboundTransferQueued(digest);
     }
+
+    function _tokenDecimals() internal view virtual returns (uint8);
 }
