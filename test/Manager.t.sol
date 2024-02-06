@@ -23,7 +23,7 @@ contract ManagerContract is ManagerStandalone {
         address token,
         Mode mode,
         uint16 chainId,
-        uint256 rateLimitDuration
+        uint64 rateLimitDuration
     ) ManagerStandalone(token, mode, chainId, rateLimitDuration) {}
 
     /// We create a dummy storage variable here with standard solidity slot assignment.
@@ -86,7 +86,7 @@ contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
         address token,
         Mode mode,
         uint16 chainId,
-        uint256 rateLimitDuration
+        uint64 rateLimitDuration
     ) EndpointAndManager(token, mode, chainId, rateLimitDuration) {}
 
     function _quoteDeliveryPrice(uint16 /* recipientChain */ )
