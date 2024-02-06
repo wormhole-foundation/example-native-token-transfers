@@ -13,7 +13,7 @@ abstract contract EndpointAndManager is Endpoint, Manager, Implementation {
         address token,
         Mode mode,
         uint16 chainId,
-        uint256 rateLimitDuration
+        uint64 rateLimitDuration
     ) Manager(token, mode, chainId, rateLimitDuration) {
         uint8 index = _setEndpoint(address(this));
         assert(index == ENDPOINT_INDEX);

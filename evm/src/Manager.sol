@@ -95,7 +95,7 @@ abstract contract Manager is
         address _token,
         Mode _mode,
         uint16 _chainId,
-        uint256 _rateLimitDuration
+        uint64 _rateLimitDuration
     ) RateLimiter(_rateLimitDuration) {
         token = _token;
         mode = _mode;

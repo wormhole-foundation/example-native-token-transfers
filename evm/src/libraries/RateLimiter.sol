@@ -9,7 +9,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     /**
      * @dev The duration it takes for the limits to fully replenish
      */
-    uint256 public immutable rateLimitDuration;
+    uint64 public immutable rateLimitDuration;
 
     /// =============== STORAGE ===============================================
 
@@ -64,7 +64,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         }
     }
 
-    constructor(uint256 _rateLimitDuration) {
+    constructor(uint64 _rateLimitDuration) {
         rateLimitDuration = _rateLimitDuration;
     }
 
