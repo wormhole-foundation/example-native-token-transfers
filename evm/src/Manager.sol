@@ -13,6 +13,7 @@ import "./libraries/external/ReentrancyGuardUpgradeable.sol";
 import "./libraries/EndpointStructs.sol";
 import "./libraries/EndpointHelpers.sol";
 import "./libraries/RateLimiter.sol";
+import "./libraries/NormalizedAmount.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/IManagerEvents.sol";
 import "./interfaces/IEndpointToken.sol";
@@ -30,6 +31,8 @@ abstract contract Manager is
 {
     using BytesParsing for bytes;
     using SafeERC20 for IERC20;
+    using NormalizedAmountLib for uint256;
+    using NormalizedAmountLib for NormalizedAmount;
 
     address public immutable token;
     Mode public immutable mode;
@@ -195,7 +198,7 @@ abstract contract Manager is
             uint8 decimals = abi.decode(queriedDecimals, (uint8));
 
             // don't deposit dust that can not be bridged due to the decimal shift
-            uint256 newAmount = deNormalizeAmount(normalizeAmount(amount, decimals), decimals);
+            uint256 newAmount = amount.normalize(decimals).denormalize(decimals);
             if (amount != newAmount) {
                 revert TransferAmountHasDust(amount, amount - newAmount);
             }
@@ -291,7 +294,7 @@ abstract contract Manager is
             }
         }
 
-        uint256 normalizedAmount;
+        NormalizedAmount normalizedAmount;
         {
             // query tokens decimals
             (, bytes memory queriedDecimals) =
@@ -299,7 +302,7 @@ abstract contract Manager is
             uint8 decimals = abi.decode(queriedDecimals, (uint8));
 
             // normalize amount decimals
-            normalizedAmount = normalizeAmount(amount, decimals);
+            normalizedAmount = amount.normalize(decimals);
         }
 
         bytes memory encodedTransferPayload;
@@ -332,20 +335,6 @@ abstract contract Manager is
 
         // return the sequence number
         return sequence;
-    }
-
-    function normalizeAmount(uint256 amount, uint8 decimals) internal pure returns (uint256) {
-        if (decimals > 8) {
-            amount /= 10 ** (decimals - 8);
-        }
-        return amount;
-    }
-
-    function deNormalizeAmount(uint256 amount, uint8 decimals) internal pure returns (uint256) {
-        if (decimals > 8) {
-            amount *= 10 ** (decimals - 8);
-        }
-        return amount;
     }
 
     // @dev Mark a message as executed.
@@ -393,7 +382,7 @@ abstract contract Manager is
         // adjust the decimals of the amount in the nativeTokenTransfer payload accordingly
         (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
         uint8 decimals = abi.decode(queriedDecimals, (uint8));
-        uint256 nativeTransferAmount = deNormalizeAmount(nativeTokenTransfer.amount, decimals);
+        uint256 nativeTransferAmount = nativeTokenTransfer.amount.denormalize(decimals);
 
         address transferRecipient = bytesToAddress(nativeTokenTransfer.to);
 
