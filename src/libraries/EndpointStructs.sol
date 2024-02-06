@@ -2,6 +2,7 @@
 pragma solidity >=0.8.0 <0.9.0;
 
 import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
+import "./NormalizedAmount.sol";
 
 library EndpointStructs {
     using BytesParsing for bytes;
@@ -97,7 +98,7 @@ library EndpointStructs {
     /// @dev Native Token Transfer payload.
     ///      The wire format is as follows:
     ///      - NTT_PREFIX - 4 bytes
-    ///      - amount - 32 bytes
+    ///      - amount - 8 bytes
     ///      - sourceTokenLength - 2 bytes
     ///      - sourceToken - `sourceTokenLength` bytes
     ///      - toLength - 2 bytes
@@ -105,7 +106,7 @@ library EndpointStructs {
     ///      - toChain - 2 bytes
     struct NativeTokenTransfer {
         /// @notice Amount being transferred (big-endian uint256)
-        uint256 amount;
+        NormalizedAmount amount;
         /// @notice Source chain token address.
         bytes sourceToken;
         /// @notice Address of the recipient.
@@ -148,7 +149,9 @@ library EndpointStructs {
         if (prefix != NTT_PREFIX) {
             revert IncorrectPrefix(prefix);
         }
-        (nativeTokenTransfer.amount, offset) = encoded.asUint256Unchecked(offset);
+        uint64 amount;
+        (amount, offset) = encoded.asUint64Unchecked(offset);
+        nativeTokenTransfer.amount = NormalizedAmount.wrap(amount);
         uint16 sourceTokenLength;
         (sourceTokenLength, offset) = encoded.asUint16Unchecked(offset);
         (nativeTokenTransfer.sourceToken, offset) =
