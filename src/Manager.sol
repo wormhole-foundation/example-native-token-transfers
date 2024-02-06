@@ -201,7 +201,7 @@ abstract contract Manager is
             _calculateNewCurrentCapacity(limit, oldLimit, currentCapacity);
 
         rateLimitParams.ratePerSecond = limit / rateLimitDuration;
-        rateLimitParams.lastTxTimestamp = block.timestamp;
+        rateLimitParams.lastTxTimestamp = uint64(block.timestamp);
     }
 
     function setOutboundLimit(uint256 limit) external onlyOwner {
@@ -299,7 +299,7 @@ abstract contract Manager is
         uint256 capacity,
         RateLimitParams storage rateLimitParams
     ) internal {
-        rateLimitParams.lastTxTimestamp = block.timestamp;
+        rateLimitParams.lastTxTimestamp = uint64(block.timestamp);
         rateLimitParams.currentCapacity = capacity - amount;
     }
 
@@ -331,7 +331,7 @@ abstract contract Manager is
             amount: amount,
             recipientChain: recipientChain,
             recipient: recipient,
-            txTimestamp: block.timestamp
+            txTimestamp: uint64(block.timestamp)
         });
 
         emit OutboundTransferQueued(sequence);
@@ -341,7 +341,7 @@ abstract contract Manager is
         _getInboundQueueStorage()[digest] = InboundQueuedTransfer({
             amount: amount,
             recipient: recipient,
-            txTimestamp: block.timestamp
+            txTimestamp: uint64(block.timestamp)
         });
 
         emit InboundTransferQueued(digest);
