@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.0 <0.9.0;
 
+import "../libraries/NormalizedAmount.sol";
+
 interface IRateLimiter {
     error NotEnoughCapacity(uint256 currentCapacity, uint256 amount);
     error OutboundQueuedTransferNotFound(uint64 queueSequence);
@@ -9,20 +11,20 @@ interface IRateLimiter {
     error InboundQueuedTransferStillQueued(bytes32 digest, uint256 transferTimestamp);
 
     struct RateLimitParams {
-        uint256 limit;
-        uint256 currentCapacity;
+        NormalizedAmount limit;
+        NormalizedAmount currentCapacity;
         uint64 lastTxTimestamp;
     }
 
     struct OutboundQueuedTransfer {
-        uint256 amount;
         bytes32 recipient;
+        NormalizedAmount amount;
         uint64 txTimestamp;
         uint16 recipientChain;
     }
 
     struct InboundQueuedTransfer {
-        uint256 amount;
+        NormalizedAmount amount;
         uint64 txTimestamp;
         address recipient;
     }

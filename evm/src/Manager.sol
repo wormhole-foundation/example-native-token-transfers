@@ -146,11 +146,15 @@ abstract contract Manager is
     }
 
     function setOutboundLimit(uint256 limit) external onlyOwner {
-        _setOutboundLimit(limit);
+        uint8 decimals = _tokenDecimals();
+        NormalizedAmount normalized = NormalizedAmountLib.normalize(limit, decimals);
+        _setOutboundLimit(normalized);
     }
 
     function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
-        _setInboundLimit(limit, chainId_);
+        uint8 decimals = _tokenDecimals();
+        NormalizedAmount normalized = NormalizedAmountLib.normalize(limit, decimals);
+        _setInboundLimit(normalized, chainId_);
     }
 
     function completeOutboundQueuedTransfer(uint64 messageSequence)
@@ -191,14 +195,14 @@ abstract contract Manager is
         bytes32 recipient,
         bool shouldQueue
     ) external payable nonReentrant returns (uint64 msgSequence) {
+        NormalizedAmount normalizedAmount;
         {
             // query tokens decimals
-            (, bytes memory queriedDecimals) =
-                token.staticcall(abi.encodeWithSignature("decimals()"));
-            uint8 decimals = abi.decode(queriedDecimals, (uint8));
+            uint8 decimals = _tokenDecimals();
 
+            normalizedAmount = amount.normalize(decimals);
             // don't deposit dust that can not be bridged due to the decimal shift
-            uint256 newAmount = amount.normalize(decimals).denormalize(decimals);
+            uint256 newAmount = normalizedAmount.denormalize(decimals);
             if (amount != newAmount) {
                 revert TransferAmountHasDust(amount, amount - newAmount);
             }
@@ -247,7 +251,7 @@ abstract contract Manager is
 
         {
             // now check rate limits
-            bool isAmountRateLimited = _isOutboundAmountRateLimited(amount);
+            bool isAmountRateLimited = _isOutboundAmountRateLimited(normalizedAmount);
             if (!shouldQueue && isAmountRateLimited) {
                 revert NotEnoughCapacity(getCurrentOutboundCapacity(), amount);
             }
@@ -258,7 +262,7 @@ abstract contract Manager is
                 );
 
                 // queue up and return
-                _enqueueOutboundTransfer(sequence, amount, recipientChain, recipient);
+                _enqueueOutboundTransfer(sequence, normalizedAmount, recipientChain, recipient);
 
                 // refund the price quote back to sender
                 payable(msg.sender).transfer(msg.value);
@@ -269,14 +273,14 @@ abstract contract Manager is
         }
 
         // otherwise, consume the outbound amount
-        _consumeOutboundAmount(amount);
+        _consumeOutboundAmount(normalizedAmount);
 
-        return _transfer(sequence, amount, recipientChain, recipient);
+        return _transfer(sequence, normalizedAmount, recipientChain, recipient);
     }
 
     function _transfer(
         uint64 sequence,
-        uint256 amount,
+        NormalizedAmount amount,
         uint16 recipientChain,
         bytes32 recipient
     ) internal returns (uint64 msgSequence) {
@@ -294,24 +298,13 @@ abstract contract Manager is
             }
         }
 
-        NormalizedAmount normalizedAmount;
-        {
-            // query tokens decimals
-            (, bytes memory queriedDecimals) =
-                token.staticcall(abi.encodeWithSignature("decimals()"));
-            uint8 decimals = abi.decode(queriedDecimals, (uint8));
-
-            // normalize amount decimals
-            normalizedAmount = amount.normalize(decimals);
-        }
-
         bytes memory encodedTransferPayload;
         {
             bytes memory sourceTokenBytes = abi.encodePacked(token);
             bytes memory recipientBytes = abi.encodePacked(recipient);
             encodedTransferPayload = EndpointStructs.encodeNativeTokenTransfer(
                 EndpointStructs.NativeTokenTransfer(
-                    normalizedAmount, sourceTokenBytes, recipientBytes, recipientChain
+                    amount, sourceTokenBytes, recipientBytes, recipientChain
                 )
             );
         }
@@ -331,7 +324,7 @@ abstract contract Manager is
         // send the message
         _sendMessageToEndpoint(recipientChain, encodedManagerPayload);
 
-        emit TransferSent(recipient, amount, normalizedAmount, recipientChain, sequence);
+        emit TransferSent(recipient, amount.denormalize(_tokenDecimals()), recipientChain, sequence);
 
         // return the sequence number
         return sequence;
@@ -377,12 +370,7 @@ abstract contract Manager is
             revert InvalidTargetChain(nativeTokenTransfer.toChain, chainId);
         }
 
-        // calculate proper amount of tokens to unlock/mint to recipient
-        // query the decimals of the token contract that's tied to this manager
-        // adjust the decimals of the amount in the nativeTokenTransfer payload accordingly
-        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
-        uint8 decimals = abi.decode(queriedDecimals, (uint8));
-        uint256 nativeTransferAmount = nativeTokenTransfer.amount.denormalize(decimals);
+        NormalizedAmount nativeTransferAmount = nativeTokenTransfer.amount;
 
         address transferRecipient = bytesToAddress(nativeTokenTransfer.to);
 
@@ -423,13 +411,19 @@ abstract contract Manager is
         _mintOrUnlockToRecipient(queuedTransfer.recipient, queuedTransfer.amount);
     }
 
-    function _mintOrUnlockToRecipient(address recipient, uint256 amount) internal {
+    function _mintOrUnlockToRecipient(address recipient, NormalizedAmount amount) internal {
+        // calculate proper amount of tokens to unlock/mint to recipient
+        // query the decimals of the token contract that's tied to this manager
+        // adjust the decimals of the amount in the nativeTokenTransfer payload accordingly
+        uint8 decimals = _tokenDecimals();
+        uint256 denormalizedAmount = amount.denormalize(decimals);
+
         if (mode == Mode.LOCKING) {
             // unlock tokens to the specified recipient
-            IERC20(token).safeTransfer(recipient, amount);
+            IERC20(token).safeTransfer(recipient, denormalizedAmount);
         } else if (mode == Mode.BURNING) {
             // mint tokens to the specified recipient
-            IEndpointToken(token).mint(recipient, amount);
+            IEndpointToken(token).mint(recipient, denormalizedAmount);
         } else {
             revert InvalidMode(uint8(mode));
         }
@@ -506,5 +500,10 @@ abstract contract Manager is
         }
 
         return true;
+    }
+
+    function _tokenDecimals() internal view override returns (uint8) {
+        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
+        return abi.decode(queriedDecimals, (uint8));
     }
 }
