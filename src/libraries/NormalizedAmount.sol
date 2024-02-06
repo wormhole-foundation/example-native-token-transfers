@@ -3,7 +3,7 @@ pragma solidity >=0.8.0 <0.9.0;
 
 type NormalizedAmount is uint64;
 
-using {gt as >, lt as <, sub as -, add as +, div, mul, min, unwrap} for NormalizedAmount global;
+using {gt as >, lt as <, sub as -, add as +, div, min, unwrap} for NormalizedAmount global;
 
 function gt(NormalizedAmount a, NormalizedAmount b) pure returns (bool) {
     return NormalizedAmount.unwrap(a) > NormalizedAmount.unwrap(b);
@@ -23,10 +23,6 @@ function add(NormalizedAmount a, NormalizedAmount b) pure returns (NormalizedAmo
 
 function div(NormalizedAmount a, uint64 b) pure returns (NormalizedAmount) {
     return NormalizedAmount.wrap(NormalizedAmount.unwrap(a) / b);
-}
-
-function mul(NormalizedAmount a, uint64 b) pure returns (NormalizedAmount) {
-    return NormalizedAmount.wrap(NormalizedAmount.unwrap(a) * b);
 }
 
 function min(NormalizedAmount a, NormalizedAmount b) pure returns (NormalizedAmount) {
