@@ -12,6 +12,7 @@ import "./libraries/external/OwnableUpgradeable.sol";
 import "./libraries/external/ReentrancyGuardUpgradeable.sol";
 import "./libraries/EndpointStructs.sol";
 import "./libraries/EndpointHelpers.sol";
+import "./libraries/RateLimiter.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/IManagerEvents.sol";
 import "./interfaces/IEndpointToken.sol";
@@ -23,6 +24,7 @@ abstract contract Manager is
     IManager,
     IManagerEvents,
     EndpointRegistry,
+    RateLimiter,
     OwnableUpgradeable,
     ReentrancyGuardUpgradeable
 {
@@ -33,11 +35,6 @@ abstract contract Manager is
     Mode public immutable mode;
     uint16 public immutable chainId;
     uint256 public immutable evmChainId;
-
-    /**
-     * @dev The duration it takes for the limits to fully replenish
-     */
-    uint256 public immutable rateLimitDuration;
 
     enum Mode {
         LOCKING,
@@ -66,17 +63,6 @@ abstract contract Manager is
 
     bytes32 public constant SIBLINGS_SLOT = bytes32(uint256(keccak256("ntt.siblings")) - 1);
 
-    bytes32 public constant OUTBOUND_LIMIT_PARAMS_SLOT =
-        bytes32(uint256(keccak256("ntt.outboundLimitParams")) - 1);
-
-    bytes32 public constant OUTBOUND_QUEUE_SLOT =
-        bytes32(uint256(keccak256("ntt.outboundQueue")) - 1);
-
-    bytes32 public constant INBOUND_LIMIT_PARAMS_SLOT =
-        bytes32(uint256(keccak256("ntt.inboundLimitParams")) - 1);
-
-    bytes32 public constant INBOUND_QUEUE_SLOT = bytes32(uint256(keccak256("ntt.inboundQueue")) - 1);
-
     function _getMessageAttestationsStorage()
         internal
         pure
@@ -102,52 +88,16 @@ abstract contract Manager is
         }
     }
 
-    function _getOutboundLimitParamsStorage() internal pure returns (RateLimitParams storage $) {
-        uint256 slot = uint256(OUTBOUND_LIMIT_PARAMS_SLOT);
-        assembly ("memory-safe") {
-            $.slot := slot
-        }
-    }
-
-    function _getOutboundQueueStorage()
-        internal
-        pure
-        returns (mapping(uint64 => OutboundQueuedTransfer) storage $)
-    {
-        uint256 slot = uint256(OUTBOUND_QUEUE_SLOT);
-        assembly ("memory-safe") {
-            $.slot := slot
-        }
-    }
-
-    function _getInboundLimitParamsStorage()
-        internal
-        pure
-        returns (mapping(uint16 => RateLimitParams) storage $)
-    {
-        uint256 slot = uint256(INBOUND_LIMIT_PARAMS_SLOT);
-        assembly ("memory-safe") {
-            $.slot := slot
-        }
-    }
-
-    function _getInboundQueueStorage()
-        internal
-        pure
-        returns (mapping(bytes32 => InboundQueuedTransfer) storage $)
-    {
-        uint256 slot = uint256(INBOUND_QUEUE_SLOT);
-        assembly ("memory-safe") {
-            $.slot := slot
-        }
-    }
-
-    constructor(address _token, Mode _mode, uint16 _chainId, uint256 _rateLimitDuration) {
+    constructor(
+        address _token,
+        Mode _mode,
+        uint16 _chainId,
+        uint256 _rateLimitDuration
+    ) RateLimiter(_rateLimitDuration) {
         token = _token;
         mode = _mode;
         chainId = _chainId;
         evmChainId = block.chainid;
-        rateLimitDuration = _rateLimitDuration;
     }
 
     function __Manager_init() internal onlyInitializing {
@@ -192,159 +142,12 @@ abstract contract Manager is
         return _getMessageAttestations(digest) & uint64(1 << index) != 0;
     }
 
-    function _setLimit(uint256 limit, RateLimitParams storage rateLimitParams) internal {
-        uint256 oldLimit = rateLimitParams.limit;
-        uint256 currentCapacity = _getCurrentCapacity(rateLimitParams);
-        rateLimitParams.limit = limit;
-
-        rateLimitParams.currentCapacity =
-            _calculateNewCurrentCapacity(limit, oldLimit, currentCapacity);
-
-        rateLimitParams.ratePerSecond = limit / rateLimitDuration;
-        rateLimitParams.lastTxTimestamp = uint64(block.timestamp);
-    }
-
     function setOutboundLimit(uint256 limit) external onlyOwner {
-        _setLimit(limit, _getOutboundLimitParamsStorage());
-    }
-
-    function getOutboundLimitParams() public pure returns (RateLimitParams memory) {
-        return _getOutboundLimitParamsStorage();
-    }
-
-    function getCurrentOutboundCapacity() public view returns (uint256) {
-        return _getCurrentCapacity(getOutboundLimitParams());
-    }
-
-    function getOutboundQueuedTransfer(uint64 queueSequence)
-        public
-        view
-        returns (OutboundQueuedTransfer memory)
-    {
-        return _getOutboundQueueStorage()[queueSequence];
+        _setOutboundLimit(limit);
     }
 
     function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
-        _setLimit(limit, _getInboundLimitParamsStorage()[chainId_]);
-    }
-
-    function getInboundLimitParams(uint16 chainId_) public view returns (RateLimitParams memory) {
-        return _getInboundLimitParamsStorage()[chainId_];
-    }
-
-    function getCurrentInboundCapacity(uint16 chainId_) public view returns (uint256) {
-        return _getCurrentCapacity(getInboundLimitParams(chainId_));
-    }
-
-    function getInboundQueuedTransfer(bytes32 digest)
-        public
-        view
-        returns (InboundQueuedTransfer memory)
-    {
-        return _getInboundQueueStorage()[digest];
-    }
-
-    /**
-     * @dev Gets the current capacity for a parameterized rate limits struct
-     */
-    function _getCurrentCapacity(RateLimitParams memory rateLimitParams)
-        internal
-        view
-        returns (uint256 capacity)
-    {
-        uint256 timePassed = block.timestamp - rateLimitParams.lastTxTimestamp;
-        uint256 calculatedCapacity =
-            rateLimitParams.currentCapacity + (timePassed * rateLimitParams.ratePerSecond);
-
-        return min(calculatedCapacity, rateLimitParams.limit);
-    }
-
-    /**
-     * @dev Updates the current capacity
-     *
-     * @param newLimit The new limit
-     * @param oldLimit The old limit
-     * @param currentCapacity The current capacity
-     */
-    function _calculateNewCurrentCapacity(
-        uint256 newLimit,
-        uint256 oldLimit,
-        uint256 currentCapacity
-    ) internal pure returns (uint256 newCurrentCapacity) {
-        uint256 difference;
-
-        if (oldLimit > newLimit) {
-            difference = oldLimit - newLimit;
-            newCurrentCapacity = currentCapacity > difference ? currentCapacity - difference : 0;
-        } else {
-            difference = newLimit - oldLimit;
-            newCurrentCapacity = currentCapacity + difference;
-        }
-    }
-
-    function _consumeOutboundAmount(uint256 amount) internal {
-        _consumeRateLimitAmount(
-            amount, getCurrentOutboundCapacity(), _getOutboundLimitParamsStorage()
-        );
-    }
-
-    function _consumeInboundAmount(uint256 amount, uint16 chainId_) internal {
-        _consumeRateLimitAmount(
-            amount, getCurrentInboundCapacity(chainId_), _getInboundLimitParamsStorage()[chainId_]
-        );
-    }
-
-    function _consumeRateLimitAmount(
-        uint256 amount,
-        uint256 capacity,
-        RateLimitParams storage rateLimitParams
-    ) internal {
-        rateLimitParams.lastTxTimestamp = uint64(block.timestamp);
-        rateLimitParams.currentCapacity = capacity - amount;
-    }
-
-    function _isOutboundAmountRateLimited(uint256 amount) internal view returns (bool) {
-        return _isAmountRateLimited(getCurrentOutboundCapacity(), amount);
-    }
-
-    function _isInboundAmountRateLimited(
-        uint256 amount,
-        uint16 chainId_
-    ) internal view returns (bool) {
-        return _isAmountRateLimited(getCurrentInboundCapacity(chainId_), amount);
-    }
-
-    function _isAmountRateLimited(uint256 capacity, uint256 amount) internal pure returns (bool) {
-        if (capacity < amount) {
-            return true;
-        }
-        return false;
-    }
-
-    function _enqueueOutboundTransfer(
-        uint64 sequence,
-        uint256 amount,
-        uint16 recipientChain,
-        bytes32 recipient
-    ) internal {
-        _getOutboundQueueStorage()[sequence] = OutboundQueuedTransfer({
-            amount: amount,
-            recipientChain: recipientChain,
-            recipient: recipient,
-            txTimestamp: uint64(block.timestamp)
-        });
-
-        emit OutboundTransferQueued(sequence);
-    }
-
-    function _enqueueInboundTransfer(bytes32 digest, uint256 amount, address recipient) internal {
-        _getInboundQueueStorage()[digest] = InboundQueuedTransfer({
-            amount: amount,
-            recipient: recipient,
-            txTimestamp: uint64(block.timestamp)
-        });
-
-        emit InboundTransferQueued(digest);
+        _setInboundLimit(limit, chainId_);
     }
 
     function completeOutboundQueuedTransfer(uint64 messageSequence)
