@@ -12,7 +12,7 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         address token,
         Mode mode,
         uint16 chainId,
-        uint256 rateLimitDuration
+        uint64 rateLimitDuration
     ) Manager(token, mode, chainId, rateLimitDuration) {
         _checkThresholdInvariants();
     }
