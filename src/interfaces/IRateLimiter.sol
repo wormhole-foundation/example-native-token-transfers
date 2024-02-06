@@ -11,7 +11,6 @@ interface IRateLimiter {
     struct RateLimitParams {
         uint256 limit;
         uint256 currentCapacity;
-        uint256 ratePerSecond;
         uint64 lastTxTimestamp;
     }
 

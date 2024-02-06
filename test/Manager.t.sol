@@ -612,7 +612,6 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         assertEq(outboundLimitParams.limit, limit);
         assertEq(outboundLimitParams.currentCapacity, limit);
-        assertEq(outboundLimitParams.ratePerSecond, limit / manager.rateLimitDuration());
         assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
     }
 
@@ -648,7 +647,6 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         assertEq(outboundLimitParams.limit, higherLimit);
         assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
         assertEq(outboundLimitParams.currentCapacity, 2 * 10 ** decimals);
-        assertEq(outboundLimitParams.ratePerSecond, higherLimit / manager.rateLimitDuration());
     }
 
     function test_outboundRateLimit_setLowerLimit() public {
@@ -683,7 +681,6 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         assertEq(outboundLimitParams.limit, lowerLimit);
         assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
         assertEq(outboundLimitParams.currentCapacity, 0);
-        assertEq(outboundLimitParams.ratePerSecond, lowerLimit / manager.rateLimitDuration());
     }
 
     function test_outboundRateLimit_setHigherLimit_duration() public {
@@ -728,7 +725,6 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             outboundLimitParams.currentCapacity,
             (1 * 10 ** decimals) + (1 * 10 ** decimals) + oldRps * (6 hours)
         );
-        assertEq(outboundLimitParams.ratePerSecond, higherLimit / manager.rateLimitDuration());
     }
 
     function test_outboundRateLimit_setLowerLimit_durationCaseOne() public {
@@ -768,7 +764,6 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
         // capacity should be: 0
         assertEq(outboundLimitParams.currentCapacity, 0);
-        assertEq(outboundLimitParams.ratePerSecond, lowerLimit / manager.rateLimitDuration());
     }
 
     function test_outboundRateLimit_setLowerLimit_durationCaseTwo() public {
@@ -813,7 +808,6 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             outboundLimitParams.currentCapacity,
             (3 * 10 ** decimals) - (1 * 10 ** decimals) + oldRps * (6 hours)
         );
-        assertEq(outboundLimitParams.ratePerSecond, lowerLimit / manager.rateLimitDuration());
     }
 
     function test_outboundRateLimit_singleHit() public {

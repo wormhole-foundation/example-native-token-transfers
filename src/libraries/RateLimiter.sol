@@ -76,7 +76,6 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         rateLimitParams.currentCapacity =
             _calculateNewCurrentCapacity(limit, oldLimit, currentCapacity);
 
-        rateLimitParams.ratePerSecond = limit / rateLimitDuration;
         rateLimitParams.lastTxTimestamp = uint64(block.timestamp);
     }
 
@@ -129,8 +128,8 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         returns (uint256 capacity)
     {
         uint256 timePassed = block.timestamp - rateLimitParams.lastTxTimestamp;
-        uint256 calculatedCapacity =
-            rateLimitParams.currentCapacity + (timePassed * rateLimitParams.ratePerSecond);
+        uint256 ratePerSecond = rateLimitParams.limit / rateLimitDuration;
+        uint256 calculatedCapacity = rateLimitParams.currentCapacity + (timePassed * ratePerSecond);
 
         return min(calculatedCapacity, rateLimitParams.limit);
     }
