@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 pub mod chain_id;
+pub mod clock;
 pub mod config;
 pub mod error;
 pub mod instructions;

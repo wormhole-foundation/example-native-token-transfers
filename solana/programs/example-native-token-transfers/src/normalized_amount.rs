@@ -74,6 +74,22 @@ impl Sub for NormalizedAmount {
 }
 
 impl NormalizedAmount {
+    pub fn new(amount: u64) -> Self {
+        Self { amount }
+    }
+
+    pub fn saturating_sub(self, rhs: Self) -> Self {
+        Self {
+            amount: self.amount.saturating_sub(rhs.amount),
+        }
+    }
+
+    pub fn saturating_add(self, rhs: Self) -> Self {
+        Self {
+            amount: self.amount.saturating_add(rhs.amount),
+        }
+    }
+
     fn scaling_factor(decimals: u8) -> u64 {
         if decimals > NORMALIZED_DECIMALS {
             10u64.pow((decimals - NORMALIZED_DECIMALS).into())
@@ -92,7 +108,6 @@ impl NormalizedAmount {
         self.amount * Self::scaling_factor(decimals)
     }
 
-    #[cfg(test)]
     pub fn amount(&self) -> u64 {
         self.amount
     }

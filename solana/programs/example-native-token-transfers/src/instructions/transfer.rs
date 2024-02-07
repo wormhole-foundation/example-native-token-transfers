@@ -1,4 +1,4 @@
-use anchor_lang::{prelude::*, solana_program::clock};
+use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
 
 use crate::{
@@ -106,10 +106,8 @@ pub fn transfer(ctx: Context<Transfer>, args: TransferArgs) -> Result<()> {
         Mode::Locking => todo!(),
     }
 
-    let now = clock::Clock::get()?.unix_timestamp;
-
     // consume the rate limit, or delay the transfer if it's outside the limit
-    let release_timestamp = accs.rate_limit.rate_limit.consume_or_delay(now, amount);
+    let release_timestamp = accs.rate_limit.rate_limit.consume_or_delay(amount);
 
     let sequence = accs.seq.next();
 

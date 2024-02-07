@@ -1,4 +1,4 @@
-use anchor_lang::{prelude::*, solana_program::clock};
+use anchor_lang::prelude::*;
 
 use wormhole_anchor_sdk::wormhole::{self, PostedVaa, PostedVaaData};
 
@@ -94,9 +94,7 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let recipient_address =
         Pubkey::try_from(message.payload.to).map_err(|_| NTTError::InvalidRecipientAddress)?;
 
-    let now = clock::Clock::get()?.unix_timestamp;
-
-    let release_timestamp = accs.rate_limit.rate_limit.consume_or_delay(now, amount);
+    let release_timestamp = accs.rate_limit.rate_limit.consume_or_delay(amount);
 
     accs.inbox_item.set_inner(InboxItem {
         bump: ctx.bumps.inbox_item,
