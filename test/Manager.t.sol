@@ -16,6 +16,7 @@ import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
+import "wormhole-solidity-sdk/Utils.sol";
 
 // @dev A non-abstract Manager contract
 contract ManagerContract is ManagerStandalone {
@@ -310,44 +311,48 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         uint8 decimals = token.decimals();
 
         token.mintDummy(from, 5 * 10 ** decimals);
-        manager.setSibling(SENDING_CHAIN_ID, abi.encodePacked(address(manager)));
+        manager.setSibling(SENDING_CHAIN_ID, toWormholeFormat(address(manager)));
         manager.setOutboundLimit(NormalizedAmount.wrap(type(uint64).max).denormalize(decimals));
         manager.setInboundLimit(inboundLimit.denormalize(decimals), SENDING_CHAIN_ID);
 
-        uint256 from_balanceBefore = token.balanceOf(from);
-        uint256 manager_balanceBefore = token.balanceOf(address(manager));
+        {
+            uint256 from_balanceBefore = token.balanceOf(from);
+            uint256 manager_balanceBefore = token.balanceOf(address(manager));
 
-        vm.startPrank(from);
+            vm.startPrank(from);
 
-        token.approve(address(manager), 3 * 10 ** decimals);
-        // TODO: parse recorded logs
-        manager.transfer(3 * 10 ** decimals, chainId, toWormholeFormat(to), false);
+            token.approve(address(manager), 3 * 10 ** decimals);
+            // TODO: parse recorded logs
+            manager.transfer(3 * 10 ** decimals, chainId, toWormholeFormat(to), false);
 
-        vm.stopPrank();
+            vm.stopPrank();
 
-        assertEq(token.balanceOf(from), from_balanceBefore - 3 * 10 ** decimals);
-        assertEq(token.balanceOf(address(manager)), manager_balanceBefore + 3 * 10 ** decimals);
+            assertEq(token.balanceOf(from), from_balanceBefore - 3 * 10 ** decimals);
+            assertEq(token.balanceOf(address(manager)), manager_balanceBefore + 3 * 10 ** decimals);
+        }
 
         EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
             SENDING_CHAIN_ID,
             sequence,
-            abi.encodePacked(address(manager)),
-            abi.encodePacked(from),
+            toWormholeFormat(address(manager)),
+            toWormholeFormat(from),
             EndpointStructs.encodeNativeTokenTransfer(
                 EndpointStructs.NativeTokenTransfer({
                     amount: NormalizedAmount.wrap(50),
-                    sourceToken: abi.encodePacked(token),
-                    to: abi.encodePacked(to),
+                    sourceToken: toWormholeFormat(address(token)),
+                    to: toWormholeFormat(to),
                     toChain: chainId
                 })
             )
         );
 
-        bytes memory message = EndpointStructs.encodeManagerMessage(m);
+        {
+            bytes memory message = EndpointStructs.encodeManagerMessage(m);
 
-        for (uint256 i; i < endpoints.length; i++) {
-            IEndpointReceiver e = endpoints[i];
-            e.receiveMessage(message);
+            for (uint256 i; i < endpoints.length; i++) {
+                IEndpointReceiver e = endpoints[i];
+                e.receiveMessage(message);
+            }
         }
 
         return m;
@@ -360,8 +365,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
             SENDING_CHAIN_ID,
             0,
-            abi.encodePacked(address(manager)),
-            abi.encodePacked(address(0)),
+            toWormholeFormat(address(manager)),
+            bytes32(0),
             abi.encode(EndpointStructs.EndpointMessage(0x9945FF10, "payload"))
         );
         bytes memory message = EndpointStructs.encodeManagerMessage(m);
@@ -377,8 +382,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
             SENDING_CHAIN_ID,
             0,
-            abi.encodePacked(address(manager)),
-            abi.encodePacked(address(0)),
+            toWormholeFormat(address(manager)),
+            bytes32(0),
             abi.encode(EndpointStructs.EndpointMessage(0x9945FF10, "payload"))
         );
 
@@ -397,8 +402,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
             SENDING_CHAIN_ID,
             0,
-            abi.encodePacked(address(manager)),
-            abi.encodePacked(address(0)),
+            toWormholeFormat(address(manager)),
+            bytes32(0),
             abi.encode(EndpointStructs.EndpointMessage(0x9945FF10, "payload"))
         );
 
@@ -550,18 +555,6 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             )
         );
         EndpointStructs.parseNativeTokenTransfer(abi.encodePacked(message, junk));
-    }
-
-    function test_bytesToAddress_roundtrip(address a) public {
-        bytes memory b = abi.encodePacked(a);
-        assertEq(manager.bytesToAddress(b), a);
-    }
-
-    function test_bytesToAddress_junk(address a) public {
-        bytes memory b = abi.encodePacked(a, "junk");
-
-        vm.expectRevert(abi.encodeWithSignature("LengthMismatch(uint256,uint256)", 24, 20));
-        manager.bytesToAddress(b);
     }
 
     // === storage

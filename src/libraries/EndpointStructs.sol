@@ -18,10 +18,8 @@ library EndpointStructs {
     ///      The wire format is as follows:
     ///      - chainId - 2 bytes
     ///      - sequence - 8 bytes
-    ///      - sourceManagerLength - 2 bytes
-    ///      - sourceManager - `sourceManagerLength` bytes
-    ///      - senderLength - 2 bytes
-    ///      - sender - `senderLength` bytes
+    ///      - sourceManager - 32 bytes
+    ///      - sender - 32 bytes
     ///      - payloadLength - 2 bytes
     ///      - payload - `payloadLength` bytes
     struct ManagerMessage {
@@ -30,9 +28,9 @@ library EndpointStructs {
         /// @notice unique sequence number
         uint64 sequence;
         /// @notice manager contract address that this message originates from.
-        bytes sourceManager;
+        bytes32 sourceManager;
         /// @notice original message sender address.
-        bytes sender;
+        bytes32 sender;
         /// @notice payload that corresponds to the type.
         bytes payload;
     }
@@ -46,27 +44,12 @@ library EndpointStructs {
         pure
         returns (bytes memory encoded)
     {
-        if (m.sourceManager.length > type(uint16).max) {
-            revert PayloadTooLong(m.sourceManager.length);
-        }
-        uint16 sourceManagerLength = uint16(m.sourceManager.length);
-        if (m.sender.length > type(uint16).max) {
-            revert PayloadTooLong(m.sender.length);
-        }
-        uint16 senderLength = uint16(m.sender.length);
         if (m.payload.length > type(uint16).max) {
             revert PayloadTooLong(m.payload.length);
         }
         uint16 payloadLength = uint16(m.payload.length);
         return abi.encodePacked(
-            m.chainId,
-            m.sequence,
-            sourceManagerLength,
-            m.sourceManager,
-            senderLength,
-            m.sender,
-            payloadLength,
-            m.payload
+            m.chainId, m.sequence, m.sourceManager, m.sender, payloadLength, m.payload
         );
     }
 
@@ -83,12 +66,8 @@ library EndpointStructs {
         uint256 offset = 0;
         (managerMessage.chainId, offset) = encoded.asUint16Unchecked(offset);
         (managerMessage.sequence, offset) = encoded.asUint64Unchecked(offset);
-        uint256 sourceManagerLength;
-        (sourceManagerLength, offset) = encoded.asUint16Unchecked(offset);
-        (managerMessage.sourceManager, offset) = encoded.sliceUnchecked(offset, sourceManagerLength);
-        uint256 senderLength;
-        (senderLength, offset) = encoded.asUint16Unchecked(offset);
-        (managerMessage.sender, offset) = encoded.sliceUnchecked(offset, senderLength);
+        (managerMessage.sourceManager, offset) = encoded.asBytes32Unchecked(offset);
+        (managerMessage.sender, offset) = encoded.asBytes32Unchecked(offset);
         uint256 payloadLength;
         (payloadLength, offset) = encoded.asUint16Unchecked(offset);
         (managerMessage.payload, offset) = encoded.sliceUnchecked(offset, payloadLength);
@@ -99,18 +78,16 @@ library EndpointStructs {
     ///      The wire format is as follows:
     ///      - NTT_PREFIX - 4 bytes
     ///      - amount - 8 bytes
-    ///      - sourceTokenLength - 2 bytes
-    ///      - sourceToken - `sourceTokenLength` bytes
-    ///      - toLength - 2 bytes
-    ///      - to - `toLength` bytes
+    ///      - sourceToken - 32 bytes
+    ///      - to - 32 bytes
     ///      - toChain - 2 bytes
     struct NativeTokenTransfer {
         /// @notice Amount being transferred (big-endian uint256)
         NormalizedAmount amount;
         /// @notice Source chain token address.
-        bytes sourceToken;
+        bytes32 sourceToken;
         /// @notice Address of the recipient.
-        bytes to;
+        bytes32 to;
         /// @notice Chain ID of the recipient
         uint16 toChain;
     }
@@ -120,17 +97,7 @@ library EndpointStructs {
         pure
         returns (bytes memory encoded)
     {
-        if (m.sourceToken.length > type(uint16).max) {
-            revert PayloadTooLong(m.sourceToken.length);
-        }
-        uint16 sourceTokenLength = uint16(m.sourceToken.length);
-        if (m.to.length > type(uint16).max) {
-            revert PayloadTooLong(m.to.length);
-        }
-        uint16 toLength = uint16(m.to.length);
-        return abi.encodePacked(
-            NTT_PREFIX, m.amount, sourceTokenLength, m.sourceToken, toLength, m.to, m.toChain
-        );
+        return abi.encodePacked(NTT_PREFIX, m.amount, m.sourceToken, m.to, m.toChain);
     }
 
     /*
@@ -152,13 +119,8 @@ library EndpointStructs {
         uint64 amount;
         (amount, offset) = encoded.asUint64Unchecked(offset);
         nativeTokenTransfer.amount = NormalizedAmount.wrap(amount);
-        uint16 sourceTokenLength;
-        (sourceTokenLength, offset) = encoded.asUint16Unchecked(offset);
-        (nativeTokenTransfer.sourceToken, offset) =
-            encoded.sliceUnchecked(offset, sourceTokenLength);
-        uint16 toLength;
-        (toLength, offset) = encoded.asUint16Unchecked(offset);
-        (nativeTokenTransfer.to, offset) = encoded.sliceUnchecked(offset, toLength);
+        (nativeTokenTransfer.sourceToken, offset) = encoded.asBytes32Unchecked(offset);
+        (nativeTokenTransfer.to, offset) = encoded.asBytes32Unchecked(offset);
         (nativeTokenTransfer.toChain, offset) = encoded.asUint16Unchecked(offset);
         encoded.checkLength(offset);
     }

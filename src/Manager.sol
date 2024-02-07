@@ -84,7 +84,7 @@ abstract contract Manager is
         }
     }
 
-    function _getSiblingsStorage() internal pure returns (mapping(uint16 => bytes) storage $) {
+    function _getSiblingsStorage() internal pure returns (mapping(uint16 => bytes32) storage $) {
         uint256 slot = uint256(SIBLINGS_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
@@ -298,28 +298,22 @@ abstract contract Manager is
             }
         }
 
-        bytes memory encodedTransferPayload;
-        {
-            bytes memory sourceTokenBytes = abi.encodePacked(token);
-            bytes memory recipientBytes = abi.encodePacked(recipient);
-            encodedTransferPayload = EndpointStructs.encodeNativeTokenTransfer(
-                EndpointStructs.NativeTokenTransfer(
-                    amount, sourceTokenBytes, recipientBytes, recipientChain
-                )
-            );
-        }
+        bytes memory encodedTransferPayload = EndpointStructs.encodeNativeTokenTransfer(
+            EndpointStructs.NativeTokenTransfer(
+                amount, toWormholeFormat(token), recipient, recipientChain
+            )
+        );
 
         // construct the ManagerMessage payload
-        bytes memory encodedManagerPayload;
-        {
-            bytes memory sourceManagerBytes = abi.encodePacked(address(this));
-            bytes memory senderBytes = abi.encodePacked(msg.sender);
-            encodedManagerPayload = EndpointStructs.encodeManagerMessage(
-                EndpointStructs.ManagerMessage(
-                    chainId, sequence, sourceManagerBytes, senderBytes, encodedTransferPayload
-                )
-            );
-        }
+        bytes memory encodedManagerPayload = EndpointStructs.encodeManagerMessage(
+            EndpointStructs.ManagerMessage(
+                chainId,
+                sequence,
+                toWormholeFormat(address(this)),
+                toWormholeFormat(msg.sender),
+                encodedTransferPayload
+            )
+        );
 
         // send the message
         _sendMessageToEndpoint(recipientChain, encodedManagerPayload);
@@ -350,7 +344,7 @@ abstract contract Manager is
         checkFork(evmChainId);
 
         // verify message came from a sibling manager contract
-        if (!_areBytesEqual(getSibling(message.chainId), message.sourceManager)) {
+        if (getSibling(message.chainId) != message.sourceManager) {
             revert InvalidSibling(message.chainId, message.sourceManager);
         }
 
@@ -372,7 +366,7 @@ abstract contract Manager is
 
         NormalizedAmount nativeTransferAmount = nativeTokenTransfer.amount;
 
-        address transferRecipient = bytesToAddress(nativeTokenTransfer.to);
+        address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
         {
             // Check inbound rate limits
@@ -447,59 +441,27 @@ abstract contract Manager is
         return abi.decode(queriedBalance, (uint256));
     }
 
-    function bytesToAddress(bytes memory b) public pure returns (address) {
-        (address addr, uint256 offset) = b.asAddress(0);
-        b.checkLength(offset);
-        return addr;
-    }
-
     function isMessageExecuted(bytes32 digest) public view returns (bool) {
         return _getMessageAttestationsStorage()[digest].executed;
     }
 
-    function getSibling(uint16 chainId_) public view returns (bytes memory) {
+    function getSibling(uint16 chainId_) public view returns (bytes32) {
         return _getSiblingsStorage()[chainId_];
     }
 
-    function setSibling(uint16 chainId_, bytes memory siblingContract) external onlyOwner {
+    function setSibling(uint16 chainId_, bytes32 siblingContract) external onlyOwner {
         if (chainId_ == 0) {
             revert InvalidSiblingChainIdZero();
         }
-        if (siblingContract.length == 0) {
-            revert InvalidSiblingZeroLength();
-        }
-        if (_isAllZeros(siblingContract)) {
-            revert InvalidSiblingZeroBytes();
+        if (siblingContract == bytes32(0)) {
+            revert InvalidSiblingZeroAddress();
         }
 
-        bytes memory oldSiblingContract = _getSiblingsStorage()[chainId_];
+        bytes32 oldSiblingContract = _getSiblingsStorage()[chainId_];
 
         _getSiblingsStorage()[chainId_] = siblingContract;
 
         emit SiblingUpdated(chainId_, oldSiblingContract, siblingContract);
-    }
-
-    function _isAllZeros(bytes memory payload) internal pure returns (bool) {
-        for (uint256 i = 0; i < payload.length; i++) {
-            if (payload[i] != 0) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    function _areBytesEqual(bytes memory a, bytes memory b) internal pure returns (bool) {
-        if (a.length != b.length) {
-            return false;
-        }
-
-        for (uint256 i = 0; i < a.length; i++) {
-            if (a[i] != b[i]) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     function _tokenDecimals() internal view override returns (uint8) {
