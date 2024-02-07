@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache 2
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity >=0.8.8 <0.9.0;
 
 /// @dev This contract is responsible for handling the registration of Endpoints.
 abstract contract EndpointRegistry {
