@@ -187,6 +187,23 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
             encoded.sliceUnchecked(offset, managerPayloadLength);
     }
 
+    /// @dev Parses the payload of an Endpoint message and returns the parsed ManagerMessage struct.
+    function parsePayload(bytes memory payload)
+        internal
+        pure
+        returns (EndpointStructs.ManagerMessage memory)
+    {
+        // parse the encoded message payload from the Endpoint
+        EndpointStructs.EndpointMessage memory parsedEndpointMessage =
+            _parseEndpointMessage(payload);
+
+        // parse the encoded message payload from the Manager
+        EndpointStructs.ManagerMessage memory parsed =
+            EndpointStructs.parseManagerMessage(parsedEndpointMessage.managerPayload);
+
+        return parsed;
+    }
+
     function receiveWormholeMessages(
         bytes memory payload,
         bytes[] memory additionalMessages,
@@ -214,7 +231,9 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         // emit `ReceivedRelayedMessage` event
         emit ReceivedRelayedMessage(deliveryHash, sourceChain, sourceAddress);
 
-        EndpointStructs.ManagerMessage memory parsed = EndpointStructs.parseManagerMessage(payload);
+        // parse the encoded Endpoint payload
+        EndpointStructs.ManagerMessage memory parsed = parsePayload(payload);
+
         _deliverToManager(parsed);
     }
 
@@ -222,14 +241,11 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
     ///         This function should verify the encodedVm and then deliver the attestation to the endpoint manager contract.
     function _receiveMessage(bytes memory encodedMessage) internal {
         bytes memory payload = _verifyMessage(encodedMessage);
-        // parse the encoded message payload from the Endpoint
-        EndpointStructs.EndpointMessage memory parsedEndpointMessage =
-            _parseEndpointMessage(payload);
-        // parse the encoded message payload from the Manager
-        EndpointStructs.ManagerMessage memory parsedManagerMessage =
-            EndpointStructs.parseManagerMessage(parsedEndpointMessage.managerPayload);
 
-        _deliverToManager(parsedManagerMessage);
+        // parse the encoded Endpoint payload
+        EndpointStructs.ManagerMessage memory parsed = parsePayload(payload);
+
+        _deliverToManager(parsed);
     }
 
     function _verifyMessage(bytes memory encodedMessage) internal returns (bytes memory) {
