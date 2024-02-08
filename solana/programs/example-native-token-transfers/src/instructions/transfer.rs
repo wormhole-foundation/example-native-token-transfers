@@ -3,7 +3,7 @@ use anchor_spl::token_interface;
 
 use crate::{
     chain_id::ChainId,
-    config::Mode,
+    config::*,
     normalized_amount::NormalizedAmount,
     queue::outbox::{OutboxItem, OutboxRateLimit},
 };
@@ -15,7 +15,7 @@ pub struct Transfer<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    pub config: Account<'info, crate::config::Config>,
+    pub config: NotPausedConfig<'info>,
 
     #[account(
         mut,

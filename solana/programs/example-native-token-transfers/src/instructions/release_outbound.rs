@@ -4,7 +4,7 @@ use wormhole_anchor_sdk::wormhole;
 use wormhole_io::TypePrefixedPayload;
 
 use crate::{
-    config::Config,
+    config::*,
     error::NTTError,
     messages::{ManagerMessage, NativeTokenTransfer},
     queue::outbox::OutboxItem,
@@ -15,7 +15,7 @@ pub struct ReleaseOutbound<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    pub config: Account<'info, Config>,
+    pub config: NotPausedConfig<'info>,
 
     #[account(
         mut,

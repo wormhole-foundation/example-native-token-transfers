@@ -166,3 +166,19 @@ pub fn set_inbound_limit(ctx: Context<SetInboundLimit>, args: SetInboundLimitArg
     ctx.accounts.rate_limit.set_limit(limit);
     Ok(())
 }
+
+// * Pausing
+#[derive(Accounts)]
+pub struct SetPaused<'info> {
+    #[account(
+        has_one = owner,
+    )]
+    pub config: Account<'info, Config>,
+
+    pub owner: Signer<'info>,
+}
+
+pub fn set_paused(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
+    ctx.accounts.config.paused = paused;
+    Ok(())
+}

@@ -40,6 +40,7 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
         chain_id: ChainId { id: args.chain_id },
         owner: ctx.accounts.owner.key(),
         pending_owner: None,
+        paused: false,
     });
 
     Ok(())

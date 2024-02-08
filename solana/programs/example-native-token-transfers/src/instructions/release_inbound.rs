@@ -1,14 +1,14 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
 
-use crate::{config::Config, error::NTTError, queue::inbox::InboxItem};
+use crate::{config::*, error::NTTError, queue::inbox::InboxItem};
 
 #[derive(Accounts)]
 pub struct ReleaseInbound<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    pub config: Account<'info, Config>,
+    pub config: NotPausedConfig<'info>,
 
     #[account(
         mut,

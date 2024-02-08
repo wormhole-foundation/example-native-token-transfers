@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 use anchor_lang::prelude::*;
 
 use crate::chain_id::ChainId;
@@ -19,10 +21,34 @@ pub struct Config {
     /// hardcode this so that the program is deployable on any potential SVM
     /// forks.
     pub chain_id: ChainId,
+    /// Pause the program. This is useful for upgrades and other maintenance.
+    pub paused: bool,
 }
 
 impl Config {
     pub const SEED_PREFIX: &'static [u8] = b"config";
+}
+
+#[derive(Accounts)]
+pub struct NotPausedConfig<'info> {
+    #[account(
+        constraint = !config.paused
+    )]
+    config: Account<'info, Config>,
+}
+
+impl<'info> Deref for NotPausedConfig<'info> {
+    type Target = Config;
+
+    fn deref(&self) -> &Self::Target {
+        &self.config
+    }
+}
+
+impl<'info> DerefMut for NotPausedConfig<'info> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.config
+    }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Clone)]
