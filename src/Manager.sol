@@ -112,6 +112,96 @@ abstract contract Manager is
         __ReentrancyGuard_init();
     }
 
+    // INVARIANTS
+    modifier checkSendingInvariants(uint256 amount, bool fromQueue) {
+        uint256 senderBalanceBefore = IERC20(token).balanceOf(msg.sender);
+        uint256 contractBalanceBefore = IERC20(token).balanceOf(address(this));
+        uint256 contractEthBalanceBefore = address(this).balance;
+        uint256 tokenSupplyBefore = IERC20(token).totalSupply();
+
+        // Continue execution
+        _;
+
+        uint256 senderBalanceAfter = IERC20(token).balanceOf(msg.sender);
+        uint256 contractBalanceAfter = IERC20(token).balanceOf(address(this));
+        uint256 contractEthBalanceAfter = address(this).balance;
+        uint256 tokenSupplyAfter = IERC20(token).totalSupply();
+
+        if (fromQueue) {
+            // The contract balance should not change
+            assert(contractBalanceBefore == contractBalanceAfter);
+            // The total token supply should not change
+            assert(tokenSupplyBefore == tokenSupplyAfter);
+            // The sender token balance should not change
+            assert(senderBalanceBefore == senderBalanceAfter);
+        }
+        else {
+            // The sender balance before should be `amount` less than it was before
+            assert(senderBalanceBefore - senderBalanceAfter == amount);
+
+            // The contract balance after should be greater than it was before and less than or equal to amount
+            // (in the case of fee-on-transfer tokens) in locking mode. The total token supply should not change.
+            if (mode == Mode.LOCKING) {
+                uint256 changeInBalance = contractBalanceAfter - contractBalanceBefore;
+                assert(changeInBalance > 0 && changeInBalance <= amount);
+                assert(tokenSupplyBefore == tokenSupplyAfter);
+            }
+            // In burning mode the contract balance should not change and the total supply after should
+            // be `amount` less than it was before
+            else if (mode == Mode.BURNING) {
+                assert(contractBalanceBefore == contractBalanceAfter);
+                assert(tokenSupplyBefore == tokenSupplyAfter + amount);
+            }
+
+        }
+
+        // The contract ETH balance should not change
+        assert(contractEthBalanceBefore == contractBalanceAfter);
+
+        // The rate limit capacity should be between 0 and the max
+        uint256 capacityAfter = getCurrentOutboundCapacity();
+        uint8 decimals = _tokenDecimals();
+        assert(capacityAfter <= uint256(getOutboundLimitParams().limit.denormalize(decimals)));
+    } 
+
+    modifier checkReceivingInvariants(address receiver, NormalizedAmount amount) {
+        uint8 decimals = _tokenDecimals();
+        uint256 receiverBalanceBefore = IERC20(token).balanceOf(receiver);
+        uint256 contractBalanceBefore = IERC20(token).balanceOf(address(this));
+        uint256 tokenSupplyBefore = IERC20(token).totalSupply();
+
+        // Continue execution
+        _;
+
+        uint256 receiverBalanceAfter = IERC20(token).balanceOf(receiver);
+        uint256 contractBalanceAfter = IERC20(token).balanceOf(address(this));
+        uint256 tokenSupplyAfter = IERC20(token).totalSupply();
+
+
+        // The contract balance after should be less than it was before and less than or equal to amount
+        // (in the case of fee-on-transfer tokens) in locking mode. The total token supply should not change.
+        if (mode == Mode.LOCKING) {
+            uint256 changeInBalance = contractBalanceBefore - contractBalanceAfter;
+            assert(changeInBalance > 0 && changeInBalance <= amount.denormalize(decimals));
+            assert(tokenSupplyBefore == tokenSupplyAfter);
+        }
+        // In burning mode the contract balance should not change and the total supply after should
+        // be `amount` more than it was before
+        else if (mode == Mode.BURNING) {
+            assert(contractBalanceBefore == contractBalanceAfter);
+            assert(tokenSupplyAfter == tokenSupplyBefore + amount.denormalize(decimals));
+        }
+
+        // The receiver should no more than `amount` tokens (might be a fee on-transfer token)
+        assert(receiverBalanceAfter <= receiverBalanceBefore + amount.denormalize(decimals) && receiverBalanceAfter > receiverBalanceBefore);
+    }
+
+    function _checkIncomingRateLimitInvariant(uint16 _chainId) internal view {
+        uint8 decimals = _tokenDecimals();
+        uint256 capacity = getCurrentInboundCapacity(_chainId);
+        assert(capacity <= getInboundLimitParams(_chainId).limit.denormalize(decimals));
+    }
+
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
     function quoteDeliveryPrice(uint16 recipientChain) public view virtual returns (uint256);
 
@@ -163,6 +253,7 @@ abstract contract Manager is
         external
         payable
         nonReentrant
+        checkSendingInvariants(0, true)
         returns (uint64)
     {
         // find the message in the queue
@@ -225,7 +316,7 @@ abstract contract Manager is
         uint16 recipientChain,
         bytes32 recipient,
         bool shouldQueue
-    ) external payable nonReentrant returns (uint64 msgSequence) {
+    ) external payable nonReentrant checkSendingInvariants(amount, false) returns (uint64 msgSequence) {
         if (amount == 0) {
             revert ZeroAmount();
         }
@@ -403,6 +494,7 @@ abstract contract Manager is
 
         // consume the amount for the inbound rate limit
         _consumeInboundAmount(nativeTransferAmount, message.chainId);
+        _checkIncomingRateLimitInvariant(message.chainId);
 
         _mintOrUnlockToRecipient(transferRecipient, nativeTransferAmount);
     }
@@ -426,7 +518,7 @@ abstract contract Manager is
         _mintOrUnlockToRecipient(queuedTransfer.recipient, queuedTransfer.amount);
     }
 
-    function _mintOrUnlockToRecipient(address recipient, NormalizedAmount amount) internal {
+    function _mintOrUnlockToRecipient(address recipient, NormalizedAmount amount) checkReceivingInvariants(recipient, amount) internal {
         // calculate proper amount of tokens to unlock/mint to recipient
         // query the decimals of the token contract that's tied to this manager
         // adjust the decimals of the amount in the nativeTokenTransfer payload accordingly
