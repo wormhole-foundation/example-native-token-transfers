@@ -24,7 +24,7 @@ interface IManager {
 
     function getSibling(uint16 chainId_) external view returns (bytes32);
 
-    function setSibling(uint16 chainId_, bytes32 siblingContract) external;
+    function setSibling(uint16 siblingChainId, bytes32 siblingContract) external;
 
     function isMessageApproved(bytes32 digest) external view returns (bool);
 
