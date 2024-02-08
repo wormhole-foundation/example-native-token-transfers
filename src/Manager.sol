@@ -156,7 +156,7 @@ abstract contract Manager is
         }
 
         // The contract ETH balance should not change
-        assert(contractEthBalanceBefore == contractBalanceAfter);
+        assert(contractEthBalanceBefore == contractEthBalanceAfter);
 
         // The rate limit capacity should be between 0 and the max
         uint256 capacityAfter = getCurrentOutboundCapacity();
