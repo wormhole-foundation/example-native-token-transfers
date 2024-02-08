@@ -701,7 +701,6 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
         uint256 outboundLimit = 4 * 10 ** decimals;
-        NormalizedAmount oldRps = outboundLimit.normalize(decimals).div(manager.rateLimitDuration());
         manager.setOutboundLimit(outboundLimit);
 
         vm.startPrank(user_A);
@@ -730,8 +729,10 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         // difference in limits + remaining capacity after t1 + the amount that's refreshed (based on the old rps)
         assertEq(
             outboundLimitParams.currentCapacity.unwrap(),
-            ((3 * 10 ** decimals) - (1 * 10 ** decimals) + oldRps.denormalize(decimals) * (6 hours))
-                .normalize(decimals).unwrap()
+            (
+                (1 * 10 ** decimals) + (1 * 10 ** decimals)
+                    + (outboundLimit * (6 hours)) / manager.rateLimitDuration()
+            ).normalize(decimals).unwrap()
         );
     }
 
@@ -756,11 +757,11 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         vm.stopPrank();
 
-        // change block timestamp to be 3 hours later
+        // change block timestamp to be 6 hours later
         uint256 sixHoursLater = initialBlockTimestamp + 3 hours;
         vm.warp(sixHoursLater);
 
-        // update the outbound limit to 5 tokens
+        // update the outbound limit to 3 tokens
         vm.startPrank(address(this));
 
         uint256 lowerLimit = 3 * 10 ** decimals;
@@ -775,7 +776,6 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function test_outboundRateLimit_setLowerLimit_durationCaseTwo() public {
-        // transfer 3 tokens
         address user_A = address(0x123);
         address user_B = address(0x456);
 
@@ -784,12 +784,13 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         uint8 decimals = token.decimals();
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
+        // set the outbound limit to 5 tokens
         uint256 outboundLimit = 5 * 10 ** decimals;
-        NormalizedAmount oldRps = outboundLimit.normalize(decimals).div(manager.rateLimitDuration());
         manager.setOutboundLimit(outboundLimit);
 
         vm.startPrank(user_A);
 
+        // transfer 2 tokens
         uint256 transferAmount = 2 * 10 ** decimals;
         token.approve(address(manager), transferAmount);
         manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
@@ -800,9 +801,9 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         uint256 sixHoursLater = initialBlockTimestamp + 6 hours;
         vm.warp(sixHoursLater);
 
-        // update the outbound limit to 5 tokens
         vm.startPrank(address(this));
 
+        // update the outbound limit to 4 tokens
         uint256 lowerLimit = 4 * 10 ** decimals;
         manager.setOutboundLimit(lowerLimit);
 
@@ -814,8 +815,10 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         // remaining capacity after t1 - difference in limits + the amount that's refreshed (based on the old rps)
         assertEq(
             outboundLimitParams.currentCapacity.unwrap(),
-            ((3 * 10 ** decimals) - (1 * 10 ** decimals) + oldRps.denormalize(decimals) * (6 hours))
-                .normalize(decimals).unwrap()
+            (
+                (3 * 10 ** decimals) - (1 * 10 ** decimals)
+                    + (outboundLimit * (6 hours)) / manager.rateLimitDuration()
+            ).normalize(decimals).unwrap()
         );
     }
 
