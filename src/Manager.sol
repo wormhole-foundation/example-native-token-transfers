@@ -248,17 +248,18 @@ abstract contract Manager is
             }
         } else if (mode == Mode.BURNING) {
             {
-                // query sender's token balance before transfer
-                uint256 balanceBefore = getTokenBalanceOf(token, msg.sender);
-
                 // call the token's burn function to burn the sender's token
+                // NOTE: We don't check for burn fees in this code path.
+                // Accounting for burn fees can be non-trivial, since there
+                // is no standard way to account for the fee if the fee amount
+                // is taken out of the burn amount.
+                // For example, if there's a fee of 1 which is taken out of the
+                // amount, then burning 20 tokens would result in a transfer of only 19 tokens.
+                // However, the difference in the user's balance would only show 20.
+                // Since there is no standard way to query for burn fee amounts with burnable tokens,
+                // and NTT would be used on a per-token basis, implementing this functionality
+                // is left to integrating projects who may need to account for burn fees on their tokens.
                 ERC20Burnable(token).burnFrom(msg.sender, amount);
-
-                // query sender's token balance after transfer
-                uint256 balanceAfter = getTokenBalanceOf(token, msg.sender);
-
-                // correct amount for potential burn fees
-                amount = balanceAfter - balanceBefore;
             }
         } else {
             revert InvalidMode(uint8(mode));
