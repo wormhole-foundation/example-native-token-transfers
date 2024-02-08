@@ -98,15 +98,11 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         wormholeEndpoint_evmChainId = block.chainid;
     }
 
-    function checkInvalidRelayingConfig(uint16 chainId) public view {
-        bool invalidConfig = isWormholeRelayingEnabled(chainId) && !isWormholeEvmChain(chainId);
-        if (invalidConfig) {
-            revert InvalidRelayingConfig(chainId);
-        }
+    function checkInvalidRelayingConfig(uint16 chainId) internal view returns (bool) {
+        return isWormholeRelayingEnabled(chainId) && !isWormholeEvmChain(chainId);
     }
 
-    function shouldRelayViaStandardRelaying(uint16 chainId) public view returns (bool) {
-        checkInvalidRelayingConfig(chainId);
+    function shouldRelayViaStandardRelaying(uint16 chainId) internal view returns (bool) {
         return isWormholeRelayingEnabled(chainId) && isWormholeEvmChain(chainId);
     }
 
@@ -116,6 +112,10 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         override
         returns (uint256 nativePriceQuote)
     {
+        if (checkInvalidRelayingConfig(targetChain)) {
+            revert InvalidRelayingConfig(targetChain);
+        }
+
         if (shouldRelayViaStandardRelaying(targetChain)) {
             (uint256 cost,) = wormholeRelayer.quoteEVMDeliveryPrice(targetChain, 0, GAS_LIMIT);
             return cost;
