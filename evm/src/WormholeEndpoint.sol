@@ -200,7 +200,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
 
         // VAA replay protection
         // Note that this VAA is for the AR delivery, not for the raw message emitted by the source chain Endpoint contract.
-        // The VAAs received by this entrypoint are different than the VAA received by the _receiveMessage entrypoint.
+        // The VAAs received by this entrypoint are different than the VAA received by the receiveMessage entrypoint.
         if (isVAAConsumed(deliveryHash)) {
             revert TransferAlreadyCompleted(deliveryHash);
         }
@@ -220,7 +220,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
 
     /// @notice Receive an attested message from the verification layer
     ///         This function should verify the encodedVm and then deliver the attestation to the endpoint manager contract.
-    function _receiveMessage(bytes memory encodedMessage) internal {
+    function receiveMessage(bytes memory encodedMessage) external {
         bytes memory payload = _verifyMessage(encodedMessage);
         // parse the encoded message payload from the Endpoint
         EndpointStructs.EndpointMessage memory parsedEndpointMessage =
