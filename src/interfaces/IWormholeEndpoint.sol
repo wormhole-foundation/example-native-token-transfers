@@ -23,6 +23,7 @@ interface IWormholeEndpoint {
     error InvalidWormholeSiblingZeroAddress();
     error InvalidWormholeChainIdZero();
 
+    function receiveMessage(bytes memory encodedMessage) external;
     function isVAAConsumed(bytes32 hash) external view returns (bool);
     function getWormholeSibling(uint16 chainId) external view returns (bytes32);
     function isWormholeRelayingEnabled(uint16 chainId) external view returns (bool);
