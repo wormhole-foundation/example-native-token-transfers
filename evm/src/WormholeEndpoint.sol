@@ -185,6 +185,9 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         (managerPayloadLength, offset) = encoded.asUint16Unchecked(offset);
         (endpointMessage.managerPayload, offset) =
             encoded.sliceUnchecked(offset, managerPayloadLength);
+
+        // Check if the entire byte array has been processed
+        encoded.checkLength(offset);
     }
 
     /// @dev Parses the payload of an Endpoint message and returns the parsed ManagerMessage struct.
