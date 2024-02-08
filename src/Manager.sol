@@ -195,6 +195,10 @@ abstract contract Manager is
         bytes32 recipient,
         bool shouldQueue
     ) external payable nonReentrant returns (uint64 msgSequence) {
+        if (amount == 0) {
+            revert ZeroAmount();
+        }
+
         NormalizedAmount normalizedAmount;
         {
             // query tokens decimals
@@ -206,10 +210,6 @@ abstract contract Manager is
             if (amount != newAmount) {
                 revert TransferAmountHasDust(amount, amount - newAmount);
             }
-        }
-
-        if (amount == 0) {
-            revert ZeroAmount();
         }
 
         // Lock/burn tokens before checking rate limits
