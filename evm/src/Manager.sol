@@ -449,19 +449,19 @@ abstract contract Manager is
         return _getSiblingsStorage()[chainId_];
     }
 
-    function setSibling(uint16 chainId_, bytes32 siblingContract) external onlyOwner {
-        if (chainId_ == 0) {
+    function setSibling(uint16 siblingChainId, bytes32 siblingContract) public virtual onlyOwner {
+        if (siblingChainId == 0) {
             revert InvalidSiblingChainIdZero();
         }
         if (siblingContract == bytes32(0)) {
             revert InvalidSiblingZeroAddress();
         }
 
-        bytes32 oldSiblingContract = _getSiblingsStorage()[chainId_];
+        bytes32 oldSiblingContract = _getSiblingsStorage()[siblingChainId];
 
-        _getSiblingsStorage()[chainId_] = siblingContract;
+        _getSiblingsStorage()[siblingChainId] = siblingContract;
 
-        emit SiblingUpdated(chainId_, oldSiblingContract, siblingContract);
+        emit SiblingUpdated(siblingChainId, oldSiblingContract, siblingContract);
     }
 
     function _tokenDecimals() internal view override returns (uint8) {
