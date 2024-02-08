@@ -199,15 +199,8 @@ abstract contract Manager is
         }
     }
 
-    /// @notice Called by the user to send the token cross-chain.
-    ///         This function will either lock or burn the sender's tokens.
-    ///         Finally, this function will call into the Endpoint contracts to send a message with the incrementing sequence number, msgType = 1y, and the token transfer payload.
-    function transfer(
-        uint256 amount,
-        uint16 recipientChain,
-        bytes32 recipient,
-        bool shouldQueue
-    ) external payable nonReentrant returns (uint64 msgSequence) {
+    /// @dev Returns normalized amount and checks for dust
+    function normalizeTransferAmount(uint256 amount) internal view returns (NormalizedAmount) {
         NormalizedAmount normalizedAmount;
         {
             // query tokens decimals
@@ -221,6 +214,18 @@ abstract contract Manager is
             }
         }
 
+        return normalizedAmount;
+    }
+
+    /// @notice Called by the user to send the token cross-chain.
+    ///         This function will either lock or burn the sender's tokens.
+    ///         Finally, this function will call into the Endpoint contracts to send a message with the incrementing sequence number, msgType = 1y, and the token transfer payload.
+    function transfer(
+        uint256 amount,
+        uint16 recipientChain,
+        bytes32 recipient,
+        bool shouldQueue
+    ) external payable nonReentrant returns (uint64 msgSequence) {
         if (amount == 0) {
             revert ZeroAmount();
         }
@@ -258,6 +263,9 @@ abstract contract Manager is
         } else {
             revert InvalidMode(uint8(mode));
         }
+
+        // normalize amount after burning to ensure transfer amount matches (amount - fee)
+        NormalizedAmount normalizedAmount = normalizeTransferAmount(amount);
 
         // get the sequence for this transfer
         uint64 sequence = _useMessageSequence();

@@ -583,7 +583,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         uint8 decimals = token.decimals();
 
-        token.mintDummy(from, 5 * 10 ** decimals);
+        uint256 maxAmount = 5 * 10 ** decimals;
+        token.mintDummy(from, maxAmount);
         manager.setOutboundLimit(NormalizedAmount.wrap(type(uint64).max).denormalize(decimals));
         manager.setInboundLimit(
             NormalizedAmount.wrap(type(uint64).max).denormalize(decimals), SENDING_CHAIN_ID
@@ -591,14 +592,21 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         vm.startPrank(from);
 
-        token.approve(address(manager), 3 * 10 ** decimals);
+        uint256 transferAmount = 3 * 10 ** decimals;
+        assertEq(
+            transferAmount < maxAmount - 500, true, "Transferring more tokens than what exists"
+        );
+
+        uint256 dustAmount = 500;
+        uint256 amountWithDust = transferAmount + dustAmount; // An amount with 19 digits, which will result in dust due to 18 decimals
+        token.approve(address(manager), amountWithDust);
 
         vm.expectRevert(
             abi.encodeWithSignature(
-                "TransferAmountHasDust(uint256,uint256)", 3 * 10 ** decimals + 500, 500
+                "TransferAmountHasDust(uint256,uint256)", amountWithDust, dustAmount
             )
         );
-        manager.transfer(3 * 10 ** decimals + 500, chainId, toWormholeFormat(to), false);
+        manager.transfer(amountWithDust, chainId, toWormholeFormat(to), false);
 
         vm.stopPrank();
     }
