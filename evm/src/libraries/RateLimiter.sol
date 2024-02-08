@@ -140,13 +140,17 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         // Specifically, the calculatedCapacity can overflow the u64 max.
         // For example, if the limit is uint64.max, then the multiplication in calculatedCapacity
         // will overflow when timePassed is greater than rateLimitDuration.
-        // Operating on uin256 avoids this issue. The overflow is cancelled out by the min operation,
+        // Operating on uint256 avoids this issue. The overflow is cancelled out by the min operation,
         // whose second argument is a uint64, so the result can safely be downcast to a uint64.
         unchecked {
             uint256 timePassed = block.timestamp - rateLimitParams.lastTxTimestamp;
-            uint256 ratePerSecond = rateLimitParams.limit.unwrap() / rateLimitDuration;
-            uint256 calculatedCapacity =
-                rateLimitParams.currentCapacity.unwrap() + (ratePerSecond * timePassed);
+            // Multiply (limit * timePassed), then divide by the duration.
+            // Dividing first has terrible numerical stability --
+            // when rateLimitDuration is close to the limit, there is significant rounding error.
+            // We are safe to multiply first, since these numbers are u64 NormalizedAmount types
+            // and we're performing arithmetic on u256 words.
+            uint256 calculatedCapacity = rateLimitParams.currentCapacity.unwrap()
+                + (rateLimitParams.limit.unwrap() * timePassed) / rateLimitDuration;
 
             uint256 result = min(calculatedCapacity, rateLimitParams.limit.unwrap());
             return NormalizedAmount.wrap(uint64(result));
