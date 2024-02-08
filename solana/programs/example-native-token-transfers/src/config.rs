@@ -6,6 +6,10 @@ use crate::chain_id::ChainId;
 #[derive(InitSpace)]
 pub struct Config {
     pub bump: u8,
+    /// Owner of the program.
+    pub owner: Pubkey,
+    /// Pending next owner (before claiming ownership).
+    pub pending_owner: Option<Pubkey>,
     /// Mint address of the token managed by this program.
     pub mint: Pubkey,
     /// The mode that this program is running in. This is used to determine

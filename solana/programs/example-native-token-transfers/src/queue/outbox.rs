@@ -1,6 +1,11 @@
-use anchor_lang::{prelude::*, solana_program::clock};
+use std::ops::{Deref, DerefMut};
 
-use crate::{chain_id::ChainId, error::NTTError, normalized_amount::NormalizedAmount};
+use anchor_lang::prelude::*;
+
+use crate::{
+    chain_id::ChainId, clock::current_timestamp, error::NTTError,
+    normalized_amount::NormalizedAmount,
+};
 
 use super::rate_limit::RateLimitState;
 
@@ -25,7 +30,7 @@ impl OutboxItem {
     pub const SEED_PREFIX: &'static [u8] = b"outbox_item";
 
     pub fn release(&mut self) -> Result<()> {
-        let now = clock::Clock::get()?.unix_timestamp;
+        let now = current_timestamp();
         if self.release_timestamp > now {
             return Err(NTTError::ReleaseTimestampNotReached.into());
         }
@@ -50,4 +55,18 @@ pub struct OutboxRateLimit {
 /// NOTE: only one of this account can exist, so we don't need to check the PDA.
 impl OutboxRateLimit {
     pub const SEED_PREFIX: &'static [u8] = b"outbox_rate_limit";
+}
+
+impl Deref for OutboxRateLimit {
+    type Target = RateLimitState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.rate_limit
+    }
+}
+
+impl DerefMut for OutboxRateLimit {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.rate_limit
+    }
 }

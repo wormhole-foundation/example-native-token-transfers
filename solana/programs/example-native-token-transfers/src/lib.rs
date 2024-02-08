@@ -9,6 +9,7 @@ pub mod messages;
 pub mod normalized_amount;
 pub mod queue;
 pub mod sequence;
+pub mod sibling;
 
 use instructions::*;
 
@@ -40,5 +41,34 @@ pub mod example_native_token_transfers {
 
     pub fn release_inbound(ctx: Context<ReleaseInbound>, args: ReleaseInboundArgs) -> Result<()> {
         instructions::release_inbound(ctx, args)
+    }
+
+    pub fn transfer_ownership(
+        ctx: Context<TransferOwnership>,
+        args: TransferOwnershipArgs,
+    ) -> Result<()> {
+        instructions::transfer_ownership(ctx, args)
+    }
+
+    pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
+        instructions::claim_ownership(ctx)
+    }
+
+    pub fn set_sibling(ctx: Context<SetSibling>, args: SetSiblingArgs) -> Result<()> {
+        instructions::set_sibling(ctx, args)
+    }
+
+    pub fn set_outbound_limit(
+        ctx: Context<SetOutboundLimit>,
+        args: SetOutboundLimitArgs,
+    ) -> Result<()> {
+        instructions::set_outbound_limit(ctx, args)
+    }
+
+    pub fn set_inbound_limit(
+        ctx: Context<SetInboundLimit>,
+        args: SetInboundLimitArgs,
+    ) -> Result<()> {
+        instructions::set_inbound_limit(ctx, args)
     }
 }

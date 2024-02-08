@@ -9,6 +9,8 @@ pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
+    pub owner: Signer<'info>,
+
     #[account(
         init,
         space = 8 + crate::config::Config::INIT_SPACE,
@@ -36,6 +38,8 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
         mint: ctx.accounts.mint.key(),
         mode: crate::config::Mode::Locking,
         chain_id: ChainId { id: args.chain_id },
+        owner: ctx.accounts.owner.key(),
+        pending_owner: None,
     });
 
     Ok(())

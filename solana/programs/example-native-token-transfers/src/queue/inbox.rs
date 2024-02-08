@@ -1,6 +1,8 @@
+use std::ops::{Deref, DerefMut};
+
 use anchor_lang::prelude::*;
 
-use crate::{error::NTTError, normalized_amount::NormalizedAmount};
+use crate::{clock::current_timestamp, error::NTTError, normalized_amount::NormalizedAmount};
 
 use super::rate_limit::RateLimitState;
 
@@ -19,7 +21,7 @@ impl InboxItem {
     pub const SEED_PREFIX: &'static [u8] = b"inbox_item";
 
     pub fn release(&mut self) -> Result<()> {
-        let now = Clock::get()?.unix_timestamp;
+        let now = current_timestamp();
 
         if self.release_timestamp > now {
             return Err(NTTError::ReleaseTimestampNotReached.into());
@@ -46,4 +48,17 @@ pub struct InboundRateLimit {
 
 impl InboundRateLimit {
     pub const SEED_PREFIX: &'static [u8] = b"inbox_rate_limit";
+}
+
+impl Deref for InboundRateLimit {
+    type Target = RateLimitState;
+    fn deref(&self) -> &Self::Target {
+        &self.rate_limit
+    }
+}
+
+impl DerefMut for InboundRateLimit {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.rate_limit
+    }
 }
