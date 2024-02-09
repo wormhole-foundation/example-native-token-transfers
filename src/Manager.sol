@@ -139,7 +139,7 @@ abstract contract Manager is
     /*
      * @dev pause the Manager contract. Only the Manager should be able to do this
      */
-    function pauseManager() external onlyOwner {
+    function pause() public virtual onlyOwner {
         _pause();
     }
 
