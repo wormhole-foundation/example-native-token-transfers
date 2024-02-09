@@ -10,7 +10,7 @@ pragma solidity >=0.8.8 <0.9.0;
  * execute code based on the current state of the contract.
  *
  */
-import {Initializable} from "./libraries/external/Initializable.sol";
+import {Initializable} from "./external/Initializable.sol";
 
 abstract contract Pausable is Initializable {
     /// NOTE: use uint256 to save on gas because it is the native word size of the EVM

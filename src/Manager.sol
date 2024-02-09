@@ -19,7 +19,7 @@ import "./interfaces/IManagerEvents.sol";
 import "./interfaces/IEndpointToken.sol";
 import "./Endpoint.sol";
 import "./EndpointRegistry.sol";
-import "./Pausable.sol";
+import "./libraries/Pausable.sol";
 
 // TODO: rename this (it's really the business logic)
 abstract contract Manager is
