@@ -227,13 +227,15 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         uint64 sequence,
         NormalizedAmount amount,
         uint16 recipientChain,
-        bytes32 recipient
+        bytes32 recipient,
+        address senderAddress
     ) internal {
         _getOutboundQueueStorage()[sequence] = OutboundQueuedTransfer({
             amount: amount,
             recipientChain: recipientChain,
             recipient: recipient,
-            txTimestamp: uint64(block.timestamp)
+            txTimestamp: uint64(block.timestamp),
+            sender: senderAddress
         });
 
         emit OutboundTransferQueued(sequence);
