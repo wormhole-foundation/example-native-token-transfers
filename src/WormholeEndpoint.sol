@@ -8,7 +8,7 @@ import "./interfaces/IWormhole.sol";
 import "./interfaces/IWormholeEndpoint.sol";
 import "./Endpoint.sol";
 import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
-import "./Pausable.sol";
+import "./libraries/Pausable.sol";
 
 abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver, Pausable {
     using BytesParsing for bytes;
