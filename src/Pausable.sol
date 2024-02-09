@@ -18,6 +18,14 @@ abstract contract Pausable is Initializable {
     uint256 private constant NOT_PAUSED = 1;
     uint256 private constant PAUSED = 2;
 
+    /**
+     * @dev Contract is not paused, functionality is unblocked
+     */
+    error RequireContractIsNotPaused();
+    /**
+     * @dev Contract state is paused, blocking
+     */
+    error RequireContractIsPaused();
     // @dev Storage slot with the pause flag, this is managed by the `Pause` struct
     struct PauseStorage {
         uint256 _pauseFlag;
@@ -45,7 +53,9 @@ abstract contract Pausable is Initializable {
      * Calling a function when this flag is set to `PAUSED` will cause the transaction to revert.
      */
     modifier whenNotPaused() {
-        require(!_isPaused(), "Pausable: notPaused");
+        if (_isPaused()) {
+            revert RequireContractIsNotPaused();
+        }
         _;
     }
 
@@ -54,7 +64,9 @@ abstract contract Pausable is Initializable {
      * Calling a function when this flag is set to `PAUSED` will cause the transaction to revert.
      */
     modifier whenPaused() {
-        require(_isPaused(), "Pausable: paused");
+        if (!_isPaused()) {
+            revert RequireContractIsPaused();
+        }
         _;
     }
 
