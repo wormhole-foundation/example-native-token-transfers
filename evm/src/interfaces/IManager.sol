@@ -10,6 +10,7 @@ interface IManager {
     error MessageNotApproved(bytes32 msgHash);
     error InvalidTargetChain(uint16 targetChain, uint16 thisChain);
     error ZeroAmount();
+    error BurnAmountDifferentThanBalanceDiff(uint256 burnAmount, uint256 balanceDiff);
     error InvalidMode(uint8 mode);
     error InvalidSibling(uint16 chainId, bytes32 siblingAddress);
     error InvalidSiblingChainIdZero();
