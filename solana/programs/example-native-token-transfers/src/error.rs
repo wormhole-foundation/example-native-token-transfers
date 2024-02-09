@@ -15,4 +15,6 @@ pub enum NTTError {
     TransferAlreadyRedeemed,
     #[msg("MessageAlreadySent")]
     MessageAlreadySent,
+    #[msg("InvalidMode")]
+    InvalidMode,
 }

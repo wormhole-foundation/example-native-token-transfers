@@ -4,6 +4,7 @@ use anchor_spl::token_interface;
 use crate::{
     chain_id::ChainId,
     config::*,
+    error::NTTError,
     normalized_amount::NormalizedAmount,
     queue::outbox::{OutboxItem, OutboxRateLimit},
 };
@@ -26,7 +27,7 @@ pub struct Transfer<'info> {
 
     #[account(
         mut,
-        token::mint = config.mint,
+        token::mint = mint,
     )]
     pub from: InterfaceAccount<'info, token_interface::TokenAccount>,
 
@@ -71,8 +72,15 @@ pub struct TransferArgs {
     pub recipient_address: [u8; 32],
 }
 
+// Burn/mint
+
+#[derive(Accounts)]
+pub struct TransferBurn<'info> {
+    pub common: Transfer<'info>,
+}
+
 // TODO: fees for relaying?
-pub fn transfer(ctx: Context<Transfer>, args: TransferArgs) -> Result<()> {
+pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<()> {
     let accs = ctx.accounts;
     let TransferArgs {
         amount,
@@ -80,39 +88,106 @@ pub fn transfer(ctx: Context<Transfer>, args: TransferArgs) -> Result<()> {
         recipient_address,
     } = args;
 
-    let amount = NormalizedAmount::normalize(amount, accs.mint.decimals);
+    let amount = NormalizedAmount::normalize(amount, accs.common.mint.decimals);
 
-    match accs.config.mode {
+    match accs.common.config.mode {
         Mode::Burning => token_interface::burn(
             CpiContext::new(
-                accs.token_program.to_account_info(),
+                accs.common.token_program.to_account_info(),
                 token_interface::Burn {
-                    mint: accs.mint.to_account_info(),
-                    from: accs.from.to_account_info(),
-                    authority: accs.from_authority.to_account_info(),
+                    mint: accs.common.mint.to_account_info(),
+                    from: accs.common.from.to_account_info(),
+                    authority: accs.common.from_authority.to_account_info(),
                 },
             ),
             // TODO: should we revert if we have dust?
-            amount.denormalize(accs.mint.decimals),
+            amount.denormalize(accs.common.mint.decimals),
         )?,
-
-        // TODO: implement locking mode. it will require a custody account.
-        // we could take it as optional, and just ignore it in burning mode.
-        // Alternatively we could do conditional compilation (feature flags), but
-        // that would complicate testing and leak more into the interface.
-        // Another option is to introduce a different instruction for locking
-        // and burning, and just error if the wrong one is used. Again, that leaks
-        // into the client interface.
-        Mode::Locking => todo!(),
+        Mode::Locking => return Err(NTTError::InvalidMode.into()),
     }
 
+    insert_into_outbox(
+        &mut accs.common,
+        amount,
+        ctx.bumps.common.outbox_item,
+        recipient_chain,
+        recipient_address,
+    )
+}
+
+// Lock/unlock
+
+#[derive(Accounts)]
+pub struct TransferLock<'info> {
+    pub common: Transfer<'info>,
+
+    #[account(
+        seeds = [b"custody_authority"],
+        bump,
+    )]
+    pub custody_authority: AccountInfo<'info>,
+
+    #[account(
+        mut,
+        token::mint = common.mint,
+        token::authority = custody_authority,
+    )]
+    pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
+}
+
+// TODO: fees for relaying?
+// TODO: factor out common bits
+pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<()> {
+    let accs = ctx.accounts;
+    let TransferArgs {
+        amount,
+        recipient_chain,
+        recipient_address,
+    } = args;
+
+    let amount = NormalizedAmount::normalize(amount, accs.common.mint.decimals);
+
+    match accs.common.config.mode {
+        Mode::Burning => return Err(NTTError::InvalidMode.into()),
+        Mode::Locking => token_interface::transfer_checked(
+            CpiContext::new(
+                accs.common.token_program.to_account_info(),
+                token_interface::TransferChecked {
+                    from: accs.common.from.to_account_info(),
+                    to: accs.custody.to_account_info(),
+                    authority: accs.common.from_authority.to_account_info(),
+                    mint: accs.common.mint.to_account_info(),
+                },
+            ),
+            // TODO: should we revert if we have dust?
+            amount.denormalize(accs.common.mint.decimals),
+            accs.common.mint.decimals,
+        )?,
+    }
+
+    insert_into_outbox(
+        &mut accs.common,
+        amount,
+        ctx.bumps.common.outbox_item,
+        recipient_chain,
+        recipient_address,
+    )
+}
+
+fn insert_into_outbox(
+    common: &mut Transfer<'_>,
+    amount: NormalizedAmount,
+    outbox_item_bump: u8,
+    recipient_chain: ChainId,
+    recipient_address: [u8; 32],
+) -> Result<()> {
     // consume the rate limit, or delay the transfer if it's outside the limit
-    let release_timestamp = accs.rate_limit.rate_limit.consume_or_delay(amount);
+    let release_timestamp = common.rate_limit.rate_limit.consume_or_delay(amount);
 
-    let sequence = accs.seq.next();
+    let sequence = common.seq.next();
 
-    accs.outbox_item.set_inner(OutboxItem {
-        bump: ctx.bumps.outbox_item,
+    common.outbox_item.set_inner(OutboxItem {
+        bump: outbox_item_bump,
         sequence,
         amount,
         recipient_chain,

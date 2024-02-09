@@ -31,34 +31,85 @@ pub struct ReleaseInbound<'info> {
     /// CHECK: the mint address matches the config
     pub mint: InterfaceAccount<'info, token_interface::Mint>,
 
+    pub token_program: Interface<'info, token_interface::TokenInterface>,
+}
+
+// Burn/mint
+
+#[derive(Accounts)]
+pub struct ReleaseInboundMint<'info> {
+    common: ReleaseInbound<'info>,
+
     #[account(
         seeds = [b"token_minter"],
         bump,
     )]
     /// CHECK: the token program checks if this indeed the right authority for the mint
     pub mint_authority: AccountInfo<'info>,
-
-    pub token_program: Interface<'info, token_interface::TokenInterface>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct ReleaseInboundArgs {}
-
-pub fn release_inbound(ctx: Context<ReleaseInbound>, _args: ReleaseInboundArgs) -> Result<()> {
-    let inbox_item = &mut ctx.accounts.inbox_item;
+pub fn release_inbound_mint(ctx: Context<ReleaseInboundMint>) -> Result<()> {
+    let inbox_item = &mut ctx.accounts.common.inbox_item;
 
     inbox_item.release()?;
 
-    token_interface::mint_to(
-        CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            token_interface::MintTo {
-                mint: ctx.accounts.mint.to_account_info(),
-                to: ctx.accounts.recipient.clone(),
-                authority: ctx.accounts.mint_authority.clone(),
-            },
-            &[&[b"token_minter", &[ctx.bumps.mint_authority]]],
+    match ctx.accounts.common.config.mode {
+        Mode::Burning => token_interface::mint_to(
+            CpiContext::new_with_signer(
+                ctx.accounts.common.token_program.to_account_info(),
+                token_interface::MintTo {
+                    mint: ctx.accounts.common.mint.to_account_info(),
+                    to: ctx.accounts.common.recipient.clone(),
+                    authority: ctx.accounts.mint_authority.clone(),
+                },
+                &[&[b"token_minter", &[ctx.bumps.mint_authority]]],
+            ),
+            inbox_item
+                .amount
+                .denormalize(ctx.accounts.common.mint.decimals),
         ),
-        inbox_item.amount.denormalize(ctx.accounts.mint.decimals),
-    )
+        Mode::Locking => Err(NTTError::InvalidMode.into()),
+    }
+}
+
+// Lock/unlock
+
+#[derive(Accounts)]
+pub struct ReleaseInboundUnlock<'info> {
+    common: ReleaseInbound<'info>,
+
+    #[account(
+        seeds = [b"custody_authoity"],
+        bump,
+    )]
+    pub custody_authority: AccountInfo<'info>,
+
+    /// CHECK: the token program checks if this indeed the right authority for the mint
+    pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
+}
+
+pub fn release_inbound_unlock(ctx: Context<ReleaseInboundUnlock>) -> Result<()> {
+    let inbox_item = &mut ctx.accounts.common.inbox_item;
+
+    inbox_item.release()?;
+
+    match ctx.accounts.common.config.mode {
+        Mode::Burning => Err(NTTError::InvalidMode.into()),
+        Mode::Locking => token_interface::transfer_checked(
+            CpiContext::new_with_signer(
+                ctx.accounts.common.token_program.to_account_info(),
+                token_interface::TransferChecked {
+                    from: ctx.accounts.custody.to_account_info(),
+                    to: ctx.accounts.common.recipient.clone(),
+                    authority: ctx.accounts.custody_authority.clone(),
+                    mint: ctx.accounts.common.mint.to_account_info(),
+                },
+                &[&[b"custody_authority", &[ctx.bumps.custody_authority]]],
+            ),
+            inbox_item
+                .amount
+                .denormalize(ctx.accounts.common.mint.decimals),
+            ctx.accounts.common.mint.decimals,
+        ),
+    }
 }

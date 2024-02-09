@@ -13,7 +13,7 @@ pub mod sibling;
 
 use instructions::*;
 
-declare_id!("CjjU6T8ZowfYmK3bDrb5k8TdTSQxCMnhZz1xFXUwUYsn");
+declare_id!("J61k8wq3PMLWmpR8meNxuQWfjHdzf8W1TZrFHoock9ou");
 
 #[program]
 pub mod example_native_token_transfers {
@@ -24,8 +24,12 @@ pub mod example_native_token_transfers {
         instructions::initialize(ctx, args)
     }
 
-    pub fn transfer(ctx: Context<Transfer>, args: TransferArgs) -> Result<()> {
-        instructions::transfer(ctx, args)
+    pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<()> {
+        instructions::transfer_burn(ctx, args)
+    }
+
+    pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<()> {
+        instructions::transfer_lock(ctx, args)
     }
 
     pub fn release_outbound(
@@ -39,8 +43,12 @@ pub mod example_native_token_transfers {
         instructions::redeem(ctx, args)
     }
 
-    pub fn release_inbound(ctx: Context<ReleaseInbound>, args: ReleaseInboundArgs) -> Result<()> {
-        instructions::release_inbound(ctx, args)
+    pub fn release_inbound_mint(ctx: Context<ReleaseInboundMint>) -> Result<()> {
+        instructions::release_inbound_mint(ctx)
+    }
+
+    pub fn release_inbound_unlock(ctx: Context<ReleaseInboundUnlock>) -> Result<()> {
+        instructions::release_inbound_unlock(ctx)
     }
 
     pub fn transfer_ownership(
