@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.8 <0.9.0;
 
 /**
@@ -13,10 +13,25 @@ pragma solidity >=0.8.8 <0.9.0;
 import {Initializable} from "./external/Initializable.sol";
 
 abstract contract Pausable is Initializable {
+    /*
+     * @custom:storage-location erc7201:openzeppelin.storage.Pausable.
+     * @dev Storage slot with the pauser account, this is managed by the `PauserStorage` struct
+    */
+    struct PauserStorage {
+        address _pauser;
+    }
+
+    // @dev Storage slot with the pause flag, this is managed by the `PauseStorage` struct
+    struct PauseStorage {
+        uint256 _pauseFlag;
+    }
+
     /// NOTE: use uint256 to save on gas because it is the native word size of the EVM
     /// it is cheaper than using a bool because modifying a boolean value requires an extra SLOAD
     uint256 private constant NOT_PAUSED = 1;
     uint256 private constant PAUSED = 2;
+
+    event PauserTransferred(address indexed oldPauser, address indexed newPauser);
 
     /**
      * @dev Contract is not paused, functionality is unblocked
@@ -26,17 +41,37 @@ abstract contract Pausable is Initializable {
      * @dev Contract state is paused, blocking
      */
     error RequireContractIsPaused();
-    // @dev Storage slot with the pause flag, this is managed by the `Pause` struct
 
-    struct PauseStorage {
-        uint256 _pauseFlag;
-    }
+    /**
+     * @dev the pauser is not a valid pauser account (e.g. `address(0)`)
+     */
+    error InvalidPauser(address account);
+
+    /**
+     * @dev Cannot renounce the pauser capability when the contract is in the `PAUSED` state
+     */
+    error CannotRenounceWhilePaused(address account);
 
     // @dev Emitted when the contract is paused
     event Paused(bool paused);
     event NotPaused(bool notPaused);
 
     bytes32 public constant PAUSE_SLOT = bytes32(uint256(keccak256("Pause.pauseFlag")) - 1);
+    bytes32 public constant PAUSER_ROLE_SLOT = bytes32(uint256(keccak256("Pause.pauseRole")) - 1);
+
+    function _getPauserStorage() private pure returns (PauserStorage storage $) {
+        uint256 slot = uint256(PAUSER_ROLE_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
+    /**
+     * @dev Returns the current pauser account address.
+     */
+    function _pauser() private view returns (address) {
+        return _getPauserStorage()._pauser;
+    }
 
     function _getPauseStorage() private pure returns (PauseStorage storage $) {
         uint256 slot = uint256(PAUSE_SLOT);
@@ -47,6 +82,18 @@ abstract contract Pausable is Initializable {
 
     function _setPauseStorage(uint256 pauseFlag) internal {
         _getPauseStorage()._pauseFlag = pauseFlag;
+    }
+
+    function __Paused_init(address initialPauser) internal onlyInitializing {
+        __Paused_init_unchained(initialPauser);
+    }
+
+    function __Paused_init_unchained(address initialPauser) internal onlyInitializing {
+        // set pause flag to false initially
+        PauseStorage storage $ = _getPauseStorage();
+        $._pauseFlag = NOT_PAUSED;
+        // set the initial pauser
+        _transferPauserCapability(initialPauser);
     }
 
     /**
@@ -71,19 +118,27 @@ abstract contract Pausable is Initializable {
         _;
     }
 
-    function __Paused_init() internal onlyInitializing {
-        __Paused_init_unchained();
+    /*
+     * @dev Modifier to allow only the Pauser to access some functionality
+     */
+    modifier onlyPauser() {
+        _checkPauser();
+        _;
     }
 
-    function __Paused_init_unchained() internal onlyInitializing {
-        PauseStorage storage $ = _getPauseStorage();
-        $._pauseFlag = NOT_PAUSED;
+    /*
+     * @dev Modifier to allow only the Pauser to access some functionality
+     */
+    function _checkPauser() internal view {
+        if (_pauser() != msg.sender) {
+            revert InvalidPauser(msg.sender);
+        }
     }
 
     /**
      * @dev pauses the function and emits the `Paused` event
      */
-    function _pause() internal virtual whenNotPaused {
+    function _pause() internal virtual whenNotPaused onlyPauser {
         // this can only be set to PAUSED when the state is NOTPAUSED
         _setPauseStorage(PAUSED);
         emit Paused(true);
@@ -92,7 +147,7 @@ abstract contract Pausable is Initializable {
     /**
      * @dev unpauses the function
      */
-    function _unpause() internal virtual whenPaused {
+    function _unpause() internal virtual whenPaused onlyPauser {
         // this can only be set to NOTPAUSED when the state is PAUSED
         _setPauseStorage(NOT_PAUSED);
         emit NotPaused(false);
@@ -104,5 +159,29 @@ abstract contract Pausable is Initializable {
     function isPaused() public view returns (bool) {
         PauseStorage storage $ = _getPauseStorage();
         return $._pauseFlag == PAUSED;
+    }
+
+    /**
+     * @dev Transfers the ability to pause to a new account (`newPauser`).
+     */
+    function _transferPauserCapability(address newPauser) internal virtual onlyPauser {
+        PauserStorage storage $ = _getPauserStorage();
+        address oldPauser = $._pauser;
+        $._pauser = newPauser;
+        emit PauserTransferred(oldPauser, newPauser);
+    }
+
+    /**
+     * @dev Leaves the contract without a Pauser
+     * and all the capabilities afforded with that role.
+     * TODO: do we need this?
+     */
+    function renouncePauser() public virtual onlyPauser {
+        // NOTE:Ccannot renounce the pauser capability when the contract is in the `PAUSED` state
+        // the contract can never be `UNPAUSED`
+        if (isPaused()) {
+            revert CannotRenounceWhilePaused(_pauser());
+        }
+        _transferPauserCapability(address(0));
     }
 }
