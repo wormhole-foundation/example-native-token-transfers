@@ -243,7 +243,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
 
     /// @notice Receive an attested message from the verification layer
     ///         This function should verify the encodedVm and then deliver the attestation to the endpoint manager contract.
-    function receiveMessage(bytes memory encodedMessage) external {
+    function receiveMessage(bytes memory encodedMessage) external whenNotPaused {
         bytes memory payload = _verifyMessage(encodedMessage);
 
         // parse the encoded Endpoint payload
