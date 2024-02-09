@@ -172,6 +172,7 @@ abstract contract Manager is
         external
         payable
         nonReentrant
+        whenNotPaused
         returns (uint64)
     {
         // find the message in the queue
@@ -416,7 +417,7 @@ abstract contract Manager is
         _mintOrUnlockToRecipient(transferRecipient, nativeTransferAmount);
     }
 
-    function completeInboundQueuedTransfer(bytes32 digest) external nonReentrant {
+    function completeInboundQueuedTransfer(bytes32 digest) external nonReentrant whenNotPaused {
         // find the message in the queue
         InboundQueuedTransfer memory queuedTransfer = getInboundQueuedTransfer(digest);
         if (queuedTransfer.txTimestamp == 0) {
