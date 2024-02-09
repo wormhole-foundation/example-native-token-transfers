@@ -46,13 +46,18 @@ impl RateLimitState {
         // for the intermediate calculations. Theoretically it could also overflow u128
         // if limit == time_passed == u64 max, but that will take a very long time.
 
+        let NormalizedAmount {
+            amount: capacity_at_last_tx,
+            decimals,
+        } = self.capacity_at_last_tx;
+
         let calculated_capacity = {
             let time_passed = now - self.last_tx_timestamp;
-            self.capacity_at_last_tx.amount() as u128
+            capacity_at_last_tx as u128
                 + time_passed as u128 * limit / (Self::RATE_LIMIT_DURATION as u128)
         };
 
-        NormalizedAmount::new(calculated_capacity.min(limit) as u64)
+        NormalizedAmount::new(calculated_capacity.min(limit) as u64, decimals)
     }
 
     /// Computes the timestamp at which the given amount can be consumed.
@@ -103,17 +108,17 @@ mod tests {
     #[test]
     fn test_rate_limit() {
         let mut rate_limit_state = RateLimitState {
-            limit: NormalizedAmount::new(100_000),
-            capacity_at_last_tx: NormalizedAmount::new(100_000),
+            limit: NormalizedAmount::new(100_000, 8),
+            capacity_at_last_tx: NormalizedAmount::new(100_000, 8),
             last_tx_timestamp: current_timestamp(),
         };
 
         // consume 30k. should be immediate
-        let immediately = rate_limit_state.consume_or_delay(NormalizedAmount::new(30_000));
+        let immediately = rate_limit_state.consume_or_delay(NormalizedAmount::new(30_000, 8));
 
         assert_eq!(immediately, current_timestamp());
-        assert_eq!(rate_limit_state.capacity(), NormalizedAmount::new(70_000));
-        assert_eq!(rate_limit_state.limit, NormalizedAmount::new(100_000)); // unchanged
+        assert_eq!(rate_limit_state.capacity(), NormalizedAmount::new(70_000, 8));
+        assert_eq!(rate_limit_state.limit, NormalizedAmount::new(100_000, 8)); // unchanged
         assert_eq!(rate_limit_state.last_tx_timestamp, current_timestamp());
 
         // replenish 1/4 of the limit, i.e. 25k
@@ -121,11 +126,11 @@ mod tests {
 
         assert_eq!(
             rate_limit_state.capacity(),
-            NormalizedAmount::new(70_000 + 25_000)
+            NormalizedAmount::new(70_000 + 25_000, 8)
         );
 
         // now consume 150k. should be delayed
-        let tomorrow = rate_limit_state.consume_or_delay(NormalizedAmount::new(150_000));
+        let tomorrow = rate_limit_state.consume_or_delay(NormalizedAmount::new(150_000, 8));
         assert_eq!(
             tomorrow,
             current_timestamp() + RateLimitState::RATE_LIMIT_DURATION
@@ -134,18 +139,18 @@ mod tests {
         // the limit is not changed, since the tx was delayed
         assert_eq!(
             rate_limit_state.capacity(),
-            NormalizedAmount::new(70_000 + 25_000)
+            NormalizedAmount::new(70_000 + 25_000, 8)
         );
 
         // now set the limit to 50k
-        rate_limit_state.set_limit(NormalizedAmount::new(50_000));
+        rate_limit_state.set_limit(NormalizedAmount::new(50_000, 8));
 
         // this decreases the capacity by 50k, to 45k
-        assert_eq!(rate_limit_state.capacity(), NormalizedAmount::new(45_000));
+        assert_eq!(rate_limit_state.capacity(), NormalizedAmount::new(45_000, 8));
 
         // now set the limit to 100k
-        rate_limit_state.set_limit(NormalizedAmount::new(100_000));
+        rate_limit_state.set_limit(NormalizedAmount::new(100_000, 8));
 
-        assert_eq!(rate_limit_state.capacity(), NormalizedAmount::new(95_000));
+        assert_eq!(rate_limit_state.capacity(), NormalizedAmount::new(95_000, 8));
     }
 }

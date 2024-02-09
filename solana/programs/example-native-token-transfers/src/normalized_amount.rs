@@ -7,10 +7,7 @@
 //! The functions [`normalize`] and [`denormalize`] take care of convertion to/from
 //! this type given the original amount's decimals.
 
-use std::{
-    io,
-    ops::{Add, Mul, Sub},
-};
+use std::{io, ops::Sub};
 
 use anchor_lang::prelude::*;
 use wormhole_io::{Readable, Writeable};
@@ -30,82 +27,61 @@ pub const NORMALIZED_DECIMALS: u8 = 8;
     InitSpace,
 )]
 pub struct NormalizedAmount {
-    amount: u64,
-}
-
-impl Mul for NormalizedAmount {
-    type Output = Self;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        Self {
-            amount: self.amount * rhs.amount,
-        }
-    }
-}
-
-impl Mul<u64> for NormalizedAmount {
-    type Output = Self;
-
-    fn mul(self, rhs: u64) -> Self::Output {
-        Self {
-            amount: self.amount * rhs,
-        }
-    }
-}
-
-impl Add for NormalizedAmount {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            amount: self.amount + rhs.amount,
-        }
-    }
+    pub amount: u64,
+    pub decimals: u8,
 }
 
 impl Sub for NormalizedAmount {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
+        assert_eq!(self.decimals, rhs.decimals);
         Self {
             amount: self.amount - rhs.amount,
+            decimals: self.decimals,
         }
     }
 }
 
 impl NormalizedAmount {
-    pub fn new(amount: u64) -> Self {
-        Self { amount }
+    pub fn new(amount: u64, decimals: u8) -> Self {
+        Self { amount, decimals }
     }
 
     pub fn saturating_sub(self, rhs: Self) -> Self {
+        assert_eq!(self.decimals, rhs.decimals);
         Self {
             amount: self.amount.saturating_sub(rhs.amount),
+            decimals: self.decimals,
         }
     }
 
     pub fn saturating_add(self, rhs: Self) -> Self {
+        assert_eq!(self.decimals, rhs.decimals);
         Self {
             amount: self.amount.saturating_add(rhs.amount),
+            decimals: self.decimals,
         }
     }
 
-    fn scaling_factor(decimals: u8) -> u64 {
-        if decimals > NORMALIZED_DECIMALS {
-            10u64.pow((decimals - NORMALIZED_DECIMALS).into())
+    fn scaling_factor(orig_decimals: u8, norm_decimals: u8) -> u64 {
+        if orig_decimals > norm_decimals {
+            10u64.pow((orig_decimals - norm_decimals).into())
         } else {
             1
         }
     }
 
-    pub fn normalize(amount: u64, decimals: u8) -> NormalizedAmount {
+    pub fn normalize(amount: u64, from_decimals: u8) -> NormalizedAmount {
+        let to_decimals = NORMALIZED_DECIMALS.min(from_decimals);
         Self {
-            amount: amount / Self::scaling_factor(decimals),
+            amount: amount / Self::scaling_factor(from_decimals, to_decimals),
+            decimals: to_decimals,
         }
     }
 
-    pub fn denormalize(&self, decimals: u8) -> u64 {
-        self.amount * Self::scaling_factor(decimals)
+    pub fn denormalize(&self, to_decimals: u8) -> u64 {
+        self.amount * Self::scaling_factor(to_decimals, self.decimals)
     }
 
     pub fn amount(&self) -> u64 {
@@ -114,15 +90,16 @@ impl NormalizedAmount {
 }
 
 impl Readable for NormalizedAmount {
-    const SIZE: Option<usize> = Some(8);
+    const SIZE: Option<usize> = Some(1 + 8);
 
     fn read<R>(reader: &mut R) -> io::Result<Self>
     where
         Self: Sized,
         R: io::Read,
     {
+        let decimals = Readable::read(reader)?;
         let amount = Readable::read(reader)?;
-        Ok(Self { amount })
+        Ok(Self { amount, decimals })
     }
 }
 
@@ -131,7 +108,8 @@ impl Writeable for NormalizedAmount {
     where
         W: io::Write,
     {
-        let NormalizedAmount { amount } = self;
+        let NormalizedAmount { amount, decimals } = self;
+        decimals.write(writer)?;
         amount.write(writer)?;
 
         Ok(())
