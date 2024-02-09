@@ -18,6 +18,14 @@ pub struct RateLimitState {
 }
 
 impl RateLimitState {
+    pub fn new(limit: NormalizedAmount) -> Self {
+        Self {
+            limit,
+            capacity_at_last_tx: limit,
+            last_tx_timestamp: 0,
+        }
+    }
+
     pub const RATE_LIMIT_DURATION: i64 = 60 * 60 * 24; // 24 hours
 
     /// Returns the capacity of the rate limiter.
