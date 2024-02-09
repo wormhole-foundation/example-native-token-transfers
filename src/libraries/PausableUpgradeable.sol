@@ -140,7 +140,7 @@ abstract contract PausableUpgradeable is Initializable {
     /**
      * @dev pauses the function and emits the `Paused` event
      */
-    function _pause() internal virtual whenNotPaused {
+    function _pause() internal virtual whenNotPaused onlyPauser {
         // this can only be set to PAUSED when the state is NOTPAUSED
         _setPauseStorage(PAUSED);
         emit Paused(true);
@@ -149,7 +149,7 @@ abstract contract PausableUpgradeable is Initializable {
     /**
      * @dev unpauses the function
      */
-    function _unpause() internal virtual whenPaused {
+    function _unpause() internal virtual whenPaused onlyPauser {
         // this can only be set to NOTPAUSED when the state is PAUSED
         _setPauseStorage(NOT_PAUSED);
         emit NotPaused(false);
@@ -161,5 +161,29 @@ abstract contract PausableUpgradeable is Initializable {
     function isPaused() public view returns (bool) {
         PauseStorage storage $ = _getPauseStorage();
         return $._pauseFlag == PAUSED;
+    }
+
+    /**
+     * @dev Transfers the ability to pause to a new account (`newPauser`).
+     */
+    function _transferPauserCapability(address newPauser) internal virtual onlyPauser {
+        PauserStorage storage $ = _getPauserStorage();
+        address oldPauser = $._pauser;
+        $._pauser = newPauser;
+        emit PauserTransferred(oldPauser, newPauser);
+    }
+
+    /**
+     * @dev Leaves the contract without a Pauser
+     * and all the capabilities afforded with that role.
+     * TODO: do we need this?
+     */
+    function renouncePauser() public virtual onlyPauser {
+        // NOTE:Ccannot renounce the pauser capability when the contract is in the `PAUSED` state
+        // the contract can never be `UNPAUSED`
+        if (isPaused()) {
+            revert CannotRenounceWhilePaused(pauser());
+        }
+        _transferPauserCapability(address(0));
     }
 }
