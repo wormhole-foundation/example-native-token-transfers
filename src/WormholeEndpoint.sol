@@ -214,7 +214,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         bytes32 sourceAddress,
         uint16 sourceChain,
         bytes32 deliveryHash
-    ) external payable onlyRelayer {
+    ) external payable onlyRelayer whenNotPaused {
         if (getWormholeSibling(sourceChain) != sourceAddress) {
             revert InvalidWormholeSibling(sourceChain, sourceAddress);
         }
