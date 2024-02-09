@@ -21,6 +21,7 @@ interface IRateLimiter {
         NormalizedAmount amount;
         uint64 txTimestamp;
         uint16 recipientChain;
+        address sender;
     }
 
     struct InboundQueuedTransfer {
