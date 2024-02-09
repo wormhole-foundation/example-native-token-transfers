@@ -184,7 +184,8 @@ abstract contract Manager is
             messageSequence,
             queuedTransfer.amount,
             queuedTransfer.recipientChain,
-            queuedTransfer.recipient
+            queuedTransfer.recipient,
+            queuedTransfer.sender
         );
     }
 
@@ -298,7 +299,9 @@ abstract contract Manager is
                 );
 
                 // queue up and return
-                _enqueueOutboundTransfer(sequence, normalizedAmount, recipientChain, recipient);
+                _enqueueOutboundTransfer(
+                    sequence, normalizedAmount, recipientChain, recipient, msg.sender
+                );
 
                 // refund price quote back to sender
                 refundToSender(msg.value);
@@ -311,14 +314,15 @@ abstract contract Manager is
         // otherwise, consume the outbound amount
         _consumeOutboundAmount(normalizedAmount);
 
-        return _transfer(sequence, normalizedAmount, recipientChain, recipient);
+        return _transfer(sequence, normalizedAmount, recipientChain, recipient, msg.sender);
     }
 
     function _transfer(
         uint64 sequence,
         NormalizedAmount amount,
         uint16 recipientChain,
-        bytes32 recipient
+        bytes32 recipient,
+        address sender
     ) internal returns (uint64 msgSequence) {
         {
             // check up front that msg.value will cover the delivery price
@@ -346,7 +350,7 @@ abstract contract Manager is
                 chainId,
                 sequence,
                 toWormholeFormat(address(this)),
-                toWormholeFormat(msg.sender),
+                toWormholeFormat(sender),
                 encodedTransferPayload
             )
         );
