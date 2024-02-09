@@ -83,6 +83,19 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, _args: ReleaseOutboundArg
         },
     };
 
+    if accs.wormhole_bridge.fee() > 0 {
+        anchor_lang::system_program::transfer(
+            CpiContext::new(
+                accs.system_program.to_account_info(),
+                anchor_lang::system_program::Transfer {
+                    from: accs.payer.to_account_info(),
+                    to: accs.wormhole_fee_collector.to_account_info(),
+                },
+            ),
+            accs.wormhole_bridge.fee(),
+        )?;
+    }
+
     wormhole::post_message(
         CpiContext::new_with_signer(
             accs.wormhole_program.to_account_info(),
