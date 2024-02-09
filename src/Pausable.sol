@@ -12,7 +12,15 @@ pragma solidity >=0.8.8 <0.9.0;
  */
 import {Initializable} from "./libraries/external/Initializable.sol";
 
+// TODO: pauser should NOT be zero
+// Check this in a test
+// follow OpenZeppelin's OwnableUpgradeable contract
 abstract contract Pausable is Initializable {
+    // /// @custom:storage-location erc7201:openzeppelin.storage.Ownable
+    // struct PauserStorage {
+    //     address _pauser;
+    // }
+
     /// NOTE: use uint256 to save on gas because it is the native word size of the EVM
     /// it is cheaper than using a bool because modifying a boolean value requires an extra SLOAD
     uint256 private constant NOT_PAUSED = 1;
@@ -27,6 +35,7 @@ abstract contract Pausable is Initializable {
      */
     error RequireContractIsPaused();
     // @dev Storage slot with the pause flag, this is managed by the `Pause` struct
+
     struct PauseStorage {
         uint256 _pauseFlag;
     }
