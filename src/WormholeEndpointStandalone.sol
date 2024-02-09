@@ -11,8 +11,6 @@ contract WormholeEndpointStandalone is WormholeEndpoint, EndpointStandalone {
         address wormholeRelayerAddr
     ) EndpointStandalone(manager) WormholeEndpoint(wormholeCoreBridge, wormholeRelayerAddr) {}
 
-    /// @notice This function is used to pause the endpoint
-    /// Only the implementor (deployer) can call this function
     function pauseWormholeEndpoint() external onlyOwner {
         _pauseWormholeEndpoint();
     }
