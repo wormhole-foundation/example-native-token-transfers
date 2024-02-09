@@ -5,7 +5,7 @@ use wormhole_anchor_sdk::wormhole::{self, PostedVaa, PostedVaaData};
 use crate::{
     config::*,
     error::NTTError,
-    messages::{ManagerMessage, NativeTokenTransfer},
+    messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer, WormholeEndpoint},
     queue::inbox::{InboundRateLimit, InboxItem},
     sibling::Sibling,
 };
@@ -29,16 +29,13 @@ pub struct Redeem<'info> {
         seeds::program = wormhole::program::ID,
         bump,
         // check that the VAA's emitter agrees with what's in the message
-        constraint = vaa.emitter_chain() == vaa.message().chain_id.id @ NTTError::InvalidChainId,
-        // TODO: once the manager payload has sending manager address, check
-        // that too (against VAA emitter)
-        // constraint = vaa.emitter_address() == vaa.message().payload.from @ NTTError::InvalidEmitter,
+        constraint = vaa.emitter_chain() == vaa.message().manager_payload.chain_id.id @ NTTError::InvalidChainId,
         // check that the messages is targeted to this chain
-        constraint = vaa.message().payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
+        constraint = vaa.message().manager_payload.payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
         // NOTE: we don't replay protect VAAs. Instead, we replay protect
         // executing the messages themselves with the [`released`] flag.
     )]
-    pub vaa: Account<'info, PostedVaa<ManagerMessage<NativeTokenTransfer>>>,
+    pub vaa: Account<'info, PostedVaa<EndpointMessage<WormholeEndpoint, NativeTokenTransfer>>>,
 
     #[account(
         init,
@@ -46,8 +43,8 @@ pub struct Redeem<'info> {
         space = 8 + InboxItem::INIT_SPACE,
         seeds = [
             InboxItem::SEED_PREFIX,
-            vaa.message().chain_id.id.to_be_bytes().as_ref(),
-            vaa.message().sequence.to_be_bytes().as_ref(),
+            vaa.message().manager_payload.chain_id.id.to_be_bytes().as_ref(),
+            vaa.message().manager_payload.sequence.to_be_bytes().as_ref(),
         ],
         bump,
     )]
@@ -76,7 +73,7 @@ pub struct RedeemArgs {}
 pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let accs = ctx.accounts;
 
-    let message: ManagerMessage<NativeTokenTransfer> = accs.vaa.message().clone();
+    let message: ManagerMessage<NativeTokenTransfer> = accs.vaa.message().manager_payload.clone();
 
     let amount = message.payload.amount;
     let recipient_address =

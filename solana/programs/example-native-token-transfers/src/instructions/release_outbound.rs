@@ -6,7 +6,7 @@ use wormhole_io::TypePrefixedPayload;
 use crate::{
     config::*,
     error::NTTError,
-    messages::{ManagerMessage, NativeTokenTransfer},
+    messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer, WormholeEndpoint},
     queue::outbox::OutboxItem,
 };
 
@@ -72,16 +72,18 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, _args: ReleaseOutboundArg
     // TODO: record endpoint position
     accs.outbox_item.release()?;
 
-    let message: ManagerMessage<NativeTokenTransfer> = ManagerMessage {
-        chain_id: accs.config.chain_id,
-        sequence: accs.outbox_item.sequence,
-        sender: accs.emitter.key().to_bytes(),
-        payload: NativeTokenTransfer {
-            amount: accs.outbox_item.amount,
-            to: accs.outbox_item.recipient_address.clone(),
-            to_chain: accs.outbox_item.recipient_chain,
-        },
-    };
+    let message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
+        EndpointMessage::new(ManagerMessage {
+            chain_id: accs.config.chain_id,
+            sequence: accs.outbox_item.sequence,
+            source_manager: accs.outbox_item.to_account_info().owner.to_bytes(),
+            sender: accs.emitter.key().to_bytes(),
+            payload: NativeTokenTransfer {
+                amount: accs.outbox_item.amount,
+                to: accs.outbox_item.recipient_address.clone(),
+                to_chain: accs.outbox_item.recipient_chain,
+            },
+        });
 
     if accs.wormhole_bridge.fee() > 0 {
         anchor_lang::system_program::transfer(
