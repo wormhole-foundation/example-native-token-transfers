@@ -68,7 +68,7 @@ pub struct Transfer<'info> {
 pub struct TransferArgs {
     pub amount: u64,
     pub recipient_chain: ChainId,
-    pub recipient_address: Vec<u8>,
+    pub recipient_address: [u8; 32],
 }
 
 // TODO: fees for relaying?

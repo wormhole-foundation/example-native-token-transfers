@@ -17,9 +17,7 @@ pub struct OutboxItem {
     pub sequence: u64,
     pub amount: NormalizedAmount,
     pub recipient_chain: ChainId,
-    // TODO: revise max length?
-    #[max_len(120)]
-    pub recipient_address: Vec<u8>,
+    pub recipient_address: [u8; 32],
     pub release_timestamp: i64,
     // TODO: change this to a bitmap to store which endpoints have released the
     // transfer? (multi endpoint)

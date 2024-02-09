@@ -75,7 +75,7 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, _args: ReleaseOutboundArg
     let message: ManagerMessage<NativeTokenTransfer> = ManagerMessage {
         chain_id: accs.config.chain_id,
         sequence: accs.outbox_item.sequence,
-        sender: accs.emitter.key().to_bytes().to_vec(),
+        sender: accs.emitter.key().to_bytes(),
         payload: NativeTokenTransfer {
             amount: accs.outbox_item.amount,
             to: accs.outbox_item.recipient_address.clone(),
