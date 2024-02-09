@@ -136,6 +136,9 @@ abstract contract Manager is
         emit MessageAttestedTo(digest, endpoint, _getEndpointInfosStorage()[endpoint].index);
     }
 
+    /*
+     * @dev pause the Manager contract. Only the Manager should be able to do this
+     */
     function pauseManager() external onlyOwner {
         _pause();
     }
