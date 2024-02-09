@@ -54,7 +54,7 @@ abstract contract Pausable is Initializable {
      * Calling a function when this flag is set to `PAUSED` will cause the transaction to revert.
      */
     modifier whenNotPaused() {
-        if (_isPaused()) {
+        if (isPaused()) {
             revert RequireContractIsNotPaused();
         }
         _;
@@ -65,7 +65,7 @@ abstract contract Pausable is Initializable {
      * Calling a function when this flag is set to `PAUSED` will cause the transaction to revert.
      */
     modifier whenPaused() {
-        if (!_isPaused()) {
+        if (!isPaused()) {
             revert RequireContractIsPaused();
         }
         _;
@@ -101,7 +101,7 @@ abstract contract Pausable is Initializable {
     /**
      * @dev Returns true if the method is paused, and false otherwise.
      */
-    function _isPaused() public view returns (bool) {
+    function isPaused() public view returns (bool) {
         PauseStorage storage $ = _getPauseStorage();
         return $._pauseFlag == PAUSED;
     }
