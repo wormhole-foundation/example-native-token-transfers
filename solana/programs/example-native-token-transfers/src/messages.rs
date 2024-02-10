@@ -34,6 +34,8 @@ impl<A: TypePrefixedPayload> Readable for ManagerMessage<A> {
         let sequence = Readable::read(reader)?;
         let source_manager = Readable::read(reader)?;
         let sender = Readable::read(reader)?;
+        // TODO: same as below for manager payload
+        let _payload_len: u16 = Readable::read(reader)?;
         let payload = A::read_payload(reader)?;
 
         Ok(Self {
@@ -52,6 +54,7 @@ impl<A: TypePrefixedPayload> Writeable for ManagerMessage<A> {
             + u64::SIZE.unwrap()
             + self.source_manager.len()
             + self.sender.len()
+            + u16::SIZE.unwrap() // payload length
             + self.payload.written_size()
     }
 
@@ -71,6 +74,9 @@ impl<A: TypePrefixedPayload> Writeable for ManagerMessage<A> {
         sequence.write(writer)?;
         writer.write_all(source_manager)?;
         writer.write_all(sender)?;
+        let len: u16 = u16::try_from(payload.written_size()).expect("u16 overflow");
+        len.write(writer)?;
+        // TODO: same as above
         A::write_payload(payload, writer)
     }
 }
@@ -78,6 +84,8 @@ impl<A: TypePrefixedPayload> Writeable for ManagerMessage<A> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NativeTokenTransfer {
     pub amount: NormalizedAmount,
+    // TODO: is this needed?
+    pub source_token: [u8; 32],
     // TODO: shouldn't we put this in the outer message?
     pub to_chain: ChainId,
     pub to: [u8; 32],
@@ -108,11 +116,13 @@ impl Readable for NativeTokenTransfer {
         }
 
         let amount = Readable::read(reader)?;
+        let source_token = Readable::read(reader)?;
         let to = Readable::read(reader)?;
         let to_chain = Readable::read(reader)?;
 
         Ok(Self {
             amount,
+            source_token,
             to,
             to_chain,
         })
@@ -123,7 +133,7 @@ impl Writeable for NativeTokenTransfer {
     fn written_size(&self) -> usize {
         Self::PREFIX.len()
             + NormalizedAmount::SIZE.unwrap()
-            + u16::SIZE.unwrap() // payload length
+            + self.source_token.len()
             + self.to.len()
             + ChainId::SIZE.unwrap()
     }
@@ -134,13 +144,15 @@ impl Writeable for NativeTokenTransfer {
     {
         let NativeTokenTransfer {
             amount,
+            source_token,
             to,
             to_chain,
         } = self;
 
         Self::PREFIX.write(writer)?;
         amount.write(writer)?;
-        writer.write_all(to)?;
+        source_token.write(writer)?;
+        to.write(writer)?;
         to_chain.write(writer)?;
 
         Ok(())
@@ -151,6 +163,7 @@ pub trait Endpoint {
     const PREFIX: [u8; 4];
 }
 
+#[derive(PartialEq, Eq)]
 pub struct WormholeEndpoint {}
 
 impl Endpoint for WormholeEndpoint {
@@ -226,6 +239,9 @@ impl<E: Endpoint, A: Readable + TypePrefixedPayload> Readable for EndpointMessag
                 "Invalid prefix for EndpointMessage",
             ));
         }
+        // TODO: we need a way to easily check that decoding the payload
+        // consumes the expected amount of bytes
+        let _manager_payload_len: u16 = Readable::read(reader)?;
         let manager_payload = ManagerMessage::read(reader)?;
 
         Ok(EndpointMessage::new(manager_payload))
@@ -234,6 +250,8 @@ impl<E: Endpoint, A: Readable + TypePrefixedPayload> Readable for EndpointMessag
 
 impl<E: Endpoint, A: Writeable + TypePrefixedPayload> Writeable for EndpointMessage<E, A> {
     fn written_size(&self) -> usize {
+        4 + // prefix
+        u16::SIZE.unwrap() + // length prefix
         self.manager_payload.written_size()
     }
 
@@ -247,6 +265,12 @@ impl<E: Endpoint, A: Writeable + TypePrefixedPayload> Writeable for EndpointMess
         } = self;
 
         E::PREFIX.write(writer)?;
+        let len: u16 = u16::try_from(manager_payload.written_size()).expect("u16 overflow");
+        len.write(writer)?;
+        // TODO: review this in wormhole-io. The written_size logic is error prone. Instead,
+        // a better API would be
+        // foo.write_with_prefix_be::<u16>(writer)
+        // which writes the length as a big endian u16.
         manager_payload.write(writer)
     }
 }
@@ -271,5 +295,54 @@ impl<D> Hack for PhantomData<D> {
     fn __anchor_private_insert_idl_defined<A>(_a: &mut HashMap<String, A>) {}
     fn __anchor_private_gen_idl_type<A>() -> Option<A> {
         None
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    //
+    #[test]
+    fn test_deserialize_endpoint_message() {
+        let data = hex::decode("9945ff10009b0013000000367999a101042942fafabe00000000000000000000000000000000000000000000000000004667921341234300000000000000000000000000000000000000000000000000004f994e545408000000000012d687beefface00000000000000000000000000000000000000000000000000000000feebcafe000000000000000000000000000000000000000000000000000000000011").unwrap();
+        let mut vec = &data[..];
+        let message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
+            TypePrefixedPayload::read_payload(&mut vec).unwrap();
+
+        let expected = EndpointMessage {
+            _phantom: PhantomData::<WormholeEndpoint>,
+            manager_payload: ManagerMessage {
+                chain_id: ChainId { id: 19 },
+                sequence: 233968345345,
+                source_manager: [
+                    0x04, 0x29, 0x42, 0xFA, 0xFA, 0xBE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                ],
+                sender: [
+                    0x46, 0x67, 0x92, 0x13, 0x41, 0x23, 0x43, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                ],
+                payload: NativeTokenTransfer {
+                    amount: NormalizedAmount {
+                        amount: 1234567,
+                        decimals: 8,
+                    },
+                    source_token: [
+                        0xBE, 0xEF, 0xFA, 0xCE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    ],
+                    to_chain: ChainId { id: 17 },
+                    to: [
+                        0xFE, 0xEB, 0xCA, 0xFE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    ],
+                },
+            },
+        };
+        assert_eq!(message, expected);
+        assert_eq!(vec.len(), 0);
+
+        let encoded = TypePrefixedPayload::to_vec_payload(&expected);
+        assert_eq!(encoded, data);
     }
 }
