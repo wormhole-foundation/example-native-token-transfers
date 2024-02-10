@@ -14,6 +14,10 @@ pub struct Config {
     pub pending_owner: Option<Pubkey>,
     /// Mint address of the token managed by this program.
     pub mint: Pubkey,
+    /// Address of the token program (token or token22). This could always be queried
+    /// from the [`mint`] account's owner, but storing it here avoids an indirection
+    /// on the client side.
+    pub token_program: Pubkey,
     /// The mode that this program is running in. This is used to determine
     /// whether the program is burning tokens or locking tokens.
     pub mode: Mode,

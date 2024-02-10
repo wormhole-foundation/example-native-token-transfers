@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface;
+use anchor_spl::{token_interface, associated_token::AssociatedToken};
 
 use crate::{
     chain_id::ChainId,
@@ -46,6 +46,25 @@ pub struct Initialize<'info> {
     )]
     pub rate_limit: Account<'info, OutboxRateLimit>,
 
+    #[account(
+        seeds = [b"custody_authority"],
+        bump,
+    )]
+    pub custody_authority: AccountInfo<'info>,
+
+    #[account(
+        init,
+        payer = payer,
+        associated_token::mint = mint,
+        associated_token::authority = custody_authority,
+    )]
+    pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
+
+    /// CHECK: checked to be the appropriate token progrem when initialising the
+    /// associated token account for the given mint.
+    pub token_program: Interface<'info, token_interface::TokenInterface>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+
     system_program: Program<'info, System>,
 }
 
@@ -60,6 +79,7 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
     ctx.accounts.config.set_inner(crate::config::Config {
         bump: ctx.bumps.config,
         mint: ctx.accounts.mint.key(),
+        token_program: ctx.accounts.token_program.key(),
         mode: args.mode,
         chain_id: ChainId { id: args.chain_id },
         owner: ctx.accounts.owner.key(),
