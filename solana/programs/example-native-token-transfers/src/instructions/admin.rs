@@ -5,7 +5,7 @@ use crate::{
     chain_id::ChainId,
     config::Config,
     normalized_amount::NormalizedAmount,
-    queue::{inbox::InboundRateLimit, outbox::OutboxRateLimit},
+    queue::{inbox::InboundRateLimit, outbox::OutboxRateLimit, rate_limit::RateLimitState},
     sibling::Sibling,
 };
 
@@ -79,6 +79,25 @@ pub struct SetSibling<'info> {
     )]
     pub sibling: Account<'info, Sibling>,
 
+    #[account(
+        init,
+        space = 8 + InboundRateLimit::INIT_SPACE,
+        payer = payer,
+        seeds = [
+            InboundRateLimit::SEED_PREFIX,
+            args.chain_id.id.to_be_bytes().as_ref()
+        ],
+        bump,
+    )]
+    pub rate_limit: Account<'info, InboundRateLimit>,
+
+    #[account(
+        constraint = mint.key() == config.mint
+    )]
+    // TODO: should we just store the decimals in the config? a lot of
+    // instructions just take mint for the decimals
+    pub mint: InterfaceAccount<'info, token_interface::Mint>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -86,12 +105,21 @@ pub struct SetSibling<'info> {
 pub struct SetSiblingArgs {
     pub chain_id: ChainId,
     pub address: [u8; 32],
+    pub limit: u64,
 }
 
 pub fn set_sibling(ctx: Context<SetSibling>, args: SetSiblingArgs) -> Result<()> {
     ctx.accounts.sibling.set_inner(Sibling {
         bump: ctx.bumps.sibling,
         address: args.address,
+    });
+
+    ctx.accounts.rate_limit.set_inner(InboundRateLimit {
+        bump: ctx.bumps.rate_limit,
+        rate_limit: RateLimitState::new(NormalizedAmount::normalize(
+            args.limit,
+            ctx.accounts.mint.decimals,
+        )),
     });
     Ok(())
 }

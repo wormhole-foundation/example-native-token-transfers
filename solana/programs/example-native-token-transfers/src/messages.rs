@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use core::fmt;
-use std::{io, marker::PhantomData, collections::HashMap};
+use std::{collections::HashMap, io, marker::PhantomData};
 
 use wormhole_io::{Readable, TypePrefixedPayload, Writeable};
 
@@ -75,7 +75,7 @@ impl<A: TypePrefixedPayload> Writeable for ManagerMessage<A> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, AnchorSerialize, AnchorDeserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NativeTokenTransfer {
     pub amount: NormalizedAmount,
     // TODO: shouldn't we put this in the outer message?
@@ -108,8 +108,8 @@ impl Readable for NativeTokenTransfer {
         }
 
         let amount = Readable::read(reader)?;
-        let to_chain = Readable::read(reader)?;
         let to = Readable::read(reader)?;
+        let to_chain = Readable::read(reader)?;
 
         Ok(Self {
             amount,
@@ -157,7 +157,7 @@ impl Endpoint for WormholeEndpoint {
     const PREFIX: [u8; 4] = [0x99, 0x45, 0xFF, 0x10];
 }
 
-#[derive(PartialEq, Eq, AnchorSerialize, AnchorDeserialize)]
+#[derive(PartialEq, Eq)]
 pub struct EndpointMessage<E: Endpoint, A> {
     _phantom: PhantomData<E>,
     pub manager_payload: ManagerMessage<A>,
@@ -171,6 +171,18 @@ where
         f.debug_struct("EndpointMessage")
             .field("manager_payload", &self.manager_payload)
             .finish()
+    }
+}
+
+impl<E: Endpoint, A: TypePrefixedPayload> AnchorDeserialize for EndpointMessage<E, A> {
+    fn deserialize_reader<R: io::Read>(reader: &mut R) -> io::Result<Self> {
+        Readable::read(reader)
+    }
+}
+
+impl<E: Endpoint, A: TypePrefixedPayload> AnchorSerialize for EndpointMessage<E, A> {
+    fn serialize<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
+        Writeable::write(self, writer)
     }
 }
 

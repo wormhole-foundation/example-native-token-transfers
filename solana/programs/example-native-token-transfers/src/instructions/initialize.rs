@@ -53,13 +53,14 @@ pub struct Initialize<'info> {
 pub struct InitializeArgs {
     pub chain_id: u16,
     pub limit: u64,
+    pub mode: crate::config::Mode,
 }
 
 pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> {
     ctx.accounts.config.set_inner(crate::config::Config {
         bump: ctx.bumps.config,
         mint: ctx.accounts.mint.key(),
-        mode: crate::config::Mode::Burning,
+        mode: args.mode,
         chain_id: ChainId { id: args.chain_id },
         owner: ctx.accounts.owner.key(),
         pending_owner: None,

@@ -117,7 +117,10 @@ mod tests {
         let immediately = rate_limit_state.consume_or_delay(NormalizedAmount::new(30_000, 8));
 
         assert_eq!(immediately, current_timestamp());
-        assert_eq!(rate_limit_state.capacity(), NormalizedAmount::new(70_000, 8));
+        assert_eq!(
+            rate_limit_state.capacity(),
+            NormalizedAmount::new(70_000, 8)
+        );
         assert_eq!(rate_limit_state.limit, NormalizedAmount::new(100_000, 8)); // unchanged
         assert_eq!(rate_limit_state.last_tx_timestamp, current_timestamp());
 
@@ -146,11 +149,17 @@ mod tests {
         rate_limit_state.set_limit(NormalizedAmount::new(50_000, 8));
 
         // this decreases the capacity by 50k, to 45k
-        assert_eq!(rate_limit_state.capacity(), NormalizedAmount::new(45_000, 8));
+        assert_eq!(
+            rate_limit_state.capacity(),
+            NormalizedAmount::new(45_000, 8)
+        );
 
         // now set the limit to 100k
         rate_limit_state.set_limit(NormalizedAmount::new(100_000, 8));
 
-        assert_eq!(rate_limit_state.capacity(), NormalizedAmount::new(95_000, 8));
+        assert_eq!(
+            rate_limit_state.capacity(),
+            NormalizedAmount::new(95_000, 8)
+        );
     }
 }

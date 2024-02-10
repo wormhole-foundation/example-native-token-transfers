@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use wormhole_anchor_sdk::wormhole::{self, PostedVaa, PostedVaaData};
+use wormhole_anchor_sdk::wormhole::PostedVaa;
 
 use crate::{
     config::*,
@@ -25,9 +25,6 @@ pub struct Redeem<'info> {
     pub sibling: Account<'info, Sibling>,
 
     #[account(
-        seeds = [PostedVaaData::SEED_PREFIX],
-        seeds::program = wormhole::program::ID,
-        bump,
         // check that the VAA's emitter agrees with what's in the message
         constraint = vaa.emitter_chain() == vaa.message().manager_payload.chain_id.id @ NTTError::InvalidChainId,
         // check that the messages is targeted to this chain
