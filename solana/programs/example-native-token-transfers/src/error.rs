@@ -17,4 +17,6 @@ pub enum NTTError {
     MessageAlreadySent,
     #[msg("InvalidMode")]
     InvalidMode,
+    #[msg("InvalidMintAuthority")]
+    InvalidMintAuthority,
 }

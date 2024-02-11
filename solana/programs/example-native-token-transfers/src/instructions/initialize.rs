@@ -1,8 +1,9 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{token_interface, associated_token::AssociatedToken};
+use anchor_spl::{associated_token::AssociatedToken, token_interface};
 
 use crate::{
     chain_id::ChainId,
+    error::NTTError,
     normalized_amount::NormalizedAmount,
     queue::{outbox::OutboxRateLimit, rate_limit::RateLimitState},
     sequence::Sequence,
@@ -10,6 +11,7 @@ use crate::{
 
 // TODO: upgradeability
 #[derive(Accounts)]
+#[instruction(mode: crate::config::Mode)]
 pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -25,7 +27,12 @@ pub struct Initialize<'info> {
     )]
     pub config: Account<'info, crate::config::Config>,
 
-    #[account()]
+    #[account(
+        constraint =
+            mode == crate::config::Mode::Burning
+            || mint.mint_authority.unwrap() == mint_authority.key()
+            @ NTTError::InvalidMintAuthority,
+    )]
     pub mint: InterfaceAccount<'info, token_interface::Mint>,
 
     #[account(
@@ -59,6 +66,12 @@ pub struct Initialize<'info> {
         associated_token::authority = custody_authority,
     )]
     pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
+
+    #[account(
+        seeds = [b"token_minter"],
+        bump,
+    )]
+    pub mint_authority: AccountInfo<'info>,
 
     /// CHECK: checked to be the appropriate token progrem when initialising the
     /// associated token account for the given mint.

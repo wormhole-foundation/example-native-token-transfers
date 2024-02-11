@@ -22,7 +22,8 @@ pub struct ReleaseInbound<'info> {
     )]
     /// CHECK: the address is checked to match the recipient address in the
     /// inbox item
-    pub recipient: AccountInfo<'info>,
+    /// TODO: send to ATA?
+    pub recipient: InterfaceAccount<'info, token_interface::TokenAccount>,
 
     #[account(
         mut,
@@ -59,7 +60,7 @@ pub fn release_inbound_mint(ctx: Context<ReleaseInboundMint>) -> Result<()> {
                 ctx.accounts.common.token_program.to_account_info(),
                 token_interface::MintTo {
                     mint: ctx.accounts.common.mint.to_account_info(),
-                    to: ctx.accounts.common.recipient.clone(),
+                    to: ctx.accounts.common.recipient.to_account_info(),
                     authority: ctx.accounts.mint_authority.clone(),
                 },
                 &[&[b"token_minter", &[ctx.bumps.mint_authority]]],
@@ -100,7 +101,7 @@ pub fn release_inbound_unlock(ctx: Context<ReleaseInboundUnlock>) -> Result<()> 
                 ctx.accounts.common.token_program.to_account_info(),
                 token_interface::TransferChecked {
                     from: ctx.accounts.custody.to_account_info(),
-                    to: ctx.accounts.common.recipient.clone(),
+                    to: ctx.accounts.common.recipient.to_account_info(),
                     authority: ctx.accounts.custody_authority.clone(),
                     mint: ctx.accounts.common.mint.to_account_info(),
                 },

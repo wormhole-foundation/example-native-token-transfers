@@ -55,7 +55,7 @@ impl<'info> DerefMut for NotPausedConfig<'info> {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Clone, PartialEq, Eq)]
 pub enum Mode {
     Burning,
     Locking,
