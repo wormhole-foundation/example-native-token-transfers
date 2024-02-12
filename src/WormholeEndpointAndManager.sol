@@ -22,14 +22,6 @@ contract WormholeEndpointAndManager is EndpointAndManager, WormholeEndpoint {
         _setWormholeSibling(siblingChainId, siblingContract);
     }
 
-    /// @notice This function is used to pause the manager and the endpoint
-    function pause() public override onlyOwner {
-        // pause the manager
-        super.pause();
-        // pause the endpoint
-        _pauseWormholeEndpoint();
-    }
-
     function setIsWormholeRelayingEnabled(uint16 chainId, bool isEnabled) external onlyOwner {
         _setIsWormholeRelayingEnabled(chainId, isEnabled);
     }

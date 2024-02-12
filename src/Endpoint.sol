@@ -18,4 +18,9 @@ abstract contract Endpoint is PausableOwnable {
     ) internal virtual;
 
     function _quoteDeliveryPrice(uint16 targetChain) internal view virtual returns (uint256);
+
+    /// @notice pause the endpoint
+    function _pauseEndpoint() internal {
+        _pause();
+    }
 }
