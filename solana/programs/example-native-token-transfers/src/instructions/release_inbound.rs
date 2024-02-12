@@ -80,12 +80,13 @@ pub struct ReleaseInboundUnlock<'info> {
     common: ReleaseInbound<'info>,
 
     #[account(
-        seeds = [b"custody_authoity"],
+        seeds = [b"custody_authority"],
         bump,
     )]
     pub custody_authority: AccountInfo<'info>,
 
     /// CHECK: the token program checks if this indeed the right authority for the mint
+    #[account(mut)]
     pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
 }
 
