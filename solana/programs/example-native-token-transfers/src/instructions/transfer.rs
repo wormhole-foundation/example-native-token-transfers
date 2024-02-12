@@ -48,14 +48,6 @@ pub struct Transfer<'info> {
         init,
         payer = payer,
         space = 8 + OutboxItem::INIT_SPACE,
-        // TODO: this creates a race condition
-        // when two people try to send a transfer at the same time
-        // only one of them can claim the sequence number.
-        // Not sure if there's a way around this, the PDA has to be seeded by
-        // something unique to this transfer, so I think it has to include the
-        // sequence number (everything else can be the same)
-        seeds = [OutboxItem::SEED_PREFIX, seq.sequence.to_be_bytes().as_ref()],
-        bump,
     )]
     pub outbox_item: Account<'info, OutboxItem>,
 
@@ -109,7 +101,6 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
     insert_into_outbox(
         &mut accs.common,
         amount,
-        ctx.bumps.common.outbox_item,
         recipient_chain,
         recipient_address,
     )
@@ -168,7 +159,6 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
     insert_into_outbox(
         &mut accs.common,
         amount,
-        ctx.bumps.common.outbox_item,
         recipient_chain,
         recipient_address,
     )
@@ -177,7 +167,6 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
 fn insert_into_outbox(
     common: &mut Transfer<'_>,
     amount: NormalizedAmount,
-    outbox_item_bump: u8,
     recipient_chain: ChainId,
     recipient_address: [u8; 32],
 ) -> Result<()> {
@@ -187,7 +176,6 @@ fn insert_into_outbox(
     let sequence = common.seq.next();
 
     common.outbox_item.set_inner(OutboxItem {
-        bump: outbox_item_bump,
         sequence,
         amount,
         recipient_chain,

@@ -25,7 +25,7 @@ pub struct ReleaseOutbound<'info> {
 
     #[account(
         mut,
-        seeds = [b"message", outbox_item.sequence.to_be_bytes().as_ref()],
+        seeds = [b"message", outbox_item.key().as_ref()],
         bump,
     )]
     /// CHECK: initialized and written to by wormhole core bridge
@@ -117,7 +117,7 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, _args: ReleaseOutboundArg
                 &[b"emitter", &[ctx.bumps.emitter]],
                 &[
                     b"message",
-                    accs.outbox_item.sequence.to_be_bytes().as_ref(),
+                    accs.outbox_item.key().as_ref(),
                     &[ctx.bumps.wormhole_message],
                 ],
             ],

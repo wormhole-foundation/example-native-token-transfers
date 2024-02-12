@@ -65,7 +65,7 @@ describe('example-native-token-transfers', () => {
 
     const amount = new BN(100000)
 
-    const sequence = await ntt.transfer({
+    const outboxItem = await ntt.transfer({
       payer,
       from: tokenAccount,
       fromAuthority: user,
@@ -75,7 +75,7 @@ describe('example-native-token-transfers', () => {
       shouldQueue: false
     })
 
-    const wormholeMessage = ntt.wormholeMessageAccountAddress(sequence)
+    const wormholeMessage = ntt.wormholeMessageAccountAddress(outboxItem)
 
     const wormholeMessageAccount = await program.provider.connection.getAccountInfo(wormholeMessage)
     if (wormholeMessageAccount === null) {

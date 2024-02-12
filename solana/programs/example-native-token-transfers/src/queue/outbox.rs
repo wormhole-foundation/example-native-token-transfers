@@ -13,7 +13,6 @@ use super::rate_limit::RateLimitState;
 #[derive(InitSpace)]
 // TODO: generalise this to arbitrary outbound messages (via a generic parameter in place of amount and recipient info)
 pub struct OutboxItem {
-    pub bump: u8,
     pub sequence: u64,
     pub amount: NormalizedAmount,
     pub recipient_chain: ChainId,
@@ -25,8 +24,6 @@ pub struct OutboxItem {
 }
 
 impl OutboxItem {
-    pub const SEED_PREFIX: &'static [u8] = b"outbox_item";
-
     pub fn release(&mut self) -> Result<()> {
         let now = current_timestamp();
         if self.release_timestamp > now {

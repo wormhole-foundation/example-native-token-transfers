@@ -4,15 +4,14 @@ import { BN, translateError, type IdlAccounts, type Program } from '@coral-xyz/a
 import { associatedAddress } from '@coral-xyz/anchor/dist/cjs/utils/token'
 import {
   type PublicKeyInitData,
-  PublicKey,
-  type Keypair,
+  PublicKey, Keypair,
   type TransactionInstruction,
   Transaction,
   sendAndConfirmTransaction,
   type TransactionSignature
 } from '@solana/web3.js'
 import { type ExampleNativeTokenTransfers } from '../../target/types/example_native_token_transfers'
-import { EndpointMessage, ManagerMessage } from './payloads/common'
+import { ManagerMessage } from './payloads/common'
 import { NativeTokenTransfer } from './payloads/transfers'
 import { WormholeEndpointMessage } from './payloads/wormhole'
 
@@ -70,10 +69,6 @@ export class NTT {
     return this.derive_pda(Buffer.from('outbox_rate_limit'))
   }
 
-  outboxItemAccountAddress(sequence: BN): PublicKey {
-    return this.derive_pda([Buffer.from('outbox_item'), sequence.toBuffer('be', 8)])
-  }
-
   inboxRateLimitAccountAddress(chain: ChainName | ChainId): PublicKey {
     const chainId = coalesceChainId(chain)
     return this.derive_pda([Buffer.from('inbox_rate_limit'), new BN(chainId).toBuffer('be', 2)])
@@ -97,8 +92,8 @@ export class NTT {
     return this.derive_pda([Buffer.from('emitter')])
   }
 
-  wormholeMessageAccountAddress(sequence: BN): PublicKey {
-    return this.derive_pda([Buffer.from('message'), sequence.toBuffer('be', 8)])
+  wormholeMessageAccountAddress(outboxItem: PublicKey): PublicKey {
+    return this.derive_pda([Buffer.from('message'), outboxItem.toBuffer()])
   }
 
   mintAuthorityAddress(): PublicKey {
@@ -158,17 +153,18 @@ export class NTT {
     // TODO: implement shouldQueue logic
     // actually, this should be on the inbound direction
     shouldQueue: boolean
+    outboxItem?: Keypair
     config?: Config
-  }): Promise<BN> {
+  }): Promise<PublicKey> {
     const config: Config = await this.getConfig(args.config)
 
-    const sequence = await this.nextSequence()
+    const outboxItem = args.outboxItem ?? Keypair.generate()
 
     const txArgs = {
       ...args,
       payer: args.payer.publicKey,
       fromAuthority: args.fromAuthority.publicKey,
-      sequence,
+      outboxItem: outboxItem.publicKey,
       config
     }
 
@@ -183,17 +179,17 @@ export class NTT {
 
     const releaseIx: TransactionInstruction = await this.createReleaseOutboundInstruction({
       payer: args.payer.publicKey,
-      sequence
+      outboxItem: outboxItem.publicKey
     })
 
-    const signers = [args.payer, args.fromAuthority]
+    const signers = [args.payer, args.fromAuthority, outboxItem]
 
     const tx = new Transaction()
     tx.add(transferIx)
     tx.add(releaseIx)
     await this.sendAndConfirmTransaction(tx, signers)
 
-    return sequence
+    return outboxItem.publicKey
   }
 
   /**
@@ -218,7 +214,7 @@ export class NTT {
     amount: BN
     recipientChain: ChainName
     recipientAddress: ArrayLike<number>
-    sequence?: BN
+    outboxItem: PublicKey
     config?: Config
   }): Promise<TransactionInstruction> {
     const config = await this.getConfig(args.config)
@@ -229,9 +225,6 @@ export class NTT {
 
     const chainId = toChainId(args.recipientChain)
     const mint = await this.mintAccountAddress(config)
-    // TODO: how to gracefully handle the race condition when multiple people
-    // attempt to grab the same sequence number?
-    const sequence = args.sequence ?? await this.nextSequence()
 
     return await this.program.methods
       .transferBurn({
@@ -247,7 +240,7 @@ export class NTT {
           from: args.from,
           fromAuthority: args.fromAuthority,
           seq: this.sequenceTrackerAccountAddress(),
-          outboxItem: this.outboxItemAccountAddress(sequence),
+          outboxItem: args.outboxItem,
           rateLimit: this.outboxRateLimitAccountAddress()
         }
       })
@@ -255,7 +248,7 @@ export class NTT {
   }
 
   /**
-   * Creates a transfer_lock instruction. The `payer` and `fromAuthority`
+   * Creates a transfer_lock instruction. The `payer`, `fromAuthority`, and `outboxItem`
    * arguments must sign the transaction
    */
   async createTransferLockInstruction(args: {
@@ -265,7 +258,7 @@ export class NTT {
     amount: BN
     recipientChain: ChainName
     recipientAddress: ArrayLike<number>
-    sequence?: BN
+    outboxItem: PublicKey
     config?: Config
   }): Promise<TransactionInstruction> {
     const config = await this.getConfig(args.config)
@@ -276,9 +269,6 @@ export class NTT {
 
     const chainId = toChainId(args.recipientChain)
     const mint = await this.mintAccountAddress(config)
-    // TODO: how to gracefully handle the race condition when multiple people
-    // attempt to grab the same sequence number?
-    const sequence = args.sequence ?? await this.nextSequence()
 
     return await this.program.methods
       .transferLock({
@@ -295,7 +285,7 @@ export class NTT {
           fromAuthority: args.fromAuthority,
           tokenProgram: await this.tokenProgram(config),
           seq: this.sequenceTrackerAccountAddress(),
-          outboxItem: this.outboxItemAccountAddress(sequence),
+          outboxItem: args.outboxItem,
           rateLimit: this.outboxRateLimitAccountAddress()
         },
         custodyAuthority: this.custodyAuthorityAddress(),
@@ -309,7 +299,7 @@ export class NTT {
    */
   async createReleaseOutboundInstruction(args: {
     payer: PublicKey
-    sequence: BN
+    outboxItem: PublicKey
   }): Promise<TransactionInstruction> {
     const whAccs = getWormholeDerivedAccounts(this.program.programId, this.wormholeId)
 
@@ -318,8 +308,8 @@ export class NTT {
       .accounts({
         payer: args.payer,
         config: { config: this.configAccountAddress() },
-        outboxItem: this.outboxItemAccountAddress(args.sequence),
-        wormholeMessage: this.wormholeMessageAccountAddress(args.sequence),
+        outboxItem: args.outboxItem,
+        wormholeMessage: this.wormholeMessageAccountAddress(args.outboxItem),
         emitter: whAccs.wormholeEmitter,
         wormholeBridge: whAccs.wormholeBridge,
         wormholeFeeCollector: whAccs.wormholeFeeCollector,
@@ -331,7 +321,7 @@ export class NTT {
 
   async releaseOutbound(args: {
     payer: Keypair
-    sequence: BN
+    outboxItem: PublicKey
     config?: Config
   }): Promise<void> {
     if (await this.isPaused()) {
