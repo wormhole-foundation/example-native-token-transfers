@@ -8,9 +8,8 @@ import "./interfaces/IWormhole.sol";
 import "./interfaces/IWormholeEndpoint.sol";
 import "./Endpoint.sol";
 import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
-import "./libraries/Pausable.sol";
 
-abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver, Pausable {
+abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
     using BytesParsing for bytes;
 
     // TODO -- fix this after some testing
@@ -301,11 +300,6 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
     ///         Note that siblings are registered under wormhole chainID values
     function getWormholeSibling(uint16 chainId) public view returns (bytes32) {
         return _getWormholeSiblingsStorage()[chainId];
-    }
-
-    /// @notice pause the endpoint
-    function _pauseWormholeEndpoint() internal {
-        _pause();
     }
 
     function _setWormholeSibling(uint16 chainId, bytes32 siblingContract) internal {
