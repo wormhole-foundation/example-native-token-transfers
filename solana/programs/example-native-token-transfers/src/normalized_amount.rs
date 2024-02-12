@@ -20,6 +20,7 @@ pub const NORMALIZED_DECIMALS: u8 = 8;
     Copy,
     PartialEq,
     Eq,
+    // TODO: manually write this and make sure the decimals are the same
     PartialOrd,
     Ord,
     AnchorSerialize,

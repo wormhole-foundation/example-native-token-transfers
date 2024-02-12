@@ -7,7 +7,11 @@ use crate::{
     config::*,
     error::NTTError,
     normalized_amount::NormalizedAmount,
-    queue::outbox::{OutboxItem, OutboxRateLimit},
+    queue::{
+        inbox::InboxRateLimit,
+        outbox::{OutboxItem, OutboxRateLimit},
+        rate_limit::RateLimitResult,
+    },
 };
 
 // this will burn the funds and create an account that either allows sending the
@@ -53,7 +57,7 @@ pub struct Transfer<'info> {
     pub outbox_item: Account<'info, OutboxItem>,
 
     #[account(mut)]
-    pub rate_limit: Account<'info, OutboxRateLimit>,
+    pub outbox_rate_limit: Account<'info, OutboxRateLimit>,
 
     pub system_program: Program<'info, System>,
 }
@@ -69,8 +73,18 @@ pub struct TransferArgs {
 // Burn/mint
 
 #[derive(Accounts)]
+#[instruction(args: TransferArgs)]
 pub struct TransferBurn<'info> {
     pub common: Transfer<'info>,
+
+    #[account(
+        mut,
+        seeds = [InboxRateLimit::SEED_PREFIX, args.recipient_chain.id.to_be_bytes().as_ref()],
+        bump = inbox_rate_limit.bump,
+    )]
+    // NOTE: it would be nice to put this into `common`, but that way we don't
+    // have access to the instruction args
+    pub inbox_rate_limit: Account<'info, InboxRateLimit>,
 }
 
 // TODO: fees for relaying?
@@ -103,6 +117,7 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
 
     insert_into_outbox(
         &mut accs.common,
+        &mut accs.inbox_rate_limit,
         amount,
         recipient_chain,
         recipient_address,
@@ -113,8 +128,18 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
 // Lock/unlock
 
 #[derive(Accounts)]
+#[instruction(args: TransferArgs)]
 pub struct TransferLock<'info> {
     pub common: Transfer<'info>,
+
+    #[account(
+        mut,
+        seeds = [InboxRateLimit::SEED_PREFIX, args.recipient_chain.id.to_be_bytes().as_ref()],
+        bump = inbox_rate_limit.bump,
+    )]
+    // NOTE: it would be nice to put this into `common`, but that way we don't
+    // have access to the instruction args
+    pub inbox_rate_limit: Account<'info, InboxRateLimit>,
 
     #[account(
         seeds = [b"custody_authority"],
@@ -163,6 +188,7 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
 
     insert_into_outbox(
         &mut accs.common,
+        &mut accs.inbox_rate_limit,
         amount,
         recipient_chain,
         recipient_address,
@@ -172,17 +198,27 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
 
 fn insert_into_outbox(
     common: &mut Transfer<'_>,
+    inbox_rate_limit: &mut InboxRateLimit,
     amount: NormalizedAmount,
     recipient_chain: ChainId,
     recipient_address: [u8; 32],
     should_queue: bool,
 ) -> Result<()> {
     // consume the rate limit, or delay the transfer if it's outside the limit
-    let release_timestamp = common.rate_limit.rate_limit.consume_or_delay(amount);
-
-    if release_timestamp > current_timestamp() && !should_queue {
-        return Err(NTTError::TransferExceedsRateLimit.into());
-    }
+    let release_timestamp = match common.outbox_rate_limit.rate_limit.consume_or_delay(amount) {
+        RateLimitResult::Consumed => {
+            // When sending a transfer, we refill the inbound rate limit for
+            // that chain the same amount (we call this "backflow")
+            inbox_rate_limit.rate_limit.refill(amount);
+            current_timestamp()
+        },
+        RateLimitResult::Delayed(release_timestamp) => {
+            if !should_queue {
+                return Err(NTTError::TransferExceedsRateLimit.into());
+            }
+            release_timestamp
+        }
+    };
 
     let sequence = common.seq.next();
 

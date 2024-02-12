@@ -3,10 +3,15 @@ use anchor_lang::prelude::*;
 use wormhole_anchor_sdk::wormhole::PostedVaa;
 
 use crate::{
+    clock::current_timestamp,
     config::*,
     error::NTTError,
     messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer, WormholeEndpoint},
-    queue::inbox::{InboxItem, InboxRateLimit},
+    queue::{
+        inbox::{InboxItem, InboxRateLimit},
+        outbox::OutboxRateLimit,
+        rate_limit::RateLimitResult,
+    },
     sibling::Sibling,
 };
 
@@ -59,7 +64,9 @@ pub struct Redeem<'info> {
         ],
         bump,
     )]
-    pub rate_limit: Account<'info, InboxRateLimit>,
+    pub inbox_rate_limit: Account<'info, InboxRateLimit>,
+
+    pub outbox_rate_limit: Account<'info, OutboxRateLimit>,
 
     pub system_program: Program<'info, System>,
 }
@@ -76,7 +83,15 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let recipient_address =
         Pubkey::try_from(message.payload.to).map_err(|_| NTTError::InvalidRecipientAddress)?;
 
-    let release_timestamp = accs.rate_limit.rate_limit.consume_or_delay(amount);
+    let release_timestamp = match accs.inbox_rate_limit.rate_limit.consume_or_delay(amount) {
+        RateLimitResult::Consumed => {
+            // When receiving a transfer, we refill the outbound rate limit with
+            // the same amount (we call this "backflow")
+            accs.outbox_rate_limit.rate_limit.refill(amount);
+            current_timestamp()
+        }
+        RateLimitResult::Delayed(release_timestamp) => release_timestamp,
+    };
 
     accs.inbox_item.set_inner(InboxItem {
         bump: ctx.bumps.inbox_item,

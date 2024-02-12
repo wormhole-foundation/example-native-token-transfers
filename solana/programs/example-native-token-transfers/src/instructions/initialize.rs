@@ -11,7 +11,7 @@ use crate::{
 
 // TODO: upgradeability
 #[derive(Accounts)]
-#[instruction(mode: crate::config::Mode)]
+#[instruction(args: InitializeArgs)]
 pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -29,7 +29,7 @@ pub struct Initialize<'info> {
 
     #[account(
         constraint =
-            mode == crate::config::Mode::Burning
+            args.mode == crate::config::Mode::Burning
             || mint.mint_authority.unwrap() == mint_authority.key()
             @ NTTError::InvalidMintAuthority,
     )]

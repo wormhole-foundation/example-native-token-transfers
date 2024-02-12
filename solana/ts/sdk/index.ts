@@ -242,8 +242,9 @@ export class NTT {
           fromAuthority: args.fromAuthority,
           seq: this.sequenceTrackerAccountAddress(),
           outboxItem: args.outboxItem,
-          rateLimit: this.outboxRateLimitAccountAddress()
-        }
+          outboxRateLimit: this.outboxRateLimitAccountAddress(),
+        },
+        inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain)
       })
       .instruction()
   }
@@ -289,8 +290,9 @@ export class NTT {
           tokenProgram: await this.tokenProgram(config),
           seq: this.sequenceTrackerAccountAddress(),
           outboxItem: args.outboxItem,
-          rateLimit: this.outboxRateLimitAccountAddress()
+          outboxRateLimit: this.outboxRateLimitAccountAddress(),
         },
+        inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain),
         custodyAuthority: this.custodyAuthorityAddress(),
         custody: await this.custodyAccountAddress(config)
       })
@@ -484,7 +486,7 @@ export class NTT {
         owner: args.owner.publicKey,
         config: this.configAccountAddress(),
         sibling: this.siblingAccountAddress(args.chain),
-        rateLimit: this.inboxRateLimitAccountAddress(args.chain),
+        inboxRateLimit: this.inboxRateLimitAccountAddress(args.chain),
         mint: config.mint,
       })
       .signers([args.payer, args.owner])
@@ -513,7 +515,7 @@ export class NTT {
     const chainId = managerMessage.chainId as ChainId
 
     const sibling = this.siblingAccountAddress(chainId)
-    const rateLimit = this.inboxRateLimitAccountAddress(chainId)
+    const inboxRateLimit = this.inboxRateLimitAccountAddress(chainId)
 
     return await this.program.methods
       .redeem({})
@@ -523,7 +525,8 @@ export class NTT {
         sibling,
         vaa: derivePostedVaaKey(this.wormholeId, parseVaa(args.vaa).hash),
         inboxItem: this.inboxItemAccountAddress(chainId, new BN(managerMessage.sequence.toString())),
-        rateLimit,
+        inboxRateLimit,
+        outboxRateLimit: this.outboxRateLimitAccountAddress(),
       })
       .instruction()
   }

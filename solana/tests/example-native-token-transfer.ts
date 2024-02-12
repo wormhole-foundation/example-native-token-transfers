@@ -61,6 +61,14 @@ describe('example-native-token-transfers', () => {
       mode: 'locking'
     })
 
+    await ntt.setSibling({
+      payer,
+      owner,
+      chain: 'ethereum',
+      address: Buffer.from('BEEFFACE'.padStart(64, '0'), 'hex'),
+      limit: new BN(1000000)
+    })
+
     // transfer some tokens
 
     const amount = new BN(100000)
@@ -129,14 +137,6 @@ describe('example-native-token-transfers', () => {
     const vaaBuf = guardians.addSignatures(published, [0])
 
     await postVaa(program.provider.connection, payer, vaaBuf, ntt.wormholeId)
-
-    await ntt.setSibling({
-      payer,
-      owner,
-      chain: 'ethereum',
-      address: Buffer.from('BEEFFACE'.padStart(64, '0'), 'hex'),
-      limit: new BN(1000000)
-    })
 
     const released = await ntt.redeem({
       payer,

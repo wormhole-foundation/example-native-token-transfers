@@ -89,7 +89,7 @@ pub struct SetSibling<'info> {
         ],
         bump,
     )]
-    pub rate_limit: Account<'info, InboxRateLimit>,
+    pub inbox_rate_limit: Account<'info, InboxRateLimit>,
 
     #[account(
         constraint = mint.key() == config.mint
@@ -114,8 +114,8 @@ pub fn set_sibling(ctx: Context<SetSibling>, args: SetSiblingArgs) -> Result<()>
         address: args.address,
     });
 
-    ctx.accounts.rate_limit.set_inner(InboxRateLimit {
-        bump: ctx.bumps.rate_limit,
+    ctx.accounts.inbox_rate_limit.set_inner(InboxRateLimit {
+        bump: ctx.bumps.inbox_rate_limit,
         rate_limit: RateLimitState::new(NormalizedAmount::normalize(
             args.limit,
             ctx.accounts.mint.decimals,
