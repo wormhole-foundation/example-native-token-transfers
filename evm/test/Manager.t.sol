@@ -486,12 +486,15 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
 
         // replay protection
-        vm.expectRevert(
-            abi.encodeWithSignature(
-                "MessageAlreadyExecuted(bytes32)", EndpointStructs.managerMessageDigest(m)
-            )
-        );
+        vm.recordLogs();
         e2.receiveMessage(message);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        assertEq(entries.length, 2);
+        assertEq(entries[1].topics.length, 3);
+        assertEq(entries[1].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
+        assertEq(entries[1].topics[1], toWormholeFormat(address(manager)));
+        assertEq(entries[1].topics[2], bytes32(keccak256(message)));
     }
 
     // TODO:
@@ -1004,9 +1007,15 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
 
         // replay protection
-        bytes4 selector = bytes4(keccak256("MessageAlreadyExecuted(bytes32)"));
-        vm.expectRevert(abi.encodeWithSelector(selector, EndpointStructs.managerMessageDigest(m)));
+        vm.recordLogs();
         e2.receiveMessage(message);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        assertEq(entries.length, 2);
+        assertEq(entries[1].topics.length, 3);
+        assertEq(entries[1].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
+        assertEq(entries[1].topics[1], toWormholeFormat(address(manager)));
+        assertEq(entries[1].topics[2], bytes32(keccak256(message)));
     }
 
     // === upgradeability
@@ -1053,13 +1062,16 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         endpoints = new IEndpointReceiver[](1);
         endpoints[0] = IEndpointReceiver(address(manager));
 
-        // replay protection
-        vm.expectRevert(
-            abi.encodeWithSignature(
-                "MessageAlreadyExecuted(bytes32)", EndpointStructs.managerMessageDigest(m)
-            )
-        );
+        vm.recordLogs();
+
         IEndpointReceiver(address(manager)).receiveMessage(message);
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+
+        assertEq(entries.length, 1);
+        assertEq(entries[0].topics.length, 3);
+        assertEq(entries[0].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
+        assertEq(entries[0].topics[1], toWormholeFormat(address(manager)));
+        assertEq(entries[0].topics[2], bytes32(keccak256(message)));
 
         _attestEndpointsHelper(
             user_A, user_B, 1, NormalizedAmount.wrap(type(uint64).max), endpoints
