@@ -365,15 +365,17 @@ abstract contract Manager is
     }
 
     // @dev Mark a message as executed.
-    // This function will revert if the message has already been executed.
-    function _replayProtect(bytes32 digest) internal {
+    // This function will retuns `true` if the message has already been executed.
+    function _replayProtect(bytes32 digest) internal returns (bool) {
         // check if this message has already been executed
         if (isMessageExecuted(digest)) {
-            revert MessageAlreadyExecuted(digest);
+            return true;
         }
 
         // mark this message as executed
         _getMessageAttestationsStorage()[digest].executed = true;
+
+        return false;
     }
 
     /// @dev Called after a message has been sufficiently verified to execute the command in the message.
@@ -394,7 +396,14 @@ abstract contract Manager is
             revert MessageNotApproved(digest);
         }
 
-        _replayProtect(digest);
+        bool msgAlreadyExecuted = _replayProtect(digest);
+        if (msgAlreadyExecuted) {
+            // end execution early to mitigate the possibility of race conditions from endpoints
+            // attempting to deliver the same message when (threshold < number of endpoint messages)
+            // notify client (off-chain process) so they don't attempt redundant msg delivery
+            emit MessageAlreadyExecuted(message.sourceManager, digest);
+            return;
+        }
 
         EndpointStructs.NativeTokenTransfer memory nativeTokenTransfer =
             EndpointStructs.parseNativeTokenTransfer(message.payload);
