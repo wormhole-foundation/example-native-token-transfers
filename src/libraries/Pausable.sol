@@ -69,7 +69,7 @@ abstract contract Pausable is Initializable {
     /**
      * @dev Returns the current pauser account address.
      */
-    function _pauser() private view returns (address) {
+    function pauser() public view returns (address) {
         return _getPauserStorage()._pauser;
     }
 
@@ -130,7 +130,7 @@ abstract contract Pausable is Initializable {
      * @dev Modifier to allow only the Pauser to access some functionality
      */
     function _checkPauser() internal view {
-        if (_pauser() != msg.sender) {
+        if (pauser() != msg.sender) {
             revert InvalidPauser(msg.sender);
         }
     }
@@ -180,7 +180,7 @@ abstract contract Pausable is Initializable {
         // NOTE:Ccannot renounce the pauser capability when the contract is in the `PAUSED` state
         // the contract can never be `UNPAUSED`
         if (isPaused()) {
-            revert CannotRenounceWhilePaused(_pauser());
+            revert CannotRenounceWhilePaused(pauser());
         }
         _transferPauserCapability(address(0));
     }
