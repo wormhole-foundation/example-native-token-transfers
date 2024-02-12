@@ -356,6 +356,7 @@ export class NTT {
     payer: PublicKey
     chain: ChainName | ChainId
     sequence: BN
+    revertOnDelay: boolean
     recipient?: PublicKey
     config?: Config
   }): Promise<TransactionInstruction> {
@@ -369,7 +370,9 @@ export class NTT {
       args.recipient ?? (await this.getInboxItem(args.chain, args.sequence)).recipientAddress
 
     return await this.program.methods
-      .releaseInboundMint()
+      .releaseInboundMint({
+        revertOnDelay: args.revertOnDelay
+      })
       .accounts({
         common: {
           payer: args.payer,
@@ -387,6 +390,7 @@ export class NTT {
     payer: Keypair
     chain: ChainName | ChainId
     sequence: BN
+    revertOnDelay: boolean
     config?: Config
   }): Promise<void> {
     if (await this.isPaused()) {
@@ -409,6 +413,7 @@ export class NTT {
     payer: PublicKey
     chain: ChainName | ChainId
     sequence: BN
+    revertOnDelay: boolean
     recipient?: PublicKey
     config?: Config
   }): Promise<TransactionInstruction> {
@@ -422,7 +427,9 @@ export class NTT {
       args.recipient ?? (await this.getInboxItem(args.chain, args.sequence)).recipientAddress
 
     return await this.program.methods
-      .releaseInboundUnlock()
+      .releaseInboundUnlock({
+        revertOnDelay: args.revertOnDelay
+      })
       .accounts({
         common: {
           payer: args.payer,
@@ -435,6 +442,29 @@ export class NTT {
         custody: await this.custodyAccountAddress(config)
       })
       .instruction()
+  }
+
+  async releaseInboundUnlock(args: {
+    payer: Keypair
+    chain: ChainName | ChainId
+    sequence: BN
+    revertOnDelay: boolean
+    config?: Config
+  }): Promise<void> {
+    if (await this.isPaused()) {
+      throw new Error('Contract is paused')
+    }
+
+    const txArgs = {
+      ...args,
+      payer: args.payer.publicKey
+    }
+
+    const tx = new Transaction()
+    tx.add(await this.createReleaseInboundUnlockInstruction(txArgs))
+
+    const signers = [args.payer]
+    await this.sendAndConfirmTransaction(tx, signers)
   }
 
   async setSibling(args: {
@@ -501,12 +531,19 @@ export class NTT {
       .instruction()
   }
 
-  // TODO: add option to return if the redeem was queued
+  /**
+   * Redeems a VAA.
+   *
+   * @returns Whether the transfer was released. If the transfer was delayed,
+   *          this will be false. In that case, a subsequent call to
+   *          `releaseInboundMint` or `releaseInboundUnlock` will release the
+   *          transfer after the delay (24h).
+   */
   async redeem(args: {
     payer: Keypair
     vaa: SignedVaa
     config?: Config
-  }): Promise<void> {
+  }): Promise<boolean> {
     const config = await this.getConfig(args.config)
 
     const redeemArgs = {
@@ -523,6 +560,19 @@ export class NTT {
     // TODO: explain why this is fine here
     const chainId = managerMessage.chainId as ChainId
 
+    // Here we create a transaction with two instructions:
+    // 1. redeem
+    // 2. releaseInboundMint or releaseInboundUnlock (depending on mode)
+    //
+    // The first instruction places the transfer in the inbox, then the second instruction
+    // releases it.
+    //
+    // In case the redeemed amount exceeds the remaining inbound rate limit capacity,
+    // the transaction gets delayed. If this happens, the second instruction will not actually
+    // be able to release the transfer yet.
+    // To make sure the transaction still succeeds, we set revertOnDelay to false, which will
+    // just make the second instruction a no-op in case the transfer is delayed.
+
     const tx = new Transaction()
     tx.add(await this.createRedeemInstruction(redeemArgs))
 
@@ -531,7 +581,8 @@ export class NTT {
       payer: args.payer.publicKey,
       sequence: new BN(managerMessage.sequence.toString()),
       recipient: new PublicKey(managerMessage.payload.recipientAddress),
-      chain: chainId
+      chain: chainId,
+      revertOnDelay: false
     }
 
     if (config.mode.locking != null) {
@@ -542,6 +593,10 @@ export class NTT {
 
     const signers = [args.payer]
     await this.sendAndConfirmTransaction(tx, signers)
+
+    // Let's check if the transfer was released
+    const inboxItem = await this.getInboxItem(chainId, new BN(managerMessage.sequence.toString()))
+    return inboxItem.released
   }
 
   // Account access

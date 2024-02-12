@@ -43,12 +43,12 @@ pub mod example_native_token_transfers {
         instructions::redeem(ctx, args)
     }
 
-    pub fn release_inbound_mint(ctx: Context<ReleaseInboundMint>) -> Result<()> {
-        instructions::release_inbound_mint(ctx)
+    pub fn release_inbound_mint(ctx: Context<ReleaseInboundMint>, args: ReleaseInboundArgs) -> Result<()> {
+        instructions::release_inbound_mint(ctx, args)
     }
 
-    pub fn release_inbound_unlock(ctx: Context<ReleaseInboundUnlock>) -> Result<()> {
-        instructions::release_inbound_unlock(ctx)
+    pub fn release_inbound_unlock(ctx: Context<ReleaseInboundUnlock>, args: ReleaseInboundArgs) -> Result<()> {
+        instructions::release_inbound_unlock(ctx, args)
     }
 
     pub fn transfer_ownership(

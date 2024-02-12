@@ -35,6 +35,11 @@ pub struct ReleaseInbound<'info> {
     pub token_program: Interface<'info, token_interface::TokenInterface>,
 }
 
+#[derive(AnchorDeserialize, AnchorSerialize)]
+pub struct ReleaseInboundArgs {
+    pub revert_on_delay: bool,
+}
+
 // Burn/mint
 
 #[derive(Accounts)]
@@ -49,11 +54,27 @@ pub struct ReleaseInboundMint<'info> {
     pub mint_authority: AccountInfo<'info>,
 }
 
-pub fn release_inbound_mint(ctx: Context<ReleaseInboundMint>) -> Result<()> {
+/// Release an inbound transfer and mint the tokens to the recipient.
+/// When `revert_on_error` is true, the transaction will revert if the
+/// release timestamp has not been reached. When `revert_on_error` is false, the
+/// transaction succeeds, but the minting is not performed.
+/// Setting this flag to `false` is useful when bundling this instruction
+/// together with [`crate::instructions::redeem`] in a transaction, so that the minting
+/// is attempted optimistically.
+pub fn release_inbound_mint(ctx: Context<ReleaseInboundMint>, args: ReleaseInboundArgs) -> Result<()> {
     let inbox_item = &mut ctx.accounts.common.inbox_item;
 
-    inbox_item.release()?;
+    let released = inbox_item.try_release()?;
 
+    if !released {
+        if args.revert_on_delay {
+            return Err(NTTError::ReleaseTimestampNotReached.into());
+        } else {
+            return Ok(());
+        }
+    }
+
+    assert!(inbox_item.released);
     match ctx.accounts.common.config.mode {
         Mode::Burning => token_interface::mint_to(
             CpiContext::new_with_signer(
@@ -90,11 +111,27 @@ pub struct ReleaseInboundUnlock<'info> {
     pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
 }
 
-pub fn release_inbound_unlock(ctx: Context<ReleaseInboundUnlock>) -> Result<()> {
+/// Release an inbound transfer and unlock the tokens to the recipient.
+/// When `revert_on_error` is true, the transaction will revert if the
+/// release timestamp has not been reached. When `revert_on_error` is false, the
+/// transaction succeeds, but the unlocking is not performed.
+/// Setting this flag to `false` is useful when bundling this instruction
+/// together with [`crate::instructions::redeem`], so that the unlocking
+/// is attempted optimistically.
+pub fn release_inbound_unlock(ctx: Context<ReleaseInboundUnlock>, args: ReleaseInboundArgs) -> Result<()> {
     let inbox_item = &mut ctx.accounts.common.inbox_item;
 
-    inbox_item.release()?;
+    let released = inbox_item.try_release()?;
 
+    if !released {
+        if args.revert_on_delay {
+            return Err(NTTError::ReleaseTimestampNotReached.into());
+        } else {
+            return Ok(());
+        }
+    }
+
+    assert!(inbox_item.released);
     match ctx.accounts.common.config.mode {
         Mode::Burning => Err(NTTError::InvalidMode.into()),
         Mode::Locking => token_interface::transfer_checked(

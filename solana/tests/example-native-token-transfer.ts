@@ -138,10 +138,12 @@ describe('example-native-token-transfers', () => {
       limit: new BN(1000000)
     })
 
-    await ntt.redeem({
+    const released = await ntt.redeem({
       payer,
       vaa: vaaBuf,
     })
+
+    expect(released).to.equal(true)
 
     // grab logs
     // await program.provider.connection.confirmTransaction(redeemTx, 'confirmed');
