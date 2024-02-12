@@ -38,6 +38,14 @@ abstract contract EndpointAndManager is Endpoint, Manager, Implementation {
         _upgrade(newImplementation);
     }
 
+    /// @notice This function is used to pause the manager and the endpoint
+    function pause() public override onlyOwner {
+        // pause the manager
+        super.pause();
+        // pause the endpoint
+        _pauseEndpoint();
+    }
+
     function quoteDeliveryPrice(uint16 recipientChain) public view override returns (uint256) {
         return _quoteDeliveryPrice(recipientChain);
     }
