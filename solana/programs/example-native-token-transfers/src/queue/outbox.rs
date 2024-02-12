@@ -24,10 +24,14 @@ pub struct OutboxItem {
 }
 
 impl OutboxItem {
-    pub fn release(&mut self) -> Result<()> {
+    /// Attempt to release the transfer.
+    /// Returns true if the transfer was released, false if it was not yet time to release it.
+    /// TODO: this is duplicated in inbox.rs. factor out?
+    pub fn try_release(&mut self) -> Result<bool> {
         let now = current_timestamp();
+
         if self.release_timestamp > now {
-            return Err(NTTError::ReleaseTimestampNotReached.into());
+            return Ok(false)
         }
 
         if self.released {
@@ -36,7 +40,7 @@ impl OutboxItem {
 
         self.released = true;
 
-        Ok(())
+        Ok(true)
     }
 }
 

@@ -150,8 +150,6 @@ export class NTT {
     amount: BN
     recipientChain: ChainName
     recipientAddress: ArrayLike<number>
-    // TODO: implement shouldQueue logic
-    // actually, this should be on the inbound direction
     shouldQueue: boolean
     outboxItem?: Keypair
     config?: Config
@@ -179,7 +177,8 @@ export class NTT {
 
     const releaseIx: TransactionInstruction = await this.createReleaseOutboundInstruction({
       payer: args.payer.publicKey,
-      outboxItem: outboxItem.publicKey
+      outboxItem: outboxItem.publicKey,
+      revertOnDelay: !args.shouldQueue
     })
 
     const signers = [args.payer, args.fromAuthority, outboxItem]
@@ -215,6 +214,7 @@ export class NTT {
     recipientChain: ChainName
     recipientAddress: ArrayLike<number>
     outboxItem: PublicKey
+    shouldQueue: boolean
     config?: Config
   }): Promise<TransactionInstruction> {
     const config = await this.getConfig(args.config)
@@ -230,7 +230,8 @@ export class NTT {
       .transferBurn({
         amount: args.amount,
         recipientChain: { id: chainId },
-        recipientAddress: Array.from(args.recipientAddress)
+        recipientAddress: Array.from(args.recipientAddress),
+        shouldQueue: args.shouldQueue
       })
       .accounts({
         common: {
@@ -258,6 +259,7 @@ export class NTT {
     amount: BN
     recipientChain: ChainName
     recipientAddress: ArrayLike<number>
+    shouldQueue: boolean
     outboxItem: PublicKey
     config?: Config
   }): Promise<TransactionInstruction> {
@@ -274,7 +276,8 @@ export class NTT {
       .transferLock({
         amount: args.amount,
         recipientChain: { id: chainId },
-        recipientAddress: Array.from(args.recipientAddress)
+        recipientAddress: Array.from(args.recipientAddress),
+        shouldQueue: args.shouldQueue
       })
       .accounts({
         common: {
@@ -300,11 +303,14 @@ export class NTT {
   async createReleaseOutboundInstruction(args: {
     payer: PublicKey
     outboxItem: PublicKey
+    revertOnDelay: boolean
   }): Promise<TransactionInstruction> {
     const whAccs = getWormholeDerivedAccounts(this.program.programId, this.wormholeId)
 
     return await this.program.methods
-      .releaseOutbound({})
+      .releaseOutbound({
+        revertOnDelay: args.revertOnDelay
+      })
       .accounts({
         payer: args.payer,
         config: { config: this.configAccountAddress() },
@@ -322,6 +328,7 @@ export class NTT {
   async releaseOutbound(args: {
     payer: Keypair
     outboxItem: PublicKey
+    revertOnDelay: boolean
     config?: Config
   }): Promise<void> {
     if (await this.isPaused()) {

@@ -63,15 +63,26 @@ pub struct ReleaseOutbound<'info> {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct ReleaseOutboundArgs {}
+pub struct ReleaseOutboundArgs {
+    pub revert_on_delay: bool,
+}
 
-pub fn release_outbound(ctx: Context<ReleaseOutbound>, _args: ReleaseOutboundArgs) -> Result<()> {
+pub fn release_outbound(ctx: Context<ReleaseOutbound>, args: ReleaseOutboundArgs) -> Result<()> {
     let accs = ctx.accounts;
     let batch_id = 0;
 
     // TODO: record endpoint position
-    accs.outbox_item.release()?;
+    let released = accs.outbox_item.try_release()?;
 
+    if !released {
+        if args.revert_on_delay {
+            return Err(NTTError::ReleaseTimestampNotReached.into());
+        } else {
+            return Ok(());
+        }
+    }
+
+    assert!(accs.outbox_item.released);
     let message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
         EndpointMessage::new(ManagerMessage {
             chain_id: accs.config.chain_id,

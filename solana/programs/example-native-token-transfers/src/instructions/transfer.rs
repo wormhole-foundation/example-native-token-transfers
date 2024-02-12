@@ -3,6 +3,7 @@ use anchor_spl::token_interface;
 
 use crate::{
     chain_id::ChainId,
+    clock::current_timestamp,
     config::*,
     error::NTTError,
     normalized_amount::NormalizedAmount,
@@ -62,6 +63,7 @@ pub struct TransferArgs {
     pub amount: u64,
     pub recipient_chain: ChainId,
     pub recipient_address: [u8; 32],
+    pub should_queue: bool,
 }
 
 // Burn/mint
@@ -78,6 +80,7 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
         amount,
         recipient_chain,
         recipient_address,
+        should_queue,
     } = args;
 
     let amount = NormalizedAmount::normalize(amount, accs.common.mint.decimals);
@@ -103,6 +106,7 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
         amount,
         recipient_chain,
         recipient_address,
+        should_queue,
     )
 }
 
@@ -134,6 +138,7 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
         amount,
         recipient_chain,
         recipient_address,
+        should_queue,
     } = args;
 
     let amount = NormalizedAmount::normalize(amount, accs.common.mint.decimals);
@@ -161,6 +166,7 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
         amount,
         recipient_chain,
         recipient_address,
+        should_queue,
     )
 }
 
@@ -169,9 +175,14 @@ fn insert_into_outbox(
     amount: NormalizedAmount,
     recipient_chain: ChainId,
     recipient_address: [u8; 32],
+    should_queue: bool,
 ) -> Result<()> {
     // consume the rate limit, or delay the transfer if it's outside the limit
     let release_timestamp = common.rate_limit.rate_limit.consume_or_delay(amount);
+
+    if release_timestamp > current_timestamp() && !should_queue {
+        return Err(NTTError::TransferExceedsRateLimit.into());
+    }
 
     let sequence = common.seq.next();
 
