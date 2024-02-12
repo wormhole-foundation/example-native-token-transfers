@@ -14,4 +14,5 @@ interface IManagerEvents {
     event ThresholdChanged(uint8 oldThreshold, uint8 threshold);
     event EndpointAdded(address endpoint, uint8 threshold);
     event EndpointRemoved(address endpoint, uint8 threshold);
+    event MessageAlreadyExecuted(bytes32 indexed sourceManager, bytes32 indexed msgHash);
 }
