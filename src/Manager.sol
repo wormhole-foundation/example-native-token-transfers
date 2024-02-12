@@ -164,13 +164,13 @@ abstract contract Manager is
 
     function setOutboundLimit(uint256 limit) external onlyOwner {
         uint8 decimals = _tokenDecimals();
-        NormalizedAmount normalized = NormalizedAmountLib.normalize(limit, decimals);
+        NormalizedAmount memory normalized = NormalizedAmountLib.normalize(limit, decimals);
         _setOutboundLimit(normalized);
     }
 
     function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
         uint8 decimals = _tokenDecimals();
-        NormalizedAmount normalized = NormalizedAmountLib.normalize(limit, decimals);
+        NormalizedAmount memory normalized = NormalizedAmountLib.normalize(limit, decimals);
         _setInboundLimit(normalized, chainId_);
     }
 
@@ -217,8 +217,12 @@ abstract contract Manager is
     }
 
     /// @dev Returns normalized amount and checks for dust
-    function normalizeTransferAmount(uint256 amount) internal view returns (NormalizedAmount) {
-        NormalizedAmount normalizedAmount;
+    function normalizeTransferAmount(uint256 amount)
+        internal
+        view
+        returns (NormalizedAmount memory)
+    {
+        NormalizedAmount memory normalizedAmount;
         {
             // query tokens decimals
             uint8 decimals = _tokenDecimals();
@@ -297,7 +301,7 @@ abstract contract Manager is
         }
 
         // normalize amount after burning to ensure transfer amount matches (amount - fee)
-        NormalizedAmount normalizedAmount = normalizeTransferAmount(amount);
+        NormalizedAmount memory normalizedAmount = normalizeTransferAmount(amount);
 
         // get the sequence for this transfer
         uint64 sequence = _useMessageSequence();
@@ -335,7 +339,7 @@ abstract contract Manager is
 
     function _transfer(
         uint64 sequence,
-        NormalizedAmount amount,
+        NormalizedAmount memory amount,
         uint16 recipientChain,
         bytes32 recipient,
         address sender
@@ -432,7 +436,7 @@ abstract contract Manager is
             revert InvalidTargetChain(nativeTokenTransfer.toChain, chainId);
         }
 
-        NormalizedAmount nativeTransferAmount = nativeTokenTransfer.amount;
+        NormalizedAmount memory nativeTransferAmount = nativeTokenTransfer.amount;
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
@@ -473,7 +477,7 @@ abstract contract Manager is
         _mintOrUnlockToRecipient(queuedTransfer.recipient, queuedTransfer.amount);
     }
 
-    function _mintOrUnlockToRecipient(address recipient, NormalizedAmount amount) internal {
+    function _mintOrUnlockToRecipient(address recipient, NormalizedAmount memory amount) internal {
         // calculate proper amount of tokens to unlock/mint to recipient
         // query the decimals of the token contract that's tied to this manager
         // adjust the decimals of the amount in the nativeTokenTransfer payload accordingly
