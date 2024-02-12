@@ -12,7 +12,7 @@ contract WormholeEndpointStandalone is WormholeEndpoint, EndpointStandalone {
     ) EndpointStandalone(manager) WormholeEndpoint(wormholeCoreBridge, wormholeRelayerAddr) {}
 
     function pauseWormholeEndpoint() external onlyOwner {
-        _pauseWormholeEndpoint();
+        _pauseEndpoint();
     }
 
     function setWormholeSibling(
