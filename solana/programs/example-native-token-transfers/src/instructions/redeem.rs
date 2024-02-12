@@ -6,7 +6,7 @@ use crate::{
     config::*,
     error::NTTError,
     messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer, WormholeEndpoint},
-    queue::inbox::{InboundRateLimit, InboxItem},
+    queue::inbox::{InboxItem, InboxRateLimit},
     sibling::Sibling,
 };
 
@@ -54,12 +54,12 @@ pub struct Redeem<'info> {
     #[account(
         mut,
         seeds = [
-            InboundRateLimit::SEED_PREFIX,
+            InboxRateLimit::SEED_PREFIX,
             vaa.emitter_chain().to_be_bytes().as_ref()
         ],
         bump,
     )]
-    pub rate_limit: Account<'info, InboundRateLimit>,
+    pub rate_limit: Account<'info, InboxRateLimit>,
 
     pub system_program: Program<'info, System>,
 }

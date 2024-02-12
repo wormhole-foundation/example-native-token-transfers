@@ -5,7 +5,7 @@ use crate::{
     chain_id::ChainId,
     config::Config,
     normalized_amount::NormalizedAmount,
-    queue::{inbox::InboundRateLimit, outbox::OutboxRateLimit, rate_limit::RateLimitState},
+    queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit, rate_limit::RateLimitState},
     sibling::Sibling,
 };
 
@@ -81,15 +81,15 @@ pub struct SetSibling<'info> {
 
     #[account(
         init,
-        space = 8 + InboundRateLimit::INIT_SPACE,
+        space = 8 + InboxRateLimit::INIT_SPACE,
         payer = payer,
         seeds = [
-            InboundRateLimit::SEED_PREFIX,
+            InboxRateLimit::SEED_PREFIX,
             args.chain_id.id.to_be_bytes().as_ref()
         ],
         bump,
     )]
-    pub rate_limit: Account<'info, InboundRateLimit>,
+    pub rate_limit: Account<'info, InboxRateLimit>,
 
     #[account(
         constraint = mint.key() == config.mint
@@ -114,7 +114,7 @@ pub fn set_sibling(ctx: Context<SetSibling>, args: SetSiblingArgs) -> Result<()>
         address: args.address,
     });
 
-    ctx.accounts.rate_limit.set_inner(InboundRateLimit {
+    ctx.accounts.rate_limit.set_inner(InboxRateLimit {
         bump: ctx.bumps.rate_limit,
         rate_limit: RateLimitState::new(NormalizedAmount::normalize(
             args.limit,
@@ -170,12 +170,12 @@ pub struct SetInboundLimit<'info> {
     #[account(
         mut,
         seeds = [
-            InboundRateLimit::SEED_PREFIX,
+            InboxRateLimit::SEED_PREFIX,
             args.chain_id.id.to_be_bytes().as_ref()
         ],
         bump = rate_limit.bump
     )]
-    pub rate_limit: Account<'info, InboundRateLimit>,
+    pub rate_limit: Account<'info, InboxRateLimit>,
 
     #[account(
         constraint = mint.key() == config.mint

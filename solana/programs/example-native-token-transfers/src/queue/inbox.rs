@@ -43,23 +43,23 @@ impl InboxItem {
 /// SECURITY: must check the PDA (since there are multiple PDAs, namely one for each chain.)
 #[account]
 #[derive(InitSpace)]
-pub struct InboundRateLimit {
+pub struct InboxRateLimit {
     pub bump: u8,
     pub rate_limit: RateLimitState,
 }
 
-impl InboundRateLimit {
+impl InboxRateLimit {
     pub const SEED_PREFIX: &'static [u8] = b"inbox_rate_limit";
 }
 
-impl Deref for InboundRateLimit {
+impl Deref for InboxRateLimit {
     type Target = RateLimitState;
     fn deref(&self) -> &Self::Target {
         &self.rate_limit
     }
 }
 
-impl DerefMut for InboundRateLimit {
+impl DerefMut for InboxRateLimit {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.rate_limit
     }
