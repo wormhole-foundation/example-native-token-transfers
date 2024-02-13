@@ -1,5 +1,5 @@
-/// @dev NormalizedAmount is a utility library to handle token amounts with different decimals
 // SPDX-License-Identifier: Apache 2
+/// @dev NormalizedAmount is a utility library to handle token amounts with different decimals
 pragma solidity >=0.8.8 <0.9.0;
 
 struct NormalizedAmount {
@@ -12,7 +12,6 @@ library NormalizedAmountLib {
 
     error AmountTooLarge(uint256 amount);
     error NumberOfDecimalsNotEqual(uint8 decimals, uint8 decimalsOther);
-    error AmountUnderflows(uint64 amountA, uint64 amountB);
 
     function unwrap(NormalizedAmount memory a) internal pure returns (uint64, uint8) {
         return (a.amount, a.decimals);
@@ -26,10 +25,29 @@ library NormalizedAmountLib {
         return a.decimals;
     }
 
+    function eq(
+        NormalizedAmount memory a,
+        NormalizedAmount memory b
+    ) internal pure returns (bool) {
+        return a.amount == b.amount && a.decimals == b.decimals;
+    }
+
     function gt(
         NormalizedAmount memory a,
         NormalizedAmount memory b
     ) internal pure returns (bool) {
+        // on initialization
+        if (isZero(b) && !isZero(a)) {
+            return true;
+        }
+        if (isZero(a) && !isZero(b)) {
+            return false;
+        }
+
+        if (a.decimals != b.decimals) {
+            revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
+        }
+
         return a.amount > b.amount;
     }
 
@@ -37,6 +55,18 @@ library NormalizedAmountLib {
         NormalizedAmount memory a,
         NormalizedAmount memory b
     ) internal pure returns (bool) {
+        // on initialization
+        if (isZero(b) && !isZero(a)) {
+            return false;
+        }
+        if (isZero(a) && !isZero(b)) {
+            return true;
+        }
+
+        if (a.decimals != b.decimals) {
+            revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
+        }
+
         return a.amount < b.amount;
     }
 
@@ -83,6 +113,18 @@ library NormalizedAmountLib {
         NormalizedAmount memory a,
         NormalizedAmount memory b
     ) public pure returns (NormalizedAmount memory) {
+        // on initialization
+        if (isZero(a) && !isZero(b)) {
+            return a;
+        }
+        if (isZero(b) && !isZero(a)) {
+            return b;
+        }
+
+        if (a.decimals != b.decimals) {
+            revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
+        }
+
         return a.amount < b.amount ? a : b;
     }
 
