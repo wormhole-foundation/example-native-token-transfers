@@ -17,6 +17,9 @@ test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"
+### At 160 ticks/s, 64 ticks per slot implies that leader rotation and voting will happen
+### every 400 ms. A fast voting cadence ensures faster finality and convergence
+ticks_per_slot = 16
 
 ### Wormhole Core Bridge (Mainnet) -- Program
 [[test.genesis]]

@@ -10,7 +10,7 @@ use crate::{
 use super::rate_limit::RateLimitState;
 
 #[account]
-#[derive(InitSpace)]
+#[derive(InitSpace, Debug, PartialEq, Eq)]
 // TODO: generalise this to arbitrary outbound messages (via a generic parameter in place of amount and recipient info)
 pub struct OutboxItem {
     pub sequence: u64,

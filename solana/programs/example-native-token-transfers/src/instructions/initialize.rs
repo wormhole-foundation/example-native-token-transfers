@@ -29,7 +29,7 @@ pub struct Initialize<'info> {
 
     #[account(
         constraint =
-            args.mode == crate::config::Mode::Burning
+            args.mode == crate::config::Mode::Locking
             || mint.mint_authority.unwrap() == token_authority.key()
             @ NTTError::InvalidMintAuthority,
     )]

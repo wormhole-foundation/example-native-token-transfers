@@ -620,10 +620,6 @@ export class NTT {
     return (await this.getConfig(config)).tokenProgram
   }
 
-  async nextSequence(): Promise<BN> {
-    return (await this.program.account.sequence.fetch(this.sequenceTrackerAccountAddress())).sequence
-  }
-
   async getInboxItem(chain: ChainName | ChainId, sequence: BN): Promise<InboxItem> {
     return await this.program.account.inboxItem.fetch(this.inboxItemAccountAddress(chain, sequence))
   }
