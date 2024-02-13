@@ -316,15 +316,15 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         DummyToken token = DummyToken(manager.token());
 
         uint8 decimals = token.decimals(); // 18
+        {
+            token.mintDummy(from, 5 * 10 ** decimals);
+            manager.setSibling(SENDING_CHAIN_ID, toWormholeFormat(address(manager)));
 
-        token.mintDummy(from, 5 * 10 ** decimals);
-        manager.setSibling(SENDING_CHAIN_ID, toWormholeFormat(address(manager)));
+            uint256 outboundLimit = NormalizedAmount(type(uint64).max, 8).denormalize(decimals);
+            manager.setOutboundLimit(outboundLimit);
 
-        uint256 value = 5 * 10 ** decimals;
-        uint256 outboundLimit = NormalizedAmount(type(uint64).max, 8).denormalize(decimals);
-        manager.setOutboundLimit(outboundLimit);
-
-        manager.setInboundLimit(inboundLimit.denormalize(decimals), SENDING_CHAIN_ID);
+            manager.setInboundLimit(inboundLimit.denormalize(decimals), SENDING_CHAIN_ID);
+        }
 
         {
             uint256 from_balanceBefore = token.balanceOf(from);
