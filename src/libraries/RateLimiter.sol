@@ -177,7 +177,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     ) internal pure returns (NormalizedAmount memory newCurrentCapacity) {
         NormalizedAmount memory difference;
 
-        if (oldLimit.lt(newLimit)) {
+        if (oldLimit.gt(newLimit)) {
             difference = oldLimit.sub(newLimit);
             newCurrentCapacity = currentCapacity.gt(difference)
                 ? currentCapacity.sub(difference)
@@ -187,6 +187,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
             newCurrentCapacity = currentCapacity.add(difference);
         }
 
+        // TODO: change this to min
         if (newCurrentCapacity.gt(newLimit)) {
             revert CapacityCannotExceedLimit(newCurrentCapacity, newLimit);
         }
@@ -240,7 +241,6 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     function _enqueueOutboundTransfer(
         uint64 sequence,
         NormalizedAmount memory amount,
-        uint8 numDecimals,
         uint16 recipientChain,
         bytes32 recipient,
         address senderAddress

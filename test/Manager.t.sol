@@ -294,6 +294,18 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
     // === attestation
 
+    function testNormalizationRoundTrip() public {
+        uint8 decimals = 18;
+        uint256 amount = 50 * 10 ** decimals;
+        NormalizedAmount memory normalized = amount.normalize(decimals);
+        uint256 roundTrip = normalized.denormalize(decimals);
+
+        uint256 expectedAmount = 50 * 10 ** decimals;
+        assertEq(expectedAmount, roundTrip);
+    }
+
+    // === attestation
+
     function setup_endpoints() internal returns (DummyEndpoint, DummyEndpoint) {
         DummyEndpoint e1 = new DummyEndpoint(address(manager));
         DummyEndpoint e2 = new DummyEndpoint(address(manager));
@@ -314,11 +326,16 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         returns (EndpointStructs.ManagerMessage memory, EndpointStructs.EndpointMessage memory)
     {
         DummyToken token = DummyToken(manager.token());
-        token.mintDummy(from, 5 * 10 ** token.decimals());
+
+        uint8 decimals = token.decimals(); // 18
+
+        token.mintDummy(from, 5 * 10 ** decimals);
         manager.setSibling(SENDING_CHAIN_ID, toWormholeFormat(address(manager)));
-        manager.setOutboundLimit(
-            NormalizedAmountLib.wrap(type(uint64).max, 8).denormalize(decimals)
-        );
+
+        uint256 value = 5 * 10 ** decimals;
+        uint256 outboundLimit = NormalizedAmountLib.wrap(type(uint64).max, 8).denormalize(decimals);
+        manager.setOutboundLimit(outboundLimit);
+
         manager.setInboundLimit(inboundLimit.denormalize(decimals), SENDING_CHAIN_ID);
 
         {

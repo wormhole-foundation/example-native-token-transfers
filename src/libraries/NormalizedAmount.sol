@@ -12,6 +12,7 @@ library NormalizedAmountLib {
 
     error AmountTooLarge(uint256 amount);
     error NumberOfDecimalsNotEqual(uint8 decimals, uint8 decimalsOther);
+    error AmountUnderflows(uint64 amountA, uint64 amountB);
 
     function wrap(uint64 amt, uint8 dec) internal pure returns (NormalizedAmount memory) {
         return NormalizedAmount(amt, dec);
@@ -33,9 +34,6 @@ library NormalizedAmountLib {
         NormalizedAmount memory a,
         NormalizedAmount memory b
     ) internal pure returns (bool) {
-        if (a.decimals != b.decimals) {
-            revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
-        }
         return a.amount > b.amount;
     }
 
@@ -43,16 +41,26 @@ library NormalizedAmountLib {
         NormalizedAmount memory a,
         NormalizedAmount memory b
     ) internal pure returns (bool) {
-        if (a.decimals != b.decimals) {
-            revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
-        }
         return a.amount < b.amount;
+    }
+
+    function isZero(NormalizedAmount memory a) internal pure returns (bool) {
+        return (a.amount == 0 && a.decimals == 0);
     }
 
     function sub(
         NormalizedAmount memory a,
         NormalizedAmount memory b
     ) internal pure returns (NormalizedAmount memory) {
+        if (a.amount < b.amount) {
+            revert AmountUnderflows(a.amount, b.amount);
+        }
+
+        // on initialization
+        if (isZero(b)) {
+            return a;
+        }
+
         if (a.decimals != b.decimals) {
             revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
         }
@@ -64,6 +72,15 @@ library NormalizedAmountLib {
         NormalizedAmount memory a,
         NormalizedAmount memory b
     ) internal pure returns (NormalizedAmount memory) {
+        // on initialization
+        if (isZero(a)) {
+            return b;
+        }
+
+        if (isZero(b)) {
+            return a;
+        }
+
         if (a.decimals != b.decimals) {
             revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
         }
@@ -74,9 +91,6 @@ library NormalizedAmountLib {
         NormalizedAmount memory a,
         NormalizedAmount memory b
     ) public pure returns (NormalizedAmount memory) {
-        if (a.decimals != b.decimals) {
-            revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
-        }
         return a.amount < b.amount ? a : b;
     }
 
