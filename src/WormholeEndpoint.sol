@@ -124,29 +124,17 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         }
     }
 
-    function wrapManagerMessageInEndpoint(bytes memory payload)
-        internal
-        pure
-        returns (bytes memory encodedEndpointPayload, EndpointStructs.EndpointMessage memory)
-    {
-        // wrap payload in EndpointMessage
-        EndpointStructs.EndpointMessage memory endpointMessage = EndpointStructs.EndpointMessage({
-            prefix: WH_ENDPOINT_PAYLOAD_PREFIX,
-            managerPayload: payload
-        });
-
-        return (EndpointStructs.encodeEndpointMessage(endpointMessage), endpointMessage);
-    }
-
     function _sendMessage(
         uint16 recipientChain,
         uint256 deliveryPayment,
         bytes memory managerMessage
     ) internal override {
         (
-            bytes memory encodedEndpointPayload,
-            EndpointStructs.EndpointMessage memory endpointMessage
-        ) = wrapManagerMessageInEndpoint(managerMessage);
+            EndpointStructs.EndpointMessage memory endpointMessage,
+            bytes memory encodedEndpointPayload
+        ) = EndpointStructs.buildAndEncodeEndpointMessage(
+            WH_ENDPOINT_PAYLOAD_PREFIX, toWormholeFormat(msg.sender), managerMessage
+        );
 
         if (shouldRelayViaStandardRelaying(recipientChain)) {
             wormholeRelayer.sendPayloadToEvm{value: deliveryPayment}(
@@ -161,54 +149,6 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         }
 
         emit SendEndpointMessage(recipientChain, endpointMessage);
-    }
-
-    /*
-    * @dev Parses an encoded message and extracts information into an EndpointMessage struct.
-    *
-    * @param encoded The encoded bytes containing information about the EndpointMessage.
-    * @return endpointMessage The parsed EndpointMessage struct.
-    * @throws IncorrectPrefix if the prefix of the encoded message does not match the expected prefix.
-    */
-    function _parseEndpointMessage(bytes memory encoded)
-        internal
-        pure
-        override
-        returns (EndpointStructs.EndpointMessage memory endpointMessage)
-    {
-        uint256 offset = 0;
-        bytes4 prefix;
-
-        (prefix, offset) = encoded.asBytes4Unchecked(offset);
-
-        if (prefix != WH_ENDPOINT_PAYLOAD_PREFIX) {
-            revert EndpointStructs.IncorrectPrefix(prefix);
-        }
-
-        uint16 managerPayloadLength;
-        (managerPayloadLength, offset) = encoded.asUint16Unchecked(offset);
-        (endpointMessage.managerPayload, offset) =
-            encoded.sliceUnchecked(offset, managerPayloadLength);
-
-        // Check if the entire byte array has been processed
-        encoded.checkLength(offset);
-    }
-
-    /// @dev Parses the payload of an Endpoint message and returns the parsed ManagerMessage struct.
-    function parsePayload(bytes memory payload)
-        internal
-        pure
-        returns (EndpointStructs.ManagerMessage memory)
-    {
-        // parse the encoded message payload from the Endpoint
-        EndpointStructs.EndpointMessage memory parsedEndpointMessage =
-            _parseEndpointMessage(payload);
-
-        // parse the encoded message payload from the Manager
-        EndpointStructs.ManagerMessage memory parsed =
-            EndpointStructs.parseManagerMessage(parsedEndpointMessage.managerPayload);
-
-        return parsed;
     }
 
     function receiveWormholeMessages(
@@ -239,23 +179,35 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         emit ReceivedRelayedMessage(deliveryHash, sourceChain, sourceAddress);
 
         // parse the encoded Endpoint payload
-        EndpointStructs.ManagerMessage memory parsed = parsePayload(payload);
+        EndpointStructs.EndpointMessage memory parsedEndpointMessage;
+        EndpointStructs.ManagerMessage memory parsedManagerMessage;
+        (parsedEndpointMessage, parsedManagerMessage) =
+            EndpointStructs.parseEndpointAndManagerMessage(WH_ENDPOINT_PAYLOAD_PREFIX, payload);
 
-        _deliverToManager(parsed);
+        _deliverToManager(
+            sourceChain, parsedEndpointMessage.sourceManagerAddress, parsedManagerMessage
+        );
     }
 
     /// @notice Receive an attested message from the verification layer
     ///         This function should verify the encodedVm and then deliver the attestation to the endpoint manager contract.
     function receiveMessage(bytes memory encodedMessage) external whenNotPaused {
-        bytes memory payload = _verifyMessage(encodedMessage);
+        uint16 sourceChainId;
+        bytes memory payload;
+        (sourceChainId, payload) = _verifyMessage(encodedMessage);
 
         // parse the encoded Endpoint payload
-        EndpointStructs.ManagerMessage memory parsed = parsePayload(payload);
+        EndpointStructs.EndpointMessage memory parsedEndpointMessage;
+        EndpointStructs.ManagerMessage memory parsedManagerMessage;
+        (parsedEndpointMessage, parsedManagerMessage) =
+            EndpointStructs.parseEndpointAndManagerMessage(WH_ENDPOINT_PAYLOAD_PREFIX, payload);
 
-        _deliverToManager(parsed);
+        _deliverToManager(
+            sourceChainId, parsedEndpointMessage.sourceManagerAddress, parsedManagerMessage
+        );
     }
 
-    function _verifyMessage(bytes memory encodedMessage) internal returns (bytes memory) {
+    function _verifyMessage(bytes memory encodedMessage) internal returns (uint16, bytes memory) {
         // verify VAA against Wormhole Core Bridge contract
         (IWormhole.VM memory vm, bool valid, string memory reason) =
             wormhole.parseAndVerifyVM(encodedMessage);
@@ -279,7 +231,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         // emit `ReceivedMessage` event
         emit ReceivedMessage(vm.hash, vm.emitterChainId, vm.emitterAddress, vm.sequence);
 
-        return vm.payload;
+        return (vm.emitterChainId, vm.payload);
     }
 
     function _verifyBridgeVM(IWormhole.VM memory vm) internal view returns (bool) {
