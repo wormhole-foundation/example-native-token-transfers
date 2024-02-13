@@ -97,7 +97,9 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         // after some period of time, ideally once all chains have the new Endpoint
         // and transfers that were sent via the old configuration are all complete.
 
-        emit EndpointAdded(endpoint, _threshold.num);
+        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
+
+        emit EndpointAdded(endpoint, _enabledEndpoints.length, _threshold.num);
     }
 
     function removeEndpoint(address endpoint) external onlyOwner {
