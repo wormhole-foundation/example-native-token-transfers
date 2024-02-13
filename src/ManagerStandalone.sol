@@ -107,27 +107,31 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         emit EndpointRemoved(endpoint, _threshold.num);
     }
 
-    function quoteDeliveryPrice(uint16 recipientChain) public view override returns (uint256) {
+    function quoteDeliveryPrice(uint16 recipientChain)
+        public
+        view
+        override
+        returns (uint256[] memory)
+    {
         address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
-        uint256 totalPriceQuote = 0;
+        uint256[] memory priceQuotes = new uint256[](_enabledEndpoints.length);
         for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
             uint256 endpointPriceQuote =
                 IEndpointStandalone(_enabledEndpoints[i]).quoteDeliveryPrice(recipientChain);
-            totalPriceQuote += endpointPriceQuote;
+            priceQuotes[i] = endpointPriceQuote;
         }
-        return totalPriceQuote;
+        return priceQuotes;
     }
 
-    function _sendMessageToEndpoint(
+    function _sendMessageToEndpoints(
         uint16 recipientChain,
+        uint256[] memory priceQuotes,
         bytes memory payload
     ) internal override {
         address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
         // call into endpoint contracts to send the message
-        for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
-            uint256 endpointPriceQuote =
-                IEndpointStandalone(_enabledEndpoints[i]).quoteDeliveryPrice(recipientChain);
-            IEndpointStandalone(_enabledEndpoints[i]).sendMessage{value: endpointPriceQuote}(
+        for (uint256 i = 0; i < priceQuotes.length; i++) {
+            IEndpointStandalone(_enabledEndpoints[i]).sendMessage{value: priceQuotes[i]}(
                 recipientChain, payload
             );
         }

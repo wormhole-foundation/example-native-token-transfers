@@ -115,11 +115,17 @@ abstract contract Manager is
     }
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
-    function quoteDeliveryPrice(uint16 recipientChain) public view virtual returns (uint256);
+    ///      This method should return an array of delivery prices corresponding to each endpoint.
+    function quoteDeliveryPrice(uint16 recipientChain)
+        public
+        view
+        virtual
+        returns (uint256[] memory);
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
-    function _sendMessageToEndpoint(
+    function _sendMessageToEndpoints(
         uint16 recipientChain,
+        uint256[] memory priceQuotes,
         bytes memory managerMessage
     ) internal virtual;
 
@@ -334,9 +340,10 @@ abstract contract Manager is
         bytes32 recipient,
         address sender
     ) internal returns (uint64 msgSequence) {
+        uint256[] memory priceQuotes = quoteDeliveryPrice(recipientChain);
         {
             // check up front that msg.value will cover the delivery price
-            uint256 totalPriceQuote = quoteDeliveryPrice(recipientChain);
+            uint256 totalPriceQuote = arraySum(priceQuotes);
             if (msg.value < totalPriceQuote) {
                 revert DeliveryPaymentTooLow(totalPriceQuote, msg.value);
             }
@@ -366,7 +373,7 @@ abstract contract Manager is
         );
 
         // send the message
-        _sendMessageToEndpoint(recipientChain, encodedManagerPayload);
+        _sendMessageToEndpoints(recipientChain, priceQuotes, encodedManagerPayload);
 
         emit TransferSent(recipient, amount.denormalize(_tokenDecimals()), recipientChain, sequence);
 
