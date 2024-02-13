@@ -321,7 +321,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         manager.setSibling(SENDING_CHAIN_ID, toWormholeFormat(address(manager)));
 
         uint256 value = 5 * 10 ** decimals;
-        uint256 outboundLimit = NormalizedAmountLib.wrap(type(uint64).max, 8).denormalize(decimals);
+        uint256 outboundLimit = NormalizedAmount(type(uint64).max, 8).denormalize(decimals);
         manager.setOutboundLimit(outboundLimit);
 
         manager.setInboundLimit(inboundLimit.denormalize(decimals), SENDING_CHAIN_ID);
@@ -350,7 +350,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             toWormholeFormat(from),
             EndpointStructs.encodeNativeTokenTransfer(
                 EndpointStructs.NativeTokenTransfer({
-                    amount: NormalizedAmountLib.wrap(50, 8),
+                    amount: NormalizedAmount(50, 8),
                     sourceToken: toWormholeFormat(address(token)),
                     to: toWormholeFormat(to),
                     toChain: chainId
@@ -494,9 +494,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         uint8 decimals = token.decimals();
 
-        manager.setOutboundLimit(
-            NormalizedAmountLib.wrap(type(uint64).max, 8).denormalize(decimals)
-        );
+        manager.setOutboundLimit(NormalizedAmount(type(uint64).max, 8).denormalize(decimals));
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
 
@@ -645,11 +643,9 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         uint256 maxAmount = 5 * 10 ** decimals;
         token.mintDummy(from, maxAmount);
-        manager.setOutboundLimit(
-            NormalizedAmountLib.wrap(type(uint64).max, 8).denormalize(decimals)
-        );
+        manager.setOutboundLimit(NormalizedAmount(type(uint64).max, 8).denormalize(decimals));
         manager.setInboundLimit(
-            NormalizedAmountLib.wrap(type(uint64).max, 8).denormalize(decimals), SENDING_CHAIN_ID
+            NormalizedAmount(type(uint64).max, 8).denormalize(decimals), SENDING_CHAIN_ID
         );
 
         vm.startPrank(from);
@@ -1159,9 +1155,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             );
         }
 
-        _attestEndpointsHelper(
-            user_A, user_B, 1, NormalizedAmountLib.wrap(type(uint64).max, 8), endpoints
-        );
+        _attestEndpointsHelper(user_A, user_B, 1, NormalizedAmount(type(uint64).max, 8), endpoints);
 
         assertEq(token.balanceOf(address(user_B)), 100 * 10 ** (decimals - 8));
 
@@ -1176,9 +1170,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         // attest with e1 twice (just two make sure it's still not accepted)
         endpoints[1] = e1;
 
-        _attestEndpointsHelper(
-            user_A, user_B, 2, NormalizedAmountLib.wrap(type(uint64).max, 8), endpoints
-        );
+        _attestEndpointsHelper(user_A, user_B, 2, NormalizedAmount(type(uint64).max, 8), endpoints);
 
         // balance is the same as before
         assertEq(token.balanceOf(address(user_B)), 100 * 10 ** (decimals - 8));
@@ -1187,7 +1179,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         endpoints[0] = e2;
 
         _attestEndpointsHelper(
-            user_A, user_B, 2, NormalizedAmountLib.wrap(type(uint64).max, 8), endpoints
+            user_A, user_B, 2, NormalizedAmount(type(uint64).max, 8), endpoints
         );
 
         assertEq(token.balanceOf(address(user_B)), 150 * 10 ** (decimals - 8));

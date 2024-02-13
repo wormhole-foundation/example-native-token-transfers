@@ -123,7 +123,7 @@ library EndpointStructs {
         (numDecimals, offset) = encoded.asUint8Unchecked(offset);
         uint64 amount;
         (amount, offset) = encoded.asUint64Unchecked(offset);
-        nativeTokenTransfer.amount = NormalizedAmountLib.wrap(amount, numDecimals);
+        nativeTokenTransfer.amount = NormalizedAmount(amount, numDecimals);
 
         (nativeTokenTransfer.sourceToken, offset) = encoded.asBytes32Unchecked(offset);
         (nativeTokenTransfer.to, offset) = encoded.asBytes32Unchecked(offset);

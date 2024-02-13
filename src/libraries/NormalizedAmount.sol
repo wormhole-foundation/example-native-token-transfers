@@ -14,10 +14,6 @@ library NormalizedAmountLib {
     error NumberOfDecimalsNotEqual(uint8 decimals, uint8 decimalsOther);
     error AmountUnderflows(uint64 amountA, uint64 amountB);
 
-    function wrap(uint64 amt, uint8 dec) internal pure returns (NormalizedAmount memory) {
-        return NormalizedAmount(amt, dec);
-    }
-
     function unwrap(NormalizedAmount memory a) internal pure returns (uint64, uint8) {
         return (a.amount, a.decimals);
     }
@@ -52,7 +48,6 @@ library NormalizedAmountLib {
         NormalizedAmount memory a,
         NormalizedAmount memory b
     ) internal pure returns (NormalizedAmount memory) {
-
         // on initialization
         if (isZero(b)) {
             return a;
@@ -62,7 +57,7 @@ library NormalizedAmountLib {
             revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
         }
 
-        return wrap(a.amount - b.amount, a.decimals);
+        return NormalizedAmount(a.amount - b.amount, a.decimals);
     }
 
     function add(
@@ -81,7 +76,7 @@ library NormalizedAmountLib {
         if (a.decimals != b.decimals) {
             revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
         }
-        return wrap(a.amount + b.amount, a.decimals);
+        return NormalizedAmount(a.amount + b.amount, a.decimals);
     }
 
     function min(
@@ -119,7 +114,7 @@ library NormalizedAmountLib {
         if (amt > type(uint64).max) {
             revert AmountTooLarge(amt);
         }
-        return wrap(uint64(amt), toDecimals);
+        return NormalizedAmount(uint64(amt), toDecimals);
     }
 
     function denormalize(

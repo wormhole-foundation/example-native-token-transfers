@@ -157,9 +157,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
                 + (rateLimitParams.limit.getAmount() * timePassed) / rateLimitDuration;
 
             uint256 result = min(calculatedCapacity, rateLimitParams.limit.getAmount());
-            return NormalizedAmountLib.wrap(
-                uint64(result), rateLimitParams.currentCapacity.getDecimals()
-            );
+            return NormalizedAmount(uint64(result), rateLimitParams.currentCapacity.getDecimals());
         }
     }
 
@@ -181,7 +179,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
             difference = oldLimit.sub(newLimit);
             newCurrentCapacity = currentCapacity.gt(difference)
                 ? currentCapacity.sub(difference)
-                : NormalizedAmountLib.wrap(0, 0);
+                : NormalizedAmount(0, 0);
         } else {
             difference = newLimit.sub(oldLimit);
             newCurrentCapacity = currentCapacity.add(difference);
