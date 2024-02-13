@@ -19,6 +19,7 @@ import "./interfaces/IManagerEvents.sol";
 import "./interfaces/IEndpointToken.sol";
 import "./Endpoint.sol";
 import "./EndpointRegistry.sol";
+import "./libraries/Pausable.sol";
 
 // TODO: rename this (it's really the business logic)
 abstract contract Manager is
@@ -27,7 +28,8 @@ abstract contract Manager is
     EndpointRegistry,
     RateLimiter,
     OwnableUpgradeable,
-    ReentrancyGuardUpgradeable
+    ReentrancyGuardUpgradeable,
+    Pausable
 {
     using BytesParsing for bytes;
     using SafeERC20 for IERC20;
@@ -134,6 +136,13 @@ abstract contract Manager is
         emit MessageAttestedTo(digest, endpoint, _getEndpointInfosStorage()[endpoint].index);
     }
 
+    /*
+     * @dev pause the Endpoint.
+     */
+    function pause() public virtual onlyOwner {
+        _pause();
+    }
+
     /// @dev Returns the bitmap of attestations from enabled endpoints for a given message.
     function _getMessageAttestations(bytes32 digest) internal view returns (uint64) {
         uint64 enabledEndpointBitmap = _getEnabledEndpointsBitmap();
@@ -163,6 +172,7 @@ abstract contract Manager is
         external
         payable
         nonReentrant
+        whenNotPaused
         returns (uint64)
     {
         // find the message in the queue
@@ -226,7 +236,7 @@ abstract contract Manager is
         uint16 recipientChain,
         bytes32 recipient,
         bool shouldQueue
-    ) external payable nonReentrant returns (uint64 msgSequence) {
+    ) external payable nonReentrant whenNotPaused returns (uint64 msgSequence) {
         if (amount == 0) {
             revert ZeroAmount();
         }
@@ -435,7 +445,7 @@ abstract contract Manager is
         _mintOrUnlockToRecipient(transferRecipient, nativeTransferAmount);
     }
 
-    function completeInboundQueuedTransfer(bytes32 digest) external nonReentrant {
+    function completeInboundQueuedTransfer(bytes32 digest) external nonReentrant whenNotPaused {
         // find the message in the queue
         InboundQueuedTransfer memory queuedTransfer = getInboundQueuedTransfer(digest);
         if (queuedTransfer.txTimestamp == 0) {
