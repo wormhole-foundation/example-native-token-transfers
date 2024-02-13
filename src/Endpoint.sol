@@ -20,9 +20,4 @@ abstract contract Endpoint is Pausable {
         pure
         virtual
         returns (EndpointStructs.EndpointMessage memory endpointMessage);
-
-    /// @notice pause the endpoint
-    function _pauseEndpoint() internal {
-        _pause();
-    }
 }
