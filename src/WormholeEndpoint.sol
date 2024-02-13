@@ -213,7 +213,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         bytes32 sourceAddress,
         uint16 sourceChain,
         bytes32 deliveryHash
-    ) external payable onlyRelayer {
+    ) external payable onlyRelayer whenNotPaused {
         if (getWormholeSibling(sourceChain) != sourceAddress) {
             revert InvalidWormholeSibling(sourceChain, sourceAddress);
         }
@@ -242,7 +242,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
 
     /// @notice Receive an attested message from the verification layer
     ///         This function should verify the encodedVm and then deliver the attestation to the endpoint manager contract.
-    function receiveMessage(bytes memory encodedMessage) external {
+    function receiveMessage(bytes memory encodedMessage) external whenNotPaused {
         bytes memory payload = _verifyMessage(encodedMessage);
 
         // parse the encoded Endpoint payload
