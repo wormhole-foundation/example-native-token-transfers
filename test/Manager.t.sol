@@ -294,18 +294,6 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
     // === attestation
 
-    function testNormalizationRoundTrip() public {
-        uint8 decimals = 18;
-        uint256 amount = 50 * 10 ** decimals;
-        NormalizedAmount memory normalized = amount.normalize(decimals);
-        uint256 roundTrip = normalized.denormalize(decimals);
-
-        uint256 expectedAmount = 50 * 10 ** decimals;
-        assertEq(expectedAmount, roundTrip);
-    }
-
-    // === attestation
-
     function setup_endpoints() internal returns (DummyEndpoint, DummyEndpoint) {
         DummyEndpoint e1 = new DummyEndpoint(address(manager));
         DummyEndpoint e2 = new DummyEndpoint(address(manager));
