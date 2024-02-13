@@ -30,7 +30,7 @@ pub struct Initialize<'info> {
     #[account(
         constraint =
             args.mode == crate::config::Mode::Burning
-            || mint.mint_authority.unwrap() == mint_authority.key()
+            || mint.mint_authority.unwrap() == token_authority.key()
             @ NTTError::InvalidMintAuthority,
     )]
     pub mint: InterfaceAccount<'info, token_interface::Mint>,
@@ -54,24 +54,21 @@ pub struct Initialize<'info> {
     pub rate_limit: Account<'info, OutboxRateLimit>,
 
     #[account(
-        seeds = [b"custody_authority"],
+        seeds = [b"token_authority"],
         bump,
     )]
-    pub custody_authority: AccountInfo<'info>,
+    pub token_authority: AccountInfo<'info>,
 
     #[account(
         init,
         payer = payer,
         associated_token::mint = mint,
-        associated_token::authority = custody_authority,
+        associated_token::authority = token_authority,
     )]
+    /// The custody account that holds tokens in locking mode.
+    /// NOTE: the account is unconditionally initialized, but not used in
+    /// burning mode.
     pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
-
-    #[account(
-        seeds = [b"token_minter"],
-        bump,
-    )]
-    pub mint_authority: AccountInfo<'info>,
 
     /// CHECK: checked to be the appropriate token progrem when initialising the
     /// associated token account for the given mint.

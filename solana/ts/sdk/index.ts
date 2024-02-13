@@ -84,8 +84,8 @@ export class NTT {
       ])
   }
 
-  custodyAuthorityAddress(): PublicKey {
-    return this.derive_pda([Buffer.from('custody_authority')])
+  tokenAuthorityAddress(): PublicKey {
+    return this.derive_pda([Buffer.from('token_authority')])
   }
 
   emitterAccountAddress(): PublicKey {
@@ -94,10 +94,6 @@ export class NTT {
 
   wormholeMessageAccountAddress(outboxItem: PublicKey): PublicKey {
     return this.derive_pda([Buffer.from('message'), outboxItem.toBuffer()])
-  }
-
-  mintAuthorityAddress(): PublicKey {
-    return this.derive_pda([Buffer.from('token_minter')])
   }
 
   siblingAccountAddress(chain: ChainName | ChainId): PublicKey {
@@ -135,8 +131,7 @@ export class NTT {
         seq: this.sequenceTrackerAccountAddress(),
         rateLimit: this.outboxRateLimitAccountAddress(),
         tokenProgram,
-        custodyAuthority: this.custodyAuthorityAddress(),
-        mintAuthority: this.mintAuthorityAddress(),
+        tokenAuthority: this.tokenAuthorityAddress(),
         custody: await this.custodyAccountAddress(args.mint)
       })
       .signers([args.payer, args.owner])
@@ -293,7 +288,7 @@ export class NTT {
           outboxRateLimit: this.outboxRateLimitAccountAddress(),
         },
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain),
-        custodyAuthority: this.custodyAuthorityAddress(),
+        tokenAuthority: this.tokenAuthorityAddress(),
         custody: await this.custodyAccountAddress(config)
       })
       .instruction()
@@ -378,9 +373,9 @@ export class NTT {
           config: { config: this.configAccountAddress() },
           inboxItem: this.inboxItemAccountAddress(args.chain, args.sequence),
           recipient: recipientAddress,
-          mint: await this.mintAccountAddress(config)
+          mint: await this.mintAccountAddress(config),
+          tokenAuthority: this.tokenAuthorityAddress(),
         },
-        mintAuthority: this.mintAuthorityAddress()
       })
       .instruction()
   }
@@ -435,9 +430,9 @@ export class NTT {
           config: { config: this.configAccountAddress() },
           inboxItem: this.inboxItemAccountAddress(args.chain, args.sequence),
           recipient: recipientAddress,
-          mint: await this.mintAccountAddress(config)
+          mint: await this.mintAccountAddress(config),
+          tokenAuthority: this.tokenAuthorityAddress(),
         },
-        custodyAuthority: this.custodyAuthorityAddress(),
         custody: await this.custodyAccountAddress(config)
       })
       .instruction()
@@ -640,9 +635,9 @@ export class NTT {
    */
   async custodyAccountAddress(configOrMint: Config | PublicKey): Promise<PublicKey> {
     if (configOrMint instanceof PublicKey) {
-      return associatedAddress({ mint: configOrMint, owner: this.custodyAuthorityAddress() })
+      return associatedAddress({ mint: configOrMint, owner: this.tokenAuthorityAddress() })
     } else {
-      return associatedAddress({ mint: await this.mintAccountAddress(configOrMint), owner: this.custodyAuthorityAddress() })
+      return associatedAddress({ mint: await this.mintAccountAddress(configOrMint), owner: this.tokenAuthorityAddress() })
     }
   }
 }

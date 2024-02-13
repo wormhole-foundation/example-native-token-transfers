@@ -182,5 +182,19 @@ mod tests {
             rate_limit_state.capacity(),
             NormalizedAmount::new(95_000, 8)
         );
+
+        // now refill 2k
+        rate_limit_state.refill(NormalizedAmount::new(2_000, 8));
+        assert_eq!(
+            rate_limit_state.capacity(),
+            NormalizedAmount::new(97_000, 8)
+        );
+
+        // now refill 50k
+        rate_limit_state.refill(NormalizedAmount::new(50_000, 8));
+        assert_eq!(
+            rate_limit_state.capacity(),
+            NormalizedAmount::new(100_000, 8)
+        );
     }
 }

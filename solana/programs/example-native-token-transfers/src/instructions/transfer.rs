@@ -142,15 +142,15 @@ pub struct TransferLock<'info> {
     pub inbox_rate_limit: Account<'info, InboxRateLimit>,
 
     #[account(
-        seeds = [b"custody_authority"],
+        seeds = [b"token_authority"],
         bump,
     )]
-    pub custody_authority: AccountInfo<'info>,
+    pub token_authority: AccountInfo<'info>,
 
     #[account(
         mut,
         token::mint = common.mint,
-        token::authority = custody_authority,
+        token::authority = token_authority,
     )]
     pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
 }
@@ -211,7 +211,7 @@ fn insert_into_outbox(
             // that chain the same amount (we call this "backflow")
             inbox_rate_limit.rate_limit.refill(amount);
             current_timestamp()
-        },
+        }
         RateLimitResult::Delayed(release_timestamp) => {
             if !should_queue {
                 return Err(NTTError::TransferExceedsRateLimit.into());

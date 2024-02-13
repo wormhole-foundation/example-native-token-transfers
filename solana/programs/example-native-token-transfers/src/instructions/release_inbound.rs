@@ -26,6 +26,12 @@ pub struct ReleaseInbound<'info> {
     pub recipient: InterfaceAccount<'info, token_interface::TokenAccount>,
 
     #[account(
+        seeds = [b"token_authority"],
+        bump,
+    )]
+    pub token_authority: AccountInfo<'info>,
+
+    #[account(
         mut,
         address = config.mint,
     )]
@@ -45,13 +51,6 @@ pub struct ReleaseInboundArgs {
 #[derive(Accounts)]
 pub struct ReleaseInboundMint<'info> {
     common: ReleaseInbound<'info>,
-
-    #[account(
-        seeds = [b"token_minter"],
-        bump,
-    )]
-    /// CHECK: the token program checks if this indeed the right authority for the mint
-    pub mint_authority: AccountInfo<'info>,
 }
 
 /// Release an inbound transfer and mint the tokens to the recipient.
@@ -61,7 +60,10 @@ pub struct ReleaseInboundMint<'info> {
 /// Setting this flag to `false` is useful when bundling this instruction
 /// together with [`crate::instructions::redeem`] in a transaction, so that the minting
 /// is attempted optimistically.
-pub fn release_inbound_mint(ctx: Context<ReleaseInboundMint>, args: ReleaseInboundArgs) -> Result<()> {
+pub fn release_inbound_mint(
+    ctx: Context<ReleaseInboundMint>,
+    args: ReleaseInboundArgs,
+) -> Result<()> {
     let inbox_item = &mut ctx.accounts.common.inbox_item;
 
     let released = inbox_item.try_release()?;
@@ -82,9 +84,9 @@ pub fn release_inbound_mint(ctx: Context<ReleaseInboundMint>, args: ReleaseInbou
                 token_interface::MintTo {
                     mint: ctx.accounts.common.mint.to_account_info(),
                     to: ctx.accounts.common.recipient.to_account_info(),
-                    authority: ctx.accounts.mint_authority.clone(),
+                    authority: ctx.accounts.common.token_authority.clone(),
                 },
-                &[&[b"token_minter", &[ctx.bumps.mint_authority]]],
+                &[&[b"token_authority", &[ctx.bumps.common.token_authority]]],
             ),
             inbox_item
                 .amount
@@ -100,12 +102,6 @@ pub fn release_inbound_mint(ctx: Context<ReleaseInboundMint>, args: ReleaseInbou
 pub struct ReleaseInboundUnlock<'info> {
     common: ReleaseInbound<'info>,
 
-    #[account(
-        seeds = [b"custody_authority"],
-        bump,
-    )]
-    pub custody_authority: AccountInfo<'info>,
-
     /// CHECK: the token program checks if this indeed the right authority for the mint
     #[account(mut)]
     pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
@@ -118,7 +114,10 @@ pub struct ReleaseInboundUnlock<'info> {
 /// Setting this flag to `false` is useful when bundling this instruction
 /// together with [`crate::instructions::redeem`], so that the unlocking
 /// is attempted optimistically.
-pub fn release_inbound_unlock(ctx: Context<ReleaseInboundUnlock>, args: ReleaseInboundArgs) -> Result<()> {
+pub fn release_inbound_unlock(
+    ctx: Context<ReleaseInboundUnlock>,
+    args: ReleaseInboundArgs,
+) -> Result<()> {
     let inbox_item = &mut ctx.accounts.common.inbox_item;
 
     let released = inbox_item.try_release()?;
@@ -140,10 +139,10 @@ pub fn release_inbound_unlock(ctx: Context<ReleaseInboundUnlock>, args: ReleaseI
                 token_interface::TransferChecked {
                     from: ctx.accounts.custody.to_account_info(),
                     to: ctx.accounts.common.recipient.to_account_info(),
-                    authority: ctx.accounts.custody_authority.clone(),
+                    authority: ctx.accounts.common.token_authority.clone(),
                     mint: ctx.accounts.common.mint.to_account_info(),
                 },
-                &[&[b"custody_authority", &[ctx.bumps.custody_authority]]],
+                &[&[b"token_authority", &[ctx.bumps.common.token_authority]]],
             ),
             inbox_item
                 .amount
