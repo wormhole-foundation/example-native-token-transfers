@@ -44,6 +44,10 @@ abstract contract EndpointStandalone is
         _upgrade(newImplementation);
     }
 
+    /// @notice pause the endpoint
+    /// TODO: add in pauser role
+    function pauseEndpoint() external virtual {}
+
     /// @notice Called by the BridgeManager contract to send a cross-chain message.
     function sendMessage(
         uint16 recipientChain,

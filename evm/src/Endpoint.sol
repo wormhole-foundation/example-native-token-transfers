@@ -2,8 +2,9 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "./libraries/EndpointStructs.sol";
+import "./libraries/Pausable.sol";
 
-abstract contract Endpoint {
+abstract contract Endpoint is Pausable {
     function _sendMessage(uint16 recipientChain, bytes memory managerMessage) internal virtual;
 
     function _deliverToManager(EndpointStructs.ManagerMessage memory payload) internal virtual;
