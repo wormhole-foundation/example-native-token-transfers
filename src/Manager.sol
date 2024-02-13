@@ -137,7 +137,7 @@ abstract contract Manager is
     }
 
     /*
-     * @dev pause the Manager contract. Only the Manager should be able to do this
+     * @dev pause the Endpoint.
      */
     function pause() public virtual onlyOwner {
         _pause();

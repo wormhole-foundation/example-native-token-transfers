@@ -30,6 +30,6 @@ contract WormholeEndpointStandalone is WormholeEndpoint, EndpointStandalone, Own
     }
 
     function pauseEndpoint() external override onlyOwner {
-        _pauseEndpoint();
+        _pause();
     }
 }
