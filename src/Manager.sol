@@ -342,7 +342,7 @@ abstract contract Manager is
             }
 
             // refund user extra excess value from msg.value
-            uint256 excessValue = totalPriceQuote - msg.value;
+            uint256 excessValue = msg.value - totalPriceQuote;
             if (excessValue > 0) {
                 refundToSender(excessValue);
             }
