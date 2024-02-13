@@ -21,7 +21,7 @@ url = "https://api.mainnet-beta.solana.com"
 ### Wormhole Core Bridge (Mainnet) -- Program
 [[test.genesis]]
 address = "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth"
-program = "tests/accounts/mainnet/mainnet_core_bridge.so"
+program = "programs/example-native-token-transfers/tests/fixtures/mainnet_core_bridge.so"
 
 ### Wormhole Core Bridge (Mainnet) -- Config
 [[test.validator.account]]
