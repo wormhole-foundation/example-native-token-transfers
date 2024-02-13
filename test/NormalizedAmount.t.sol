@@ -63,10 +63,10 @@ contract NormalizationTest is Test {
         NormalizedAmount memory normalizedAmountOther = amountOther.normalize(decimalsOther);
 
         vm.expectRevert();
-        NormalizedAmount memory normalizedSum = normalizedAmount.add(normalizedAmountOther);
+        normalizedAmount.add(normalizedAmountOther);
     }
 
-    function testAddOperatorDecimalsNotEqualNoRevert() public {
+    function testAddOperatorDecimalsNotEqualNoRevert() public pure {
         uint8[2] memory decimals = [18, 10];
         uint8[2] memory expectedDecimals = [8, 8];
 

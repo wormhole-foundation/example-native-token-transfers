@@ -72,6 +72,7 @@ library EndpointStructs {
     ///      The wire format is as follows:
     ///      - NTT_PREFIX - 4 bytes
     ///      - amount - 8 bytes
+    ///      - numDecimals - 1 byte
     ///      - sourceToken - 32 bytes
     ///      - to - 32 bytes
     ///      - toChain - 2 bytes
