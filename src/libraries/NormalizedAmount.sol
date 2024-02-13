@@ -52,9 +52,6 @@ library NormalizedAmountLib {
         NormalizedAmount memory a,
         NormalizedAmount memory b
     ) internal pure returns (NormalizedAmount memory) {
-        if (a.amount < b.amount) {
-            revert AmountUnderflows(a.amount, b.amount);
-        }
 
         // on initialization
         if (isZero(b)) {
