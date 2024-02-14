@@ -5,7 +5,11 @@ import "./libraries/EndpointStructs.sol";
 import "./libraries/Pausable.sol";
 
 abstract contract Endpoint is Pausable {
-    function _sendMessage(uint16 recipientChain, bytes memory managerMessage) internal virtual;
+    function _sendMessage(
+        uint16 recipientChain,
+        uint256 deliveryPayment,
+        bytes memory managerMessage
+    ) internal virtual;
 
     function _deliverToManager(EndpointStructs.ManagerMessage memory payload) internal virtual;
 

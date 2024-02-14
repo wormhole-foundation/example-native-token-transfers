@@ -45,8 +45,6 @@ interface IEndpointReceiver {
 }
 
 contract DummyEndpoint is EndpointStandalone, IEndpointReceiver {
-    event MessagePublished(uint16 recipientChain, bytes payload);
-
     constructor(address manager) EndpointStandalone(manager) {}
 
     function _quoteDeliveryPrice(uint16 /* recipientChain */ )
@@ -58,8 +56,12 @@ contract DummyEndpoint is EndpointStandalone, IEndpointReceiver {
         return 0;
     }
 
-    function _sendMessage(uint16 recipientChain, bytes memory payload) internal override {
-        emit MessagePublished(recipientChain, payload);
+    function _sendMessage(
+        uint16 recipientChain,
+        uint256 deliveryPayment,
+        bytes memory payload
+    ) internal override {
+        // do nothing
     }
 
     function receiveMessage(bytes memory encodedMessage) external {
@@ -99,7 +101,11 @@ contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
         return 0;
     }
 
-    function _sendMessage(uint16 recipientChain, bytes memory payload) internal pure override {
+    function _sendMessage(
+        uint16 recipientChain,
+        uint256 deliveryPayment,
+        bytes memory payload
+    ) internal pure override {
         // do nothing
     }
 

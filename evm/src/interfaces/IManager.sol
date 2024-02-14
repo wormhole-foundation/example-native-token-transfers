@@ -41,7 +41,7 @@ interface IManager {
 
     function setInboundLimit(uint256 limit, uint16 chainId) external;
 
-    function quoteDeliveryPrice(uint16 recipientChain) external view returns (uint256);
+    function quoteDeliveryPrice(uint16 recipientChain) external view returns (uint256[] memory);
 
     function nextMessageSequence() external view returns (uint64);
 
