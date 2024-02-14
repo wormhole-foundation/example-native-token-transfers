@@ -112,6 +112,8 @@ abstract contract Manager is
         __Ownable_init(msg.sender);
         // TODO: check if it's safe to not initialise reentrancy guard
         __ReentrancyGuard_init();
+        // TODO: msg.sender may not be the right address
+        __Paused_init(msg.sender);
     }
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
