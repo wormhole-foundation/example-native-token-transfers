@@ -17,6 +17,9 @@ import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "wormhole-solidity-sdk/Utils.sol";
+import "./libraries/EndpointHelpers.sol";
+import "./interfaces/IEndpointReceiver.sol";
+import "./mocks/DummyEndpoint.sol";
 
 // 0x99'E''T''T'
 bytes4 constant TEST_ENDPOINT_PAYLOAD_PREFIX = 0x99455454;
@@ -42,47 +45,6 @@ contract ManagerContract is ManagerStandalone {
             result := my_slot.slot
         }
     }
-}
-
-interface IEndpointReceiver {
-    function receiveMessage(bytes memory encodedMessage) external;
-}
-
-contract DummyEndpoint is EndpointStandalone, IEndpointReceiver {
-    constructor(address manager) EndpointStandalone(manager) {}
-
-    function _quoteDeliveryPrice(uint16 /* recipientChain */ )
-        internal
-        pure
-        override
-        returns (uint256)
-    {
-        return 0;
-    }
-
-    function _sendMessage(
-        uint16 recipientChain,
-        uint256 deliveryPayment,
-        bytes memory payload
-    ) internal override {
-        // do nothing
-    }
-
-    function receiveMessage(bytes memory encodedMessage) external {
-        EndpointStructs.EndpointMessage memory parsedEndpointMessage;
-        EndpointStructs.ManagerMessage memory parsedManagerMessage;
-        (parsedEndpointMessage, parsedManagerMessage) = EndpointStructs
-            .parseEndpointAndManagerMessage(TEST_ENDPOINT_PAYLOAD_PREFIX, encodedMessage);
-        _deliverToManager(
-            SENDING_CHAIN_ID, parsedEndpointMessage.sourceManagerAddress, parsedManagerMessage
-        );
-    }
-
-    function parseMessageFromLogs(Vm.Log[] memory logs)
-        public
-        pure
-        returns (uint16 recipientChain, bytes memory payload)
-    {}
 }
 
 contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
@@ -511,9 +473,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         address user_A = address(0x123);
         address user_B = address(0x456);
 
-        (DummyEndpoint e1, DummyEndpoint e2) = setup_endpoints();
-        EndpointStructs.ManagerMessage memory m;
-        bytes memory encodedEm;
+        (DummyEndpoint e1, DummyEndpoint e2) = EndpointHelpersLib.setup_endpoints(manager);
 
         {
             IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
