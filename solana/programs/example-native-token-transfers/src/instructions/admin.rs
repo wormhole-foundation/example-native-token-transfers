@@ -57,6 +57,7 @@ pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
 // TODO: update siblings? should that be a separate instruction? take timestamp
 // for modification? (for total ordering)
 
+// TODO: this should set the *manager* sibling, not the endpoint one
 #[derive(Accounts)]
 #[instruction(args: SetSiblingArgs)]
 pub struct SetSibling<'info> {

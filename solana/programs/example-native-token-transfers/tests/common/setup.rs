@@ -7,7 +7,8 @@ use example_native_token_transfers::{
 };
 use solana_program_test::{ProgramTest, ProgramTestContext};
 use solana_sdk::{
-    signature::Keypair, signer::Signer, system_instruction, transaction::Transaction,
+    account::Account, signature::Keypair, signer::Signer, system_instruction,
+    transaction::Transaction,
 };
 use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token::instruction::AuthorityType;
@@ -41,14 +42,26 @@ pub struct TestData {
     pub user_token_account: Pubkey,
 }
 
-pub async fn setup(mode: Mode) -> (ProgramTestContext, TestData) {
-    let program_test = setup_programs().await.unwrap();
+pub async fn setup_with_extra_accounts(
+    mode: Mode,
+    accounts: &[(Pubkey, Account)],
+) -> (ProgramTestContext, TestData) {
+    let mut program_test = setup_programs().await.unwrap();
+
+    for (pubkey, account) in accounts {
+        program_test.add_account(*pubkey, account.clone());
+    }
+
     let mut ctx = program_test.start_with_context().await;
 
     let test_data = setup_accounts(&mut ctx).await;
     setup_ntt(&mut ctx, &test_data, mode).await;
 
     return (ctx, test_data);
+}
+
+pub async fn setup(mode: Mode) -> (ProgramTestContext, TestData) {
+    setup_with_extra_accounts(mode, &[]).await
 }
 
 pub async fn setup_programs() -> Result<ProgramTest, Error> {

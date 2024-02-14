@@ -67,6 +67,7 @@ pub struct Redeem<'info> {
     )]
     pub inbox_rate_limit: Account<'info, InboxRateLimit>,
 
+    #[account(mut)]
     pub outbox_rate_limit: Account<'info, OutboxRateLimit>,
 
     pub system_program: Program<'info, System>,

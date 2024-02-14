@@ -38,8 +38,8 @@ use crate::common::setup::setup;
 // TODO: some more tests
 // - unregistered sibling can't transfer
 // - can't transfer more than balance
-// - cancel flows
 // - wrong inbox accounts
+// - paused contracts
 
 /// Helper function for setting up transfer accounts and args.
 /// It sets the accounts up properly, so for negative testing we just modify the
