@@ -468,11 +468,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         EndpointStructs.ManagerMessage memory m;
         (m,) = _attestEndpointsHelper(
-            address(0x123),
-            address(0x456),
-            0,
-            NormalizedAmountLib.wrap(type(uint64).max, 8),
-            endpoints
+            address(0x123), address(0x456), 0, NormalizedAmount(type(uint64).max, 8), endpoints
         );
 
         manager.removeEndpoint(address(e1));
@@ -526,7 +522,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
             EndpointStructs.EndpointMessage memory em;
             (m, em) = _attestEndpointsHelper(
-                user_A, user_B, 0, NormalizedAmountLib.wrap(type(uint64).max, 8), endpoints
+                user_A, user_B, 0, NormalizedAmount(type(uint64).max, 8), endpoints
             );
             encodedEm = EndpointStructs.encodeEndpointMessage(TEST_ENDPOINT_PAYLOAD_PREFIX, em);
         }
@@ -1125,7 +1121,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         {
             EndpointStructs.EndpointMessage memory em;
             (m, em) = _attestEndpointsHelper(
-                user_A, user_B, 0, NormalizedAmountLib.wrap(type(uint64).max, 8), endpoints
+                user_A, user_B, 0, NormalizedAmount(type(uint64).max, 8), endpoints
             );
             encodedEm = EndpointStructs.encodeEndpointMessage(TEST_ENDPOINT_PAYLOAD_PREFIX, em);
         }
@@ -1178,9 +1174,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         endpoints = new IEndpointReceiver[](1);
         endpoints[0] = e2;
 
-        _attestEndpointsHelper(
-            user_A, user_B, 2, NormalizedAmount(type(uint64).max, 8), endpoints
-        );
+        _attestEndpointsHelper(user_A, user_B, 2, NormalizedAmount(type(uint64).max, 8), endpoints);
 
         assertEq(token.balanceOf(address(user_B)), 150 * 10 ** (decimals - 8));
     }
