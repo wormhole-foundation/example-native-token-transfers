@@ -145,8 +145,8 @@ abstract contract Manager is
     /*
      * @dev pause the Endpoint.
      */
-    function pause() public virtual onlyOwner {
-        _pause();
+    function pause() public virtual {
+        _pause(owner());
     }
 
     /// @dev Returns the bitmap of attestations from enabled endpoints for a given message.

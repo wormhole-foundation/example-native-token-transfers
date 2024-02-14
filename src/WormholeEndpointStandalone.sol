@@ -29,7 +29,7 @@ contract WormholeEndpointStandalone is WormholeEndpoint, EndpointStandalone, Own
         _setIsWormholeEvmChain(chainId);
     }
 
-    function pauseEndpoint() external override onlyOwner {
-        _pause();
+    function pauseEndpoint() external override {
+        _pause(owner());
     }
 }
