@@ -257,15 +257,6 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
     // === attestation
 
-    function setup_endpoints() internal returns (DummyEndpoint, DummyEndpoint) {
-        DummyEndpoint e1 = new DummyEndpoint(address(manager));
-        DummyEndpoint e2 = new DummyEndpoint(address(manager));
-        manager.setEndpoint(address(e1));
-        manager.setEndpoint(address(e2));
-        manager.setThreshold(2);
-        return (e1, e2);
-    }
-
     function _attestEndpointsHelper(
         address from,
         address to,
@@ -353,7 +344,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function test_onlyEnabledEndpointsCanAttest() public {
-        (DummyEndpoint e1,) = setup_endpoints();
+        (DummyEndpoint e1,) = EndpointHelpersLib.setup_endpoints(manager);
         manager.removeEndpoint(address(e1));
 
         bytes memory endpointMessage;
@@ -383,7 +374,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function test_attest() public {
-        (DummyEndpoint e1,) = setup_endpoints();
+        (DummyEndpoint e1,) = EndpointHelpersLib.setup_endpoints(manager);
         manager.setThreshold(2);
 
         // register manager sibling
@@ -402,7 +393,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function test_attestTwice() public {
-        (DummyEndpoint e1,) = setup_endpoints();
+        (DummyEndpoint e1,) = EndpointHelpersLib.setup_endpoints(manager);
         manager.setThreshold(2);
 
         // register manager sibling
@@ -423,7 +414,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function test_attestDisabled() public {
-        (DummyEndpoint e1,) = setup_endpoints();
+        (DummyEndpoint e1,) = EndpointHelpersLib.setup_endpoints(manager);
         manager.setThreshold(2);
 
         IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](1);
@@ -649,7 +640,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         // Step 1
         // (contract is deployed by setUp())
-        (IEndpointReceiver e1, IEndpointReceiver e2) = setup_endpoints();
+
+        (IEndpointReceiver e1, IEndpointReceiver e2) = EndpointHelpersLib.setup_endpoints(manager);
 
         IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
         endpoints[0] = e1;
