@@ -7,7 +7,11 @@ interface IManagerStandalone {
     error ZeroThreshold();
     error ThresholdTooHigh(uint256 threshold, uint256 endpoints);
 
-    function attestationReceived(EndpointStructs.ManagerMessage memory payload) external;
+    function attestationReceived(
+        uint16 sourceChainId,
+        bytes32 sourceManagerAddress,
+        EndpointStructs.ManagerMessage memory payload
+    ) external;
 
     function upgrade(address newImplementation) external;
 

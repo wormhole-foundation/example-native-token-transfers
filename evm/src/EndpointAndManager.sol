@@ -57,11 +57,17 @@ abstract contract EndpointAndManager is Endpoint, Manager, Implementation {
         return _sendMessage(recipientChain, priceQuotes[0], managerMessage);
     }
 
-    function _deliverToManager(EndpointStructs.ManagerMessage memory payload) internal override {
-        bytes32 digest = EndpointStructs.managerMessageDigest(payload);
+    function _deliverToManager(
+        uint16 sourceChainId,
+        bytes32 sourceManagerAddress,
+        EndpointStructs.ManagerMessage memory payload
+    ) internal override {
+        _verifySibling(sourceChainId, sourceManagerAddress);
+
+        bytes32 digest = EndpointStructs.managerMessageDigest(sourceChainId, payload);
         _setEndpointAttestedToMessage(digest, ENDPOINT_INDEX);
 
-        return _executeMsg(payload);
+        return _executeMsg(sourceChainId, sourceManagerAddress, payload);
     }
 
     function isMessageApproved(bytes32 digest) public view override returns (bool) {

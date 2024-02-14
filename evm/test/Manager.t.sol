@@ -18,6 +18,10 @@ import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "wormhole-solidity-sdk/Utils.sol";
 
+// 0x99'E''T''T'
+bytes4 constant TEST_ENDPOINT_PAYLOAD_PREFIX = 0x99455454;
+uint16 constant SENDING_CHAIN_ID = 1;
+
 // @dev A non-abstract Manager contract
 contract ManagerContract is ManagerStandalone {
     constructor(
@@ -65,17 +69,14 @@ contract DummyEndpoint is EndpointStandalone, IEndpointReceiver {
     }
 
     function receiveMessage(bytes memory encodedMessage) external {
-        EndpointStructs.ManagerMessage memory parsed =
-            EndpointStructs.parseManagerMessage(encodedMessage);
-        _deliverToManager(parsed);
+        EndpointStructs.EndpointMessage memory parsedEndpointMessage;
+        EndpointStructs.ManagerMessage memory parsedManagerMessage;
+        (parsedEndpointMessage, parsedManagerMessage) = EndpointStructs
+            .parseEndpointAndManagerMessage(TEST_ENDPOINT_PAYLOAD_PREFIX, encodedMessage);
+        _deliverToManager(
+            SENDING_CHAIN_ID, parsedEndpointMessage.sourceManagerAddress, parsedManagerMessage
+        );
     }
-
-    function _parseEndpointMessage(bytes memory encoded)
-        internal
-        pure
-        override
-        returns (EndpointStructs.EndpointMessage memory endpointMessage)
-    {}
 
     function parseMessageFromLogs(Vm.Log[] memory logs)
         public
@@ -109,17 +110,14 @@ contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
         // do nothing
     }
 
-    function _parseEndpointMessage(bytes memory encoded)
-        internal
-        pure
-        override
-        returns (EndpointStructs.EndpointMessage memory endpointMessage)
-    {}
-
     function receiveMessage(bytes memory encodedMessage) external {
-        EndpointStructs.ManagerMessage memory parsed =
-            EndpointStructs.parseManagerMessage(encodedMessage);
-        _deliverToManager(parsed);
+        EndpointStructs.EndpointMessage memory parsedEndpointMessage;
+        EndpointStructs.ManagerMessage memory parsedManagerMessage;
+        (parsedEndpointMessage, parsedManagerMessage) = EndpointStructs
+            .parseEndpointAndManagerMessage(TEST_ENDPOINT_PAYLOAD_PREFIX, encodedMessage);
+        _deliverToManager(
+            SENDING_CHAIN_ID, parsedEndpointMessage.sourceManagerAddress, parsedManagerMessage
+        );
     }
 }
 
@@ -142,7 +140,6 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     using NormalizedAmountLib for NormalizedAmount;
 
     uint16 constant chainId = 7;
-    uint16 constant SENDING_CHAIN_ID = 1;
     uint256 constant DEVNET_GUARDIAN_PK =
         0xcfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0;
     WormholeSimulator guardian;
@@ -312,15 +309,17 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         uint64 sequence,
         NormalizedAmount inboundLimit,
         IEndpointReceiver[] memory endpoints
-    ) internal returns (EndpointStructs.ManagerMessage memory) {
+    )
+        internal
+        returns (EndpointStructs.ManagerMessage memory, EndpointStructs.EndpointMessage memory)
+    {
         DummyToken token = DummyToken(manager.token());
-
-        uint8 decimals = token.decimals();
-
-        token.mintDummy(from, 5 * 10 ** decimals);
+        token.mintDummy(from, 5 * 10 ** token.decimals());
         manager.setSibling(SENDING_CHAIN_ID, toWormholeFormat(address(manager)));
-        manager.setOutboundLimit(NormalizedAmount.wrap(type(uint64).max).denormalize(decimals));
-        manager.setInboundLimit(inboundLimit.denormalize(decimals), SENDING_CHAIN_ID);
+        manager.setOutboundLimit(
+            NormalizedAmount.wrap(type(uint64).max).denormalize(token.decimals())
+        );
+        manager.setInboundLimit(inboundLimit.denormalize(token.decimals()), SENDING_CHAIN_ID);
 
         {
             uint256 from_balanceBefore = token.balanceOf(from);
@@ -328,20 +327,21 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
             vm.startPrank(from);
 
-            token.approve(address(manager), 3 * 10 ** decimals);
+            token.approve(address(manager), 3 * 10 ** token.decimals());
             // TODO: parse recorded logs
-            manager.transfer(3 * 10 ** decimals, chainId, toWormholeFormat(to), false);
+            manager.transfer(3 * 10 ** token.decimals(), chainId, toWormholeFormat(to), false);
 
             vm.stopPrank();
 
-            assertEq(token.balanceOf(from), from_balanceBefore - 3 * 10 ** decimals);
-            assertEq(token.balanceOf(address(manager)), manager_balanceBefore + 3 * 10 ** decimals);
+            assertEq(token.balanceOf(from), from_balanceBefore - 3 * 10 ** token.decimals());
+            assertEq(
+                token.balanceOf(address(manager)),
+                manager_balanceBefore + 3 * 10 ** token.decimals()
+            );
         }
 
         EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
-            SENDING_CHAIN_ID,
             sequence,
-            toWormholeFormat(address(manager)),
             toWormholeFormat(from),
             EndpointStructs.encodeNativeTokenTransfer(
                 EndpointStructs.NativeTokenTransfer({
@@ -352,53 +352,84 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
                 })
             )
         );
+        bytes memory encodedM = EndpointStructs.encodeManagerMessage(m);
 
-        {
-            bytes memory message = EndpointStructs.encodeManagerMessage(m);
+        EndpointStructs.EndpointMessage memory em;
+        bytes memory encodedEm;
+        (em, encodedEm) = EndpointStructs.buildAndEncodeEndpointMessage(
+            TEST_ENDPOINT_PAYLOAD_PREFIX, toWormholeFormat(address(manager)), encodedM
+        );
 
-            for (uint256 i; i < endpoints.length; i++) {
-                IEndpointReceiver e = endpoints[i];
-                e.receiveMessage(message);
-            }
+        for (uint256 i; i < endpoints.length; i++) {
+            IEndpointReceiver e = endpoints[i];
+            e.receiveMessage(encodedEm);
         }
 
-        return m;
+        return (m, em);
+    }
+
+    function buildEndpointMessageWithManagerPayload(
+        uint64 sequence,
+        bytes32 sender,
+        bytes32 sourceManager,
+        bytes memory payload
+    ) internal pure returns (EndpointStructs.ManagerMessage memory, bytes memory) {
+        EndpointStructs.ManagerMessage memory m =
+            EndpointStructs.ManagerMessage(sequence, sender, payload);
+        bytes memory managerMessage = EndpointStructs.encodeManagerMessage(m);
+        bytes memory endpointMessage;
+        (, endpointMessage) = EndpointStructs.buildAndEncodeEndpointMessage(
+            TEST_ENDPOINT_PAYLOAD_PREFIX, sourceManager, managerMessage
+        );
+        return (m, endpointMessage);
     }
 
     function test_onlyEnabledEndpointsCanAttest() public {
         (DummyEndpoint e1,) = setup_endpoints();
         manager.removeEndpoint(address(e1));
 
-        EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
-            SENDING_CHAIN_ID,
-            0,
-            toWormholeFormat(address(manager)),
-            bytes32(0),
-            abi.encode(EndpointStructs.EndpointMessage(0x9945FF10, "payload"))
+        bytes memory endpointMessage;
+        (, endpointMessage) = buildEndpointMessageWithManagerPayload(
+            0, bytes32(0), toWormholeFormat(address(manager)), abi.encode("payload")
         );
-        bytes memory message = EndpointStructs.encodeManagerMessage(m);
 
         vm.expectRevert(abi.encodeWithSignature("CallerNotEndpoint(address)", address(e1)));
-        e1.receiveMessage(message);
+        e1.receiveMessage(endpointMessage);
+    }
+
+    function test_onlySiblingManagerCanAttest() public {
+        (DummyEndpoint e1,) = setup_endpoints();
+        manager.setThreshold(2);
+
+        bytes32 sibling = toWormholeFormat(address(manager));
+
+        EndpointStructs.ManagerMessage memory managerMessage;
+        bytes memory endpointMessage;
+        (managerMessage, endpointMessage) =
+            buildEndpointMessageWithManagerPayload(0, bytes32(0), sibling, abi.encode("payload"));
+
+        vm.expectRevert(
+            abi.encodeWithSignature("InvalidSibling(uint16,bytes32)", SENDING_CHAIN_ID, sibling)
+        );
+        e1.receiveMessage(endpointMessage);
     }
 
     function test_attest() public {
         (DummyEndpoint e1,) = setup_endpoints();
         manager.setThreshold(2);
 
-        EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
-            SENDING_CHAIN_ID,
-            0,
-            toWormholeFormat(address(manager)),
-            bytes32(0),
-            abi.encode(EndpointStructs.EndpointMessage(0x9945FF10, "payload"))
-        );
+        // register manager sibling
+        bytes32 sibling = toWormholeFormat(address(manager));
+        manager.setSibling(SENDING_CHAIN_ID, sibling);
 
-        bytes memory message = EndpointStructs.encodeManagerMessage(m);
+        EndpointStructs.ManagerMessage memory managerMessage;
+        bytes memory endpointMessage;
+        (managerMessage, endpointMessage) =
+            buildEndpointMessageWithManagerPayload(0, bytes32(0), sibling, abi.encode("payload"));
 
-        e1.receiveMessage(message);
+        e1.receiveMessage(endpointMessage);
 
-        bytes32 hash = EndpointStructs.managerMessageDigest(m);
+        bytes32 hash = EndpointStructs.managerMessageDigest(SENDING_CHAIN_ID, managerMessage);
         assertEq(manager.messageAttestations(hash), 1);
     }
 
@@ -406,20 +437,19 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         (DummyEndpoint e1,) = setup_endpoints();
         manager.setThreshold(2);
 
-        EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
-            SENDING_CHAIN_ID,
-            0,
-            toWormholeFormat(address(manager)),
-            bytes32(0),
-            abi.encode(EndpointStructs.EndpointMessage(0x9945FF10, "payload"))
-        );
+        // register manager sibling
+        bytes32 sibling = toWormholeFormat(address(manager));
+        manager.setSibling(SENDING_CHAIN_ID, sibling);
 
-        bytes memory message = EndpointStructs.encodeManagerMessage(m);
+        EndpointStructs.ManagerMessage memory managerMessage;
+        bytes memory endpointMessage;
+        (managerMessage, endpointMessage) =
+            buildEndpointMessageWithManagerPayload(0, bytes32(0), sibling, abi.encode("payload"));
 
-        e1.receiveMessage(message);
-        e1.receiveMessage(message);
+        e1.receiveMessage(endpointMessage);
+        e1.receiveMessage(endpointMessage);
 
-        bytes32 hash = EndpointStructs.managerMessageDigest(m);
+        bytes32 hash = EndpointStructs.managerMessageDigest(SENDING_CHAIN_ID, managerMessage);
         // can't double vote
         assertEq(manager.messageAttestations(hash), 1);
     }
@@ -431,13 +461,14 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](1);
         endpoints[0] = e1;
 
-        EndpointStructs.ManagerMessage memory m = _attestEndpointsHelper(
+        EndpointStructs.ManagerMessage memory m;
+        (m,) = _attestEndpointsHelper(
             address(0x123), address(0x456), 0, NormalizedAmount.wrap(type(uint64).max), endpoints
         );
 
         manager.removeEndpoint(address(e1));
 
-        bytes32 hash = EndpointStructs.managerMessageDigest(m);
+        bytes32 hash = EndpointStructs.managerMessageDigest(SENDING_CHAIN_ID, m);
         // a disabled endpoint's vote no longer counts
         assertEq(manager.messageAttestations(hash), 0);
 
@@ -476,32 +507,40 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         address user_B = address(0x456);
 
         (DummyEndpoint e1, DummyEndpoint e2) = setup_endpoints();
+        EndpointStructs.ManagerMessage memory m;
+        bytes memory encodedEm;
 
-        DummyToken token = DummyToken(manager.token());
+        {
+            IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
+            endpoints[0] = e1;
+            endpoints[1] = e2;
 
-        uint8 decimals = token.decimals();
+            EndpointStructs.EndpointMessage memory em;
+            (m, em) = _attestEndpointsHelper(
+                user_A, user_B, 0, NormalizedAmount.wrap(type(uint64).max), endpoints
+            );
+            encodedEm = EndpointStructs.encodeEndpointMessage(TEST_ENDPOINT_PAYLOAD_PREFIX, em);
+        }
 
-        IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
-        endpoints[0] = e1;
-        endpoints[1] = e2;
-
-        EndpointStructs.ManagerMessage memory m = _attestEndpointsHelper(
-            user_A, user_B, 0, NormalizedAmount.wrap(type(uint64).max), endpoints
-        );
-        bytes memory message = EndpointStructs.encodeManagerMessage(m);
-
-        assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
+        {
+            DummyToken token = DummyToken(manager.token());
+            assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (token.decimals() - 8));
+        }
 
         // replay protection
         vm.recordLogs();
-        e2.receiveMessage(message);
-        Vm.Log[] memory entries = vm.getRecordedLogs();
+        e2.receiveMessage(encodedEm);
 
-        assertEq(entries.length, 2);
-        assertEq(entries[1].topics.length, 3);
-        assertEq(entries[1].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
-        assertEq(entries[1].topics[1], toWormholeFormat(address(manager)));
-        assertEq(entries[1].topics[2], bytes32(keccak256(message)));
+        {
+            Vm.Log[] memory entries = vm.getRecordedLogs();
+            assertEq(entries.length, 2);
+            assertEq(entries[1].topics.length, 3);
+            assertEq(entries[1].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
+            assertEq(entries[1].topics[1], toWormholeFormat(address(manager)));
+            assertEq(
+                entries[1].topics[2], EndpointStructs.managerMessageDigest(SENDING_CHAIN_ID, m)
+            );
+        }
     }
 
     // TODO:
@@ -521,8 +560,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         EndpointStructs.ManagerMessage memory parsed = EndpointStructs.parseManagerMessage(message);
 
-        assertEq(m.chainId, parsed.chainId);
         assertEq(m.sequence, parsed.sequence);
+        assertEq(m.sender, parsed.sender);
         assertEq(m.payload, parsed.payload);
     }
 
@@ -965,28 +1004,35 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         DummyToken token = DummyToken(manager.token());
 
-        uint8 decimals = token.decimals();
-
         IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](1);
         endpoints[0] = e1;
 
-        EndpointStructs.ManagerMessage memory m =
-            _attestEndpointsHelper(user_A, user_B, 0, uint256(5).normalize(decimals), endpoints);
-        bytes32 digest = EndpointStructs.managerMessageDigest(m);
-        bytes memory message = EndpointStructs.encodeManagerMessage(m);
+        EndpointStructs.ManagerMessage memory m;
+        bytes memory encodedEm;
+        {
+            EndpointStructs.EndpointMessage memory em;
+            (m, em) = _attestEndpointsHelper(
+                user_A, user_B, 0, uint256(5).normalize(token.decimals()), endpoints
+            );
+            encodedEm = EndpointStructs.encodeEndpointMessage(TEST_ENDPOINT_PAYLOAD_PREFIX, em);
+        }
+
+        bytes32 digest = EndpointStructs.managerMessageDigest(SENDING_CHAIN_ID, m);
 
         // no quorum yet
         assertEq(token.balanceOf(address(user_B)), 0);
 
         vm.expectEmit(address(manager));
         emit InboundTransferQueued(digest);
-        e2.receiveMessage(message);
+        e2.receiveMessage(encodedEm);
 
-        // now we have quorum but it'll hit limit
-        IRateLimiter.InboundQueuedTransfer memory qt = manager.getInboundQueuedTransfer(digest);
-        assertEq(qt.amount.unwrap(), 50);
-        assertEq(qt.txTimestamp, initialBlockTimestamp);
-        assertEq(qt.recipient, user_B);
+        {
+            // now we have quorum but it'll hit limit
+            IRateLimiter.InboundQueuedTransfer memory qt = manager.getInboundQueuedTransfer(digest);
+            assertEq(qt.amount.unwrap(), 50);
+            assertEq(qt.txTimestamp, initialBlockTimestamp);
+            assertEq(qt.recipient, user_B);
+        }
 
         // assert that the user doesn't have funds yet
         assertEq(token.balanceOf(address(user_B)), 0);
@@ -995,34 +1041,44 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         uint256 durationElapsedTime = initialBlockTimestamp + manager.rateLimitDuration();
         vm.warp(durationElapsedTime - 1);
 
-        // assert that transfer still can't be completed
-        bytes4 stillQueuedSelector =
-            bytes4(keccak256("InboundQueuedTransferStillQueued(bytes32,uint256)"));
-        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, digest, initialBlockTimestamp));
-        manager.completeInboundQueuedTransfer(digest);
+        {
+            // assert that transfer still can't be completed
+            bytes4 stillQueuedSelector =
+                bytes4(keccak256("InboundQueuedTransferStillQueued(bytes32,uint256)"));
+            vm.expectRevert(
+                abi.encodeWithSelector(stillQueuedSelector, digest, initialBlockTimestamp)
+            );
+            manager.completeInboundQueuedTransfer(digest);
+        }
 
         // now complete transfer
         vm.warp(durationElapsedTime);
         manager.completeInboundQueuedTransfer(digest);
 
-        // assert transfer no longer in queue
-        bytes4 notQueuedSelector = bytes4(keccak256("InboundQueuedTransferNotFound(bytes32)"));
-        vm.expectRevert(abi.encodeWithSelector(notQueuedSelector, digest));
-        manager.completeInboundQueuedTransfer(digest);
+        {
+            // assert transfer no longer in queue
+            bytes4 notQueuedSelector = bytes4(keccak256("InboundQueuedTransferNotFound(bytes32)"));
+            vm.expectRevert(abi.encodeWithSelector(notQueuedSelector, digest));
+            manager.completeInboundQueuedTransfer(digest);
+        }
 
         // assert user now has funds
-        assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
+        assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (token.decimals() - 8));
 
         // replay protection
         vm.recordLogs();
-        e2.receiveMessage(message);
-        Vm.Log[] memory entries = vm.getRecordedLogs();
+        e2.receiveMessage(encodedEm);
 
-        assertEq(entries.length, 2);
-        assertEq(entries[1].topics.length, 3);
-        assertEq(entries[1].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
-        assertEq(entries[1].topics[1], toWormholeFormat(address(manager)));
-        assertEq(entries[1].topics[2], bytes32(keccak256(message)));
+        {
+            Vm.Log[] memory entries = vm.getRecordedLogs();
+            assertEq(entries.length, 2);
+            assertEq(entries[1].topics.length, 3);
+            assertEq(entries[1].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
+            assertEq(entries[1].topics[1], toWormholeFormat(address(manager)));
+            assertEq(
+                entries[1].topics[2], EndpointStructs.managerMessageDigest(SENDING_CHAIN_ID, m)
+            );
+        }
     }
 
     // === upgradeability
@@ -1046,17 +1102,21 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         // Step 1
         // (contract is deployed by setUp())
-
         (IEndpointReceiver e1, IEndpointReceiver e2) = setup_endpoints();
 
         IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
         endpoints[0] = e1;
         endpoints[1] = e2;
 
-        EndpointStructs.ManagerMessage memory m = _attestEndpointsHelper(
-            user_A, user_B, 0, NormalizedAmount.wrap(type(uint64).max), endpoints
-        );
-        bytes memory message = EndpointStructs.encodeManagerMessage(m);
+        EndpointStructs.ManagerMessage memory m;
+        bytes memory encodedEm;
+        {
+            EndpointStructs.EndpointMessage memory em;
+            (m, em) = _attestEndpointsHelper(
+                user_A, user_B, 0, NormalizedAmount.wrap(type(uint64).max), endpoints
+            );
+            encodedEm = EndpointStructs.encodeEndpointMessage(TEST_ENDPOINT_PAYLOAD_PREFIX, em);
+        }
 
         assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
 
@@ -1069,21 +1129,23 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         endpoints = new IEndpointReceiver[](1);
         endpoints[0] = IEndpointReceiver(address(manager));
 
+        // replay protection
         vm.recordLogs();
-
-        IEndpointReceiver(address(manager)).receiveMessage(message);
-        Vm.Log[] memory entries = vm.getRecordedLogs();
-
-        assertEq(entries.length, 1);
-        assertEq(entries[0].topics.length, 3);
-        assertEq(entries[0].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
-        assertEq(entries[0].topics[1], toWormholeFormat(address(manager)));
-        assertEq(entries[0].topics[2], bytes32(keccak256(message)));
+        IEndpointReceiver(address(manager)).receiveMessage(encodedEm);
+        {
+            Vm.Log[] memory entries = vm.getRecordedLogs();
+            assertEq(entries.length, 1);
+            assertEq(entries[0].topics.length, 3);
+            assertEq(entries[0].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
+            assertEq(entries[0].topics[1], toWormholeFormat(address(manager)));
+            assertEq(
+                entries[0].topics[2], EndpointStructs.managerMessageDigest(SENDING_CHAIN_ID, m)
+            );
+        }
 
         _attestEndpointsHelper(
             user_A, user_B, 1, NormalizedAmount.wrap(type(uint64).max), endpoints
         );
-        EndpointStructs.encodeManagerMessage(m);
 
         assertEq(token.balanceOf(address(user_B)), 100 * 10 ** (decimals - 8));
 
@@ -1108,7 +1170,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         endpoints = new IEndpointReceiver[](1);
         endpoints[0] = e2;
 
-        m = _attestEndpointsHelper(
+        _attestEndpointsHelper(
             user_A, user_B, 2, NormalizedAmount.wrap(type(uint64).max), endpoints
         );
 

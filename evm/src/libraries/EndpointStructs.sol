@@ -16,27 +16,24 @@ library EndpointStructs {
 
     /// @dev Message emitted and received by the manager contract.
     ///      The wire format is as follows:
-    ///      - chainId - 2 bytes
     ///      - sequence - 8 bytes
-    ///      - sourceManager - 32 bytes
     ///      - sender - 32 bytes
     ///      - payloadLength - 2 bytes
     ///      - payload - `payloadLength` bytes
     struct ManagerMessage {
-        /// @notice chainId that message originates from
-        uint16 chainId;
         /// @notice unique sequence number
         uint64 sequence;
-        /// @notice manager contract address that this message originates from.
-        bytes32 sourceManager;
         /// @notice original message sender address.
         bytes32 sender;
         /// @notice payload that corresponds to the type.
         bytes payload;
     }
 
-    function managerMessageDigest(ManagerMessage memory m) public pure returns (bytes32) {
-        return keccak256(encodeManagerMessage(m));
+    function managerMessageDigest(
+        uint16 sourceChainId,
+        ManagerMessage memory m
+    ) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(sourceChainId, encodeManagerMessage(m)));
     }
 
     function encodeManagerMessage(ManagerMessage memory m)
@@ -48,9 +45,7 @@ library EndpointStructs {
             revert PayloadTooLong(m.payload.length);
         }
         uint16 payloadLength = uint16(m.payload.length);
-        return abi.encodePacked(
-            m.chainId, m.sequence, m.sourceManager, m.sender, payloadLength, m.payload
-        );
+        return abi.encodePacked(m.sequence, m.sender, payloadLength, m.payload);
     }
 
     /*
@@ -64,9 +59,7 @@ library EndpointStructs {
         returns (ManagerMessage memory managerMessage)
     {
         uint256 offset = 0;
-        (managerMessage.chainId, offset) = encoded.asUint16Unchecked(offset);
         (managerMessage.sequence, offset) = encoded.asUint64Unchecked(offset);
-        (managerMessage.sourceManager, offset) = encoded.asBytes32Unchecked(offset);
         (managerMessage.sender, offset) = encoded.asBytes32Unchecked(offset);
         uint256 payloadLength;
         (payloadLength, offset) = encoded.asUint16Unchecked(offset);
@@ -125,9 +118,16 @@ library EndpointStructs {
         encoded.checkLength(offset);
     }
 
+    /// @dev Message emitted by Endpoint implementations.
+    ///      Each message includes an Endpoint-specified 4-byte prefix.
+    ///      The wire format is as follows:
+    ///      - prefix - 4 bytes
+    ///      - sourceManagerAddress - 32 bytes
+    ///      - managerPayloadLength - 2 bytes
+    ///      - managerPayload - `managerPayloadLength` bytes
     struct EndpointMessage {
-        /// @notice
-        bytes4 prefix;
+        /// @notice Address of the Manager contract that emitted this message.
+        bytes32 sourceManagerAddress;
         /// @notice Payload provided to the Endpoint contract by the Manager contract.
         bytes managerPayload;
     }
@@ -139,16 +139,74 @@ library EndpointStructs {
      * @return encoded The byte array corresponding to the encoded message.
      * @throws PayloadTooLong if the length of endpointId, managerPayload, or endpointPayload exceeds the allowed maximum.
      */
-    function encodeEndpointMessage(EndpointMessage memory m)
-        public
-        pure
-        returns (bytes memory encoded)
-    {
+    function encodeEndpointMessage(
+        bytes4 prefix,
+        EndpointMessage memory m
+    ) public pure returns (bytes memory encoded) {
         if (m.managerPayload.length > type(uint16).max) {
             revert PayloadTooLong(m.managerPayload.length);
         }
 
         uint16 managerPayloadLength = uint16(m.managerPayload.length);
-        return abi.encodePacked(m.prefix, managerPayloadLength, m.managerPayload);
+        return
+            abi.encodePacked(prefix, m.sourceManagerAddress, managerPayloadLength, m.managerPayload);
+    }
+
+    function buildAndEncodeEndpointMessage(
+        bytes4 prefix,
+        bytes32 sourceManagerAddress,
+        bytes memory managerMessage
+    ) public pure returns (EndpointMessage memory, bytes memory) {
+        EndpointMessage memory endpointMessage = EndpointMessage({
+            sourceManagerAddress: sourceManagerAddress,
+            managerPayload: managerMessage
+        });
+        bytes memory encoded = encodeEndpointMessage(prefix, endpointMessage);
+        return (endpointMessage, encoded);
+    }
+
+    /*
+    * @dev Parses an encoded message and extracts information into an EndpointMessage struct.
+    *
+    * @param encoded The encoded bytes containing information about the EndpointMessage.
+    * @return endpointMessage The parsed EndpointMessage struct.
+    * @throws IncorrectPrefix if the prefix of the encoded message does not match the expected prefix.
+    */
+    function parseEndpointMessage(
+        bytes4 expectedPrefix,
+        bytes memory encoded
+    ) internal pure returns (EndpointMessage memory endpointMessage) {
+        uint256 offset = 0;
+        bytes4 prefix;
+
+        (prefix, offset) = encoded.asBytes4Unchecked(offset);
+
+        if (prefix != expectedPrefix) {
+            revert IncorrectPrefix(prefix);
+        }
+
+        (endpointMessage.sourceManagerAddress, offset) = encoded.asBytes32Unchecked(offset);
+        uint16 managerPayloadLength;
+        (managerPayloadLength, offset) = encoded.asUint16Unchecked(offset);
+        (endpointMessage.managerPayload, offset) =
+            encoded.sliceUnchecked(offset, managerPayloadLength);
+
+        // Check if the entire byte array has been processed
+        encoded.checkLength(offset);
+    }
+
+    /// @dev Parses the payload of an Endpoint message and returns the parsed ManagerMessage struct.
+    function parseEndpointAndManagerMessage(
+        bytes4 expectedPrefix,
+        bytes memory payload
+    ) public pure returns (EndpointMessage memory, ManagerMessage memory) {
+        // parse the encoded message payload from the Endpoint
+        EndpointMessage memory parsedEndpointMessage = parseEndpointMessage(expectedPrefix, payload);
+
+        // parse the encoded message payload from the Manager
+        ManagerMessage memory parsedManagerMessage =
+            parseManagerMessage(parsedEndpointMessage.managerPayload);
+
+        return (parsedEndpointMessage, parsedManagerMessage);
     }
 }

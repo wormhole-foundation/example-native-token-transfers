@@ -148,11 +148,14 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
     /// @dev Called by an Endpoint contract to deliver a verified attestation.
     ///      This function enforces attestation threshold and replay logic for messages.
     ///      Once all validations are complete, this function calls _executeMsg to execute the command specified by the message.
-    function attestationReceived(EndpointStructs.ManagerMessage memory payload)
-        external
-        onlyEndpoint
-    {
-        bytes32 managerMessageHash = EndpointStructs.managerMessageDigest(payload);
+    function attestationReceived(
+        uint16 sourceChainId,
+        bytes32 sourceManagerAddress,
+        EndpointStructs.ManagerMessage memory payload
+    ) external onlyEndpoint {
+        _verifySibling(sourceChainId, sourceManagerAddress);
+
+        bytes32 managerMessageHash = EndpointStructs.managerMessageDigest(sourceChainId, payload);
 
         // set the attested flag for this endpoint.
         // TODO: this allows an endpoint to attest to a message multiple times.
@@ -161,7 +164,7 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         _setEndpointAttestedToMessage(managerMessageHash, msg.sender);
 
         if (isMessageApproved(managerMessageHash)) {
-            _executeMsg(payload);
+            _executeMsg(sourceChainId, sourceManagerAddress, payload);
         }
     }
 
