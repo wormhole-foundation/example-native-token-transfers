@@ -81,6 +81,8 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let message: ManagerMessage<NativeTokenTransfer> = accs.vaa.message().manager_payload.clone();
 
     let amount = message.payload.amount;
+    let amount = amount.change_decimals(accs.outbox_rate_limit.rate_limit.limit.decimals);
+
     let recipient_address =
         Pubkey::try_from(message.payload.to).map_err(|_| NTTError::InvalidRecipientAddress)?;
 

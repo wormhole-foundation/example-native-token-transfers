@@ -18,11 +18,6 @@ pub const NORMALIZED_DECIMALS: u8 = 8;
     Debug,
     Clone,
     Copy,
-    PartialEq,
-    Eq,
-    // TODO: manually write this and make sure the decimals are the same
-    PartialOrd,
-    Ord,
     AnchorSerialize,
     AnchorDeserialize,
     InitSpace,
@@ -32,11 +27,32 @@ pub struct NormalizedAmount {
     pub decimals: u8,
 }
 
+impl PartialEq for NormalizedAmount {
+    fn eq(&self, other: &Self) -> bool {
+        self.amount == other.change_decimals(self.decimals).amount
+    }
+}
+
+impl Eq for NormalizedAmount {}
+
+impl PartialOrd for NormalizedAmount {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for NormalizedAmount {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        let other = other.change_decimals(self.decimals);
+        self.amount.cmp(&other.amount)
+    }
+}
+
 impl Sub for NormalizedAmount {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        assert_eq!(self.decimals, rhs.decimals);
+        let rhs = rhs.change_decimals(self.decimals);
         Self {
             amount: self.amount - rhs.amount,
             decimals: self.decimals,
@@ -50,7 +66,7 @@ impl NormalizedAmount {
     }
 
     pub fn saturating_sub(self, rhs: Self) -> Self {
-        assert_eq!(self.decimals, rhs.decimals);
+        let rhs = rhs.change_decimals(self.decimals);
         Self {
             amount: self.amount.saturating_sub(rhs.amount),
             decimals: self.decimals,
@@ -58,14 +74,27 @@ impl NormalizedAmount {
     }
 
     pub fn saturating_add(self, rhs: Self) -> Self {
-        assert_eq!(self.decimals, rhs.decimals);
+        let rhs = rhs.change_decimals(self.decimals);
         Self {
             amount: self.amount.saturating_add(rhs.amount),
             decimals: self.decimals,
         }
     }
 
+    pub fn change_decimals(&self, new_decimals: u8) -> Self {
+        if new_decimals == self.decimals {
+            return *self;
+        }
+        Self {
+            amount: self.denormalize(new_decimals),
+            decimals: new_decimals,
+        }
+    }
+
     fn scale(amount: u64, from_decimals: u8, to_decimals: u8) -> u64 {
+        if from_decimals == to_decimals {
+            return amount;
+        }
         if from_decimals > to_decimals {
             amount / 10u64.pow((from_decimals - to_decimals).into())
         } else {
@@ -150,6 +179,20 @@ mod test {
             }
             .denormalize(13),
             10000000
+        );
+
+        assert_eq!(
+            NormalizedAmount {
+                amount: 2,
+                decimals: 5,
+            } - NormalizedAmount {
+                amount: 10,
+                decimals: 6,
+            },
+            NormalizedAmount {
+                amount: 1,
+                decimals: 5,
+            }
         );
     }
 }
