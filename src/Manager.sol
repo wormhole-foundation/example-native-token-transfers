@@ -19,7 +19,7 @@ import "./interfaces/IManagerEvents.sol";
 import "./interfaces/IEndpointToken.sol";
 import "./Endpoint.sol";
 import "./EndpointRegistry.sol";
-import "./libraries/Pausable.sol";
+import "./libraries/PausableOwnable.sol";
 
 // TODO: rename this (it's really the business logic)
 abstract contract Manager is
@@ -29,7 +29,7 @@ abstract contract Manager is
     RateLimiter,
     OwnableUpgradeable,
     ReentrancyGuardUpgradeable,
-    Pausable
+    PausableOwnable
 {
     using BytesParsing for bytes;
     using SafeERC20 for IERC20;
@@ -112,8 +112,8 @@ abstract contract Manager is
         __Ownable_init(msg.sender);
         // TODO: check if it's safe to not initialise reentrancy guard
         __ReentrancyGuard_init();
-        // TODO: msg.sender may not be the right address
-        __Paused_init(msg.sender);
+        // TODO: msg.sender may not be the right address for both
+        __PausedOwnable_init(msg.sender, msg.sender);
     }
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
@@ -147,8 +147,8 @@ abstract contract Manager is
     /*
      * @dev pause the Endpoint.
      */
-    function pause() public virtual {
-        _pause(owner());
+    function pause() public virtual onlyOwnerOrPauser {
+        _pause();
     }
 
     /// @dev Returns the bitmap of attestations from enabled endpoints for a given message.

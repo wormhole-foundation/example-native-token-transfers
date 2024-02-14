@@ -32,7 +32,7 @@ abstract contract EndpointStandalone is
         // TODO: check if it's safe to not initialise reentrancy guard
         __ReentrancyGuard_init();
         // TODO: msg.sender may not be the right address
-        __Paused_init(msg.sender);
+        __PausedOwnable_init(msg.sender, msg.sender);
     }
 
     function _migrate() internal override {}
@@ -49,6 +49,8 @@ abstract contract EndpointStandalone is
     /// @notice pause the endpoint
     /// TODO: add in pauser role
     function pauseEndpoint() external virtual {}
+
+    function renouncePauser() external virtual {}
 
     /// @notice Called by the BridgeManager contract to send a cross-chain message.
     function sendMessage(
