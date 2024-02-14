@@ -88,7 +88,7 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, args: ReleaseOutboundArgs
             chain_id: accs.config.chain_id,
             sequence: accs.outbox_item.sequence,
             source_manager: accs.outbox_item.to_account_info().owner.to_bytes(),
-            sender: accs.emitter.key().to_bytes(),
+            sender: accs.outbox_item.sender.to_bytes(),
             payload: NativeTokenTransfer {
                 amount: accs.outbox_item.amount,
                 source_token: accs.config.mint.to_bytes(),

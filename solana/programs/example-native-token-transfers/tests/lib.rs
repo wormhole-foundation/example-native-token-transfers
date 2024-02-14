@@ -11,24 +11,33 @@ use common::account_utils::{add_account_unchecked, AccountLoadable};
 use example_native_token_transfers::{
     chain_id::ChainId,
     config::Mode,
-    instructions::{InitializeArgs, SetSiblingArgs, TransferArgs},
+    error::NTTError,
+    instructions::{InitializeArgs, ReleaseOutboundArgs, SetSiblingArgs, TransferArgs},
+    messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer, WormholeEndpoint},
     normalized_amount::NormalizedAmount,
     queue::outbox::OutboxItem,
+    sequence::Sequence,
 };
+use sdk::accounts::Wormhole;
 use solana_program_test::*;
 use solana_sdk::{
-    instruction::Instruction, signature::Keypair, signer::Signer, signers::Signers,
-    system_instruction, transaction::Transaction,
+    instruction::{Instruction, InstructionError},
+    signature::Keypair,
+    signer::Signer,
+    signers::Signers,
+    system_instruction,
+    transaction::{Transaction, TransactionError},
 };
 use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token::instruction::AuthorityType;
-use wormhole_anchor_sdk::wormhole::{BridgeData, FeeCollector};
+use wormhole_anchor_sdk::wormhole::{BridgeData, FeeCollector, PostedVaa};
 
 use crate::sdk::{
     accounts::NTT,
     instructions::{
         admin::{set_sibling, SetSibling},
         initialize::{initialize, Initialize},
+        release_outbound::{release_outbound, ReleaseOutbound},
         transfer::{transfer_burn, transfer_lock, Transfer},
     },
 };
@@ -128,6 +137,9 @@ async fn setup_accounts(ctx: &mut ProgramTestContext) -> TestData {
     TestData {
         ntt: NTT {
             program: example_native_token_transfers::ID,
+            wormhole: Wormhole {
+                program: wormhole_anchor_sdk::wormhole::program::ID,
+            },
         },
         program_owner,
         mint_authority,
@@ -193,6 +205,7 @@ async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode: Mod
 
 #[tokio::test]
 async fn tests() {
+    // NOTE: these can't be run concurrently, as they cause deadlocks
     test_transfer_locking().await;
     test_transfer_burning().await;
 }
@@ -221,6 +234,12 @@ async fn test_transfer_helper(ctx: &mut ProgramTestContext, test_data: &TestData
     let outbox_item = Keypair::new();
 
     let clock: Clock = ctx.banks_client.get_sysvar().await.unwrap();
+
+    let sequence: Sequence = ctx
+        .banks_client
+        .get_account_data_anchor(test_data.ntt.sequence())
+        .await
+        .unwrap();
 
     let transfer = Transfer {
         payer: ctx.payer.pubkey(),
@@ -262,18 +281,117 @@ async fn test_transfer_helper(ctx: &mut ProgramTestContext, test_data: &TestData
                 amount: 10,
                 decimals: 8
             },
+            sender: test_data.user_token_account,
             recipient_chain: ChainId { id: 2 },
             recipient_address: [1u8; 32],
             release_timestamp: clock.unix_timestamp,
             released: false
         }
     );
+
+    release_outbound(
+        &test_data.ntt,
+        ReleaseOutbound {
+            payer: ctx.payer.pubkey(),
+            outbox_item: outbox_item.pubkey(),
+        },
+        ReleaseOutboundArgs {
+            revert_on_delay: true,
+        },
+    )
+    .submit(ctx)
+    .await
+    .unwrap();
+
+    let outbox_item_account_after: OutboxItem = ctx
+        .banks_client
+        .get_account_data_anchor(outbox_item.pubkey())
+        .await
+        .unwrap();
+
+    // make sure the outbox item is now released, but nothing else has changed
+    assert_eq!(
+        OutboxItem {
+            released: true,
+            ..outbox_item_account
+        },
+        outbox_item_account_after,
+    );
+
+    // make sure we can't send again
+    let err = release_outbound(
+        &test_data.ntt,
+        ReleaseOutbound {
+            payer: ctx.payer.pubkey(),
+            outbox_item: outbox_item.pubkey(),
+        },
+        ReleaseOutboundArgs {
+            revert_on_delay: true,
+        },
+    )
+    .submit(ctx)
+    .await
+    .unwrap_err();
+
+    assert_eq!(
+        err.unwrap(),
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(NTTError::MessageAlreadySent.into())
+        )
+    );
+
+    let wh_message = test_data.ntt.wormhole_message(&outbox_item.pubkey());
+
+    // NOTE: technically this is not a PostedVAA but a PostedMessage, but the
+    // sdk does not export that type, so we parse it as a PostedVAA instead.
+    // They are identical modulo the discriminator, which we just skip by using
+    // the unchecked deserialiser.
+    // TODO: update the sdk to export PostedMessage
+    let msg: PostedVaa<EndpointMessage<WormholeEndpoint, NativeTokenTransfer>> = ctx
+        .banks_client
+        .get_account_data_anchor_unchecked(wh_message)
+        .await
+        .unwrap();
+
+    let endpoint_message = msg.data();
+
+    assert_eq!(
+        endpoint_message,
+        &EndpointMessage::new(ManagerMessage {
+            chain_id: ChainId { id: 1 },
+            sequence: sequence.sequence,
+            source_manager: example_native_token_transfers::ID.to_bytes(),
+            sender: test_data.user_token_account.to_bytes(),
+            payload: NativeTokenTransfer {
+                amount: NormalizedAmount {
+                    amount: 10,
+                    decimals: 8
+                },
+                source_token: test_data.mint.to_bytes(),
+                to: [1u8; 32],
+                to_chain: ChainId { id: 2 },
+            }
+        })
+    );
+
+    let next_sequence: Sequence = ctx
+        .banks_client
+        .get_account_data_anchor(test_data.ntt.sequence())
+        .await
+        .unwrap();
+    assert_eq!(next_sequence.sequence, sequence.sequence + 1);
 }
 
 /////////// Utils
 
 trait GetAccountDataAnchor {
     async fn get_account_data_anchor<T: AccountDeserialize>(
+        &mut self,
+        pubkey: Pubkey,
+    ) -> Result<T, BanksClientError>;
+
+    async fn get_account_data_anchor_unchecked<T: AccountDeserialize>(
         &mut self,
         pubkey: Pubkey,
     ) -> Result<T, BanksClientError>;
@@ -286,6 +404,14 @@ impl GetAccountDataAnchor for BanksClient {
     ) -> Result<T, BanksClientError> {
         let data = self.get_account(pubkey).await?.unwrap();
         Ok(T::try_deserialize(&mut data.data.as_ref()).unwrap())
+    }
+
+    async fn get_account_data_anchor_unchecked<T: AccountDeserialize>(
+        &mut self,
+        pubkey: Pubkey,
+    ) -> Result<T, BanksClientError> {
+        let data = self.get_account(pubkey).await?.unwrap();
+        Ok(T::try_deserialize_unchecked(&mut data.data.as_ref()).unwrap())
     }
 }
 
@@ -310,9 +436,11 @@ impl Submittable for Instruction {
         signers: &T,
         ctx: &mut ProgramTestContext,
     ) -> Result<(), BanksClientError> {
+        let blockhash = ctx.banks_client.get_latest_blockhash().await.unwrap();
+
         let mut transaction = Transaction::new_with_payer(&[self], Some(&ctx.payer.pubkey()));
-        transaction.partial_sign(&[&ctx.payer], ctx.last_blockhash);
-        transaction.partial_sign(signers, ctx.last_blockhash);
+        transaction.partial_sign(&[&ctx.payer], blockhash);
+        transaction.partial_sign(signers, blockhash);
 
         ctx.banks_client.process_transaction(transaction).await
     }
@@ -324,8 +452,10 @@ impl Submittable for Transaction {
         signers: &T,
         ctx: &mut ProgramTestContext,
     ) -> Result<(), BanksClientError> {
-        self.partial_sign(&[&ctx.payer], ctx.last_blockhash);
-        self.partial_sign(signers, ctx.last_blockhash);
+        let blockhash = ctx.banks_client.get_latest_blockhash().await.unwrap();
+
+        self.partial_sign(&[&ctx.payer], blockhash);
+        self.partial_sign(signers, blockhash);
         ctx.banks_client.process_transaction(self).await
     }
 }
@@ -338,6 +468,8 @@ pub async fn create_mint(
 ) -> Transaction {
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_rent = rent.minimum_balance(Mint::LEN);
+
+    let blockhash = ctx.banks_client.get_latest_blockhash().await.unwrap();
 
     Transaction::new_signed_with_payer(
         &[
@@ -359,6 +491,6 @@ pub async fn create_mint(
         ],
         Some(&ctx.payer.pubkey()),
         &[&ctx.payer, mint],
-        ctx.last_blockhash,
+        blockhash,
     )
 }

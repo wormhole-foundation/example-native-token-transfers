@@ -4,11 +4,40 @@ use example_native_token_transfers::{
     queue::{
         inbox::{InboxItem, InboxRateLimit},
         outbox::OutboxRateLimit,
-    }, sequence::Sequence,
+    },
+    sequence::Sequence,
 };
+use wormhole_anchor_sdk::wormhole;
+
+pub struct Wormhole {
+    pub program: Pubkey,
+}
+
+impl Wormhole {
+    pub fn bridge(&self) -> Pubkey {
+        let (bridge, _) =
+            Pubkey::find_program_address(&[wormhole::BridgeData::SEED_PREFIX], &self.program);
+        bridge
+    }
+
+    pub fn fee_collector(&self) -> Pubkey {
+        let (fee_collector, _) =
+            Pubkey::find_program_address(&[wormhole::FeeCollector::SEED_PREFIX], &self.program);
+        fee_collector
+    }
+
+    pub fn sequence(&self, emitter: &Pubkey) -> Pubkey {
+        let (sequence, _) = Pubkey::find_program_address(
+            &[wormhole::SequenceTracker::SEED_PREFIX, emitter.as_ref()],
+            &self.program,
+        );
+        sequence
+    }
+}
 
 pub struct NTT {
     pub program: Pubkey,
+    pub wormhole: Wormhole,
 }
 
 impl NTT {
@@ -18,8 +47,7 @@ impl NTT {
     }
 
     pub fn sequence(&self) -> Pubkey {
-        let (sequence, _) =
-            Pubkey::find_program_address(&[Sequence::SEED_PREFIX], &self.program);
+        let (sequence, _) = Pubkey::find_program_address(&[Sequence::SEED_PREFIX], &self.program);
         sequence
     }
 
@@ -82,5 +110,9 @@ impl NTT {
             &mint,
             &spl_token::ID,
         )
+    }
+
+    pub fn wormhole_sequence(&self) -> Pubkey {
+        self.wormhole.sequence(&self.emitter())
     }
 }
