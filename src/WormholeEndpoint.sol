@@ -138,14 +138,18 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         return (EndpointStructs.encodeEndpointMessage(endpointMessage), endpointMessage);
     }
 
-    function _sendMessage(uint16 recipientChain, bytes memory managerMessage) internal override {
+    function _sendMessage(
+        uint16 recipientChain,
+        uint256 deliveryPayment,
+        bytes memory managerMessage
+    ) internal override {
         (
             bytes memory encodedEndpointPayload,
             EndpointStructs.EndpointMessage memory endpointMessage
         ) = wrapManagerMessageInEndpoint(managerMessage);
 
         if (shouldRelayViaStandardRelaying(recipientChain)) {
-            wormholeRelayer.sendPayloadToEvm{value: msg.value}(
+            wormholeRelayer.sendPayloadToEvm{value: deliveryPayment}(
                 recipientChain,
                 fromWormholeFormat(getWormholeSibling(recipientChain)),
                 encodedEndpointPayload,
