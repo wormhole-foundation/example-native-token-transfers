@@ -84,14 +84,22 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         _setEndpoint(endpoint);
 
         _Threshold storage _threshold = _getThresholdStorage();
-        // We increase the threshold here. This might not be what the user
-        // wants, in which case they can call setThreshold() afterwards.
-        // However, this is the most sensible default behaviour, since
-        // this makes the system more secure in the event that the user forgets
-        // to call setThreshold().
-        _threshold.num += 1;
+        // We do not automatically increase the threshold here.
+        // Automatically increasing the threshold can result in a scenario
+        // where in-flight messages can't be redeemed.
+        // For example: Assume there is 1 Endpoint and the threshold is 1.
+        // If we were to add a new Endpoint, the threshold would increase to 2.
+        // However, all messages that are either in-flight or that are sent on
+        // a source chain that does not yet have 2 Endpoints will only have been
+        // sent from a single endpoint, so they would never be able to get
+        // redeemed.
+        // Instead, we leave it up to the owner to manually update the threshold
+        // after some period of time, ideally once all chains have the new Endpoint
+        // and transfers that were sent via the old configuration are all complete.
 
-        emit EndpointAdded(endpoint, _threshold.num);
+        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
+
+        emit EndpointAdded(endpoint, _enabledEndpoints.length, _threshold.num);
     }
 
     function removeEndpoint(address endpoint) external onlyOwner {
