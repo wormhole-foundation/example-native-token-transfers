@@ -65,24 +65,24 @@ impl NormalizedAmount {
         }
     }
 
-    fn scaling_factor(orig_decimals: u8, norm_decimals: u8) -> u64 {
-        if orig_decimals > norm_decimals {
-            10u64.pow((orig_decimals - norm_decimals).into())
+    fn scale(amount: u64, from_decimals: u8, to_decimals: u8) -> u64 {
+        if from_decimals > to_decimals {
+            amount / 10u64.pow((from_decimals - to_decimals).into())
         } else {
-            1
+            amount * 10u64.pow((to_decimals - from_decimals).into())
         }
     }
 
     pub fn normalize(amount: u64, from_decimals: u8) -> NormalizedAmount {
         let to_decimals = NORMALIZED_DECIMALS.min(from_decimals);
         Self {
-            amount: amount / Self::scaling_factor(from_decimals, to_decimals),
+            amount: Self::scale(amount, from_decimals, to_decimals),
             decimals: to_decimals,
         }
     }
 
     pub fn denormalize(&self, to_decimals: u8) -> u64 {
-        self.amount * Self::scaling_factor(to_decimals, self.decimals)
+        Self::scale(self.amount, self.decimals, to_decimals)
     }
 
     pub fn amount(&self) -> u64 {
@@ -141,6 +141,15 @@ mod test {
         assert_eq!(
             NormalizedAmount::normalize(100_555_555_555_555_555, 18).denormalize(18),
             100_555_550_000_000_000
+        );
+
+        assert_eq!(
+            NormalizedAmount {
+                amount: 1,
+                decimals: 6,
+            }
+            .denormalize(13),
+            10000000
         );
     }
 }
