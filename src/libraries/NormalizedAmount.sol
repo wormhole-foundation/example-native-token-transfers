@@ -133,14 +133,15 @@ library NormalizedAmountLib {
     }
 
     /// @dev scale the amount from origDecimals to normDecimals (base 10)
-    function scalingFactor(
-        uint8 origDecimals,
-        uint8 normDecimals
+    function scale(
+        uint256 amount,
+        uint8 fromDecimals,
+        uint8 toDecimals
     ) internal pure returns (uint256) {
-        if (origDecimals > normDecimals) {
-            return 10 ** (origDecimals - normDecimals);
+        if (fromDecimals > toDecimals) {
+            return amount / (10 ** (fromDecimals - toDecimals));
         } else {
-            return 1;
+            return amount * (10 ** (toDecimals - fromDecimals));
         }
     }
 
@@ -149,23 +150,23 @@ library NormalizedAmountLib {
         uint8 fromDecimals
     ) internal pure returns (NormalizedAmount memory) {
         uint8 toDecimals = minUint8(NORMALIZED_DECIMALS, fromDecimals);
-        amt /= scalingFactor(fromDecimals, toDecimals);
+        uint256 amountScaled = scale(amt, fromDecimals, toDecimals);
 
         // NOTE: amt after normalization must fit into uint64 (that's the point of
         // normalization, as Solana only supports uint64 for token amts)
-        if (amt > type(uint64).max) {
+        if (amountScaled > type(uint64).max) {
             revert AmountTooLarge(amt);
         }
-        return NormalizedAmount(uint64(amt), toDecimals);
+        return NormalizedAmount(uint64(amountScaled), toDecimals);
     }
 
     function denormalize(
         NormalizedAmount memory amt,
         uint8 toDecimals
     ) internal pure returns (uint256) {
-        (uint256 deNorm, uint8 dec) = unwrap(amt);
-        deNorm *= scalingFactor(toDecimals, dec);
+        (uint256 deNorm, uint8 fromDecimals) = unwrap(amt);
+        uint256 amountScaled = scale(deNorm, fromDecimals, toDecimals);
 
-        return deNorm;
+        return amountScaled;
     }
 }

@@ -130,4 +130,18 @@ contract NormalizationTest is Test {
             normalizedAmount.sub(normalizedAmountOther);
         }
     }
+
+    function testDifferentDecimals() public {
+        uint8 sourceDecimals = 18;
+        uint8 targetDecimals = 6;
+        uint256 amount = 5 * 10 ** sourceDecimals;
+
+        NormalizedAmount memory normalizedAmount = amount.normalize(sourceDecimals);
+        // normalized to 8
+        uint256 amountRoundTrip = normalizedAmount.denormalize(targetDecimals);
+        // denormalize to 6
+        uint256 expectedRoundTrip = 5 * 10 ** targetDecimals;
+
+        assertEq(expectedRoundTrip, amountRoundTrip);
+    }
 }
