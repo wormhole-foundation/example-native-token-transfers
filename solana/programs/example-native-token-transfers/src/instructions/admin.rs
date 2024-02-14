@@ -200,6 +200,7 @@ pub fn set_inbound_limit(ctx: Context<SetInboundLimit>, args: SetInboundLimitArg
 #[derive(Accounts)]
 pub struct SetPaused<'info> {
     #[account(
+        mut,
         has_one = owner,
     )]
     pub config: Account<'info, Config>,

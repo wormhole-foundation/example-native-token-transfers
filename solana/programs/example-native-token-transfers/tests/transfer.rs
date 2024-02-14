@@ -21,7 +21,13 @@ use solana_sdk::{
 };
 use wormhole_anchor_sdk::wormhole::PostedVaa;
 
-use crate::{common::submit::Submittable, sdk::instructions::transfer::transfer};
+use crate::{
+    common::submit::Submittable,
+    sdk::instructions::{
+        admin::{set_paused, SetPaused},
+        transfer::transfer,
+    },
+};
 use crate::{
     common::{query::GetAccountDataAnchor, setup::OUTBOUND_LIMIT},
     sdk::instructions::{
@@ -355,6 +361,53 @@ async fn test_large_tx_queue() {
 
     // queued transfers don't change the rate limit
     assert_eq!(outbound_limit_before, outbound_limit_after);
+}
+
+#[tokio::test]
+async fn test_cant_transfer_when_paused() {
+    let (mut ctx, test_data) = setup(Mode::Locking).await;
+
+    let outbox_item = Keypair::new();
+
+    let (accs, args) = init_accs_args(&mut ctx, &test_data, outbox_item.pubkey(), 100, false);
+
+    set_paused(
+        &test_data.ntt,
+        SetPaused {
+            owner: test_data.program_owner.pubkey(),
+        },
+        true,
+    )
+    .submit_with_signers(&[&test_data.program_owner], &mut ctx)
+    .await
+    .unwrap();
+
+    let err = transfer(&test_data.ntt, accs.clone(), args.clone(), Mode::Locking)
+        .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        err.unwrap(),
+        TransactionError::InstructionError(0, InstructionError::Custom(NTTError::Paused.into()))
+    );
+
+    // make sure we can unpause
+    set_paused(
+        &test_data.ntt,
+        SetPaused {
+            owner: test_data.program_owner.pubkey(),
+        },
+        false,
+    )
+    .submit_with_signers(&[&test_data.program_owner], &mut ctx)
+    .await
+    .unwrap();
+
+    transfer(&test_data.ntt, accs, args, Mode::Locking)
+        .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
+        .await
+        .unwrap();
 }
 
 #[tokio::test]

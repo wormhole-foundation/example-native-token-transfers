@@ -21,4 +21,6 @@ pub enum NTTError {
     InvalidMintAuthority,
     #[msg("TransferExceedsRateLimit")]
     TransferExceedsRateLimit,
+    #[msg("Paused")]
+    Paused,
 }

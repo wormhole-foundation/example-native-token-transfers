@@ -62,6 +62,10 @@ pub mod example_native_token_transfers {
         instructions::claim_ownership(ctx)
     }
 
+    pub fn set_paused(ctx: Context<SetPaused>, pause: bool) -> Result<()> {
+        instructions::set_paused(ctx, pause)
+    }
+
     pub fn set_sibling(ctx: Context<SetSibling>, args: SetSiblingArgs) -> Result<()> {
         instructions::set_sibling(ctx, args)
     }

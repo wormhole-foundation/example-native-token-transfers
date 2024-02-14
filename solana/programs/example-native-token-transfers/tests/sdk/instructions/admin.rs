@@ -30,3 +30,22 @@ pub fn set_sibling(ntt: &NTT, accounts: SetSibling, args: SetSiblingArgs) -> Ins
         data: data.data(),
     }
 }
+
+pub struct SetPaused {
+    pub owner: Pubkey,
+}
+
+pub fn set_paused(ntt: &NTT, accounts: SetPaused, pause: bool) -> Instruction {
+    let data = example_native_token_transfers::instruction::SetPaused { pause };
+
+    let accounts = example_native_token_transfers::accounts::SetPaused {
+        config: ntt.config(),
+        owner: accounts.owner,
+    };
+
+    Instruction {
+        program_id: example_native_token_transfers::ID,
+        accounts: accounts.to_account_metas(None),
+        data: data.data(),
+    }
+}
