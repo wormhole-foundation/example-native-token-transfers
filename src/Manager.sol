@@ -364,11 +364,7 @@ abstract contract Manager is
         // construct the ManagerMessage payload
         bytes memory encodedManagerPayload = EndpointStructs.encodeManagerMessage(
             EndpointStructs.ManagerMessage(
-                chainId,
-                sequence,
-                toWormholeFormat(address(this)),
-                toWormholeFormat(sender),
-                encodedTransferPayload
+                sequence, toWormholeFormat(sender), encodedTransferPayload
             )
         );
 
@@ -379,6 +375,13 @@ abstract contract Manager is
 
         // return the sequence number
         return sequence;
+    }
+
+    /// @dev Verify that the sibling address saved for `sourceChainId` matches the `siblingAddress`.
+    function _verifySibling(uint16 sourceChainId, bytes32 siblingAddress) internal view {
+        if (getSibling(sourceChainId) != siblingAddress) {
+            revert InvalidSibling(sourceChainId, siblingAddress);
+        }
     }
 
     // @dev Mark a message as executed.
@@ -398,16 +401,15 @@ abstract contract Manager is
     /// @dev Called after a message has been sufficiently verified to execute the command in the message.
     ///      This function will decode the payload as an ManagerMessage to extract the sequence, msgType, and other parameters.
     /// TODO: we could make this public. all the security checks are done here
-    function _executeMsg(EndpointStructs.ManagerMessage memory message) internal {
+    function _executeMsg(
+        uint16 sourceChainId,
+        bytes32 sourceManagerAddress,
+        EndpointStructs.ManagerMessage memory message
+    ) internal {
         // verify chain has not forked
         checkFork(evmChainId);
 
-        // verify message came from a sibling manager contract
-        if (getSibling(message.chainId) != message.sourceManager) {
-            revert InvalidSibling(message.chainId, message.sourceManager);
-        }
-
-        bytes32 digest = EndpointStructs.managerMessageDigest(message);
+        bytes32 digest = EndpointStructs.managerMessageDigest(sourceChainId, message);
 
         if (!isMessageApproved(digest)) {
             revert MessageNotApproved(digest);
@@ -418,7 +420,7 @@ abstract contract Manager is
             // end execution early to mitigate the possibility of race conditions from endpoints
             // attempting to deliver the same message when (threshold < number of endpoint messages)
             // notify client (off-chain process) so they don't attempt redundant msg delivery
-            emit MessageAlreadyExecuted(message.sourceManager, digest);
+            emit MessageAlreadyExecuted(sourceManagerAddress, digest);
             return;
         }
 
@@ -436,7 +438,7 @@ abstract contract Manager is
 
         {
             // Check inbound rate limits
-            bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, message.chainId);
+            bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, sourceChainId);
             if (isRateLimited) {
                 // queue up the transfer
                 _enqueueInboundTransfer(digest, nativeTransferAmount, transferRecipient);
@@ -447,7 +449,7 @@ abstract contract Manager is
         }
 
         // consume the amount for the inbound rate limit
-        _consumeInboundAmount(nativeTransferAmount, message.chainId);
+        _consumeInboundAmount(nativeTransferAmount, sourceChainId);
 
         _mintOrUnlockToRecipient(transferRecipient, nativeTransferAmount);
     }
