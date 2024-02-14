@@ -2,19 +2,19 @@ use anchor_lang::{prelude::*, solana_program::clock::UnixTimestamp};
 
 use crate::{clock::current_timestamp, normalized_amount::NormalizedAmount};
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace, PartialEq, Eq, Debug)]
 pub struct RateLimitState {
     /// The maximum capacity of the rate limiter.
-    limit: NormalizedAmount,
+    pub limit: NormalizedAmount,
     /// The capacity of the rate limiter at `last_tx_timestamp`.
     /// The actual current capacity is calculated in `capacity_at`, by
     /// accounting for the time that has passed since `last_tx_timestamp` and
     /// the refill rate.
-    capacity_at_last_tx: NormalizedAmount,
+    pub capacity_at_last_tx: NormalizedAmount,
     /// The timestamp of the last transaction that counted towards the current
     /// capacity. Transactions that exceeded the capacity do not count, they are
     /// just delayed.
-    last_tx_timestamp: i64,
+    pub last_tx_timestamp: i64,
 }
 
 /// The result of attempting to consume from a rate limiter.
@@ -39,9 +39,15 @@ impl RateLimitState {
 
     pub const RATE_LIMIT_DURATION: i64 = 60 * 60 * 24; // 24 hours
 
-    /// Returns the capacity of the rate limiter.
     pub fn capacity(&self) -> NormalizedAmount {
-        let now = current_timestamp();
+        self.capacity_at(current_timestamp())
+    }
+
+    /// Returns the capacity of the rate limiter.
+    /// On-chain programs and unit tests should always use [`capacity`].
+    /// This function is useful in solana-program-test, where the clock sysvar
+    ///
+    pub fn capacity_at(&self, now: UnixTimestamp) -> NormalizedAmount {
         assert!(self.last_tx_timestamp <= now);
 
         let limit = self.limit.amount() as u128;

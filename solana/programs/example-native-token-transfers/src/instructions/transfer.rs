@@ -62,7 +62,7 @@ pub struct Transfer<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct TransferArgs {
     pub amount: u64,
     pub recipient_chain: ChainId,

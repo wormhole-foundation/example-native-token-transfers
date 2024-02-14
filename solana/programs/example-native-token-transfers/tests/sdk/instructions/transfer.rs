@@ -1,16 +1,26 @@
 use anchor_lang::{prelude::Pubkey, system_program::System, Id, InstructionData, ToAccountMetas};
 use anchor_spl::token::Token;
-use example_native_token_transfers::{accounts::NotPausedConfig, instructions::TransferArgs};
+use example_native_token_transfers::{
+    accounts::NotPausedConfig, config::Mode, instructions::TransferArgs,
+};
 use solana_sdk::instruction::Instruction;
 
 use crate::sdk::accounts::NTT;
 
+#[derive(Debug, Clone)]
 pub struct Transfer {
     pub payer: Pubkey,
     pub mint: Pubkey,
     pub from: Pubkey,
     pub from_authority: Pubkey,
     pub outbox_item: Pubkey,
+}
+
+pub fn transfer(ntt: &NTT, transfer: Transfer, args: TransferArgs, mode: Mode) -> Instruction {
+    match mode {
+        Mode::Burning => transfer_burn(ntt, transfer, args),
+        Mode::Locking => transfer_lock(ntt, transfer, args),
+    }
 }
 
 pub fn transfer_burn(ntt: &NTT, transfer: Transfer, args: TransferArgs) -> Instruction {

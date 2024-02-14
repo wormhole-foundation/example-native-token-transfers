@@ -46,7 +46,7 @@ impl OutboxItem {
 }
 
 #[account]
-#[derive(InitSpace)]
+#[derive(InitSpace, PartialEq, Eq, Debug)]
 pub struct OutboxRateLimit {
     pub rate_limit: RateLimitState,
 }
