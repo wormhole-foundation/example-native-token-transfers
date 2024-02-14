@@ -199,7 +199,7 @@ abstract contract PausableUpgradeable is Initializable {
      * TODO: do we need this?
      */
     function renouncePauser(address owner) public virtual onlyOwnerOrPauser(owner) {
-        // NOTE:Ccannot renounce the pauser capability when the contract is in the `PAUSED` state
+        // NOTE: Cannot renounce the pauser capability when the contract is in the `PAUSED` state
         // the contract can never be `UNPAUSED`
         if (isPaused()) {
             revert CannotRenounceWhilePaused(pauser());
