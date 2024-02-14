@@ -20,7 +20,8 @@ pub struct Redeem<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    pub config: NotPausedConfig<'info>,
+    // NOTE: this works when the contract is paused
+    pub config: Account<'info, Config>,
 
     #[account(
         seeds = [Sibling::SEED_PREFIX, vaa.emitter_chain().to_be_bytes().as_ref()],

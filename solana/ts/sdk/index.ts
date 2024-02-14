@@ -521,7 +521,7 @@ export class NTT {
       .redeem({})
       .accounts({
         payer: args.payer,
-        config: { config: this.configAccountAddress() },
+        config: this.configAccountAddress(),
         sibling,
         vaa: derivePostedVaaKey(this.wormholeId, parseVaa(args.vaa).hash),
         inboxItem: this.inboxItemAccountAddress(chainId, new BN(managerMessage.sequence.toString())),
