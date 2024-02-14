@@ -129,6 +129,14 @@ abstract contract PausableUpgradeable is Initializable {
     }
 
     /*
+     * @dev Modifier to allow only the Pauser and the Owner to access pausing functionality
+     */
+    modifier onlyOwnerOrPauser(address owner) {
+        _checkOwnerOrPauser(owner);
+        _;
+    }
+
+    /*
      * @dev Modifier to allow only the Pauser to access some functionality
      */
     function _checkPauser() internal view {
@@ -137,10 +145,19 @@ abstract contract PausableUpgradeable is Initializable {
         }
     }
 
+    /*
+     * @dev Modifier to allow only the Pauser to access some functionality
+     */
+    function _checkOwnerOrPauser(address owner) internal view {
+        if (pauser() != msg.sender && owner != msg.sender) {
+            revert InvalidPauser(msg.sender);
+        }
+    }
+
     /**
      * @dev pauses the function and emits the `Paused` event
      */
-    function _pause() internal virtual whenNotPaused onlyPauser {
+    function _pause(address owner) internal virtual whenNotPaused onlyOwnerOrPauser(owner) {
         // this can only be set to PAUSED when the state is NOTPAUSED
         _setPauseStorage(PAUSED);
         emit Paused(true);
@@ -149,7 +166,7 @@ abstract contract PausableUpgradeable is Initializable {
     /**
      * @dev unpauses the function
      */
-    function _unpause() internal virtual whenPaused onlyPauser {
+    function _unpause(address owner) internal virtual whenPaused onlyOwnerOrPauser(owner) {
         // this can only be set to NOTPAUSED when the state is PAUSED
         _setPauseStorage(NOT_PAUSED);
         emit NotPaused(false);
@@ -166,7 +183,10 @@ abstract contract PausableUpgradeable is Initializable {
     /**
      * @dev Transfers the ability to pause to a new account (`newPauser`).
      */
-    function _transferPauserCapability(address newPauser) internal virtual onlyPauser {
+    function _transferPauserCapability(
+        address newPauser,
+        address owner
+    ) internal virtual onlyOwnerOrPauser(owner) {
         PauserStorage storage $ = _getPauserStorage();
         address oldPauser = $._pauser;
         $._pauser = newPauser;
@@ -178,12 +198,12 @@ abstract contract PausableUpgradeable is Initializable {
      * and all the capabilities afforded with that role.
      * TODO: do we need this?
      */
-    function renouncePauser() public virtual onlyPauser {
+    function renouncePauser(address owner) public virtual onlyOwnerOrPauser(owner) {
         // NOTE:Ccannot renounce the pauser capability when the contract is in the `PAUSED` state
         // the contract can never be `UNPAUSED`
         if (isPaused()) {
             revert CannotRenounceWhilePaused(pauser());
         }
-        _transferPauserCapability(address(0));
+        _transferPauserCapability(address(0), owner);
     }
 }
