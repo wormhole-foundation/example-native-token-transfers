@@ -12,7 +12,7 @@ interface IManagerEvents {
     );
     event MessageAttestedTo(bytes32 digest, address endpoint, uint8 index);
     event ThresholdChanged(uint8 oldThreshold, uint8 threshold);
-    event EndpointAdded(address endpoint, uint8 threshold);
+    event EndpointAdded(address endpoint, uint256 endpointsNum, uint8 threshold);
     event EndpointRemoved(address endpoint, uint8 threshold);
     event MessageAlreadyExecuted(bytes32 indexed sourceManager, bytes32 indexed msgHash);
 }

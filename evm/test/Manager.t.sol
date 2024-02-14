@@ -296,6 +296,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         DummyEndpoint e2 = new DummyEndpoint(address(manager));
         manager.setEndpoint(address(e1));
         manager.setEndpoint(address(e2));
+        manager.setThreshold(2);
         return (e1, e2);
     }
 
