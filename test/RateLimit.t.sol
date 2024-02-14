@@ -7,6 +7,7 @@ import "./mocks/DummyToken.sol";
 import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "./libraries/EndpointHelpers.sol";
+import "./libraries/ManagerHelpers.sol";
 
 pragma solidity >=0.8.8 <0.9.0;
 
@@ -392,9 +393,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         uint8 decimals = token.decimals();
 
         token.mintDummy(from, 5 * 10 ** decimals);
-        manager.setSibling(SENDING_CHAIN_ID, toWormholeFormat(address(manager)));
-        manager.setOutboundLimit(NormalizedAmount.wrap(type(uint64).max).denormalize(decimals));
-        manager.setInboundLimit(inboundLimit.denormalize(decimals), SENDING_CHAIN_ID);
+        ManagerHelpersLib.setConfigs(inboundLimit, manager, decimals);
 
         {
             uint256 from_balanceBefore = token.balanceOf(from);

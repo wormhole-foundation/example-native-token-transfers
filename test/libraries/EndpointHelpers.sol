@@ -3,6 +3,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "../mocks/DummyEndpoint.sol";
+import "../mocks/DummyToken.sol";
 import "../../src/ManagerStandalone.sol";
 
 library EndpointHelpersLib {

@@ -18,6 +18,7 @@ import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "wormhole-solidity-sdk/Utils.sol";
 import "./libraries/EndpointHelpers.sol";
+import "./libraries/ManagerHelpers.sol";
 import "./interfaces/IEndpointReceiver.sol";
 import "./mocks/DummyEndpoint.sol";
 import "./mocks/DummyToken.sol";
@@ -272,12 +273,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         uint8 decimals = token.decimals(); // 18
         {
             token.mintDummy(from, 5 * 10 ** decimals);
-            manager.setSibling(SENDING_CHAIN_ID, toWormholeFormat(address(manager)));
-
-            uint256 outboundLimit = NormalizedAmount(type(uint64).max, 8).denormalize(decimals);
-            manager.setOutboundLimit(outboundLimit);
-
-            manager.setInboundLimit(inboundLimit.denormalize(decimals), SENDING_CHAIN_ID);
+            ManagerHelpersLib.setConfigs(inboundLimit, manager, decimals);
         }
 
         {
