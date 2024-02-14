@@ -134,7 +134,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
             EndpointStructs.EndpointMessage memory endpointMessage,
             bytes memory encodedEndpointPayload
         ) = EndpointStructs.buildAndEncodeEndpointMessage(
-            WH_ENDPOINT_PAYLOAD_PREFIX, toWormholeFormat(caller), managerMessage
+            WH_ENDPOINT_PAYLOAD_PREFIX, toWormholeFormat(caller), managerMessage, new bytes(0)
         );
 
         if (shouldRelayViaStandardRelaying(recipientChain)) {
