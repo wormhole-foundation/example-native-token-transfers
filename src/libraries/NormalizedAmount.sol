@@ -7,6 +7,10 @@ struct NormalizedAmount {
     uint8 decimals;
 }
 
+function minUint8(uint8 a, uint8 b) pure returns (uint8) {
+    return a < b ? a : b;
+}
+
 library NormalizedAmountLib {
     uint8 constant NORMALIZED_DECIMALS = 8;
 
@@ -128,10 +132,6 @@ library NormalizedAmountLib {
         return a.amount < b.amount ? a : b;
     }
 
-    function minDecimals(uint8 toDecimals, uint8 fromDecimals) internal pure returns (uint8) {
-        return toDecimals < fromDecimals ? toDecimals : fromDecimals;
-    }
-
     /// @dev scale the amount from origDecimals to normDecimals (base 10)
     function scalingFactor(
         uint8 origDecimals,
@@ -148,7 +148,7 @@ library NormalizedAmountLib {
         uint256 amt,
         uint8 fromDecimals
     ) internal pure returns (NormalizedAmount memory) {
-        uint8 toDecimals = minDecimals(NORMALIZED_DECIMALS, fromDecimals);
+        uint8 toDecimals = minUint8(NORMALIZED_DECIMALS, fromDecimals);
         amt /= scalingFactor(fromDecimals, toDecimals);
 
         // NOTE: amt after normalization must fit into uint64 (that's the point of
