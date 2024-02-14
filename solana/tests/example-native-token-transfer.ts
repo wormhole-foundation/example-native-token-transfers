@@ -145,7 +145,7 @@ describe('example-native-token-transfers', () => {
             Buffer.from('FAFA'.padStart(64, '0'), 'hex'),
             new NormalizedAmount(BigInt(10000), 8),
             toChainId('solana'),
-            tokenAccount.toBuffer()
+            user.publicKey.toBuffer()
           )
         )
       }

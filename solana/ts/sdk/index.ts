@@ -2,6 +2,7 @@ import { type ChainName, toChainId, coalesceChainId, type ChainId, SignedVaa, pa
 import { derivePostedVaaKey, getWormholeDerivedAccounts } from '@certusone/wormhole-sdk/lib/cjs/solana/wormhole'
 import { BN, translateError, type IdlAccounts, type Program } from '@coral-xyz/anchor'
 import { associatedAddress } from '@coral-xyz/anchor/dist/cjs/utils/token'
+import { getAssociatedTokenAddressSync } from '@solana/spl-token'
 import {
   type PublicKeyInitData,
   PublicKey, Keypair,
@@ -363,6 +364,8 @@ export class NTT {
     const recipientAddress =
       args.recipient ?? (await this.getInboxItem(args.chain, args.sequence)).recipientAddress
 
+    const mint = await this.mintAccountAddress(config)
+
     return await this.program.methods
       .releaseInboundMint({
         revertOnDelay: args.revertOnDelay
@@ -372,8 +375,8 @@ export class NTT {
           payer: args.payer,
           config: { config: this.configAccountAddress() },
           inboxItem: this.inboxItemAccountAddress(args.chain, args.sequence),
-          recipient: recipientAddress,
-          mint: await this.mintAccountAddress(config),
+          recipient: getAssociatedTokenAddressSync(mint, recipientAddress),
+          mint,
           tokenAuthority: this.tokenAuthorityAddress(),
         },
       })
@@ -420,6 +423,8 @@ export class NTT {
     const recipientAddress =
       args.recipient ?? (await this.getInboxItem(args.chain, args.sequence)).recipientAddress
 
+    const mint = await this.mintAccountAddress(config)
+
     return await this.program.methods
       .releaseInboundUnlock({
         revertOnDelay: args.revertOnDelay
@@ -429,8 +434,8 @@ export class NTT {
           payer: args.payer,
           config: { config: this.configAccountAddress() },
           inboxItem: this.inboxItemAccountAddress(args.chain, args.sequence),
-          recipient: recipientAddress,
-          mint: await this.mintAccountAddress(config),
+          recipient: getAssociatedTokenAddressSync(mint, recipientAddress),
+          mint,
           tokenAuthority: this.tokenAuthorityAddress(),
         },
         custody: await this.custodyAccountAddress(config)

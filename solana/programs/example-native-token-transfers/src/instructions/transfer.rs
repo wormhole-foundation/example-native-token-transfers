@@ -225,9 +225,7 @@ fn insert_into_outbox(
     common.outbox_item.set_inner(OutboxItem {
         sequence,
         amount,
-        // TODO: this is the token account itself. should we use the authority
-        // instead? (and enforce ATAs)
-        sender: common.from.key(),
+        sender: common.from_authority.key(),
         recipient_chain,
         recipient_address,
         release_timestamp,

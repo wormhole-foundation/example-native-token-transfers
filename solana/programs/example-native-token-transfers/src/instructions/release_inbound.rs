@@ -18,11 +18,9 @@ pub struct ReleaseInbound<'info> {
 
     #[account(
         mut,
-        address = inbox_item.recipient_address,
+        associated_token::authority = inbox_item.recipient_address,
+        associated_token::mint = mint
     )]
-    /// CHECK: the address is checked to match the recipient address in the
-    /// inbox item
-    /// TODO: send to ATA?
     pub recipient: InterfaceAccount<'info, token_interface::TokenAccount>,
 
     #[account(

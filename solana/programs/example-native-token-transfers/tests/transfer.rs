@@ -107,7 +107,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
                 amount: 10,
                 decimals: 8
             },
-            sender: test_data.user_token_account,
+            sender: test_data.user.pubkey(),
             recipient_chain: ChainId { id: 2 },
             recipient_address: [1u8; 32],
             release_timestamp: clock.unix_timestamp,
@@ -159,7 +159,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
             chain_id: ChainId { id: 1 },
             sequence: sequence.sequence,
             source_manager: example_native_token_transfers::ID.to_bytes(),
-            sender: test_data.user_token_account.to_bytes(),
+            sender: test_data.user.pubkey().to_bytes(),
             payload: NativeTokenTransfer {
                 amount: NormalizedAmount {
                     amount: 10,
