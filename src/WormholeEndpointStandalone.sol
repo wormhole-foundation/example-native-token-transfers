@@ -29,4 +29,18 @@ contract WormholeEndpointStandalone is WormholeEndpoint, EndpointStandalone {
     function pauseEndpoint() external override onlyOwnerOrPauser {
         _pause();
     }
+
+    /// @dev Override the [`transferOwnership`] method from OwnableUpgradeable
+    /// to ensure owner cannot transfer ownership
+    function transferOwnership(address newOwner) public override onlyOwner {
+        // do nothing
+        // this method body is empty
+    }
+
+    /// @dev Override the [`renounceOwnership`] function to ensure
+    /// the manager and owner stay in sync.
+    function renounceOwnership() public override onlyOwner {
+        // do nothing
+        // this method body is empty
+    }
 }
