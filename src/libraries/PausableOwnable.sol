@@ -31,7 +31,7 @@ abstract contract PausableOwnable is PausableUpgradeable, OwnableUpgradeable {
     /**
      * @dev Transfers the ability to pause to a new account (`newPauser`).
      */
-    function _transferPauserCapability(address newPauser) internal virtual onlyOwnerOrPauser {
+    function transferPauserCapability(address newPauser) public virtual onlyOwnerOrPauser {
         PauserStorage storage $ = _getPauserStorage();
         address oldPauser = $._pauser;
         $._pauser = newPauser;
@@ -41,12 +41,12 @@ abstract contract PausableOwnable is PausableUpgradeable, OwnableUpgradeable {
     /**
      * @dev Leaves the contract without a Pauser
      */
-    function _renouncePauser() public virtual onlyOwnerOrPauser {
+    function renouncePauser() public virtual onlyOwnerOrPauser {
         // NOTE: Cannot renounce the pauser capability when the contract is in the `PAUSED` state
         // the contract can never be `UNPAUSED`
         if (isPaused()) {
             revert CannotRenounceWhilePaused(pauser());
         }
-        _transferPauserCapability(address(0));
+        transferPauserCapability(address(0));
     }
 }
