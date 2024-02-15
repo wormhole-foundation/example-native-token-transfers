@@ -48,15 +48,15 @@ pub struct Redeem<'info> {
         seeds = [
             InboxItem::SEED_PREFIX,
             endpoint_message.from_chain.id.to_be_bytes().as_ref(),
-            // TODO: use hash instead of just sequence
-            endpoint_message.message.manager_payload.sequence.to_be_bytes().as_ref(),
+            endpoint_message.message.manager_payload.keccak256().as_ref(),
         ],
         bump,
     )]
-    // NOTE: in order to handle multiple endpoints, we can just augment the
-    // inbox item transfer struct with a bitmap storing which endpoints have
-    // attested to the transfer. Then we only release it if there's quorum.
-    // We would need to maybe_init this account in that case.
+    /// NOTE: This account is content-addressed (PDA seeded by the message hash).
+    /// This is because in a multi-endpoint configuration, the different
+    /// endpoints "vote" on messages (by delivering them). By making the inbox
+    /// items content-addressed, we can ensure that disagreeing votes don't
+    /// interfere with each other.
     pub inbox_item: Account<'info, InboxItem>,
 
     #[account(
@@ -80,8 +80,6 @@ pub struct RedeemArgs {}
 
 pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let accs = ctx.accounts;
-
-    // TODO: seed PDA by content instead of sequence
 
     let message: ManagerMessage<NativeTokenTransfer> =
         accs.endpoint_message.message.manager_payload.clone();

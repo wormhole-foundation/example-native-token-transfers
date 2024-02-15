@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use core::fmt;
+use solana_program::keccak::Hash;
 use std::{collections::HashMap, io, marker::PhantomData};
 
 use wormhole_io::{Readable, TypePrefixedPayload, Writeable};
@@ -13,6 +14,13 @@ pub struct ManagerMessage<A: Space> {
     pub sequence: u64,
     pub sender: [u8; 32],
     pub payload: A,
+}
+
+impl<A: Space + AnchorSerialize + fmt::Debug + TypePrefixedPayload> ManagerMessage<A> {
+    pub fn keccak256(&self) -> Hash {
+        let payload = TypePrefixedPayload::to_vec_payload(self);
+        solana_program::keccak::hash(&payload)
+    }
 }
 
 impl<A: TypePrefixedPayload + Space> TypePrefixedPayload for ManagerMessage<A> {

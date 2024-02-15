@@ -42,7 +42,6 @@ pub struct ReceiveMessage<'info> {
         seeds = [
             ValidatedEndpointMessage::<EndpointMessageData<NativeTokenTransfer>>::SEED_PREFIX,
             vaa.emitter_chain().to_be_bytes().as_ref(),
-            // TODO: use hash instead of just sequence
             vaa.message().manager_payload.sequence.to_be_bytes().as_ref(),
         ],
         bump,

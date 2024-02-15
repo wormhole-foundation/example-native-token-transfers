@@ -1,6 +1,7 @@
 use anchor_lang::prelude::Pubkey;
 use example_native_token_transfers::{
     config::Config,
+    messages::{ManagerMessage, NativeTokenTransfer},
     queue::{
         inbox::{InboxItem, InboxRateLimit},
         outbox::OutboxRateLimit,
@@ -8,7 +9,9 @@ use example_native_token_transfers::{
     registered_endpoint::RegisteredEndpoint,
     sequence::Sequence,
 };
+use sha3::{Digest, Keccak256};
 use wormhole_anchor_sdk::wormhole;
+use wormhole_io::TypePrefixedPayload;
 
 pub struct Wormhole {
     pub program: Pubkey,
@@ -66,12 +69,19 @@ impl NTT {
         inbox_rate_limit
     }
 
-    pub fn inbox_item(&self, chain: u16, sequence: u64) -> Pubkey {
+    pub fn inbox_item(
+        &self,
+        chain: u16,
+        manager_message: ManagerMessage<NativeTokenTransfer>,
+    ) -> Pubkey {
+        let mut hasher = Keccak256::new();
+        hasher.update(&TypePrefixedPayload::to_vec_payload(&manager_message));
+
         let (inbox_item, _) = Pubkey::find_program_address(
             &[
                 InboxItem::SEED_PREFIX,
                 &chain.to_be_bytes(),
-                &sequence.to_be_bytes(),
+                &hasher.finalize(),
             ],
             &self.program,
         );
@@ -123,7 +133,11 @@ impl NTT {
 
     pub fn endpoint_message(&self, chain: u16, sequence: u64) -> Pubkey {
         let (endpoint_message, _) = Pubkey::find_program_address(
-            &[b"endpoint_message".as_ref(), &chain.to_be_bytes(), &sequence.to_be_bytes()],
+            &[
+                b"endpoint_message".as_ref(),
+                &chain.to_be_bytes(),
+                &sequence.to_be_bytes(),
+            ],
             &self.program,
         );
         endpoint_message

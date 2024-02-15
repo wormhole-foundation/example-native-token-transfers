@@ -4486,7 +4486,7 @@ sha.js@^2.4.0, sha.js@^2.4.8:
     inherits "^2.0.1"
     safe-buffer "^5.0.1"
 
-sha3@^2.1.1:
+sha3@^2.1.1, sha3@^2.1.4:
   version "2.1.4"
   resolved "https://registry.npmjs.org/sha3/-/sha3-2.1.4.tgz"
   integrity sha512-S8cNxbyb0UGUM2VhRD4Poe5N58gJnJsLJ5vC7FYWGUmGhcsj4++WaIOBFVDxlG0W3To6xBuiRh+i0Qp2oNCOtg==

@@ -67,14 +67,16 @@ fn init_redeem_accs(
     ctx: &mut ProgramTestContext,
     test_data: &TestData,
     chain_id: u16,
-    sequence: u64,
+    manager_message: ManagerMessage<NativeTokenTransfer>,
 ) -> Redeem {
     let accs = Redeem {
         payer: ctx.payer.pubkey(),
         sibling: test_data.ntt.sibling(chain_id),
         endpoint: test_data.ntt.program,
-        endpoint_message: test_data.ntt.endpoint_message(chain_id, sequence),
-        inbox_item: test_data.ntt.inbox_item(chain_id, sequence),
+        endpoint_message: test_data
+            .ntt
+            .endpoint_message(chain_id, manager_message.sequence),
+        inbox_item: test_data.ntt.inbox_item(chain_id, manager_message),
         inbox_rate_limit: test_data.ntt.inbox_rate_limit(chain_id),
     };
 
@@ -104,25 +106,27 @@ fn init_receive_message_accs(
 /// doesn't support posting vaas yet.
 /// TODO: in an ideal world, writing into these accounts should be even easier, but
 /// the sdk doesn't have a working serializer implementation for the vaa account either
-fn make_vaa(sequence: u64, amount: u64, recipient: &Keypair) -> (Pubkey, Account) {
+fn make_vaa(
+    sequence: u64,
+    amount: u64,
+    recipient: &Keypair,
+) -> (Pubkey, Account, ManagerMessage<NativeTokenTransfer>) {
     let vaa = Keypair::new();
-    let endpoint_message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
-        EndpointMessage::new(
-            OTHER_MANAGER,
-            ManagerMessage {
-                sequence,
-                sender: [4u8; 32],
-                payload: NativeTokenTransfer {
-                    amount: NormalizedAmount {
-                        amount,
-                        decimals: 9,
-                    },
-                    source_token: [3u8; 32],
-                    to_chain: ChainId { id: THIS_CHAIN },
-                    to: recipient.pubkey().to_bytes(),
-                },
+    let manager_message = ManagerMessage {
+        sequence,
+        sender: [4u8; 32],
+        payload: NativeTokenTransfer {
+            amount: NormalizedAmount {
+                amount,
+                decimals: 9,
             },
-        );
+            source_token: [3u8; 32],
+            to_chain: ChainId { id: THIS_CHAIN },
+            to: recipient.pubkey().to_bytes(),
+        },
+    };
+    let endpoint_message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
+        EndpointMessage::new(OTHER_MANAGER, manager_message.clone());
 
     let payload = endpoint_message.to_vec_payload();
 
@@ -150,7 +154,7 @@ fn make_vaa(sequence: u64, amount: u64, recipient: &Keypair) -> (Pubkey, Account
         rent_epoch: u64::MAX,
     };
 
-    (vaa.pubkey(), vaa_account)
+    (vaa.pubkey(), vaa_account, manager_message)
 }
 
 async fn outbound_capacity(ctx: &mut ProgramTestContext, test_data: &TestData) -> u64 {
@@ -180,8 +184,8 @@ async fn inbound_capacity(ctx: &mut ProgramTestContext, test_data: &TestData) ->
 #[tokio::test]
 async fn test_cancel() {
     let recipient = Keypair::new();
-    let (vaa0, vaa_account0) = make_vaa(0, 1000, &recipient);
-    let (vaa1, vaa_account1) = make_vaa(1, 2000, &recipient);
+    let (vaa0, vaa_account0, msg0) = make_vaa(0, 1000, &recipient);
+    let (vaa1, vaa_account1, msg1) = make_vaa(1, 2000, &recipient);
     let (mut ctx, test_data) =
         setup_with_extra_accounts(Mode::Locking, &[(vaa0, vaa_account0), (vaa1, vaa_account1)])
             .await;
@@ -199,7 +203,7 @@ async fn test_cancel() {
 
     redeem(
         &test_data.ntt,
-        init_redeem_accs(&mut ctx, &test_data, OTHER_CHAIN, 0),
+        init_redeem_accs(&mut ctx, &test_data, OTHER_CHAIN, msg0),
         RedeemArgs {},
     )
     .submit(&mut ctx)
@@ -247,7 +251,7 @@ async fn test_cancel() {
 
     redeem(
         &test_data.ntt,
-        init_redeem_accs(&mut ctx, &test_data, OTHER_CHAIN, 1),
+        init_redeem_accs(&mut ctx, &test_data, OTHER_CHAIN, msg1),
         RedeemArgs {},
     )
     .submit(&mut ctx)

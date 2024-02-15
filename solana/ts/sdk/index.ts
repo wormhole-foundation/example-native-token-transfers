@@ -11,6 +11,7 @@ import {
   sendAndConfirmTransaction,
   type TransactionSignature
 } from '@solana/web3.js'
+import { Keccak } from 'sha3'
 import { type ExampleNativeTokenTransfers } from '../../target/types/example_native_token_transfers'
 import { ManagerMessage } from './payloads/common'
 import { NativeTokenTransfer } from './payloads/transfers'
@@ -75,13 +76,17 @@ export class NTT {
     return this.derive_pda([Buffer.from('inbox_rate_limit'), new BN(chainId).toBuffer('be', 2)])
   }
 
-  inboxItemAccountAddress(chain: ChainName | ChainId, sequence: BN): PublicKey {
+  inboxItemAccountAddress(chain: ChainName | ChainId, managerMessage: ManagerMessage<NativeTokenTransfer>): PublicKey {
     const chainId = coalesceChainId(chain)
+    const serialized = ManagerMessage.serialize(managerMessage, NativeTokenTransfer.serialize)
+    const hasher = new Keccak(256)
+    hasher.update(serialized)
+    const hash = hasher.digest('hex')
     return this.derive_pda(
       [
         Buffer.from('inbox_item'),
         new BN(chainId).toBuffer('be', 2),
-        sequence.toBuffer('be', 8)
+        Buffer.from(hash, 'hex')
       ])
   }
 
@@ -370,7 +375,7 @@ export class NTT {
   async createReleaseInboundMintInstruction(args: {
     payer: PublicKey
     chain: ChainName | ChainId
-    sequence: BN
+    managerMessage: ManagerMessage<NativeTokenTransfer>
     revertOnDelay: boolean
     recipient?: PublicKey
     config?: Config
@@ -382,7 +387,7 @@ export class NTT {
     }
 
     const recipientAddress =
-      args.recipient ?? (await this.getInboxItem(args.chain, args.sequence)).recipientAddress
+      args.recipient ?? (await this.getInboxItem(args.chain, args.managerMessage)).recipientAddress
 
     const mint = await this.mintAccountAddress(config)
 
@@ -394,7 +399,7 @@ export class NTT {
         common: {
           payer: args.payer,
           config: { config: this.configAccountAddress() },
-          inboxItem: this.inboxItemAccountAddress(args.chain, args.sequence),
+          inboxItem: this.inboxItemAccountAddress(args.chain, args.managerMessage),
           recipient: getAssociatedTokenAddressSync(mint, recipientAddress),
           mint,
           tokenAuthority: this.tokenAuthorityAddress(),
@@ -406,7 +411,7 @@ export class NTT {
   async releaseInboundMint(args: {
     payer: Keypair
     chain: ChainName | ChainId
-    sequence: BN
+    managerMessage: ManagerMessage<NativeTokenTransfer>
     revertOnDelay: boolean
     config?: Config
   }): Promise<void> {
@@ -429,7 +434,7 @@ export class NTT {
   async createReleaseInboundUnlockInstruction(args: {
     payer: PublicKey
     chain: ChainName | ChainId
-    sequence: BN
+    managerMessage: ManagerMessage<NativeTokenTransfer>
     revertOnDelay: boolean
     recipient?: PublicKey
     config?: Config
@@ -441,7 +446,7 @@ export class NTT {
     }
 
     const recipientAddress =
-      args.recipient ?? (await this.getInboxItem(args.chain, args.sequence)).recipientAddress
+      args.recipient ?? (await this.getInboxItem(args.chain, args.managerMessage)).recipientAddress
 
     const mint = await this.mintAccountAddress(config)
 
@@ -453,7 +458,7 @@ export class NTT {
         common: {
           payer: args.payer,
           config: { config: this.configAccountAddress() },
-          inboxItem: this.inboxItemAccountAddress(args.chain, args.sequence),
+          inboxItem: this.inboxItemAccountAddress(args.chain, args.managerMessage),
           recipient: getAssociatedTokenAddressSync(mint, recipientAddress),
           mint,
           tokenAuthority: this.tokenAuthorityAddress(),
@@ -466,7 +471,7 @@ export class NTT {
   async releaseInboundUnlock(args: {
     payer: Keypair
     chain: ChainName | ChainId
-    sequence: BN
+    managerMessage: ManagerMessage<NativeTokenTransfer>
     revertOnDelay: boolean
     config?: Config
   }): Promise<void> {
@@ -601,7 +606,9 @@ export class NTT {
     const parsedVaa = parseVaa(args.vaa)
     const endpointMessage =
       WormholeEndpointMessage.deserialize(
-        parsedVaa.payload, a => ManagerMessage.deserialize(a, a => a)
+        parsedVaa.payload, a => ManagerMessage.deserialize(
+          a, NativeTokenTransfer.deserialize
+        )
       )
     const managerMessage = endpointMessage.managerPayload
     // NOTE: we do an 'as ChainId' cast here, which is generally unsafe.
@@ -619,7 +626,7 @@ export class NTT {
         sibling: managerSibling,
         endpointMessage: this.endpointMessageAccountAddress(chainId, new BN(managerMessage.sequence.toString())),
         endpoint: { endpoint: this.registeredEndpointAddress(this.program.programId) },
-        inboxItem: this.inboxItemAccountAddress(chainId, new BN(managerMessage.sequence.toString())),
+        inboxItem: this.inboxItemAccountAddress(chainId, managerMessage),
         inboxRateLimit,
         outboxRateLimit: this.outboxRateLimitAccountAddress(),
       })
@@ -677,7 +684,7 @@ export class NTT {
     const releaseArgs = {
       ...args,
       payer: args.payer.publicKey,
-      sequence: new BN(managerMessage.sequence.toString()),
+      managerMessage,
       recipient: new PublicKey(managerMessage.payload.recipientAddress),
       chain: chainId,
       revertOnDelay: false
@@ -693,7 +700,7 @@ export class NTT {
     await this.sendAndConfirmTransaction(tx, signers)
 
     // Let's check if the transfer was released
-    const inboxItem = await this.getInboxItem(chainId, new BN(managerMessage.sequence.toString()))
+    const inboxItem = await this.getInboxItem(chainId, managerMessage)
     return inboxItem.releaseStatus.released !== null
   }
 
@@ -723,8 +730,8 @@ export class NTT {
     return (await this.getConfig(config)).tokenProgram
   }
 
-  async getInboxItem(chain: ChainName | ChainId, sequence: BN): Promise<InboxItem> {
-    return await this.program.account.inboxItem.fetch(this.inboxItemAccountAddress(chain, sequence))
+  async getInboxItem(chain: ChainName | ChainId, managerMessage: ManagerMessage<NativeTokenTransfer>): Promise<InboxItem> {
+    return await this.program.account.inboxItem.fetch(this.inboxItemAccountAddress(chain, managerMessage))
   }
 
   /**
