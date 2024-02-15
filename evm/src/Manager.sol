@@ -16,7 +16,7 @@ import "./libraries/RateLimiter.sol";
 import "./libraries/NormalizedAmount.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/IManagerEvents.sol";
-import "./interfaces/IEndpointToken.sol";
+import "./interfaces/INTTToken.sol";
 import "./Endpoint.sol";
 import "./EndpointRegistry.sol";
 import "./libraries/PausableOwnable.sol";
@@ -490,7 +490,7 @@ abstract contract Manager is
             IERC20(token).safeTransfer(recipient, denormalizedAmount);
         } else if (mode == Mode.BURNING) {
             // mint tokens to the specified recipient
-            IEndpointToken(token).mint(recipient, denormalizedAmount);
+            INTTToken(token).mint(recipient, denormalizedAmount);
         } else {
             revert InvalidMode(uint8(mode));
         }
