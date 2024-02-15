@@ -2,7 +2,7 @@
 
 pragma solidity >=0.8.8 <0.9.0;
 
-import "./Pausable.sol";
+import "./PausableUpgradeable.sol";
 import "./external/OwnableUpgradeable.sol";
 
 abstract contract PausableOwnable is PausableUpgradeable, OwnableUpgradeable {
