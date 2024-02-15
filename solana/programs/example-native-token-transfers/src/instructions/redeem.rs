@@ -1,12 +1,13 @@
 use anchor_lang::prelude::*;
 
 use crate::{
+    bitmap::Bitmap,
     clock::current_timestamp,
     config::*,
     error::NTTError,
     messages::{ManagerMessage, NativeTokenTransfer, ValidatedEndpointMessage},
     queue::{
-        inbox::{InboxItem, InboxRateLimit},
+        inbox::{InboxItem, InboxRateLimit, ReleaseStatus},
         outbox::OutboxRateLimit,
         rate_limit::RateLimitResult,
     },
@@ -41,7 +42,7 @@ pub struct Redeem<'info> {
     pub endpoint: EnabledEndpoint<'info>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = payer,
         space = 8 + InboxItem::INIT_SPACE,
         seeds = [
@@ -80,14 +81,35 @@ pub struct RedeemArgs {}
 pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let accs = ctx.accounts;
 
+    // TODO: seed PDA by content instead of sequence
+
     let message: ManagerMessage<NativeTokenTransfer> =
         accs.endpoint_message.message.manager_payload.clone();
 
     let amount = message.payload.amount;
     let amount = amount.change_decimals(accs.outbox_rate_limit.rate_limit.limit.decimals);
 
-    let recipient_address =
-        Pubkey::try_from(message.payload.to).map_err(|_| NTTError::InvalidRecipientAddress)?;
+    if !accs.inbox_item.init {
+        let recipient_address =
+            Pubkey::try_from(message.payload.to).map_err(|_| NTTError::InvalidRecipientAddress)?;
+
+        accs.inbox_item.set_inner(InboxItem {
+            init: true,
+            bump: ctx.bumps.inbox_item,
+            amount,
+            recipient_address,
+            release_status: ReleaseStatus::NotApproved,
+            votes: Bitmap::new(),
+        });
+    }
+
+    // idempotent
+    accs.inbox_item.votes.set(accs.endpoint.id, true);
+
+    // TODO: if endpoints can be disabled, this should only cound enabled endpoints
+    if accs.inbox_item.votes.count_ones() < accs.config.threshold {
+        return Ok(());
+    }
 
     let release_timestamp = match accs.inbox_rate_limit.rate_limit.consume_or_delay(amount) {
         RateLimitResult::Consumed => {
@@ -99,13 +121,7 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
         RateLimitResult::Delayed(release_timestamp) => release_timestamp,
     };
 
-    accs.inbox_item.set_inner(InboxItem {
-        bump: ctx.bumps.inbox_item,
-        amount,
-        recipient_address,
-        release_timestamp,
-        released: false,
-    });
+    accs.inbox_item.release_status = ReleaseStatus::ReleaseAfter(release_timestamp);
 
     Ok(())
 }

@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use anchor_lang::prelude::*;
 
 use crate::{
-    chain_id::ChainId, clock::current_timestamp, error::NTTError,
+    bitmap::*, chain_id::ChainId, clock::current_timestamp, error::NTTError,
     normalized_amount::NormalizedAmount,
 };
 
@@ -19,27 +19,25 @@ pub struct OutboxItem {
     pub recipient_chain: ChainId,
     pub recipient_address: [u8; 32],
     pub release_timestamp: i64,
-    // TODO: change this to a bitmap to store which endpoints have released the
-    // transfer? (multi endpoint)
-    pub released: bool,
+    pub released: Bitmap,
 }
 
 impl OutboxItem {
     /// Attempt to release the transfer.
     /// Returns true if the transfer was released, false if it was not yet time to release it.
     /// TODO: this is duplicated in inbox.rs. factor out?
-    pub fn try_release(&mut self) -> Result<bool> {
+    pub fn try_release(&mut self, endpoint_index: u8) -> Result<bool> {
         let now = current_timestamp();
 
         if self.release_timestamp > now {
-            return Ok(false)
+            return Ok(false);
         }
 
-        if self.released {
+        if self.released.get(endpoint_index) {
             return Err(NTTError::MessageAlreadySent.into());
         }
 
-        self.released = true;
+        self.released.set(endpoint_index, true);
 
         Ok(true)
     }

@@ -334,6 +334,7 @@ export class NTT {
         outboxItem: args.outboxItem,
         wormholeMessage: this.wormholeMessageAccountAddress(args.outboxItem),
         emitter: whAccs.wormholeEmitter,
+        endpoint: { endpoint: this.registeredEndpointAddress(this.program.programId) },
         wormholeBridge: whAccs.wormholeBridge,
         wormholeFeeCollector: whAccs.wormholeFeeCollector,
         wormholeSequence: whAccs.wormholeSequence,
@@ -693,7 +694,7 @@ export class NTT {
 
     // Let's check if the transfer was released
     const inboxItem = await this.getInboxItem(chainId, new BN(managerMessage.sequence.toString()))
-    return inboxItem.released
+    return inboxItem.releaseStatus.released !== null
   }
 
   // Account access

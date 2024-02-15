@@ -130,6 +130,7 @@ pub fn set_sibling(ctx: Context<SetSibling>, args: SetSiblingArgs) -> Result<()>
 #[derive(Accounts)]
 pub struct RegisterEndpoint<'info> {
     #[account(
+        mut,
         has_one = owner,
     )]
     pub config: Account<'info, Config>,
@@ -155,16 +156,18 @@ pub struct RegisterEndpoint<'info> {
 }
 
 pub fn register_endpoint(ctx: Context<RegisterEndpoint>) -> Result<()> {
+    let id = ctx.accounts.config.next_endpoint_id;
+    ctx.accounts.config.next_endpoint_id += 1;
     ctx.accounts
         .registered_endpoint
         .set_inner(RegisteredEndpoint {
             bump: ctx.bumps.registered_endpoint,
+            id,
             endpoint_address: ctx.accounts.endpoint.key(),
             enabled: true,
         });
 
     // TODO set in enabled bitmap
-    // TODO: set id
     Ok(())
 }
 

@@ -12,6 +12,7 @@ pub mod queue;
 pub mod registered_endpoint;
 pub mod sequence;
 pub mod sibling;
+pub mod bitmap;
 
 use endpoints::wormhole::instructions::*;
 

@@ -3,8 +3,8 @@ use anchor_lang::prelude::error_code;
 #[error_code]
 // TODO(csongor): rename
 pub enum NTTError {
-    #[msg("ReleaseTimestampNotReached")]
-    ReleaseTimestampNotReached,
+    #[msg("CantReleaseYet")]
+    CantReleaseYet,
     #[msg("InvalidChainId")]
     InvalidChainId,
     #[msg("InvalidRecipientAddress")]
@@ -15,6 +15,8 @@ pub enum NTTError {
     InvalidManagerSibling,
     #[msg("TransferAlreadyRedeemed")]
     TransferAlreadyRedeemed,
+    #[msg("TransferNotApproved")]
+    TransferNotApproved,
     #[msg("MessageAlreadySent")]
     MessageAlreadySent,
     #[msg("InvalidMode")]

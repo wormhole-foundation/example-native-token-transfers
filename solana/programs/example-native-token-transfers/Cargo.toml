@@ -22,8 +22,9 @@ idl-build = [
 [dependencies]
 ahash = "=0.8.6"
 
-anchor-lang = "0.29.0"
+anchor-lang = { version = "0.29.0", features = ["init-if-needed"] }
 anchor-spl = "0.29.0"
+bitmaps = "3.2.1"
 wormhole-anchor-sdk = "0.29.0-alpha.1"
 wormhole-io = "0.1.3"
 

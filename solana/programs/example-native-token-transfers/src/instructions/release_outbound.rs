@@ -9,6 +9,7 @@ use crate::{
     error::NTTError,
     messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer},
     queue::outbox::OutboxItem,
+    registered_endpoint::*,
 };
 
 #[derive(Accounts)]
@@ -20,9 +21,14 @@ pub struct ReleaseOutbound<'info> {
 
     #[account(
         mut,
-        constraint = !outbox_item.released @ NTTError::MessageAlreadySent,
+        constraint = !outbox_item.released.get(endpoint.id) @ NTTError::MessageAlreadySent,
     )]
     pub outbox_item: Account<'info, OutboxItem>,
+
+    #[account(
+        constraint = endpoint.endpoint_address == crate::ID,
+    )]
+    pub endpoint: EnabledEndpoint<'info>,
 
     #[account(
         mut,
@@ -72,18 +78,17 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, args: ReleaseOutboundArgs
     let accs = ctx.accounts;
     let batch_id = 0;
 
-    // TODO: record endpoint position
-    let released = accs.outbox_item.try_release()?;
+    let released = accs.outbox_item.try_release(accs.endpoint.id)?;
 
     if !released {
         if args.revert_on_delay {
-            return Err(NTTError::ReleaseTimestampNotReached.into());
+            return Err(NTTError::CantReleaseYet.into());
         } else {
             return Ok(());
         }
     }
 
-    assert!(accs.outbox_item.released);
+    assert!(accs.outbox_item.released.get(accs.endpoint.id));
     let message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> = EndpointMessage::new(
         // TODO: should we just put the ntt id here statically?
         accs.outbox_item.to_account_info().owner.to_bytes(),

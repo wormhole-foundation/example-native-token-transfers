@@ -2,7 +2,9 @@ use std::ops::{Deref, DerefMut};
 
 use anchor_lang::prelude::*;
 
-use crate::{clock::current_timestamp, error::NTTError, normalized_amount::NormalizedAmount};
+use crate::{
+    bitmap::Bitmap, clock::current_timestamp, error::NTTError, normalized_amount::NormalizedAmount,
+};
 
 use super::rate_limit::RateLimitState;
 
@@ -10,11 +12,19 @@ use super::rate_limit::RateLimitState;
 #[derive(InitSpace)]
 // TODO: generalise this to arbitrary inbound messages (via a generic parameter in place of amount and recipient info)
 pub struct InboxItem {
+    pub init: bool,
     pub bump: u8,
     pub amount: NormalizedAmount,
     pub recipient_address: Pubkey,
-    pub release_timestamp: i64,
-    pub released: bool,
+    pub votes: Bitmap,
+    pub release_status: ReleaseStatus,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq, InitSpace)]
+pub enum ReleaseStatus {
+    NotApproved,
+    ReleaseAfter(i64),
+    Released,
 }
 
 impl InboxItem {
@@ -25,17 +35,19 @@ impl InboxItem {
     pub fn try_release(&mut self) -> Result<bool> {
         let now = current_timestamp();
 
-        if self.release_timestamp > now {
-            return Ok(false)
+        match self.release_status {
+            ReleaseStatus::NotApproved => Ok(false),
+            ReleaseStatus::ReleaseAfter(release_timestamp) => {
+                if release_timestamp > now {
+                    return Ok(false);
+                }
+                self.release_status = ReleaseStatus::Released;
+                Ok(true)
+            }
+            ReleaseStatus::Released => {
+                return Err(NTTError::TransferAlreadyRedeemed.into());
+            }
         }
-
-        if self.released {
-            return Err(NTTError::TransferAlreadyRedeemed.into());
-        }
-
-        self.released = true;
-
-        Ok(true)
     }
 }
 

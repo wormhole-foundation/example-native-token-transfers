@@ -11,7 +11,7 @@ use crate::{
         inbox::InboxRateLimit,
         outbox::{OutboxItem, OutboxRateLimit},
         rate_limit::RateLimitResult,
-    },
+    }, bitmap::Bitmap,
 };
 
 // this will burn the funds and create an account that either allows sending the
@@ -229,7 +229,7 @@ fn insert_into_outbox(
         recipient_chain,
         recipient_address,
         release_timestamp,
-        released: false,
+        released: Bitmap::new(),
     });
 
     Ok(())

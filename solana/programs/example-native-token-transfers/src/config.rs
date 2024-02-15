@@ -25,6 +25,11 @@ pub struct Config {
     /// hardcode this so that the program is deployable on any potential SVM
     /// forks.
     pub chain_id: ChainId,
+    /// The next endpoint id to use when registering an endpoint.
+    pub next_endpoint_id: u8,
+    /// The number of endpoints that must attest to a transfer before it is
+    /// accepted.
+    pub threshold: u8,
     /// Pause the program. This is useful for upgrades and other maintenance.
     pub paused: bool,
 }

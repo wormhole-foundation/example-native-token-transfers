@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
 
-use crate::{config::*, error::NTTError, queue::inbox::InboxItem};
+use crate::{config::*, error::NTTError, queue::inbox::{InboxItem, ReleaseStatus}};
 
 #[derive(Accounts)]
 pub struct ReleaseInbound<'info> {
@@ -10,10 +10,7 @@ pub struct ReleaseInbound<'info> {
 
     pub config: NotPausedConfig<'info>,
 
-    #[account(
-        mut,
-        constraint = !inbox_item.released @ NTTError::TransferAlreadyRedeemed,
-    )]
+    #[account(mut)]
     pub inbox_item: Account<'info, InboxItem>,
 
     #[account(
@@ -68,13 +65,13 @@ pub fn release_inbound_mint(
 
     if !released {
         if args.revert_on_delay {
-            return Err(NTTError::ReleaseTimestampNotReached.into());
+            return Err(NTTError::CantReleaseYet.into());
         } else {
             return Ok(());
         }
     }
 
-    assert!(inbox_item.released);
+    assert!(inbox_item.release_status == ReleaseStatus::Released);
     match ctx.accounts.common.config.mode {
         Mode::Burning => token_interface::mint_to(
             CpiContext::new_with_signer(
@@ -122,13 +119,13 @@ pub fn release_inbound_unlock(
 
     if !released {
         if args.revert_on_delay {
-            return Err(NTTError::ReleaseTimestampNotReached.into());
+            return Err(NTTError::CantReleaseYet.into());
         } else {
             return Ok(());
         }
     }
 
-    assert!(inbox_item.released);
+    assert!(inbox_item.release_status == ReleaseStatus::Released);
     match ctx.accounts.common.config.mode {
         Mode::Burning => Err(NTTError::InvalidMode.into()),
         Mode::Locking => token_interface::transfer_checked(

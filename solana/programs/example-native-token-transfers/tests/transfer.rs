@@ -5,14 +5,16 @@ use anchor_lang::prelude::{Clock, Pubkey};
 use anchor_spl::token::{Mint, TokenAccount};
 use common::setup::TestData;
 use example_native_token_transfers::{
+    bitmap::Bitmap,
     chain_id::ChainId,
     config::Mode,
+    endpoints::wormhole::messages::WormholeEndpoint,
     error::NTTError,
     instructions::{ReleaseOutboundArgs, TransferArgs},
     messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer},
     normalized_amount::NormalizedAmount,
     queue::outbox::{OutboxItem, OutboxRateLimit},
-    sequence::Sequence, endpoints::wormhole::messages::WormholeEndpoint,
+    sequence::Sequence,
 };
 use solana_program_test::*;
 use solana_sdk::{
@@ -117,7 +119,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
             recipient_chain: ChainId { id: 2 },
             recipient_address: [1u8; 32],
             release_timestamp: clock.unix_timestamp,
-            released: false
+            released: Bitmap::new(),
         }
     );
 
@@ -141,7 +143,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
     // make sure the outbox item is now released, but nothing else has changed
     assert_eq!(
         OutboxItem {
-            released: true,
+            released: Bitmap::from_value(1),
             ..outbox_item_account
         },
         outbox_item_account_after,
@@ -325,7 +327,7 @@ async fn assert_queued(ctx: &mut ProgramTestContext, outbox_item: Pubkey) {
 
     let clock: Clock = ctx.banks_client.get_sysvar().await.unwrap();
 
-    assert!(!outbox_item_account.released);
+    assert!(!outbox_item_account.released.get(0));
     assert!(outbox_item_account.release_timestamp > clock.unix_timestamp);
 }
 
@@ -476,7 +478,7 @@ async fn test_cant_release_queued() {
         err.unwrap(),
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(NTTError::ReleaseTimestampNotReached.into())
+            InstructionError::Custom(NTTError::CantReleaseYet.into())
         )
     );
 
