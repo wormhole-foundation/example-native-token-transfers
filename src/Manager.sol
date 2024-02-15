@@ -27,7 +27,6 @@ abstract contract Manager is
     IManagerEvents,
     EndpointRegistry,
     RateLimiter,
-    OwnableUpgradeable,
     ReentrancyGuardUpgradeable,
     PausableOwnable
 {
