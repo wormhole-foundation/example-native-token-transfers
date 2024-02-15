@@ -64,11 +64,24 @@ describe('example-native-token-transfers', () => {
         mode: 'locking'
       })
 
+      await ntt.registerEndpoint({
+        payer,
+        owner,
+        endpoint: ntt.program.programId
+      })
+
+      await ntt.setWormholeEndpointSibling({
+        payer,
+        owner,
+        chain: 'ethereum',
+        address: Buffer.from('endpoint'.padStart(32, '\0')),
+      })
+
       await ntt.setSibling({
         payer,
         owner,
         chain: 'ethereum',
-        address: Buffer.from('BEEFFACE'.padStart(64, '0'), 'hex'),
+        address: Buffer.from('manager'.padStart(32, '\0')),
         limit: new BN(1000000)
       })
 
@@ -128,7 +141,7 @@ describe('example-native-token-transfers', () => {
     it('Can receive tokens', async () => {
       const emitter =
         new MockEmitter(
-          '00000000000000000000000000000000000000000000000000000000BEEFFACE',
+          Buffer.from('endpoint'.padStart(32, '\0')).toString('hex'),
           toChainId('ethereum'),
           Number(0) // sequence
         )
@@ -136,7 +149,7 @@ describe('example-native-token-transfers', () => {
       const guardians = new MockGuardians(0, [GUARDIAN_KEY])
 
       const sendingEndpointMessage: EndpointMessage<NativeTokenTransfer> = {
-        sourceManager: Buffer.from('BEEF'.padStart(64, '0'), 'hex'),
+        sourceManager: Buffer.from('manager'.padStart(32, '\0')),
         managerPayload: new ManagerMessage(
           BigInt(0),
           Buffer.from('FACE'.padStart(64, '0'), 'hex'),

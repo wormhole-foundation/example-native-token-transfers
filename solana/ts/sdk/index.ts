@@ -102,6 +102,25 @@ export class NTT {
     return this.derive_pda([Buffer.from('sibling'), new BN(chainId).toBuffer('be', 2)])
   }
 
+  endpointSiblingAccountAddress(chain: ChainName | ChainId): PublicKey {
+    const chainId = coalesceChainId(chain)
+    return this.derive_pda([Buffer.from('endpoint_sibling'), new BN(chainId).toBuffer('be', 2)])
+  }
+
+  endpointMessageAccountAddress(chain: ChainName | ChainId, sequence: BN): PublicKey {
+    const chainId = coalesceChainId(chain)
+    return this.derive_pda(
+      [
+        Buffer.from('endpoint_message'),
+        new BN(chainId).toBuffer('be', 2),
+        sequence.toBuffer('be', 8)
+      ])
+  }
+
+  registeredEndpointAddress(endpoint: PublicKey): PublicKey {
+    return this.derive_pda([Buffer.from('registered_endpoint'), endpoint.toBuffer()])
+  }
+
   // Instructions
 
   async initialize(args: {
@@ -494,7 +513,45 @@ export class NTT {
 
   }
 
-  async createRedeemInstruction(args: {
+  async setWormholeEndpointSibling(args: {
+    payer: Keypair
+    owner: Keypair
+    chain: ChainName
+    address: ArrayLike<number>
+    config?: Config
+  }) {
+    await this.program.methods.setWormholeSibling({
+      chainId: { id: toChainId(args.chain) },
+      address: Array.from(args.address)
+    })
+      .accounts({
+        payer: args.payer.publicKey,
+        owner: args.owner.publicKey,
+        config: this.configAccountAddress(),
+        sibling: this.endpointSiblingAccountAddress(args.chain),
+      })
+      .signers([args.payer, args.owner])
+      .rpc()
+  }
+
+  async registerEndpoint(args: {
+    payer: Keypair
+    owner: Keypair
+    endpoint: PublicKey
+  }): Promise<void> {
+    await this.program.methods.registerEndpoint()
+      .accounts({
+        payer: args.payer.publicKey,
+        owner: args.owner.publicKey,
+        config: this.configAccountAddress(),
+        endpoint: args.endpoint,
+        registeredEndpoint: this.registeredEndpointAddress(args.endpoint),
+      })
+      .signers([args.payer, args.owner])
+      .rpc()
+  }
+
+  async createReceiveWormholeMessageInstruction(args: {
     payer: PublicKey
     vaa: SignedVaa
     config?: Config
@@ -514,7 +571,43 @@ export class NTT {
     // TODO: explain why this is fine here
     const chainId = parsedVaa.emitterChain as ChainId
 
-    const sibling = this.siblingAccountAddress(chainId)
+    const endpointSibling = this.endpointSiblingAccountAddress(chainId)
+
+    return await this.program.methods.receiveWormholeMessage().accounts({
+      payer: args.payer,
+      config: this.configAccountAddress(),
+      sibling: endpointSibling,
+      vaa: derivePostedVaaKey(this.wormholeId, parseVaa(args.vaa).hash),
+      endpointMessage: this.endpointMessageAccountAddress(
+        chainId,
+        new BN(managerMessage.sequence.toString())
+      ),
+    }).instruction();
+  }
+
+
+  async createRedeemInstruction(args: {
+    payer: PublicKey
+    vaa: SignedVaa
+    config?: Config
+  }): Promise<TransactionInstruction> {
+    const config = await this.getConfig(args.config)
+
+    if (await this.isPaused(config)) {
+      throw new Error('Contract is paused')
+    }
+
+    const parsedVaa = parseVaa(args.vaa)
+    const endpointMessage =
+      WormholeEndpointMessage.deserialize(
+        parsedVaa.payload, a => ManagerMessage.deserialize(a, a => a)
+      )
+    const managerMessage = endpointMessage.managerPayload
+    // NOTE: we do an 'as ChainId' cast here, which is generally unsafe.
+    // TODO: explain why this is fine here
+    const chainId = parsedVaa.emitterChain as ChainId
+
+    const managerSibling = this.siblingAccountAddress(chainId)
     const inboxRateLimit = this.inboxRateLimitAccountAddress(chainId)
 
     return await this.program.methods
@@ -522,8 +615,9 @@ export class NTT {
       .accounts({
         payer: args.payer,
         config: this.configAccountAddress(),
-        sibling,
-        vaa: derivePostedVaaKey(this.wormholeId, parseVaa(args.vaa).hash),
+        sibling: managerSibling,
+        endpointMessage: this.endpointMessageAccountAddress(chainId, new BN(managerMessage.sequence.toString())),
+        endpoint: { endpoint: this.registeredEndpointAddress(this.program.programId) },
         inboxItem: this.inboxItemAccountAddress(chainId, new BN(managerMessage.sequence.toString())),
         inboxRateLimit,
         outboxRateLimit: this.outboxRateLimitAccountAddress(),
@@ -560,11 +654,13 @@ export class NTT {
     // TODO: explain why this is fine here
     const chainId = parsedVaa.emitterChain as ChainId
 
-    // Here we create a transaction with two instructions:
+    // Here we create a transaction with three instructions:
+    // 1. receive wormhole messsage (vaa)
     // 1. redeem
     // 2. releaseInboundMint or releaseInboundUnlock (depending on mode)
     //
-    // The first instruction places the transfer in the inbox, then the second instruction
+    // The first instruction verifies the VAA.
+    // The second instruction places the transfer in the inbox, then the third instruction
     // releases it.
     //
     // In case the redeemed amount exceeds the remaining inbound rate limit capacity,
@@ -574,6 +670,7 @@ export class NTT {
     // just make the second instruction a no-op in case the transfer is delayed.
 
     const tx = new Transaction()
+    tx.add(await this.createReceiveWormholeMessageInstruction(redeemArgs))
     tx.add(await this.createRedeemInstruction(redeemArgs))
 
     const releaseArgs = {

@@ -159,7 +159,6 @@ pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
         SetEndpointSibling {
             payer: ctx.payer.pubkey(),
             owner: test_data.program_owner.pubkey(),
-            mint: test_data.mint,
         },
         SetEndpointSiblingArgs {
             chain_id: ChainId { id: OTHER_CHAIN },
