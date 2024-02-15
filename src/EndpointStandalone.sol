@@ -6,6 +6,7 @@ import "./interfaces/IManagerStandalone.sol";
 import "./interfaces/IEndpointStandalone.sol";
 import "./libraries/Implementation.sol";
 import "./libraries/external/ReentrancyGuardUpgradeable.sol";
+import "./Manager.sol";
 
 abstract contract EndpointStandalone is
     IEndpointStandalone,
@@ -28,11 +29,21 @@ abstract contract EndpointStandalone is
         _;
     }
 
+    /// @dev Returns the owner of the manager contract
+    function getManagerOwner() public view returns (address) {
+        Manager managerInstance = Manager(manager);
+        return managerInstance.owner();
+    }
+
+    function initializeEndpoint() external {
+        _initialize();
+    }
+
     function _initialize() internal override {
         // TODO: check if it's safe to not initialise reentrancy guard
         __ReentrancyGuard_init();
-        // TODO: msg.sender may not be the right address
-        __PausedOwnable_init(msg.sender, msg.sender);
+        // owner of the endpoint is set to the owner of the manager
+        __PausedOwnable_init(msg.sender, getManagerOwner());
     }
 
     function _migrate() internal override {}
