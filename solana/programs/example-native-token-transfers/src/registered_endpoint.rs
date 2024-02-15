@@ -8,6 +8,10 @@ pub struct RegisteredEndpoint {
     pub bump: u8,
     pub id: u8,
     pub endpoint_address: Pubkey,
+    /// Whether the endpoint is enabled.
+    /// NOTE: there is a bitmap in the config account which must be kept in sync
+    /// with this. If endpoint disabling is implemented, the bitmap must be updated
+    /// in the same transaction as the endpoint account.
     pub enabled: bool,
 }
 

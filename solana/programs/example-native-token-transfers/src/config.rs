@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use anchor_lang::prelude::*;
 
-use crate::chain_id::ChainId;
+use crate::{chain_id::ChainId, bitmap::Bitmap};
 
 #[account]
 #[derive(InitSpace)]
@@ -30,6 +30,8 @@ pub struct Config {
     /// The number of endpoints that must attest to a transfer before it is
     /// accepted.
     pub threshold: u8,
+    /// Bitmap of enabled endpoints
+    pub enabled_endpoints: Bitmap,
     /// Pause the program. This is useful for upgrades and other maintenance.
     pub paused: bool,
 }

@@ -167,7 +167,7 @@ pub fn register_endpoint(ctx: Context<RegisterEndpoint>) -> Result<()> {
             enabled: true,
         });
 
-    // TODO set in enabled bitmap
+    ctx.accounts.config.enabled_endpoints.set(id, true);
     Ok(())
 }
 

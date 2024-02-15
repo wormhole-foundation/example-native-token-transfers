@@ -6,7 +6,7 @@ use crate::{
     error::NTTError,
     normalized_amount::NormalizedAmount,
     queue::{outbox::OutboxRateLimit, rate_limit::RateLimitState},
-    sequence::Sequence,
+    sequence::Sequence, bitmap::Bitmap,
 };
 
 // TODO: upgradeability
@@ -98,6 +98,7 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
         next_endpoint_id: 0,
         // NOTE: can't be changed for now
         threshold: 1,
+        enabled_endpoints: Bitmap::new(),
     });
 
     ctx.accounts.seq.set_inner(Sequence {

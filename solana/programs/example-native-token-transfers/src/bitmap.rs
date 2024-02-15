@@ -25,8 +25,9 @@ impl Bitmap {
         BM::<128>::from_value(self.map).get(index as usize)
     }
 
-    pub fn count_ones(&self) -> u8 {
-        BM::<128>::from_value(self.map).len().try_into().unwrap()
+    pub fn count_enabled_votes(&self, enabled: Bitmap) -> u8 {
+        let bm = BM::<128>::from_value(self.map) & BM::<128>::from_value(enabled.map);
+        bm.len() as u8
     }
 }
 
@@ -36,21 +37,25 @@ mod tests {
 
     #[test]
     fn test_bitmap() {
+        let mut enabled = Bitmap::from_value(u128::MAX);
         let mut bm = Bitmap::new();
-        assert_eq!(bm.count_ones(), 0);
+        assert_eq!(bm.count_enabled_votes(enabled), 0);
         bm.set(0, true);
-        assert_eq!(bm.count_ones(), 1);
+        assert_eq!(bm.count_enabled_votes(enabled), 1);
         assert_eq!(bm.get(0), true);
         assert_eq!(bm.get(1), false);
         bm.set(1, true);
-        assert_eq!(bm.count_ones(), 2);
+        assert_eq!(bm.count_enabled_votes(enabled), 2);
         assert_eq!(bm.get(0), true);
         assert_eq!(bm.get(1), true);
         bm.set(0, false);
-        assert_eq!(bm.count_ones(), 1);
+        assert_eq!(bm.count_enabled_votes(enabled), 1);
         assert_eq!(bm.get(0), false);
         assert_eq!(bm.get(1), true);
         bm.set(18, true);
-        assert_eq!(bm.count_ones(), 2);
+        assert_eq!(bm.count_enabled_votes(enabled), 2);
+
+        enabled.set(18, false);
+        assert_eq!(bm.count_enabled_votes(enabled), 1);
     }
 }

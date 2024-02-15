@@ -105,7 +105,12 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     accs.inbox_item.votes.set(accs.endpoint.id, true);
 
     // TODO: if endpoints can be disabled, this should only cound enabled endpoints
-    if accs.inbox_item.votes.count_ones() < accs.config.threshold {
+    if accs
+        .inbox_item
+        .votes
+        .count_enabled_votes(accs.config.enabled_endpoints)
+        < accs.config.threshold
+    {
         return Ok(());
     }
 
