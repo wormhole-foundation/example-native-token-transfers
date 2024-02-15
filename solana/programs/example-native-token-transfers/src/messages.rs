@@ -10,10 +10,7 @@ use crate::{chain_id::ChainId, normalized_amount::NormalizedAmount};
 
 #[derive(Debug, Clone, PartialEq, Eq, AnchorSerialize, AnchorDeserialize)]
 pub struct ManagerMessage<A> {
-    pub chain_id: ChainId,
     pub sequence: u64,
-    // TODO: check sibling registration at the manager level
-    pub source_manager: [u8; 32],
     pub sender: [u8; 32],
     pub payload: A,
 }
@@ -30,18 +27,14 @@ impl<A: TypePrefixedPayload> Readable for ManagerMessage<A> {
         Self: Sized,
         R: io::Read,
     {
-        let chain_id = Readable::read(reader)?;
         let sequence = Readable::read(reader)?;
-        let source_manager = Readable::read(reader)?;
         let sender = Readable::read(reader)?;
         // TODO: same as below for manager payload
         let _payload_len: u16 = Readable::read(reader)?;
         let payload = A::read_payload(reader)?;
 
         Ok(Self {
-            chain_id,
             sequence,
-            source_manager,
             sender,
             payload,
         })
@@ -50,9 +43,7 @@ impl<A: TypePrefixedPayload> Readable for ManagerMessage<A> {
 
 impl<A: TypePrefixedPayload> Writeable for ManagerMessage<A> {
     fn written_size(&self) -> usize {
-        ChainId::SIZE.unwrap()
-            + u64::SIZE.unwrap()
-            + self.source_manager.len()
+        u64::SIZE.unwrap()
             + self.sender.len()
             + u16::SIZE.unwrap() // payload length
             + self.payload.written_size()
@@ -63,16 +54,12 @@ impl<A: TypePrefixedPayload> Writeable for ManagerMessage<A> {
         W: io::Write,
     {
         let ManagerMessage {
-            chain_id,
             sequence,
-            source_manager,
             sender,
             payload,
         } = self;
 
-        chain_id.write(writer)?;
         sequence.write(writer)?;
-        writer.write_all(source_manager)?;
         writer.write_all(sender)?;
         let len: u16 = u16::try_from(payload.written_size()).expect("u16 overflow");
         len.write(writer)?;
@@ -173,6 +160,8 @@ impl Endpoint for WormholeEndpoint {
 #[derive(PartialEq, Eq)]
 pub struct EndpointMessage<E: Endpoint, A> {
     _phantom: PhantomData<E>,
+    // TODO: check sibling registration at the manager level
+    pub source_manager: [u8; 32],
     pub manager_payload: ManagerMessage<A>,
 }
 
@@ -206,15 +195,17 @@ where
     fn clone(&self) -> Self {
         Self {
             _phantom: PhantomData,
+            source_manager: self.source_manager.clone(),
             manager_payload: self.manager_payload.clone(),
         }
     }
 }
 
 impl<E: Endpoint, A> EndpointMessage<E, A> {
-    pub fn new(manager_payload: ManagerMessage<A>) -> Self {
+    pub fn new(source_manager: [u8; 32], manager_payload: ManagerMessage<A>) -> Self {
         Self {
             _phantom: PhantomData,
+            source_manager,
             manager_payload,
         }
     }
@@ -239,20 +230,23 @@ impl<E: Endpoint, A: Readable + TypePrefixedPayload> Readable for EndpointMessag
                 "Invalid prefix for EndpointMessage",
             ));
         }
+
+        let source_manager = Readable::read(reader)?;
         // TODO: we need a way to easily check that decoding the payload
         // consumes the expected amount of bytes
         let _manager_payload_len: u16 = Readable::read(reader)?;
         let manager_payload = ManagerMessage::read(reader)?;
 
-        Ok(EndpointMessage::new(manager_payload))
+        Ok(EndpointMessage::new(source_manager, manager_payload))
     }
 }
 
 impl<E: Endpoint, A: Writeable + TypePrefixedPayload> Writeable for EndpointMessage<E, A> {
     fn written_size(&self) -> usize {
-        4 + // prefix
-        u16::SIZE.unwrap() + // length prefix
-        self.manager_payload.written_size()
+        4 // prefix
+        + self.source_manager.len()
+        + u16::SIZE.unwrap() // length prefix
+        + self.manager_payload.written_size()
     }
 
     fn write<W>(&self, writer: &mut W) -> io::Result<()>
@@ -261,10 +255,12 @@ impl<E: Endpoint, A: Writeable + TypePrefixedPayload> Writeable for EndpointMess
     {
         let EndpointMessage {
             _phantom,
+            source_manager,
             manager_payload,
         } = self;
 
         E::PREFIX.write(writer)?;
+        source_manager.write(writer)?;
         let len: u16 = u16::try_from(manager_payload.written_size()).expect("u16 overflow");
         len.write(writer)?;
         // TODO: review this in wormhole-io. The written_size logic is error prone. Instead,
@@ -304,20 +300,19 @@ mod test {
     //
     #[test]
     fn test_deserialize_endpoint_message() {
-        let data = hex::decode("9945ff10009b0013000000367999a101042942fafabe00000000000000000000000000000000000000000000000000004667921341234300000000000000000000000000000000000000000000000000004f994e545408000000000012d687beefface00000000000000000000000000000000000000000000000000000000feebcafe000000000000000000000000000000000000000000000000000000000011").unwrap();
+        let data = hex::decode("9945ff10042942fafabe00000000000000000000000000000000000000000000000000000079000000367999a1014667921341234300000000000000000000000000000000000000000000000000004f994e545407000000000012d687beefface00000000000000000000000000000000000000000000000000000000feebcafe000000000000000000000000000000000000000000000000000000000011").unwrap();
         let mut vec = &data[..];
         let message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
             TypePrefixedPayload::read_payload(&mut vec).unwrap();
 
         let expected = EndpointMessage {
             _phantom: PhantomData::<WormholeEndpoint>,
+            source_manager: [
+                0x04, 0x29, 0x42, 0xFA, 0xFA, 0xBE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ],
             manager_payload: ManagerMessage {
-                chain_id: ChainId { id: 19 },
                 sequence: 233968345345,
-                source_manager: [
-                    0x04, 0x29, 0x42, 0xFA, 0xFA, 0xBE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                ],
                 sender: [
                     0x46, 0x67, 0x92, 0x13, 0x41, 0x23, 0x43, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -325,7 +320,7 @@ mod test {
                 payload: NativeTokenTransfer {
                     amount: NormalizedAmount {
                         amount: 1234567,
-                        decimals: 8,
+                        decimals: 7,
                     },
                     source_token: [
                         0xBE, 0xEF, 0xFA, 0xCE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

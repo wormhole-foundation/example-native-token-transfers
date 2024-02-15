@@ -31,8 +31,6 @@ pub struct Redeem<'info> {
     pub sibling: Account<'info, Sibling>,
 
     #[account(
-        // check that the VAA's emitter agrees with what's in the message
-        constraint = vaa.emitter_chain() == vaa.message().manager_payload.chain_id.id @ NTTError::InvalidChainId,
         // check that the messages is targeted to this chain
         constraint = vaa.message().manager_payload.payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
         // NOTE: we don't replay protect VAAs. Instead, we replay protect
@@ -46,7 +44,7 @@ pub struct Redeem<'info> {
         space = 8 + InboxItem::INIT_SPACE,
         seeds = [
             InboxItem::SEED_PREFIX,
-            vaa.message().manager_payload.chain_id.id.to_be_bytes().as_ref(),
+            vaa.emitter_chain().to_be_bytes().as_ref(),
             vaa.message().manager_payload.sequence.to_be_bytes().as_ref(),
         ],
         bump,

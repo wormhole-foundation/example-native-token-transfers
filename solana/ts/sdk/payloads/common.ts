@@ -1,10 +1,13 @@
 import { BN } from '@coral-xyz/anchor'
+import { assert } from 'chai'
 
 export class EndpointMessage<A> {
   static prefix: Buffer
+  sourceManager: Buffer
   managerPayload: ManagerMessage<A>
 
-  constructor(managerPayload: ManagerMessage<A>) {
+  constructor(sourceManager: Buffer, managerPayload: ManagerMessage<A>) {
+    this.sourceManager = sourceManager
     this.managerPayload = managerPayload
   }
 
@@ -16,49 +19,43 @@ export class EndpointMessage<A> {
     if (!prefix.equals(this.prefix)) {
       throw new Error('Invalid prefix')
     }
-    const managerPayloadLen = data.readUInt16BE(4)
-    const managerPayload = deserializer(data.subarray(6, 6 + managerPayloadLen))
-    return new EndpointMessage(managerPayload)
+    const sourceManager = data.subarray(4, 36)
+    const managerPayloadLen = data.readUInt16BE(36)
+    const managerPayload = deserializer(data.subarray(38, 38 + managerPayloadLen))
+    return new EndpointMessage(sourceManager, managerPayload)
   }
 
   static serialize<A>(msg: EndpointMessage<A>, serializer: (payload: ManagerMessage<A>) => Buffer): Buffer {
     const payload = serializer(msg.managerPayload)
-    const buffer = Buffer.concat([this.prefix, new BN(payload.length).toBuffer('be', 2), payload])
+    assert(msg.sourceManager.length == 32, 'sourceManager must be 32 bytes')
+    const buffer = Buffer.concat([this.prefix, msg.sourceManager, new BN(payload.length).toBuffer('be', 2), payload])
     return buffer
   }
 }
 
 export class ManagerMessage<A> {
-  chainId: number
   sequence: bigint
-  sourceManager: Buffer
   sender: Buffer
   payload: A
 
-  constructor(chainId: number, sequence: bigint, sourceManager: Buffer, sender: Buffer, payload: A) {
-    this.chainId = chainId
+  constructor(sequence: bigint, sender: Buffer, payload: A) {
     this.sequence = sequence
-    this.sourceManager = sourceManager
     this.sender = sender
     this.payload = payload
   }
 
   static deserialize = <A>(data: Buffer, deserializer: (data: Buffer) => A): ManagerMessage<A> => {
-    const chainId = data.readUInt16BE(0)
-    const sequence = data.readBigUInt64BE(2)
-    const sourceManager = data.subarray(10, 42)
-    const sender = data.subarray(42, 74)
-    const payloadLen = data.readUint16BE(74)
-    const payload = deserializer(data.subarray(76, 76 + payloadLen))
-    return new ManagerMessage(chainId, sequence, sourceManager, sender, payload)
+    const sequence = data.readBigUInt64BE(0)
+    const sender = data.subarray(8, 40)
+    const payloadLen = data.readUint16BE(40)
+    const payload = deserializer(data.subarray(42, 42 + payloadLen))
+    return new ManagerMessage(sequence, sender, payload)
   }
 
   static serialize = <A>(msg: ManagerMessage<A>, serializer: (payload: A) => Buffer): Buffer => {
-    const buffer = Buffer.alloc(74)
-    buffer.writeUInt16BE(msg.chainId, 0)
-    buffer.writeBigUInt64BE(msg.sequence, 2)
-    buffer.set(msg.sourceManager, 10)
-    buffer.set(msg.sender, 42)
+    const buffer = Buffer.alloc(40)
+    buffer.writeBigUInt64BE(msg.sequence, 0)
+    buffer.set(msg.sender, 8)
     const payload = serializer(msg.payload)
     return Buffer.concat([buffer, new BN(payload.length).toBuffer('be', 2), payload])
   }

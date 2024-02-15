@@ -136,10 +136,9 @@ describe('example-native-token-transfers', () => {
       const guardians = new MockGuardians(0, [GUARDIAN_KEY])
 
       const sendingEndpointMessage: EndpointMessage<NativeTokenTransfer> = {
+        sourceManager: Buffer.from('BEEF'.padStart(64, '0'), 'hex'),
         managerPayload: new ManagerMessage(
-          toChainId('ethereum'),
           BigInt(0),
-          Buffer.from('BEEF'.padStart(64, '0'), 'hex'),
           Buffer.from('FACE'.padStart(64, '0'), 'hex'),
           new NativeTokenTransfer(
             Buffer.from('FAFA'.padStart(64, '0'), 'hex'),

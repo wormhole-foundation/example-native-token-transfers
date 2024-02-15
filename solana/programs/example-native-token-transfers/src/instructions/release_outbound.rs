@@ -83,11 +83,11 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, args: ReleaseOutboundArgs
     }
 
     assert!(accs.outbox_item.released);
-    let message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
-        EndpointMessage::new(ManagerMessage {
-            chain_id: accs.config.chain_id,
+    let message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> = EndpointMessage::new(
+        // TODO: should we just put the ntt id here statically?
+        accs.outbox_item.to_account_info().owner.to_bytes(),
+        ManagerMessage {
             sequence: accs.outbox_item.sequence,
-            source_manager: accs.outbox_item.to_account_info().owner.to_bytes(),
             sender: accs.outbox_item.sender.to_bytes(),
             payload: NativeTokenTransfer {
                 amount: accs.outbox_item.amount,
@@ -95,7 +95,8 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, args: ReleaseOutboundArgs
                 to: accs.outbox_item.recipient_address.clone(),
                 to_chain: accs.outbox_item.recipient_chain,
             },
-        });
+        },
+    );
 
     if accs.wormhole_bridge.fee() > 0 {
         anchor_lang::system_program::transfer(

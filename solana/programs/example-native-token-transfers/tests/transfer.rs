@@ -161,21 +161,22 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
 
     assert_eq!(
         endpoint_message,
-        &EndpointMessage::new(ManagerMessage {
-            chain_id: ChainId { id: 1 },
-            sequence: sequence.sequence,
-            source_manager: example_native_token_transfers::ID.to_bytes(),
-            sender: test_data.user.pubkey().to_bytes(),
-            payload: NativeTokenTransfer {
-                amount: NormalizedAmount {
-                    amount: 10,
-                    decimals: 8
-                },
-                source_token: test_data.mint.to_bytes(),
-                to: [1u8; 32],
-                to_chain: ChainId { id: 2 },
+        &EndpointMessage::new(
+            example_native_token_transfers::ID.to_bytes(),
+            ManagerMessage {
+                sequence: sequence.sequence,
+                sender: test_data.user.pubkey().to_bytes(),
+                payload: NativeTokenTransfer {
+                    amount: NormalizedAmount {
+                        amount: 10,
+                        decimals: 8
+                    },
+                    source_token: test_data.mint.to_bytes(),
+                    to: [1u8; 32],
+                    to_chain: ChainId { id: 2 },
+                }
             }
-        })
+        )
     );
 
     let next_sequence: Sequence = ctx.get_account_data_anchor(test_data.ntt.sequence()).await;

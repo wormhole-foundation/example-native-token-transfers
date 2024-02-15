@@ -89,21 +89,22 @@ fn init_redeem_accs(
 fn make_vaa(sequence: u64, amount: u64, recipient: &Keypair) -> (Pubkey, Account) {
     let vaa = Keypair::new();
     let endpoint_message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
-        EndpointMessage::new(ManagerMessage {
-            chain_id: ChainId { id: OTHER_CHAIN },
-            sequence,
-            source_manager: [5u8; 32],
-            sender: [4u8; 32],
-            payload: NativeTokenTransfer {
-                amount: NormalizedAmount {
-                    amount,
-                    decimals: 9,
+        EndpointMessage::new(
+            [5u8; 32],
+            ManagerMessage {
+                sequence,
+                sender: [4u8; 32],
+                payload: NativeTokenTransfer {
+                    amount: NormalizedAmount {
+                        amount,
+                        decimals: 9,
+                    },
+                    source_token: [3u8; 32],
+                    to_chain: ChainId { id: THIS_CHAIN },
+                    to: recipient.pubkey().to_bytes(),
                 },
-                source_token: [3u8; 32],
-                to_chain: ChainId { id: THIS_CHAIN },
-                to: recipient.pubkey().to_bytes(),
             },
-        });
+        );
 
     let payload = endpoint_message.to_vec_payload();
 
