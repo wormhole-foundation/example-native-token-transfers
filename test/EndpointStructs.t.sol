@@ -29,14 +29,15 @@ contract TestEndpointStructs is Test {
         bytes4 wh_prefix = 0x9945FF10;
         EndpointStructs.EndpointMessage memory em = EndpointStructs.EndpointMessage({
             sourceManagerAddress: hex"042942FAFABE",
-            managerPayload: EndpointStructs.encodeManagerMessage(mm)
+            managerPayload: EndpointStructs.encodeManagerMessage(mm),
+            endpointPayload: new bytes(0)
         });
 
         bytes memory encodedEndpointMessage = EndpointStructs.encodeEndpointMessage(wh_prefix, em);
 
         // this is a useful test case for implementations on other runtimes
         bytes memory encodedExpected =
-            hex"9945ff10042942fafabe00000000000000000000000000000000000000000000000000000079000000367999a1014667921341234300000000000000000000000000000000000000000000000000004f994e545407000000000012d687beefface00000000000000000000000000000000000000000000000000000000feebcafe000000000000000000000000000000000000000000000000000000000011";
+            hex"9945ff10042942fafabe00000000000000000000000000000000000000000000000000000079000000367999a1014667921341234300000000000000000000000000000000000000000000000000004f994e545407000000000012d687beefface00000000000000000000000000000000000000000000000000000000feebcafe0000000000000000000000000000000000000000000000000000000000110000";
         assertEq(encodedEndpointMessage, encodedExpected);
 
         EndpointStructs.EndpointMessage memory emParsed =
