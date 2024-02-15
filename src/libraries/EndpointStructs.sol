@@ -71,8 +71,8 @@ library EndpointStructs {
     /// @dev Native Token Transfer payload.
     ///      The wire format is as follows:
     ///      - NTT_PREFIX - 4 bytes
-    ///      - amount - 8 bytes
     ///      - numDecimals - 1 byte
+    ///      - amount - 8 bytes
     ///      - sourceToken - 32 bytes
     ///      - to - 32 bytes
     ///      - toChain - 2 bytes
