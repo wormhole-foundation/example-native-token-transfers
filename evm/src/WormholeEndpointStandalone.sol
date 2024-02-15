@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.8 <0.9.0;
 
-import "openzeppelin-contracts/contracts/access/Ownable.sol";
-
 import "./WormholeEndpoint.sol";
 import "./EndpointStandalone.sol";
 
-// TODO: we shouldn't use Ownable from openzeppelin as it uses a non-deterministic storage slot
-contract WormholeEndpointStandalone is WormholeEndpoint, EndpointStandalone, Ownable {
+contract WormholeEndpointStandalone is WormholeEndpoint, EndpointStandalone {
     constructor(
         address manager,
         address wormholeCoreBridge,
@@ -29,7 +26,7 @@ contract WormholeEndpointStandalone is WormholeEndpoint, EndpointStandalone, Own
         _setIsWormholeEvmChain(chainId);
     }
 
-    function pauseEndpoint() external override onlyOwner {
+    function pauseEndpoint() external override onlyOwnerOrPauser {
         _pause();
     }
 }

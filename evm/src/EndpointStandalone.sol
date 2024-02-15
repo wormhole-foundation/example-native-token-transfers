@@ -31,6 +31,8 @@ abstract contract EndpointStandalone is
     function _initialize() internal override {
         // TODO: check if it's safe to not initialise reentrancy guard
         __ReentrancyGuard_init();
+        // TODO: msg.sender may not be the right address
+        __PausedOwnable_init(msg.sender, msg.sender);
     }
 
     function _migrate() internal override {}
