@@ -223,4 +223,102 @@ library EndpointStructs {
 
         return (parsedEndpointMessage, parsedManagerMessage);
     }
+
+    /// @dev Variable-length endpoint-specific instruction that can be passed by the caller to the manager.
+    ///      The index field refers to the index of the enabledEndpoint that this instruction should be passed to.
+    ///      The serialization format is:
+    ///      - index - 1 byte
+    ///      - payloadLength - 1 byte
+    ///      - payload - `payloadLength` bytes
+    struct EndpointInstruction {
+        uint8 index;
+        bytes payload;
+    }
+
+    function encodeEndpointInstruction(EndpointInstruction memory instruction)
+        public
+        pure
+        returns (bytes memory)
+    {
+        if (instruction.payload.length > type(uint8).max) {
+            revert PayloadTooLong(instruction.payload.length);
+        }
+        uint8 payloadLength = uint8(instruction.payload.length);
+        return abi.encodePacked(instruction.index, payloadLength, instruction.payload);
+    }
+
+    function parseEndpointInstructionUnchecked(
+        bytes memory encoded,
+        uint256 offset
+    ) public pure returns (EndpointInstruction memory instruction, uint256 nextOffset) {
+        (instruction.index, nextOffset) = encoded.asUint8Unchecked(offset);
+        uint8 instructionLength;
+        (instructionLength, nextOffset) = encoded.asUint8Unchecked(nextOffset);
+        (instruction.payload, nextOffset) = encoded.sliceUnchecked(nextOffset, instructionLength);
+    }
+
+    function parseEndpointInstructionChecked(bytes memory encoded)
+        public
+        pure
+        returns (EndpointInstruction memory instruction)
+    {
+        uint256 offset = 0;
+        (instruction, offset) = parseEndpointInstructionUnchecked(encoded, offset);
+        encoded.checkLength(offset);
+    }
+
+    /// @dev Encode an array of multiple variable-length endpoint-specific instructions.
+    ///      The serialization format is:
+    ///      - instructionsLength - 1 byte
+    ///      - `instructionsLength` number of serialized `EndpointInstruction` types.
+    function encodeEndpointInstructions(EndpointInstruction[] memory instructions)
+        public
+        pure
+        returns (bytes memory)
+    {
+        if (instructions.length > type(uint8).max) {
+            revert PayloadTooLong(instructions.length);
+        }
+        uint8 instructionsLength = uint8(instructions.length);
+
+        bytes memory encoded;
+        for (uint8 i = 0; i < instructionsLength; i++) {
+            bytes memory innerEncoded = encodeEndpointInstruction(instructions[i]);
+            encoded = bytes.concat(encoded, innerEncoded);
+        }
+        return abi.encodePacked(instructionsLength, encoded);
+    }
+
+    function parseEndpointInstructions(bytes memory encoded)
+        public
+        pure
+        returns (EndpointInstruction[] memory)
+    {
+        uint256 offset = 0;
+        uint8 instructionsLength;
+        (instructionsLength, offset) = encoded.asUint8Unchecked(offset);
+        EndpointInstruction[] memory instructions = new EndpointInstruction[](instructionsLength);
+
+        for (uint8 i = 0; i < instructionsLength; i++) {
+            EndpointInstruction memory instruction;
+            (instruction, offset) = parseEndpointInstructionUnchecked(encoded, offset);
+            instructions[i] = instruction;
+        }
+
+        encoded.checkLength(offset);
+
+        return instructions;
+    }
+
+    function sortEndpointInstructions(EndpointInstruction[] memory instructions)
+        public
+        pure
+        returns (EndpointInstruction[] memory)
+    {
+        EndpointInstruction[] memory sortedInstructions = new EndpointInstruction[](type(uint8).max);
+        for (uint8 i = 0; i < instructions.length; i++) {
+            sortedInstructions[instructions[i].index] = instructions[i];
+        }
+        return sortedInstructions;
+    }
 }

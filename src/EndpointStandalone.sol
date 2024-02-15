@@ -53,9 +53,10 @@ abstract contract EndpointStandalone is
     /// @notice Called by the BridgeManager contract to send a cross-chain message.
     function sendMessage(
         uint16 recipientChain,
+        EndpointStructs.EndpointInstruction memory instruction,
         bytes memory managerMessage
     ) external payable nonReentrant onlyManager {
-        _sendMessage(recipientChain, msg.value, msg.sender, managerMessage);
+        _sendMessage(recipientChain, msg.value, msg.sender, instruction, managerMessage);
     }
 
     function quoteDeliveryPrice(uint16 targetChain) external view override returns (uint256) {

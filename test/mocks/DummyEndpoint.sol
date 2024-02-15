@@ -25,6 +25,7 @@ contract DummyEndpoint is EndpointStandalone, IEndpointReceiver {
         uint16 recipientChain,
         uint256 deliveryPayment,
         address caller,
+        EndpointStructs.EndpointInstruction memory instruction,
         bytes memory payload
     ) internal override {
         // do nothing

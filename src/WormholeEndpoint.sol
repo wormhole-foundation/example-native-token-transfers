@@ -14,6 +14,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
 
     // TODO -- fix this after some testing
     uint256 public constant GAS_LIMIT = 500000;
+    uint8 public constant CONSISTENCY_LEVEL = 1;
 
     /// @dev Prefix for all EndpointMessage payloads
     ///      This is 0x99'E''W''H'
@@ -24,6 +25,10 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
     IWormhole public immutable wormhole;
     IWormholeRelayer public immutable wormholeRelayer;
     uint256 public immutable wormholeEndpoint_evmChainId;
+
+    struct WormholeEndpointInstruction {
+        bool shouldSkipRelayerSend;
+    }
 
     /// =============== STORAGE ===============================================
 
@@ -128,6 +133,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         uint16 recipientChain,
         uint256 deliveryPayment,
         address caller,
+        EndpointStructs.EndpointInstruction memory instruction,
         bytes memory managerMessage
     ) internal override {
         (
@@ -137,7 +143,10 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
             WH_ENDPOINT_PAYLOAD_PREFIX, toWormholeFormat(caller), managerMessage
         );
 
-        if (shouldRelayViaStandardRelaying(recipientChain)) {
+        WormholeEndpointInstruction memory weIns =
+            parseWormholeEndpointInstruction(instruction.payload);
+
+        if (!weIns.shouldSkipRelayerSend && shouldRelayViaStandardRelaying(recipientChain)) {
             wormholeRelayer.sendPayloadToEvm{value: deliveryPayment}(
                 recipientChain,
                 fromWormholeFormat(getWormholeSibling(recipientChain)),
@@ -146,7 +155,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
                 GAS_LIMIT
             );
         } else {
-            wormhole.publishMessage(0, encodedEndpointPayload, 1);
+            wormhole.publishMessage(0, encodedEndpointPayload, CONSISTENCY_LEVEL);
         }
 
         emit SendEndpointMessage(recipientChain, endpointMessage);
@@ -294,5 +303,23 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         _getWormholeEvmChainIdsStorage()[chainId] = true;
 
         emit SetIsWormholeEvmChain(chainId);
+    }
+
+    function parseWormholeEndpointInstruction(bytes memory encoded)
+        public
+        pure
+        returns (WormholeEndpointInstruction memory instruction)
+    {
+        uint256 offset = 0;
+        (instruction.shouldSkipRelayerSend, offset) = encoded.asBoolUnchecked(offset);
+        encoded.checkLength(offset);
+    }
+
+    function encodeWormholeEndpointInstruction(WormholeEndpointInstruction memory instruction)
+        public
+        pure
+        returns (bytes memory)
+    {
+        return abi.encodePacked(instruction.shouldSkipRelayerSend);
     }
 }
