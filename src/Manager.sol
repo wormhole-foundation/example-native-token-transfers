@@ -148,6 +148,11 @@ abstract contract Manager is
         _pause();
     }
 
+    /// @notice Returns the address of the owner of this contract.
+    function getOwner() external view returns (address) {
+        return owner();
+    }
+
     /// @dev Returns the bitmap of attestations from enabled endpoints for a given message.
     function _getMessageAttestations(bytes32 digest) internal view returns (uint64) {
         uint64 enabledEndpointBitmap = _getEnabledEndpointsBitmap();

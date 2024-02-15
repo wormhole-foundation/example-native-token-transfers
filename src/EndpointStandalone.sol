@@ -6,7 +6,7 @@ import "./interfaces/IManagerStandalone.sol";
 import "./interfaces/IEndpointStandalone.sol";
 import "./libraries/Implementation.sol";
 import "./libraries/external/ReentrancyGuardUpgradeable.sol";
-import "./Manager.sol";
+import "./interfaces/IManager.sol";
 
 abstract contract EndpointStandalone is
     IEndpointStandalone,
@@ -31,8 +31,7 @@ abstract contract EndpointStandalone is
 
     /// @dev Returns the owner of the manager contract
     function getManagerOwner() public view returns (address) {
-        Manager managerInstance = Manager(manager);
-        return managerInstance.owner();
+        return IManager(manager).getOwner();
     }
 
     /// @dev transfer the ownership of the endpoint to a new address
@@ -44,6 +43,7 @@ abstract contract EndpointStandalone is
         // TODO: check if it's safe to not initialise reentrancy guard
         __ReentrancyGuard_init();
         // owner of the endpoint is set to the owner of the manager
+        // TODO: check if this needs to be msg.sender
         __PausedOwnable_init(msg.sender, getManagerOwner());
     }
 
