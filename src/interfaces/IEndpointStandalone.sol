@@ -9,4 +9,6 @@ interface IEndpointStandalone {
     function sendMessage(uint16 recipientChain, bytes memory managerMessage) external payable;
 
     function upgrade(address newImplementation) external;
+
+    function initializeEndpoint() external;
 }

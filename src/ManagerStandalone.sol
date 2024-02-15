@@ -46,6 +46,18 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         IEndpointStandalone(endpoint).upgrade(newImplementation);
     }
 
+    /// @dev Transfer ownership of the Manager contract and all Endpoint contracts to a new owner.
+    function transferOwnership(address newOwner) public override onlyOwner {
+        super.transferOwnership(newOwner);
+        // loop through all the registered endpoints and set the new owner of each endpoint to the newOwner
+        address[] storage _registeredEndpoints = _getRegisteredEndpointsStorage();
+        _checkRegisteredEndpointsInvariants();
+
+        for (uint256 i = 0; i < _registeredEndpoints.length; i++) {
+            IEndpointStandalone(_registeredEndpoints[i]).initializeEndpoint();
+        }
+    }
+
     struct _Threshold {
         uint8 num;
     }
@@ -189,6 +201,14 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
     }
 
     /// ============== INVARIANTS =============================================
+
+    function _checkRegisteredEndpointsInvariants() internal view {
+        if (_getRegisteredEndpointsStorage().length != _getNumRegisteredEndpointsStorage().num) {
+            revert RetrievedIncorrectRegisteredEndpoints(
+                _getRegisteredEndpointsStorage().length, _getNumRegisteredEndpointsStorage().num
+            );
+        }
+    }
 
     function _checkThresholdInvariants() internal view {
         _Threshold storage _threshold = _getThresholdStorage();

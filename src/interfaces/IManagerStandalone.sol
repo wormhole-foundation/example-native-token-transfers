@@ -6,6 +6,7 @@ import "../libraries/EndpointStructs.sol";
 interface IManagerStandalone {
     error ZeroThreshold();
     error ThresholdTooHigh(uint256 threshold, uint256 endpoints);
+    error RetrievedIncorrectRegisteredEndpoints(uint256 retrieved, uint256 registered);
 
     function attestationReceived(
         uint16 sourceChainId,

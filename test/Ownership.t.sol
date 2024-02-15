@@ -21,6 +21,11 @@ contract OwnershipTests is Test {
         manager.initialize();
     }
 
+    function checkOwnership(DummyEndpoint e, address managerOwner) public {
+        address endpointManager = e.getManagerOwner();
+        assertEq(endpointManager, managerOwner);
+    }
+
     /// endpoint retrieves the manager owner correctly
     function testEndpointOwnership() public {
         // TODO: use setup_endpoints here
@@ -28,8 +33,6 @@ contract OwnershipTests is Test {
         manager.setEndpoint(address(e1));
         manager.setThreshold(1);
 
-        address managerOwner = e1.getManagerOwner();
-        address expectedManagerOwner = manager.owner();
-        assertEq(expectedManagerOwner, managerOwner);
+        checkOwnership(e1, manager.owner());
     }
 }
