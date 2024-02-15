@@ -29,6 +29,13 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         _checkEndpointsInvariants();
     }
 
+    /// @dev Override the [`renounceOwnership`] function to ensure
+    /// the manager ownership is not renounced.
+    function renounceOwnership() public override onlyOwner {
+        // do nothing
+        // this method body is empty
+    }
+
     /// @dev When we add new immutables, this function should be updated
     function _checkImmutables() internal view override {
         assert(this.token() == token);

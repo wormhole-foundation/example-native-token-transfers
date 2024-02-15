@@ -38,7 +38,7 @@ contract WormholeEndpointStandalone is WormholeEndpoint, EndpointStandalone {
     }
 
     /// @dev Override the [`renounceOwnership`] function to ensure
-    /// the manager and owner stay in sync.
+    /// the manager ownership is not renounced.
     function renounceOwnership() public override onlyOwner {
         // do nothing
         // this method body is empty
