@@ -2,7 +2,7 @@
 seeds = false
 skip-lint = false
 [programs.localnet]
-solana_multi_endpoint = "J61k8wq3PMLWmpR8meNxuQWfjHdzf8W1TZrFHoock9ou"
+solana_multi_endpoint = "5cR7BT9Qjs9CMCekudXKsypXrJrttUzYwgXEf3Z9RgoQ"
 
 [registry]
 url = "https://api.apr.dev"

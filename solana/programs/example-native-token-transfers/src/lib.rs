@@ -17,7 +17,7 @@ use endpoints::wormhole::instructions::*;
 
 use instructions::*;
 
-declare_id!("J61k8wq3PMLWmpR8meNxuQWfjHdzf8W1TZrFHoock9ou");
+declare_id!("5cR7BT9Qjs9CMCekudXKsypXrJrttUzYwgXEf3Z9RgoQ");
 
 #[program]
 pub mod example_native_token_transfers {
