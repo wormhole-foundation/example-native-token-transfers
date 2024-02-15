@@ -54,7 +54,7 @@ abstract contract EndpointStandalone is
         assert(this.manager() == manager);
     }
 
-    function upgrade(address newImplementation) external onlyManager {
+    function upgrade(address newImplementation) external onlyOwner {
         _upgrade(newImplementation);
     }
 

@@ -15,6 +15,4 @@ interface IManagerStandalone {
     ) external;
 
     function upgrade(address newImplementation) external;
-
-    function upgradeEndpoint(address endpoint, address newImplementation) external;
 }

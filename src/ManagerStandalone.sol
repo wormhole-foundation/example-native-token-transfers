@@ -42,10 +42,6 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         _upgrade(newImplementation);
     }
 
-    function upgradeEndpoint(address endpoint, address newImplementation) external onlyOwner {
-        IEndpointStandalone(endpoint).upgrade(newImplementation);
-    }
-
     /// @dev Transfer ownership of the Manager contract and all Endpoint contracts to a new owner.
     function transferOwnership(address newOwner) public override onlyOwner {
         super.transferOwnership(newOwner);
