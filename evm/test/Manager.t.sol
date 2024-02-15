@@ -17,10 +17,11 @@ import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "wormhole-solidity-sdk/Utils.sol";
-
-// 0x99'E''T''T'
-bytes4 constant TEST_ENDPOINT_PAYLOAD_PREFIX = 0x99455454;
-uint16 constant SENDING_CHAIN_ID = 1;
+import "./libraries/EndpointHelpers.sol";
+import "./libraries/ManagerHelpers.sol";
+import "./interfaces/IEndpointReceiver.sol";
+import "./mocks/DummyEndpoint.sol";
+import "./mocks/DummyToken.sol";
 
 // @dev A non-abstract Manager contract
 contract ManagerContract is ManagerStandalone {
@@ -42,47 +43,6 @@ contract ManagerContract is ManagerStandalone {
             result := my_slot.slot
         }
     }
-}
-
-interface IEndpointReceiver {
-    function receiveMessage(bytes memory encodedMessage) external;
-}
-
-contract DummyEndpoint is EndpointStandalone, IEndpointReceiver {
-    constructor(address manager) EndpointStandalone(manager) {}
-
-    function _quoteDeliveryPrice(uint16 /* recipientChain */ )
-        internal
-        pure
-        override
-        returns (uint256)
-    {
-        return 0;
-    }
-
-    function _sendMessage(
-        uint16 recipientChain,
-        uint256 deliveryPayment,
-        bytes memory payload
-    ) internal override {
-        // do nothing
-    }
-
-    function receiveMessage(bytes memory encodedMessage) external {
-        EndpointStructs.EndpointMessage memory parsedEndpointMessage;
-        EndpointStructs.ManagerMessage memory parsedManagerMessage;
-        (parsedEndpointMessage, parsedManagerMessage) = EndpointStructs
-            .parseEndpointAndManagerMessage(TEST_ENDPOINT_PAYLOAD_PREFIX, encodedMessage);
-        _deliverToManager(
-            SENDING_CHAIN_ID, parsedEndpointMessage.sourceManagerAddress, parsedManagerMessage
-        );
-    }
-
-    function parseMessageFromLogs(Vm.Log[] memory logs)
-        public
-        pure
-        returns (uint16 recipientChain, bytes memory payload)
-    {}
 }
 
 contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
@@ -114,22 +74,26 @@ contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
         EndpointStructs.EndpointMessage memory parsedEndpointMessage;
         EndpointStructs.ManagerMessage memory parsedManagerMessage;
         (parsedEndpointMessage, parsedManagerMessage) = EndpointStructs
-            .parseEndpointAndManagerMessage(TEST_ENDPOINT_PAYLOAD_PREFIX, encodedMessage);
+            .parseEndpointAndManagerMessage(
+            EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX, encodedMessage
+        );
         _deliverToManager(
-            SENDING_CHAIN_ID, parsedEndpointMessage.sourceManagerAddress, parsedManagerMessage
+            EndpointHelpersLib.SENDING_CHAIN_ID,
+            parsedEndpointMessage.sourceManagerAddress,
+            parsedManagerMessage
         );
     }
 }
 
-contract DummyToken is ERC20 {
-    constructor() ERC20("DummyToken", "DTKN") {}
+// contract DummyToken is ERC20 {
+//     constructor() ERC20("DummyToken", "DTKN") {}
 
-    // NOTE: this is purposefully not called mint() to so we can test that in
-    // locking mode the Manager contract doesn't call mint (or burn)
-    function mintDummy(address to, uint256 amount) public {
-        _mint(to, amount);
-    }
-}
+//     // NOTE: this is purposefully not called mint() to so we can test that in
+//     // locking mode the Manager contract doesn't call mint (or burn)
+//     function mintDummy(address to, uint256 amount) public {
+//         _mint(to, amount);
+//     }
+// }
 
 // TODO: set this up so the common functionality tests can be run against both
 // the standalone and the integrated version of the endpoint manager
@@ -139,6 +103,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     using NormalizedAmountLib for uint256;
     using NormalizedAmountLib for NormalizedAmount;
 
+    // 0x99'E''T''T'
     uint16 constant chainId = 7;
     uint256 constant DEVNET_GUARDIAN_PK =
         0xcfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0;
@@ -294,15 +259,6 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
     // === attestation
 
-    function setup_endpoints() internal returns (DummyEndpoint, DummyEndpoint) {
-        DummyEndpoint e1 = new DummyEndpoint(address(manager));
-        DummyEndpoint e2 = new DummyEndpoint(address(manager));
-        manager.setEndpoint(address(e1));
-        manager.setEndpoint(address(e2));
-        manager.setThreshold(2);
-        return (e1, e2);
-    }
-
     function _attestEndpointsHelper(
         address from,
         address to,
@@ -318,12 +274,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         uint8 decimals = token.decimals(); // 18
         {
             token.mintDummy(from, 5 * 10 ** decimals);
-            manager.setSibling(SENDING_CHAIN_ID, toWormholeFormat(address(manager)));
-
-            uint256 outboundLimit = NormalizedAmount(type(uint64).max, 8).denormalize(decimals);
-            manager.setOutboundLimit(outboundLimit);
-
-            manager.setInboundLimit(inboundLimit.denormalize(decimals), SENDING_CHAIN_ID);
+            ManagerHelpersLib.setConfigs(inboundLimit, manager, decimals);
         }
 
         {
@@ -362,7 +313,9 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         EndpointStructs.EndpointMessage memory em;
         bytes memory encodedEm;
         (em, encodedEm) = EndpointStructs.buildAndEncodeEndpointMessage(
-            TEST_ENDPOINT_PAYLOAD_PREFIX, toWormholeFormat(address(manager)), encodedM
+            EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX,
+            toWormholeFormat(address(manager)),
+            encodedM
         );
 
         for (uint256 i; i < endpoints.length; i++) {
@@ -384,13 +337,13 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         bytes memory managerMessage = EndpointStructs.encodeManagerMessage(m);
         bytes memory endpointMessage;
         (, endpointMessage) = EndpointStructs.buildAndEncodeEndpointMessage(
-            TEST_ENDPOINT_PAYLOAD_PREFIX, sourceManager, managerMessage
+            EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX, sourceManager, managerMessage
         );
         return (m, endpointMessage);
     }
 
     function test_onlyEnabledEndpointsCanAttest() public {
-        (DummyEndpoint e1,) = setup_endpoints();
+        (DummyEndpoint e1,) = EndpointHelpersLib.setup_endpoints(manager);
         manager.removeEndpoint(address(e1));
 
         bytes memory endpointMessage;
@@ -403,7 +356,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function test_onlySiblingManagerCanAttest() public {
-        (DummyEndpoint e1,) = setup_endpoints();
+        (DummyEndpoint e1,) = EndpointHelpersLib.setup_endpoints(manager);
         manager.setThreshold(2);
 
         bytes32 sibling = toWormholeFormat(address(manager));
@@ -414,18 +367,20 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             buildEndpointMessageWithManagerPayload(0, bytes32(0), sibling, abi.encode("payload"));
 
         vm.expectRevert(
-            abi.encodeWithSignature("InvalidSibling(uint16,bytes32)", SENDING_CHAIN_ID, sibling)
+            abi.encodeWithSignature(
+                "InvalidSibling(uint16,bytes32)", EndpointHelpersLib.SENDING_CHAIN_ID, sibling
+            )
         );
         e1.receiveMessage(endpointMessage);
     }
 
     function test_attest() public {
-        (DummyEndpoint e1,) = setup_endpoints();
+        (DummyEndpoint e1,) = EndpointHelpersLib.setup_endpoints(manager);
         manager.setThreshold(2);
 
         // register manager sibling
         bytes32 sibling = toWormholeFormat(address(manager));
-        manager.setSibling(SENDING_CHAIN_ID, sibling);
+        manager.setSibling(EndpointHelpersLib.SENDING_CHAIN_ID, sibling);
 
         EndpointStructs.ManagerMessage memory managerMessage;
         bytes memory endpointMessage;
@@ -434,17 +389,19 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         e1.receiveMessage(endpointMessage);
 
-        bytes32 hash = EndpointStructs.managerMessageDigest(SENDING_CHAIN_ID, managerMessage);
+        bytes32 hash = EndpointStructs.managerMessageDigest(
+            EndpointHelpersLib.SENDING_CHAIN_ID, managerMessage
+        );
         assertEq(manager.messageAttestations(hash), 1);
     }
 
     function test_attestTwice() public {
-        (DummyEndpoint e1,) = setup_endpoints();
+        (DummyEndpoint e1,) = EndpointHelpersLib.setup_endpoints(manager);
         manager.setThreshold(2);
 
         // register manager sibling
         bytes32 sibling = toWormholeFormat(address(manager));
-        manager.setSibling(SENDING_CHAIN_ID, sibling);
+        manager.setSibling(EndpointHelpersLib.SENDING_CHAIN_ID, sibling);
 
         EndpointStructs.ManagerMessage memory managerMessage;
         bytes memory endpointMessage;
@@ -454,13 +411,15 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         e1.receiveMessage(endpointMessage);
         e1.receiveMessage(endpointMessage);
 
-        bytes32 hash = EndpointStructs.managerMessageDigest(SENDING_CHAIN_ID, managerMessage);
+        bytes32 hash = EndpointStructs.managerMessageDigest(
+            EndpointHelpersLib.SENDING_CHAIN_ID, managerMessage
+        );
         // can't double vote
         assertEq(manager.messageAttestations(hash), 1);
     }
 
     function test_attestDisabled() public {
-        (DummyEndpoint e1,) = setup_endpoints();
+        (DummyEndpoint e1,) = EndpointHelpersLib.setup_endpoints(manager);
         manager.setThreshold(2);
 
         IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](1);
@@ -473,7 +432,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         manager.removeEndpoint(address(e1));
 
-        bytes32 hash = EndpointStructs.managerMessageDigest(SENDING_CHAIN_ID, m);
+        bytes32 hash = EndpointStructs.managerMessageDigest(EndpointHelpersLib.SENDING_CHAIN_ID, m);
         // a disabled endpoint's vote no longer counts
         assertEq(manager.messageAttestations(hash), 0);
 
@@ -511,7 +470,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         address user_A = address(0x123);
         address user_B = address(0x456);
 
-        (DummyEndpoint e1, DummyEndpoint e2) = setup_endpoints();
+        (DummyEndpoint e1, DummyEndpoint e2) = EndpointHelpersLib.setup_endpoints(manager);
         EndpointStructs.ManagerMessage memory m;
         bytes memory encodedEm;
 
@@ -524,7 +483,9 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             (m, em) = _attestEndpointsHelper(
                 user_A, user_B, 0, NormalizedAmount(type(uint64).max, 8), endpoints
             );
-            encodedEm = EndpointStructs.encodeEndpointMessage(TEST_ENDPOINT_PAYLOAD_PREFIX, em);
+            encodedEm = EndpointStructs.encodeEndpointMessage(
+                EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX, em
+            );
         }
 
         {
@@ -543,7 +504,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             assertEq(entries[1].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
             assertEq(entries[1].topics[1], toWormholeFormat(address(manager)));
             assertEq(
-                entries[1].topics[2], EndpointStructs.managerMessageDigest(SENDING_CHAIN_ID, m)
+                entries[1].topics[2],
+                EndpointStructs.managerMessageDigest(EndpointHelpersLib.SENDING_CHAIN_ID, m)
             );
         }
     }
@@ -641,7 +603,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         token.mintDummy(from, maxAmount);
         manager.setOutboundLimit(NormalizedAmount(type(uint64).max, 8).denormalize(decimals));
         manager.setInboundLimit(
-            NormalizedAmount(type(uint64).max, 8).denormalize(decimals), SENDING_CHAIN_ID
+            NormalizedAmount(type(uint64).max, 8).denormalize(decimals),
+            EndpointHelpersLib.SENDING_CHAIN_ID
         );
 
         vm.startPrank(from);
@@ -667,428 +630,6 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
     // === token transfer rate limiting
 
-    function test_outboundRateLimit_setLimitSimple() public {
-        DummyToken token = DummyToken(manager.token());
-        uint8 decimals = token.decimals();
-
-        uint256 limit = 1 * 10 ** 6;
-        manager.setOutboundLimit(limit);
-
-        IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
-
-        assertEq(outboundLimitParams.limit.getAmount(), limit.normalize(decimals).getAmount());
-        assertEq(outboundLimitParams.limit.getDecimals(), limit.normalize(decimals).getDecimals());
-        assertEq(
-            outboundLimitParams.currentCapacity.getAmount(), limit.normalize(decimals).getAmount()
-        );
-        assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
-    }
-
-    function test_outboundRateLimit_setHigherLimit() public {
-        // transfer 3 tokens
-        address user_A = address(0x123);
-        address user_B = address(0x456);
-
-        DummyToken token = DummyToken(manager.token());
-
-        uint8 decimals = token.decimals();
-
-        token.mintDummy(address(user_A), 5 * 10 ** decimals);
-        uint256 outboundLimit = 4 * 10 ** decimals;
-        manager.setOutboundLimit(outboundLimit);
-
-        vm.startPrank(user_A);
-
-        uint256 transferAmount = 3 * 10 ** decimals;
-        token.approve(address(manager), transferAmount);
-        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
-
-        vm.stopPrank();
-
-        // update the outbound limit to 5 tokens
-        vm.startPrank(address(this));
-
-        uint256 higherLimit = 5 * 10 ** decimals;
-        manager.setOutboundLimit(higherLimit);
-
-        IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
-
-        assertEq(outboundLimitParams.limit.getAmount(), higherLimit.normalize(decimals).getAmount());
-        assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
-        assertEq(
-            outboundLimitParams.currentCapacity.getAmount(),
-            (2 * 10 ** decimals).normalize(decimals).getAmount()
-        );
-    }
-
-    function test_outboundRateLimit_setLowerLimit() public {
-        // transfer 3 tokens
-        address user_A = address(0x123);
-        address user_B = address(0x456);
-
-        DummyToken token = DummyToken(manager.token());
-
-        uint8 decimals = token.decimals();
-
-        token.mintDummy(address(user_A), 5 * 10 ** decimals);
-        uint256 outboundLimit = 4 * 10 ** decimals;
-        manager.setOutboundLimit(outboundLimit);
-
-        vm.startPrank(user_A);
-
-        uint256 transferAmount = 3 * 10 ** decimals;
-        token.approve(address(manager), transferAmount);
-        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
-
-        vm.stopPrank();
-
-        // update the outbound limit to 5 tokens
-        vm.startPrank(address(this));
-
-        uint256 lowerLimit = 2 * 10 ** decimals;
-        manager.setOutboundLimit(lowerLimit);
-
-        IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
-
-        assertEq(outboundLimitParams.limit.denormalize(decimals), lowerLimit);
-        assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
-        assertEq(outboundLimitParams.currentCapacity.getAmount(), 0);
-    }
-
-    function test_outboundRateLimit_setHigherLimit_duration() public {
-        // transfer 3 tokens
-        address user_A = address(0x123);
-        address user_B = address(0x456);
-
-        DummyToken token = DummyToken(manager.token());
-
-        uint8 decimals = token.decimals();
-
-        token.mintDummy(address(user_A), 5 * 10 ** decimals);
-        uint256 outboundLimit = 4 * 10 ** decimals;
-        manager.setOutboundLimit(outboundLimit);
-
-        vm.startPrank(user_A);
-
-        uint256 transferAmount = 3 * 10 ** decimals;
-        token.approve(address(manager), transferAmount);
-        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
-
-        vm.stopPrank();
-
-        // change block timestamp to be 6 hours later
-        uint256 sixHoursLater = initialBlockTimestamp + 6 hours;
-        vm.warp(sixHoursLater);
-
-        // update the outbound limit to 5 tokens
-        vm.startPrank(address(this));
-
-        uint256 higherLimit = 5 * 10 ** decimals;
-        manager.setOutboundLimit(higherLimit);
-
-        IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
-
-        assertEq(outboundLimitParams.limit.getAmount(), higherLimit.normalize(decimals).getAmount());
-        assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
-        // capacity should be:
-        // difference in limits + remaining capacity after t1 + the amount that's refreshed (based on the old rps)
-        assertEq(
-            outboundLimitParams.currentCapacity.getAmount(),
-            (
-                (1 * 10 ** decimals) + (1 * 10 ** decimals)
-                    + (outboundLimit * (6 hours)) / manager.rateLimitDuration()
-            ).normalize(decimals).getAmount()
-        );
-    }
-
-    function test_outboundRateLimit_setLowerLimit_durationCaseOne() public {
-        // transfer 3 tokens
-        address user_A = address(0x123);
-        address user_B = address(0x456);
-
-        DummyToken token = DummyToken(manager.token());
-
-        uint8 decimals = token.decimals();
-
-        token.mintDummy(address(user_A), 5 * 10 ** decimals);
-        uint256 outboundLimit = 5 * 10 ** decimals;
-        manager.setOutboundLimit(outboundLimit);
-
-        vm.startPrank(user_A);
-
-        uint256 transferAmount = 4 * 10 ** decimals;
-        token.approve(address(manager), transferAmount);
-        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
-
-        vm.stopPrank();
-
-        // change block timestamp to be 6 hours later
-        uint256 sixHoursLater = initialBlockTimestamp + 3 hours;
-        vm.warp(sixHoursLater);
-
-        // update the outbound limit to 3 tokens
-        vm.startPrank(address(this));
-
-        uint256 lowerLimit = 3 * 10 ** decimals;
-        manager.setOutboundLimit(lowerLimit);
-
-        IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
-
-        assertEq(outboundLimitParams.limit.getAmount(), lowerLimit.normalize(decimals).getAmount());
-        assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
-        // capacity should be: 0
-        assertEq(outboundLimitParams.currentCapacity.getAmount(), 0);
-    }
-
-    function test_outboundRateLimit_setLowerLimit_durationCaseTwo() public {
-        address user_A = address(0x123);
-        address user_B = address(0x456);
-
-        DummyToken token = DummyToken(manager.token());
-
-        uint8 decimals = token.decimals();
-
-        token.mintDummy(address(user_A), 5 * 10 ** decimals);
-        // set the outbound limit to 5 tokens
-        uint256 outboundLimit = 5 * 10 ** decimals;
-        manager.setOutboundLimit(outboundLimit);
-
-        vm.startPrank(user_A);
-
-        // transfer 2 tokens
-        uint256 transferAmount = 2 * 10 ** decimals;
-        token.approve(address(manager), transferAmount);
-        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
-
-        vm.stopPrank();
-
-        // change block timestamp to be 6 hours later
-        uint256 sixHoursLater = initialBlockTimestamp + 6 hours;
-        vm.warp(sixHoursLater);
-
-        vm.startPrank(address(this));
-
-        // update the outbound limit to 4 tokens
-        uint256 lowerLimit = 4 * 10 ** decimals;
-        manager.setOutboundLimit(lowerLimit);
-
-        IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
-
-        assertEq(outboundLimitParams.limit.getAmount(), lowerLimit.normalize(decimals).getAmount());
-        assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
-        // capacity should be:
-        // remaining capacity after t1 - difference in limits + the amount that's refreshed (based on the old rps)
-        assertEq(
-            outboundLimitParams.currentCapacity.getAmount(),
-            (
-                (3 * 10 ** decimals) - (1 * 10 ** decimals)
-                    + (outboundLimit * (6 hours)) / manager.rateLimitDuration()
-            ).normalize(decimals).getAmount()
-        );
-    }
-
-    function test_outboundRateLimit_singleHit() public {
-        address user_A = address(0x123);
-        address user_B = address(0x456);
-
-        DummyToken token = DummyToken(manager.token());
-
-        uint8 decimals = token.decimals();
-
-        token.mintDummy(address(user_A), 5 * 10 ** decimals);
-        uint256 outboundLimit = 1 * 10 ** decimals;
-        manager.setOutboundLimit(outboundLimit);
-
-        vm.startPrank(user_A);
-
-        uint256 transferAmount = 3 * 10 ** decimals;
-        token.approve(address(manager), transferAmount);
-
-        bytes4 selector = bytes4(keccak256("NotEnoughCapacity(uint256,uint256)"));
-        vm.expectRevert(abi.encodeWithSelector(selector, outboundLimit, transferAmount));
-        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
-    }
-
-    function test_outboundRateLimit_multiHit() public {
-        address user_A = address(0x123);
-        address user_B = address(0x456);
-
-        DummyToken token = DummyToken(manager.token());
-
-        uint8 decimals = token.decimals();
-
-        token.mintDummy(address(user_A), 5 * 10 ** decimals);
-        uint256 outboundLimit = 4 * 10 ** decimals;
-        manager.setOutboundLimit(outboundLimit);
-
-        vm.startPrank(user_A);
-
-        uint256 transferAmount = 3 * 10 ** decimals;
-        token.approve(address(manager), transferAmount);
-        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
-
-        // assert that first transfer went through
-        assertEq(token.balanceOf(address(user_A)), 2 * 10 ** decimals);
-        assertEq(token.balanceOf(address(manager)), transferAmount);
-
-        // assert currentCapacity is updated
-        NormalizedAmount memory newCapacity =
-            outboundLimit.normalize(decimals).sub(transferAmount.normalize(decimals));
-        assertEq(manager.getCurrentOutboundCapacity(), newCapacity.denormalize(decimals));
-
-        uint256 badTransferAmount = 2 * 10 ** decimals;
-        token.approve(address(manager), badTransferAmount);
-
-        bytes4 selector = bytes4(keccak256("NotEnoughCapacity(uint256,uint256)"));
-        vm.expectRevert(
-            abi.encodeWithSelector(selector, newCapacity.denormalize(decimals), badTransferAmount)
-        );
-        manager.transfer(badTransferAmount, chainId, toWormholeFormat(user_B), false);
-    }
-
-    // make a transfer with shouldQueue == true
-    // check that it hits rate limit and gets inserted into the queue
-    // test that it remains in queue after < rateLimitDuration
-    // test that it exits queue after >= rateLimitDuration
-    // test that it's removed from queue and can't be replayed
-    function test_outboundRateLimit_queue() public {
-        address user_A = address(0x123);
-        address user_B = address(0x456);
-
-        DummyToken token = DummyToken(manager.token());
-
-        uint8 decimals = token.decimals();
-
-        token.mintDummy(address(user_A), 5 * 10 ** decimals);
-        uint256 outboundLimit = 4 * 10 ** decimals;
-        manager.setOutboundLimit(outboundLimit);
-
-        vm.startPrank(user_A);
-
-        uint256 transferAmount = 5 * 10 ** decimals;
-        token.approve(address(manager), transferAmount);
-
-        // transfer with shouldQueue == true
-        uint64 qSeq = manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), true);
-
-        // assert that the transfer got queued up
-        assertEq(qSeq, 0);
-        IRateLimiter.OutboundQueuedTransfer memory qt = manager.getOutboundQueuedTransfer(0);
-        assertEq(qt.amount.getAmount(), transferAmount.normalize(decimals).getAmount());
-        assertEq(qt.recipientChain, chainId);
-        assertEq(qt.recipient, toWormholeFormat(user_B));
-        assertEq(qt.txTimestamp, initialBlockTimestamp);
-
-        // assert that the contract also locked funds from the user
-        assertEq(token.balanceOf(address(user_A)), 0);
-        assertEq(token.balanceOf(address(manager)), transferAmount);
-
-        // elapse rate limit duration - 1
-        uint256 durationElapsedTime = initialBlockTimestamp + manager.rateLimitDuration();
-        vm.warp(durationElapsedTime - 1);
-
-        // assert that transfer still can't be completed
-        bytes4 stillQueuedSelector =
-            bytes4(keccak256("OutboundQueuedTransferStillQueued(uint64,uint256)"));
-        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, initialBlockTimestamp));
-        manager.completeOutboundQueuedTransfer(0);
-
-        // now complete transfer
-        vm.warp(durationElapsedTime);
-        uint64 seq = manager.completeOutboundQueuedTransfer(0);
-        assertEq(seq, 0);
-
-        // now ensure transfer was removed from queue
-        bytes4 notFoundSelector = bytes4(keccak256("OutboundQueuedTransferNotFound(uint64)"));
-        vm.expectRevert(abi.encodeWithSelector(notFoundSelector, 0));
-        manager.completeOutboundQueuedTransfer(0);
-    }
-
-    function test_inboundRateLimit() public {
-        address user_A = address(0x123);
-        address user_B = address(0x456);
-
-        (DummyEndpoint e1, DummyEndpoint e2) = setup_endpoints();
-
-        DummyToken token = DummyToken(manager.token());
-
-        IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](1);
-        endpoints[0] = e1;
-
-        EndpointStructs.ManagerMessage memory m;
-        bytes memory encodedEm;
-        {
-            EndpointStructs.EndpointMessage memory em;
-            (m, em) = _attestEndpointsHelper(
-                user_A, user_B, 0, uint256(5).normalize(token.decimals()), endpoints
-            );
-            encodedEm = EndpointStructs.encodeEndpointMessage(TEST_ENDPOINT_PAYLOAD_PREFIX, em);
-        }
-
-        bytes32 digest = EndpointStructs.managerMessageDigest(SENDING_CHAIN_ID, m);
-
-        // no quorum yet
-        assertEq(token.balanceOf(address(user_B)), 0);
-
-        vm.expectEmit(address(manager));
-        emit InboundTransferQueued(digest);
-        e2.receiveMessage(encodedEm);
-
-        {
-            // now we have quorum but it'll hit limit
-            IRateLimiter.InboundQueuedTransfer memory qt = manager.getInboundQueuedTransfer(digest);
-            assertEq(qt.amount.getAmount(), 50);
-            assertEq(qt.txTimestamp, initialBlockTimestamp);
-            assertEq(qt.recipient, user_B);
-        }
-
-        // assert that the user doesn't have funds yet
-        assertEq(token.balanceOf(address(user_B)), 0);
-
-        // change block time to (duration - 1) seconds later
-        uint256 durationElapsedTime = initialBlockTimestamp + manager.rateLimitDuration();
-        vm.warp(durationElapsedTime - 1);
-
-        {
-            // assert that transfer still can't be completed
-            bytes4 stillQueuedSelector =
-                bytes4(keccak256("InboundQueuedTransferStillQueued(bytes32,uint256)"));
-            vm.expectRevert(
-                abi.encodeWithSelector(stillQueuedSelector, digest, initialBlockTimestamp)
-            );
-            manager.completeInboundQueuedTransfer(digest);
-        }
-
-        // now complete transfer
-        vm.warp(durationElapsedTime);
-        manager.completeInboundQueuedTransfer(digest);
-
-        {
-            // assert transfer no longer in queue
-            bytes4 notQueuedSelector = bytes4(keccak256("InboundQueuedTransferNotFound(bytes32)"));
-            vm.expectRevert(abi.encodeWithSelector(notQueuedSelector, digest));
-            manager.completeInboundQueuedTransfer(digest);
-        }
-
-        // assert user now has funds
-        assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (token.decimals() - 8));
-
-        // replay protection
-        vm.recordLogs();
-        e2.receiveMessage(encodedEm);
-
-        {
-            Vm.Log[] memory entries = vm.getRecordedLogs();
-            assertEq(entries.length, 2);
-            assertEq(entries[1].topics.length, 3);
-            assertEq(entries[1].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
-            assertEq(entries[1].topics[1], toWormholeFormat(address(manager)));
-            assertEq(
-                entries[1].topics[2], EndpointStructs.managerMessageDigest(SENDING_CHAIN_ID, m)
-            );
-        }
-    }
-
     // === upgradeability
 
     function test_upgrade() public {
@@ -1110,7 +651,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         // Step 1
         // (contract is deployed by setUp())
-        (IEndpointReceiver e1, IEndpointReceiver e2) = setup_endpoints();
+
+        (IEndpointReceiver e1, IEndpointReceiver e2) = EndpointHelpersLib.setup_endpoints(manager);
 
         IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
         endpoints[0] = e1;
@@ -1123,7 +665,9 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             (m, em) = _attestEndpointsHelper(
                 user_A, user_B, 0, NormalizedAmount(type(uint64).max, 8), endpoints
             );
-            encodedEm = EndpointStructs.encodeEndpointMessage(TEST_ENDPOINT_PAYLOAD_PREFIX, em);
+            encodedEm = EndpointStructs.encodeEndpointMessage(
+                EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX, em
+            );
         }
 
         assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
@@ -1147,7 +691,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             assertEq(entries[0].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
             assertEq(entries[0].topics[1], toWormholeFormat(address(manager)));
             assertEq(
-                entries[0].topics[2], EndpointStructs.managerMessageDigest(SENDING_CHAIN_ID, m)
+                entries[0].topics[2],
+                EndpointStructs.managerMessageDigest(EndpointHelpersLib.SENDING_CHAIN_ID, m)
             );
         }
 
