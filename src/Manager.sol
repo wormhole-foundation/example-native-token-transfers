@@ -107,12 +107,10 @@ abstract contract Manager is
     }
 
     function __Manager_init() internal onlyInitializing {
-        // TODO: shouldn't be msg.sender but a separate (contract) address that's passed in the initializer
-        __Ownable_init(msg.sender);
+        // TODO: msg.sender may not be the right address for both
+        __PausedOwnable_init(msg.sender, msg.sender);
         // TODO: check if it's safe to not initialise reentrancy guard
         __ReentrancyGuard_init();
-        // TODO: msg.sender may not be the right address for both
-        __PausedOwnable_init(msg.sender, owner());
     }
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
