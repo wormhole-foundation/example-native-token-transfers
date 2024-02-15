@@ -35,7 +35,7 @@ abstract contract EndpointStandalone is
         __PausedOwnable_init(msg.sender, msg.sender);
     }
 
-    function _migrate() internal override {}
+    function _migrate() internal virtual override {}
 
     /// @dev When we add new immutables, this function should be updated
     function _checkImmutables() internal view override {

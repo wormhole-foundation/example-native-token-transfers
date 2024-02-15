@@ -23,7 +23,7 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         _checkEndpointsInvariants();
     }
 
-    function _migrate() internal override {
+    function _migrate() internal virtual override {
         // TODO: document (migration code)
         _checkThresholdInvariants();
         _checkEndpointsInvariants();
