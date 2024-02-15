@@ -60,6 +60,18 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         }
     }
 
+    /// @dev Transfer ownership of the Manager contract and all Endpoint contracts to a new owner.
+    function transferOwnership(address newOwner) public override onlyOwner {
+        super.transferOwnership(newOwner);
+        // loop through all the registered endpoints and set the new owner of each endpoint to the newOwner
+        address[] storage _registeredEndpoints = _getRegisteredEndpointsStorage();
+        _checkRegisteredEndpointsInvariants();
+
+        for (uint256 i = 0; i < _registeredEndpoints.length; i++) {
+            IEndpointStandalone(_registeredEndpoints[i]).initializeEndpoint();
+        }
+    }
+
     struct _Threshold {
         uint8 num;
     }
