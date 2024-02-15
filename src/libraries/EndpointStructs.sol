@@ -225,7 +225,7 @@ library EndpointStructs {
     }
 
     /// @dev Variable-length endpoint-specific instruction that can be passed by the caller to the manager.
-    ///      The index field refers to the index of the enabledEndpoint that this instruction should be passed to.
+    ///      The index field refers to the index of the registeredEndpoint that this instruction should be passed to.
     ///      The serialization format is:
     ///      - index - 1 byte
     ///      - payloadLength - 1 byte
@@ -310,6 +310,10 @@ library EndpointStructs {
         return instructions;
     }
 
+    /*
+    * @dev This function takes a list of EndpointInstructions and expands them to a 256-length list,
+    *      inserting each instruction into the expanded list based on `instruction.index`.
+    */
     function sortEndpointInstructions(EndpointInstruction[] memory instructions)
         public
         pure
