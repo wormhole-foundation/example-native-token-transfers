@@ -6,6 +6,7 @@ import "./NormalizedAmount.sol";
 
 library EndpointStructs {
     using BytesParsing for bytes;
+    using NormalizedAmountLib for NormalizedAmount;
 
     error PayloadTooLong(uint256 size);
     error IncorrectPrefix(bytes4 prefix);
@@ -70,12 +71,13 @@ library EndpointStructs {
     /// @dev Native Token Transfer payload.
     ///      The wire format is as follows:
     ///      - NTT_PREFIX - 4 bytes
+    ///      - numDecimals - 1 byte
     ///      - amount - 8 bytes
     ///      - sourceToken - 32 bytes
     ///      - to - 32 bytes
     ///      - toChain - 2 bytes
     struct NativeTokenTransfer {
-        /// @notice Amount being transferred (big-endian uint256)
+        /// @notice Amount being transferred (big-endian u64 and u8 for decimals)
         NormalizedAmount amount;
         /// @notice Source chain token address.
         bytes32 sourceToken;
@@ -90,7 +92,15 @@ library EndpointStructs {
         pure
         returns (bytes memory encoded)
     {
-        return abi.encodePacked(NTT_PREFIX, m.amount, m.sourceToken, m.to, m.toChain);
+        NormalizedAmount memory transferAmount = m.amount;
+        return abi.encodePacked(
+            NTT_PREFIX,
+            transferAmount.getDecimals(),
+            transferAmount.getAmount(),
+            m.sourceToken,
+            m.to,
+            m.toChain
+        );
     }
 
     /*
@@ -109,9 +119,13 @@ library EndpointStructs {
         if (prefix != NTT_PREFIX) {
             revert IncorrectPrefix(prefix);
         }
+
+        uint8 numDecimals;
+        (numDecimals, offset) = encoded.asUint8Unchecked(offset);
         uint64 amount;
         (amount, offset) = encoded.asUint64Unchecked(offset);
-        nativeTokenTransfer.amount = NormalizedAmount.wrap(amount);
+        nativeTokenTransfer.amount = NormalizedAmount(amount, numDecimals);
+
         (nativeTokenTransfer.sourceToken, offset) = encoded.asBytes32Unchecked(offset);
         (nativeTokenTransfer.to, offset) = encoded.asBytes32Unchecked(offset);
         (nativeTokenTransfer.toChain, offset) = encoded.asUint16Unchecked(offset);

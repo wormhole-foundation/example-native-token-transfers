@@ -9,6 +9,7 @@ interface IRateLimiter {
     error OutboundQueuedTransferStillQueued(uint64 queueSequence, uint256 transferTimestamp);
     error InboundQueuedTransferNotFound(bytes32 digest);
     error InboundQueuedTransferStillQueued(bytes32 digest, uint256 transferTimestamp);
+    error CapacityCannotExceedLimit(NormalizedAmount newCurrentCapacity, NormalizedAmount newLimit);
 
     struct RateLimitParams {
         NormalizedAmount limit;
