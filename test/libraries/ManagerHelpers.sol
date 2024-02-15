@@ -11,12 +11,12 @@ library ManagerHelpersLib {
     using NormalizedAmountLib for NormalizedAmount;
 
     function setConfigs(
-        NormalizedAmount inboundLimit,
+        NormalizedAmount memory inboundLimit,
         ManagerStandalone manager,
         uint8 decimals
     ) internal returns (uint8) {
         manager.setSibling(SENDING_CHAIN_ID, toWormholeFormat(address(manager)));
-        manager.setOutboundLimit(NormalizedAmount.wrap(type(uint64).max).denormalize(decimals));
+        manager.setOutboundLimit(NormalizedAmount(type(uint64).max, 8).denormalize(decimals));
         manager.setInboundLimit(inboundLimit.denormalize(decimals), SENDING_CHAIN_ID);
     }
 }

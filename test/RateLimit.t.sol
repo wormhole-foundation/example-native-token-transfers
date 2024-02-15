@@ -3,6 +3,7 @@
 import "forge-std/Test.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
 import "../src/ManagerStandalone.sol";
+import "./mocks/DummyEndpoint.sol";
 import "./mocks/DummyToken.sol";
 import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -18,7 +19,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
     using NormalizedAmountLib for NormalizedAmount;
 
     uint16 constant chainId = 7;
-    uint16 constant SENDING_CHAIN_ID = 1;
+
     uint256 constant DEVNET_GUARDIAN_PK =
         0xcfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0;
     WormholeSimulator guardian;
@@ -56,8 +57,10 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
-        assertEq(outboundLimitParams.limit.unwrap(), limit.normalize(decimals).unwrap());
-        assertEq(outboundLimitParams.currentCapacity.unwrap(), limit.normalize(decimals).unwrap());
+        assertEq(outboundLimitParams.limit.getAmount(), limit.normalize(decimals).getAmount());
+        assertEq(
+            outboundLimitParams.currentCapacity.getAmount(), limit.normalize(decimals).getAmount()
+        );
         assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
     }
 
@@ -90,11 +93,11 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
-        assertEq(outboundLimitParams.limit.unwrap(), higherLimit.normalize(decimals).unwrap());
+        assertEq(outboundLimitParams.limit.getAmount(), higherLimit.normalize(decimals).getAmount());
         assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
         assertEq(
-            outboundLimitParams.currentCapacity.unwrap(),
-            (2 * 10 ** decimals).normalize(decimals).unwrap()
+            outboundLimitParams.currentCapacity.getAmount(),
+            (2 * 10 ** decimals).normalize(decimals).getAmount()
         );
     }
 
@@ -129,7 +132,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         assertEq(outboundLimitParams.limit.denormalize(decimals), lowerLimit);
         assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
-        assertEq(outboundLimitParams.currentCapacity.unwrap(), 0);
+        assertEq(outboundLimitParams.currentCapacity.getAmount(), 0);
     }
 
     function test_outboundRateLimit_setHigherLimit_duration() public {
@@ -165,16 +168,16 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
-        assertEq(outboundLimitParams.limit.unwrap(), higherLimit.normalize(decimals).unwrap());
+        assertEq(outboundLimitParams.limit.getAmount(), higherLimit.normalize(decimals).getAmount());
         assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
         // capacity should be:
         // difference in limits + remaining capacity after t1 + the amount that's refreshed (based on the old rps)
         assertEq(
-            outboundLimitParams.currentCapacity.unwrap(),
+            outboundLimitParams.currentCapacity.getAmount(),
             (
                 (1 * 10 ** decimals) + (1 * 10 ** decimals)
                     + (outboundLimit * (6 hours)) / manager.rateLimitDuration()
-            ).normalize(decimals).unwrap()
+            ).normalize(decimals).getAmount()
         );
     }
 
@@ -211,10 +214,10 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
-        assertEq(outboundLimitParams.limit.unwrap(), lowerLimit.normalize(decimals).unwrap());
+        assertEq(outboundLimitParams.limit.getAmount(), lowerLimit.normalize(decimals).getAmount());
         assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
         // capacity should be: 0
-        assertEq(outboundLimitParams.currentCapacity.unwrap(), 0);
+        assertEq(outboundLimitParams.currentCapacity.getAmount(), 0);
     }
 
     function test_outboundRateLimit_setLowerLimit_durationCaseTwo() public {
@@ -251,16 +254,16 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
 
-        assertEq(outboundLimitParams.limit.unwrap(), lowerLimit.normalize(decimals).unwrap());
+        assertEq(outboundLimitParams.limit.getAmount(), lowerLimit.normalize(decimals).getAmount());
         assertEq(outboundLimitParams.lastTxTimestamp, sixHoursLater);
         // capacity should be:
         // remaining capacity after t1 - difference in limits + the amount that's refreshed (based on the old rps)
         assertEq(
-            outboundLimitParams.currentCapacity.unwrap(),
+            outboundLimitParams.currentCapacity.getAmount(),
             (
                 (3 * 10 ** decimals) - (1 * 10 ** decimals)
                     + (outboundLimit * (6 hours)) / manager.rateLimitDuration()
-            ).normalize(decimals).unwrap()
+            ).normalize(decimals).getAmount()
         );
     }
 
@@ -309,8 +312,8 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         assertEq(token.balanceOf(address(manager)), transferAmount);
 
         // assert currentCapacity is updated
-        NormalizedAmount newCapacity =
-            outboundLimit.normalize(decimals) - transferAmount.normalize(decimals);
+        NormalizedAmount memory newCapacity =
+            outboundLimit.normalize(decimals).sub(transferAmount.normalize(decimals));
         assertEq(manager.getCurrentOutboundCapacity(), newCapacity.denormalize(decimals));
 
         uint256 badTransferAmount = 2 * 10 ** decimals;
@@ -351,7 +354,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         // assert that the transfer got queued up
         assertEq(qSeq, 0);
         IRateLimiter.OutboundQueuedTransfer memory qt = manager.getOutboundQueuedTransfer(0);
-        assertEq(qt.amount.unwrap(), transferAmount.normalize(decimals).unwrap());
+        assertEq(qt.amount.getAmount(), transferAmount.normalize(decimals).getAmount());
         assertEq(qt.recipientChain, chainId);
         assertEq(qt.recipient, toWormholeFormat(user_B));
         assertEq(qt.txTimestamp, initialBlockTimestamp);
@@ -385,15 +388,19 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         address from,
         address to,
         uint64 sequence,
-        NormalizedAmount inboundLimit,
+        NormalizedAmount memory inboundLimit,
         IEndpointReceiver[] memory endpoints
-    ) internal returns (EndpointStructs.ManagerMessage memory) {
+    )
+        internal
+        returns (EndpointStructs.ManagerMessage memory, EndpointStructs.EndpointMessage memory)
+    {
         DummyToken token = DummyToken(manager.token());
 
-        uint8 decimals = token.decimals();
-
-        token.mintDummy(from, 5 * 10 ** decimals);
-        ManagerHelpersLib.setConfigs(inboundLimit, manager, decimals);
+        uint8 decimals = token.decimals(); // 18
+        {
+            token.mintDummy(from, 5 * 10 ** decimals);
+            ManagerHelpersLib.setConfigs(inboundLimit, manager, decimals);
+        }
 
         {
             uint256 from_balanceBefore = token.balanceOf(from);
@@ -401,41 +408,47 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
             vm.startPrank(from);
 
-            token.approve(address(manager), 3 * 10 ** decimals);
+            token.approve(address(manager), 3 * 10 ** token.decimals());
             // TODO: parse recorded logs
-            manager.transfer(3 * 10 ** decimals, chainId, toWormholeFormat(to), false);
+            manager.transfer(3 * 10 ** token.decimals(), chainId, toWormholeFormat(to), false);
 
             vm.stopPrank();
 
-            assertEq(token.balanceOf(from), from_balanceBefore - 3 * 10 ** decimals);
-            assertEq(token.balanceOf(address(manager)), manager_balanceBefore + 3 * 10 ** decimals);
+            assertEq(token.balanceOf(from), from_balanceBefore - 3 * 10 ** token.decimals());
+            assertEq(
+                token.balanceOf(address(manager)),
+                manager_balanceBefore + 3 * 10 ** token.decimals()
+            );
         }
 
         EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
-            SENDING_CHAIN_ID,
             sequence,
-            toWormholeFormat(address(manager)),
             toWormholeFormat(from),
             EndpointStructs.encodeNativeTokenTransfer(
                 EndpointStructs.NativeTokenTransfer({
-                    amount: NormalizedAmount.wrap(50),
+                    amount: NormalizedAmount(50, 8),
                     sourceToken: toWormholeFormat(address(token)),
                     to: toWormholeFormat(to),
                     toChain: chainId
                 })
             )
         );
+        bytes memory encodedM = EndpointStructs.encodeManagerMessage(m);
 
-        {
-            bytes memory message = EndpointStructs.encodeManagerMessage(m);
+        EndpointStructs.EndpointMessage memory em;
+        bytes memory encodedEm;
+        (em, encodedEm) = EndpointStructs.buildAndEncodeEndpointMessage(
+            EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX,
+            toWormholeFormat(address(manager)),
+            encodedM
+        );
 
-            for (uint256 i; i < endpoints.length; i++) {
-                IEndpointReceiver e = endpoints[i];
-                e.receiveMessage(message);
-            }
+        for (uint256 i; i < endpoints.length; i++) {
+            IEndpointReceiver e = endpoints[i];
+            e.receiveMessage(encodedEm);
         }
 
-        return m;
+        return (m, em);
     }
 
     function test_inboundRateLimit() public {
@@ -446,28 +459,38 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         DummyToken token = DummyToken(manager.token());
 
-        uint8 decimals = token.decimals();
-
         IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](1);
         endpoints[0] = e1;
 
-        EndpointStructs.ManagerMessage memory m =
-            _attestEndpointsHelper(user_A, user_B, 0, uint256(5).normalize(decimals), endpoints);
-        bytes32 digest = EndpointStructs.managerMessageDigest(m);
-        bytes memory message = EndpointStructs.encodeManagerMessage(m);
+        EndpointStructs.ManagerMessage memory m;
+        bytes memory encodedEm;
+        {
+            EndpointStructs.EndpointMessage memory em;
+            (m, em) = _attestEndpointsHelper(
+                user_A, user_B, 0, uint256(5).normalize(token.decimals()), endpoints
+            );
+            encodedEm = EndpointStructs.encodeEndpointMessage(
+                EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX, em
+            );
+        }
+
+        bytes32 digest =
+            EndpointStructs.managerMessageDigest(EndpointHelpersLib.SENDING_CHAIN_ID, m);
 
         // no quorum yet
         assertEq(token.balanceOf(address(user_B)), 0);
 
         vm.expectEmit(address(manager));
         emit InboundTransferQueued(digest);
-        e2.receiveMessage(message);
+        e2.receiveMessage(encodedEm);
 
-        // now we have quorum but it'll hit limit
-        IRateLimiter.InboundQueuedTransfer memory qt = manager.getInboundQueuedTransfer(digest);
-        assertEq(qt.amount.unwrap(), 50);
-        assertEq(qt.txTimestamp, initialBlockTimestamp);
-        assertEq(qt.recipient, user_B);
+        {
+            // now we have quorum but it'll hit limit
+            IRateLimiter.InboundQueuedTransfer memory qt = manager.getInboundQueuedTransfer(digest);
+            assertEq(qt.amount.getAmount(), 50);
+            assertEq(qt.txTimestamp, initialBlockTimestamp);
+            assertEq(qt.recipient, user_B);
+        }
 
         // assert that the user doesn't have funds yet
         assertEq(token.balanceOf(address(user_B)), 0);
@@ -476,33 +499,44 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         uint256 durationElapsedTime = initialBlockTimestamp + manager.rateLimitDuration();
         vm.warp(durationElapsedTime - 1);
 
-        // assert that transfer still can't be completed
-        bytes4 stillQueuedSelector =
-            bytes4(keccak256("InboundQueuedTransferStillQueued(bytes32,uint256)"));
-        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, digest, initialBlockTimestamp));
-        manager.completeInboundQueuedTransfer(digest);
+        {
+            // assert that transfer still can't be completed
+            bytes4 stillQueuedSelector =
+                bytes4(keccak256("InboundQueuedTransferStillQueued(bytes32,uint256)"));
+            vm.expectRevert(
+                abi.encodeWithSelector(stillQueuedSelector, digest, initialBlockTimestamp)
+            );
+            manager.completeInboundQueuedTransfer(digest);
+        }
 
         // now complete transfer
         vm.warp(durationElapsedTime);
         manager.completeInboundQueuedTransfer(digest);
 
-        // assert transfer no longer in queue
-        bytes4 notQueuedSelector = bytes4(keccak256("InboundQueuedTransferNotFound(bytes32)"));
-        vm.expectRevert(abi.encodeWithSelector(notQueuedSelector, digest));
-        manager.completeInboundQueuedTransfer(digest);
+        {
+            // assert transfer no longer in queue
+            bytes4 notQueuedSelector = bytes4(keccak256("InboundQueuedTransferNotFound(bytes32)"));
+            vm.expectRevert(abi.encodeWithSelector(notQueuedSelector, digest));
+            manager.completeInboundQueuedTransfer(digest);
+        }
 
         // assert user now has funds
-        assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
+        assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (token.decimals() - 8));
 
         // replay protection
         vm.recordLogs();
-        e2.receiveMessage(message);
-        Vm.Log[] memory entries = vm.getRecordedLogs();
+        e2.receiveMessage(encodedEm);
 
-        assertEq(entries.length, 2);
-        assertEq(entries[1].topics.length, 3);
-        assertEq(entries[1].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
-        assertEq(entries[1].topics[1], toWormholeFormat(address(manager)));
-        assertEq(entries[1].topics[2], bytes32(keccak256(message)));
+        {
+            Vm.Log[] memory entries = vm.getRecordedLogs();
+            assertEq(entries.length, 2);
+            assertEq(entries[1].topics.length, 3);
+            assertEq(entries[1].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
+            assertEq(entries[1].topics[1], toWormholeFormat(address(manager)));
+            assertEq(
+                entries[1].topics[2],
+                EndpointStructs.managerMessageDigest(EndpointHelpersLib.SENDING_CHAIN_ID, m)
+            );
+        }
     }
 }

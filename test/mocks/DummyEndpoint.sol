@@ -7,6 +7,9 @@ import "../../src/EndpointStandalone.sol";
 import "../interfaces/IEndpointReceiver.sol";
 
 contract DummyEndpoint is EndpointStandalone, IEndpointReceiver {
+    uint16 constant SENDING_CHAIN_ID = 1;
+    bytes4 constant TEST_ENDPOINT_PAYLOAD_PREFIX = 0x99455454;
+
     constructor(address manager) EndpointStandalone(manager) {}
 
     function _quoteDeliveryPrice(uint16 /* recipientChain */ )
@@ -27,17 +30,14 @@ contract DummyEndpoint is EndpointStandalone, IEndpointReceiver {
     }
 
     function receiveMessage(bytes memory encodedMessage) external {
-        EndpointStructs.ManagerMessage memory parsed =
-            EndpointStructs.parseManagerMessage(encodedMessage);
-        _deliverToManager(parsed);
+        EndpointStructs.EndpointMessage memory parsedEndpointMessage;
+        EndpointStructs.ManagerMessage memory parsedManagerMessage;
+        (parsedEndpointMessage, parsedManagerMessage) = EndpointStructs
+            .parseEndpointAndManagerMessage(TEST_ENDPOINT_PAYLOAD_PREFIX, encodedMessage);
+        _deliverToManager(
+            SENDING_CHAIN_ID, parsedEndpointMessage.sourceManagerAddress, parsedManagerMessage
+        );
     }
-
-    function _parseEndpointMessage(bytes memory encoded)
-        internal
-        pure
-        override
-        returns (EndpointStructs.EndpointMessage memory endpointMessage)
-    {}
 
     function parseMessageFromLogs(Vm.Log[] memory logs)
         public
