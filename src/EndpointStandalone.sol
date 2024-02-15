@@ -35,8 +35,9 @@ abstract contract EndpointStandalone is
         return managerInstance.owner();
     }
 
-    function initializeEndpoint() external {
-        _initialize();
+    /// @dev transfer the ownership of the endpoint to a new address
+    function transferEndpointOwnership(address newOwner) external {
+        transferOwnership(newOwner);
     }
 
     function _initialize() internal override {

@@ -10,5 +10,5 @@ interface IEndpointStandalone {
 
     function upgrade(address newImplementation) external;
 
-    function initializeEndpoint() external;
+    function transferEndpointOwnership(address newOwner) external;
 }

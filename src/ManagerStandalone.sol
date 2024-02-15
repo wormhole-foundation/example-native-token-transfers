@@ -54,7 +54,7 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         _checkRegisteredEndpointsInvariants();
 
         for (uint256 i = 0; i < _registeredEndpoints.length; i++) {
-            IEndpointStandalone(_registeredEndpoints[i]).initializeEndpoint();
+            IEndpointStandalone(_registeredEndpoints[i]).transferEndpointOwnership(newOwner);
         }
     }
 
