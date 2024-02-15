@@ -1,18 +1,17 @@
 use anchor_lang::prelude::*;
 
-use wormhole_anchor_sdk::wormhole::PostedVaa;
-
 use crate::{
     clock::current_timestamp,
     config::*,
     error::NTTError,
-    messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer, WormholeEndpoint},
+    messages::{ManagerMessage, NativeTokenTransfer, ValidatedEndpointMessage},
     queue::{
         inbox::{InboxItem, InboxRateLimit},
         outbox::OutboxRateLimit,
         rate_limit::RateLimitResult,
     },
-    sibling::Sibling,
+    registered_endpoint::*,
+    sibling::ManagerSibling,
 };
 
 #[derive(Accounts)]
@@ -24,19 +23,22 @@ pub struct Redeem<'info> {
     pub config: Account<'info, Config>,
 
     #[account(
-        seeds = [Sibling::SEED_PREFIX, vaa.emitter_chain().to_be_bytes().as_ref()],
-        constraint = sibling.address == *vaa.emitter_address() @ NTTError::InvalidSibling,
+        seeds = [ManagerSibling::SEED_PREFIX, endpoint_message.from_chain.id.to_be_bytes().as_ref()],
+        constraint = sibling.address == endpoint_message.message.source_manager @ NTTError::InvalidManagerSibling,
         bump = sibling.bump,
     )]
-    pub sibling: Account<'info, Sibling>,
+    pub sibling: Account<'info, ManagerSibling>,
 
     #[account(
         // check that the messages is targeted to this chain
-        constraint = vaa.message().manager_payload.payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
+        constraint = endpoint_message.message.manager_payload.payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
         // NOTE: we don't replay protect VAAs. Instead, we replay protect
         // executing the messages themselves with the [`released`] flag.
+        owner = endpoint.endpoint_address,
     )]
-    pub vaa: Account<'info, PostedVaa<EndpointMessage<WormholeEndpoint, NativeTokenTransfer>>>,
+    pub endpoint_message: Account<'info, ValidatedEndpointMessage<NativeTokenTransfer>>,
+
+    pub endpoint: EnabledEndpoint<'info>,
 
     #[account(
         init,
@@ -44,8 +46,9 @@ pub struct Redeem<'info> {
         space = 8 + InboxItem::INIT_SPACE,
         seeds = [
             InboxItem::SEED_PREFIX,
-            vaa.emitter_chain().to_be_bytes().as_ref(),
-            vaa.message().manager_payload.sequence.to_be_bytes().as_ref(),
+            endpoint_message.from_chain.id.to_be_bytes().as_ref(),
+            // TODO: use hash instead of just sequence
+            endpoint_message.message.manager_payload.sequence.to_be_bytes().as_ref(),
         ],
         bump,
     )]
@@ -59,7 +62,7 @@ pub struct Redeem<'info> {
         mut,
         seeds = [
             InboxRateLimit::SEED_PREFIX,
-            vaa.emitter_chain().to_be_bytes().as_ref()
+            endpoint_message.from_chain.id.to_be_bytes().as_ref(),
         ],
         bump,
     )]
@@ -77,7 +80,8 @@ pub struct RedeemArgs {}
 pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let accs = ctx.accounts;
 
-    let message: ManagerMessage<NativeTokenTransfer> = accs.vaa.message().manager_payload.clone();
+    let message: ManagerMessage<NativeTokenTransfer> =
+        accs.endpoint_message.message.manager_payload.clone();
 
     let amount = message.payload.amount;
     let amount = amount.change_decimals(accs.outbox_rate_limit.rate_limit.limit.decimals);

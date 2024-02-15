@@ -8,18 +8,18 @@ use crate::{chain_id::ChainId, normalized_amount::NormalizedAmount};
 
 // TODO: might make sense to break this up into multiple files
 
-#[derive(Debug, Clone, PartialEq, Eq, AnchorSerialize, AnchorDeserialize)]
-pub struct ManagerMessage<A> {
+#[derive(Debug, Clone, PartialEq, Eq, AnchorSerialize, AnchorDeserialize, InitSpace)]
+pub struct ManagerMessage<A: Space> {
     pub sequence: u64,
     pub sender: [u8; 32],
     pub payload: A,
 }
 
-impl<A: TypePrefixedPayload> TypePrefixedPayload for ManagerMessage<A> {
+impl<A: TypePrefixedPayload + Space> TypePrefixedPayload for ManagerMessage<A> {
     const TYPE: Option<u8> = None;
 }
 
-impl<A: TypePrefixedPayload> Readable for ManagerMessage<A> {
+impl<A: TypePrefixedPayload + Space> Readable for ManagerMessage<A> {
     const SIZE: Option<usize> = None;
 
     fn read<R>(reader: &mut R) -> io::Result<Self>
@@ -41,7 +41,7 @@ impl<A: TypePrefixedPayload> Readable for ManagerMessage<A> {
     }
 }
 
-impl<A: TypePrefixedPayload> Writeable for ManagerMessage<A> {
+impl<A: TypePrefixedPayload + Space> Writeable for ManagerMessage<A> {
     fn written_size(&self) -> usize {
         u64::SIZE.unwrap()
             + self.sender.len()
@@ -68,7 +68,7 @@ impl<A: TypePrefixedPayload> Writeable for ManagerMessage<A> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, AnchorSerialize, AnchorDeserialize, InitSpace)]
 pub struct NativeTokenTransfer {
     pub amount: NormalizedAmount,
     // TODO: is this needed?
@@ -150,24 +150,52 @@ pub trait Endpoint {
     const PREFIX: [u8; 4];
 }
 
-#[derive(PartialEq, Eq)]
-pub struct WormholeEndpoint {}
-
-impl Endpoint for WormholeEndpoint {
-    const PREFIX: [u8; 4] = [0x99, 0x45, 0xFF, 0x10];
+#[account]
+#[derive(InitSpace)]
+pub struct ValidatedEndpointMessage<A: AnchorDeserialize + AnchorSerialize + Space + Clone> {
+    pub from_chain: ChainId,
+    pub message: EndpointMessageData<A>,
 }
 
-#[derive(PartialEq, Eq)]
-pub struct EndpointMessage<E: Endpoint, A> {
-    _phantom: PhantomData<E>,
-    // TODO: check sibling registration at the manager level
+impl<A: AnchorDeserialize + AnchorSerialize + Space + Clone> ValidatedEndpointMessage<A> {
+    pub const SEED_PREFIX: &'static [u8] = b"endpoint_message";
+}
+
+#[derive(Debug, PartialEq, Eq, InitSpace, Clone, AnchorSerialize, AnchorDeserialize)]
+pub struct EndpointMessageData<A: AnchorDeserialize + AnchorSerialize + Space + Clone> {
     pub source_manager: [u8; 32],
     pub manager_payload: ManagerMessage<A>,
+}
+
+#[derive(Eq, PartialEq)]
+pub struct EndpointMessage<E: Endpoint, A: AnchorDeserialize + AnchorSerialize + Space + Clone> {
+    _phantom: PhantomData<E>,
+    // TODO: check sibling registration at the manager level
+    pub message_data: EndpointMessageData<A>,
+}
+
+impl<E: Endpoint, A: AnchorDeserialize + AnchorSerialize + Space + Clone> std::ops::Deref
+    for EndpointMessage<E, A>
+{
+    type Target = EndpointMessageData<A>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.message_data
+    }
+}
+
+impl<E: Endpoint, A: AnchorDeserialize + AnchorSerialize + Space + Clone> std::ops::DerefMut
+    for EndpointMessage<E, A>
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.message_data
+    }
 }
 
 impl<E, A: fmt::Debug> fmt::Debug for EndpointMessage<E, A>
 where
     E: Endpoint,
+    A: AnchorDeserialize + AnchorSerialize + Space + Clone,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("EndpointMessage")
@@ -176,13 +204,19 @@ where
     }
 }
 
-impl<E: Endpoint, A: TypePrefixedPayload> AnchorDeserialize for EndpointMessage<E, A> {
+impl<E: Endpoint, A: TypePrefixedPayload> AnchorDeserialize for EndpointMessage<E, A>
+where
+    A: AnchorDeserialize + AnchorSerialize + Space,
+{
     fn deserialize_reader<R: io::Read>(reader: &mut R) -> io::Result<Self> {
         Readable::read(reader)
     }
 }
 
-impl<E: Endpoint, A: TypePrefixedPayload> AnchorSerialize for EndpointMessage<E, A> {
+impl<E: Endpoint, A: TypePrefixedPayload> AnchorSerialize for EndpointMessage<E, A>
+where
+    A: AnchorDeserialize + AnchorSerialize + Space,
+{
     fn serialize<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
         Writeable::write(self, writer)
     }
@@ -191,31 +225,45 @@ impl<E: Endpoint, A: TypePrefixedPayload> AnchorSerialize for EndpointMessage<E,
 impl<E, A: Clone> Clone for EndpointMessage<E, A>
 where
     E: Endpoint,
+    A: AnchorDeserialize + AnchorSerialize + Space,
 {
     fn clone(&self) -> Self {
         Self {
             _phantom: PhantomData,
-            source_manager: self.source_manager.clone(),
-            manager_payload: self.manager_payload.clone(),
+            message_data: EndpointMessageData {
+                source_manager: self.source_manager.clone(),
+                manager_payload: self.manager_payload.clone(),
+            },
         }
     }
 }
 
-impl<E: Endpoint, A> EndpointMessage<E, A> {
+impl<E: Endpoint, A> EndpointMessage<E, A>
+where
+    A: AnchorDeserialize + AnchorSerialize + Space + Clone,
+{
     pub fn new(source_manager: [u8; 32], manager_payload: ManagerMessage<A>) -> Self {
         Self {
             _phantom: PhantomData,
-            source_manager,
-            manager_payload,
+            message_data: EndpointMessageData {
+                source_manager,
+                manager_payload,
+            },
         }
     }
 }
 
-impl<A: TypePrefixedPayload, E: Endpoint> TypePrefixedPayload for EndpointMessage<E, A> {
+impl<A: TypePrefixedPayload, E: Endpoint> TypePrefixedPayload for EndpointMessage<E, A>
+where
+    A: AnchorDeserialize + AnchorSerialize + Space,
+{
     const TYPE: Option<u8> = None;
 }
 
-impl<E: Endpoint, A: Readable + TypePrefixedPayload> Readable for EndpointMessage<E, A> {
+impl<E: Endpoint, A: Readable + TypePrefixedPayload> Readable for EndpointMessage<E, A>
+where
+    A: AnchorDeserialize + AnchorSerialize + Space,
+{
     const SIZE: Option<usize> = None;
 
     fn read<R>(reader: &mut R) -> io::Result<Self>
@@ -241,7 +289,10 @@ impl<E: Endpoint, A: Readable + TypePrefixedPayload> Readable for EndpointMessag
     }
 }
 
-impl<E: Endpoint, A: Writeable + TypePrefixedPayload> Writeable for EndpointMessage<E, A> {
+impl<E: Endpoint, A: Writeable + TypePrefixedPayload> Writeable for EndpointMessage<E, A>
+where
+    A: AnchorDeserialize + AnchorSerialize + Space,
+{
     fn written_size(&self) -> usize {
         4 // prefix
         + self.source_manager.len()
@@ -255,8 +306,11 @@ impl<E: Endpoint, A: Writeable + TypePrefixedPayload> Writeable for EndpointMess
     {
         let EndpointMessage {
             _phantom,
-            source_manager,
-            manager_payload,
+            message_data:
+                EndpointMessageData {
+                    source_manager,
+                    manager_payload,
+                },
         } = self;
 
         E::PREFIX.write(writer)?;
@@ -296,6 +350,8 @@ impl<D> Hack for PhantomData<D> {
 
 #[cfg(test)]
 mod test {
+    use crate::endpoints::wormhole::messages::WormholeEndpoint;
+
     use super::*;
     //
     #[test]
@@ -307,30 +363,32 @@ mod test {
 
         let expected = EndpointMessage {
             _phantom: PhantomData::<WormholeEndpoint>,
-            source_manager: [
-                0x04, 0x29, 0x42, 0xFA, 0xFA, 0xBE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            ],
-            manager_payload: ManagerMessage {
-                sequence: 233968345345,
-                sender: [
-                    0x46, 0x67, 0x92, 0x13, 0x41, 0x23, 0x43, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            message_data: EndpointMessageData {
+                source_manager: [
+                    0x04, 0x29, 0x42, 0xFA, 0xFA, 0xBE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 ],
-                payload: NativeTokenTransfer {
-                    amount: NormalizedAmount {
-                        amount: 1234567,
-                        decimals: 7,
+                manager_payload: ManagerMessage {
+                    sequence: 233968345345,
+                    sender: [
+                        0x46, 0x67, 0x92, 0x13, 0x41, 0x23, 0x43, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    ],
+                    payload: NativeTokenTransfer {
+                        amount: NormalizedAmount {
+                            amount: 1234567,
+                            decimals: 7,
+                        },
+                        source_token: [
+                            0xBE, 0xEF, 0xFA, 0xCE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        ],
+                        to_chain: ChainId { id: 17 },
+                        to: [
+                            0xFE, 0xEB, 0xCA, 0xFE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        ],
                     },
-                    source_token: [
-                        0xBE, 0xEF, 0xFA, 0xCE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    ],
-                    to_chain: ChainId { id: 17 },
-                    to: [
-                        0xFE, 0xEB, 0xCA, 0xFE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    ],
                 },
             },
         };

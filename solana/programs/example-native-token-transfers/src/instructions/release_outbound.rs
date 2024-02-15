@@ -5,8 +5,9 @@ use wormhole_io::TypePrefixedPayload;
 
 use crate::{
     config::*,
+    endpoints::wormhole::messages::WormholeEndpoint,
     error::NTTError,
-    messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer, WormholeEndpoint},
+    messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer},
     queue::outbox::OutboxItem,
 };
 

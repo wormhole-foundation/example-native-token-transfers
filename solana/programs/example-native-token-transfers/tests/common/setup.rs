@@ -3,6 +3,7 @@ use anchor_spl::token::{Mint, Token};
 use example_native_token_transfers::{
     chain_id::ChainId,
     config::Mode,
+    endpoints::wormhole::SetEndpointSiblingArgs,
     instructions::{InitializeArgs, SetSiblingArgs},
 };
 use solana_program_test::{ProgramTest, ProgramTestContext};
@@ -16,8 +17,9 @@ use wormhole_anchor_sdk::wormhole::{BridgeData, FeeCollector};
 
 use crate::sdk::{
     accounts::{Wormhole, NTT},
+    endpoints::wormhole::instructions::admin::{set_endpoint_sibling, SetEndpointSibling},
     instructions::{
-        admin::{set_sibling, SetSibling},
+        admin::{register_endpoint, set_sibling, RegisterEndpoint, SetSibling},
         initialize::{initialize, Initialize},
     },
 };
@@ -32,6 +34,12 @@ use super::{
 pub const MINT_AMOUNT: u64 = 100000;
 pub const OUTBOUND_LIMIT: u64 = 10000;
 pub const INBOUND_LIMIT: u64 = 50000;
+
+pub const OTHER_ENDPOINT: [u8; 32] = [7u8; 32];
+pub const OTHER_MANAGER: [u8; 32] = [9u8; 32];
+
+pub const THIS_CHAIN: u16 = 1;
+pub const OTHER_CHAIN: u16 = 2;
 
 pub struct TestData {
     pub ntt: NTT,
@@ -125,9 +133,37 @@ pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
         },
         InitializeArgs {
             // TODO: use sdk
-            chain_id: 1,
+            chain_id: THIS_CHAIN,
             limit: OUTBOUND_LIMIT,
             mode,
+        },
+    )
+    .submit_with_signers(&[&test_data.program_owner], ctx)
+    .await
+    .unwrap();
+
+    register_endpoint(
+        &test_data.ntt,
+        RegisterEndpoint {
+            payer: ctx.payer.pubkey(),
+            owner: test_data.program_owner.pubkey(),
+            endpoint: example_native_token_transfers::ID, // standalone manager&endpoint
+        },
+    )
+    .submit_with_signers(&[&test_data.program_owner], ctx)
+    .await
+    .unwrap();
+
+    set_endpoint_sibling(
+        &test_data.ntt,
+        SetEndpointSibling {
+            payer: ctx.payer.pubkey(),
+            owner: test_data.program_owner.pubkey(),
+            mint: test_data.mint,
+        },
+        SetEndpointSiblingArgs {
+            chain_id: ChainId { id: OTHER_CHAIN },
+            address: OTHER_ENDPOINT,
         },
     )
     .submit_with_signers(&[&test_data.program_owner], ctx)
@@ -142,8 +178,8 @@ pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
             mint: test_data.mint,
         },
         SetSiblingArgs {
-            chain_id: ChainId { id: 2 },
-            address: [7u8; 32],
+            chain_id: ChainId { id: OTHER_CHAIN },
+            address: OTHER_MANAGER,
             limit: INBOUND_LIMIT,
         },
     )

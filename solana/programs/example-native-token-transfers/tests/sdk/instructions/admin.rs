@@ -49,3 +49,28 @@ pub fn set_paused(ntt: &NTT, accounts: SetPaused, pause: bool) -> Instruction {
         data: data.data(),
     }
 }
+
+pub struct RegisterEndpoint {
+    pub payer: Pubkey,
+    pub owner: Pubkey,
+    pub endpoint: Pubkey,
+}
+
+pub fn register_endpoint(ntt: &NTT, accounts: RegisterEndpoint) -> Instruction {
+    let data = example_native_token_transfers::instruction::RegisterEndpoint {};
+
+    let accounts = example_native_token_transfers::accounts::RegisterEndpoint {
+        config: ntt.config(),
+        owner: accounts.owner,
+        payer: accounts.payer,
+        endpoint: accounts.endpoint,
+        registered_endpoint: ntt.registered_endpoint(&accounts.endpoint),
+        system_program: System::id(),
+    };
+
+    Instruction {
+        program_id: example_native_token_transfers::ID,
+        accounts: accounts.to_account_metas(None),
+        data: data.data(),
+    }
+}

@@ -5,24 +5,29 @@ use anchor_lang::{
     prelude::{Clock, Pubkey},
     AccountSerialize,
 };
-use common::setup::TestData;
+use common::setup::{TestData, OTHER_CHAIN, OTHER_ENDPOINT, OTHER_MANAGER, THIS_CHAIN};
 use example_native_token_transfers::{
     chain_id::ChainId,
     config::Mode,
+    endpoints::wormhole::messages::WormholeEndpoint,
     instructions::{RedeemArgs, TransferArgs},
-    messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer, WormholeEndpoint},
+    messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer},
     normalized_amount::NormalizedAmount,
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit},
 };
+use sdk::endpoints::wormhole::instructions::receive_message::ReceiveMessage;
 use solana_program_test::*;
 use solana_sdk::{account::Account, signature::Keypair, signer::Signer};
 use wormhole_io::TypePrefixedPayload;
 
 use crate::{
     common::{hack::PostedVaaHack, query::GetAccountDataAnchor},
-    sdk::instructions::{
-        redeem::{redeem, Redeem},
-        transfer::Transfer,
+    sdk::{
+        endpoints::wormhole::instructions::receive_message::receive_message,
+        instructions::{
+            redeem::{redeem, Redeem},
+            transfer::Transfer,
+        },
     },
 };
 use crate::{
@@ -32,9 +37,6 @@ use crate::{
 
 pub mod common;
 pub mod sdk;
-
-const THIS_CHAIN: u16 = 1;
-const OTHER_CHAIN: u16 = 2;
 
 fn init_transfer_accs_args(
     ctx: &mut ProgramTestContext,
@@ -64,19 +66,35 @@ fn init_transfer_accs_args(
 fn init_redeem_accs(
     ctx: &mut ProgramTestContext,
     test_data: &TestData,
-    vaa: Pubkey,
     chain_id: u16,
     sequence: u64,
 ) -> Redeem {
     let accs = Redeem {
         payer: ctx.payer.pubkey(),
         sibling: test_data.ntt.sibling(chain_id),
-        vaa,
+        endpoint: test_data.ntt.program,
+        endpoint_message: test_data.ntt.endpoint_message(chain_id, sequence),
         inbox_item: test_data.ntt.inbox_item(chain_id, sequence),
         inbox_rate_limit: test_data.ntt.inbox_rate_limit(chain_id),
     };
 
     accs
+}
+
+fn init_receive_message_accs(
+    ctx: &mut ProgramTestContext,
+    test_data: &TestData,
+    vaa: Pubkey,
+    chain_id: u16,
+    sequence: u64,
+) -> ReceiveMessage {
+    ReceiveMessage {
+        payer: ctx.payer.pubkey(),
+        sibling: test_data.ntt.endpoint_sibling(chain_id),
+        vaa,
+        chain_id,
+        sequence,
+    }
 }
 
 /// helper function to write into vaa accounts.
@@ -90,7 +108,7 @@ fn make_vaa(sequence: u64, amount: u64, recipient: &Keypair) -> (Pubkey, Account
     let vaa = Keypair::new();
     let endpoint_message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
         EndpointMessage::new(
-            [5u8; 32],
+            OTHER_MANAGER,
             ManagerMessage {
                 sequence,
                 sender: [4u8; 32],
@@ -117,7 +135,7 @@ fn make_vaa(sequence: u64, amount: u64, recipient: &Keypair) -> (Pubkey, Account
         nonce: 0,
         sequence,
         emitter_chain: OTHER_CHAIN,
-        emitter_address: [7u8; 32],
+        emitter_address: OTHER_ENDPOINT,
         payload,
     };
 
@@ -171,9 +189,17 @@ async fn test_cancel() {
     let inbound_limit_before = inbound_capacity(&mut ctx, &test_data).await;
     let outbound_limit_before = outbound_capacity(&mut ctx, &test_data).await;
 
+    receive_message(
+        &test_data.ntt,
+        init_receive_message_accs(&mut ctx, &test_data, vaa0, OTHER_CHAIN, 0),
+    )
+    .submit(&mut ctx)
+    .await
+    .unwrap();
+
     redeem(
         &test_data.ntt,
-        init_redeem_accs(&mut ctx, &test_data, vaa0, 2, 0),
+        init_redeem_accs(&mut ctx, &test_data, OTHER_CHAIN, 0),
         RedeemArgs {},
     )
     .submit(&mut ctx)
@@ -211,9 +237,17 @@ async fn test_cancel() {
         inbound_capacity(&mut ctx, &test_data).await
     );
 
+    receive_message(
+        &test_data.ntt,
+        init_receive_message_accs(&mut ctx, &test_data, vaa1, OTHER_CHAIN, 1),
+    )
+    .submit(&mut ctx)
+    .await
+    .unwrap();
+
     redeem(
         &test_data.ntt,
-        init_redeem_accs(&mut ctx, &test_data, vaa1, OTHER_CHAIN, 1),
+        init_redeem_accs(&mut ctx, &test_data, OTHER_CHAIN, 1),
         RedeemArgs {},
     )
     .submit(&mut ctx)

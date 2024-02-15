@@ -3,13 +3,17 @@ use anchor_lang::prelude::*;
 pub mod chain_id;
 pub mod clock;
 pub mod config;
+pub mod endpoints;
 pub mod error;
 pub mod instructions;
 pub mod messages;
 pub mod normalized_amount;
 pub mod queue;
+pub mod registered_endpoint;
 pub mod sequence;
 pub mod sibling;
+
+use endpoints::wormhole::instructions::*;
 
 use instructions::*;
 
@@ -43,11 +47,17 @@ pub mod example_native_token_transfers {
         instructions::redeem(ctx, args)
     }
 
-    pub fn release_inbound_mint(ctx: Context<ReleaseInboundMint>, args: ReleaseInboundArgs) -> Result<()> {
+    pub fn release_inbound_mint(
+        ctx: Context<ReleaseInboundMint>,
+        args: ReleaseInboundArgs,
+    ) -> Result<()> {
         instructions::release_inbound_mint(ctx, args)
     }
 
-    pub fn release_inbound_unlock(ctx: Context<ReleaseInboundUnlock>, args: ReleaseInboundArgs) -> Result<()> {
+    pub fn release_inbound_unlock(
+        ctx: Context<ReleaseInboundUnlock>,
+        args: ReleaseInboundArgs,
+    ) -> Result<()> {
         instructions::release_inbound_unlock(ctx, args)
     }
 
@@ -70,6 +80,10 @@ pub mod example_native_token_transfers {
         instructions::set_sibling(ctx, args)
     }
 
+    pub fn register_endpoint(ctx: Context<RegisterEndpoint>) -> Result<()> {
+        instructions::register_endpoint(ctx)
+    }
+
     pub fn set_outbound_limit(
         ctx: Context<SetOutboundLimit>,
         args: SetOutboundLimitArgs,
@@ -82,5 +96,18 @@ pub mod example_native_token_transfers {
         args: SetInboundLimitArgs,
     ) -> Result<()> {
         instructions::set_inbound_limit(ctx, args)
+    }
+
+    // standalone endpoint stuff
+
+    pub fn set_wormhole_sibling(
+        ctx: Context<SetEndpointSibling>,
+        args: SetEndpointSiblingArgs,
+    ) -> Result<()> {
+        endpoints::wormhole::instructions::set_endpoint_sibling(ctx, args)
+    }
+
+    pub fn receive_wormhole_message(ctx: Context<ReceiveMessage>) -> Result<()> {
+        endpoints::wormhole::instructions::receive_message(ctx)
     }
 }

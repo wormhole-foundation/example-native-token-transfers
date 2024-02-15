@@ -6,7 +6,8 @@ use crate::{
     config::Config,
     normalized_amount::NormalizedAmount,
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit, rate_limit::RateLimitState},
-    sibling::Sibling,
+    registered_endpoint::RegisteredEndpoint,
+    sibling::ManagerSibling,
 };
 
 // * Transfer ownership
@@ -57,7 +58,6 @@ pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
 // TODO: update siblings? should that be a separate instruction? take timestamp
 // for modification? (for total ordering)
 
-// TODO: this should set the *manager* sibling, not the endpoint one
 #[derive(Accounts)]
 #[instruction(args: SetSiblingArgs)]
 pub struct SetSibling<'info> {
@@ -73,12 +73,12 @@ pub struct SetSibling<'info> {
 
     #[account(
         init,
-        space = 8 + Sibling::INIT_SPACE,
+        space = 8 + ManagerSibling::INIT_SPACE,
         payer = payer,
-        seeds = [Sibling::SEED_PREFIX, args.chain_id.id.to_be_bytes().as_ref()],
+        seeds = [ManagerSibling::SEED_PREFIX, args.chain_id.id.to_be_bytes().as_ref()],
         bump
     )]
-    pub sibling: Account<'info, Sibling>,
+    pub sibling: Account<'info, ManagerSibling>,
 
     #[account(
         init,
@@ -110,7 +110,7 @@ pub struct SetSiblingArgs {
 }
 
 pub fn set_sibling(ctx: Context<SetSibling>, args: SetSiblingArgs) -> Result<()> {
-    ctx.accounts.sibling.set_inner(Sibling {
+    ctx.accounts.sibling.set_inner(ManagerSibling {
         bump: ctx.bumps.sibling,
         address: args.address,
     });
@@ -122,6 +122,49 @@ pub fn set_sibling(ctx: Context<SetSibling>, args: SetSiblingArgs) -> Result<()>
             ctx.accounts.mint.decimals,
         )),
     });
+    Ok(())
+}
+
+// * Register endpoints
+
+#[derive(Accounts)]
+pub struct RegisterEndpoint<'info> {
+    #[account(
+        has_one = owner,
+    )]
+    pub config: Account<'info, Config>,
+
+    pub owner: Signer<'info>,
+
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    #[account(executable)]
+    pub endpoint: AccountInfo<'info>,
+
+    #[account(
+        init,
+        space = 8 + RegisteredEndpoint::INIT_SPACE,
+        payer = payer,
+        seeds = [RegisteredEndpoint::SEED_PREFIX, endpoint.key().as_ref()],
+        bump
+    )]
+    pub registered_endpoint: Account<'info, RegisteredEndpoint>,
+
+    pub system_program: Program<'info, System>,
+}
+
+pub fn register_endpoint(ctx: Context<RegisterEndpoint>) -> Result<()> {
+    ctx.accounts
+        .registered_endpoint
+        .set_inner(RegisteredEndpoint {
+            bump: ctx.bumps.registered_endpoint,
+            endpoint_address: ctx.accounts.endpoint.key(),
+            enabled: true,
+        });
+
+    // TODO set in enabled bitmap
+    // TODO: set id
     Ok(())
 }
 

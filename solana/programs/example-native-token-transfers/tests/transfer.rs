@@ -9,10 +9,10 @@ use example_native_token_transfers::{
     config::Mode,
     error::NTTError,
     instructions::{ReleaseOutboundArgs, TransferArgs},
-    messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer, WormholeEndpoint},
+    messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer},
     normalized_amount::NormalizedAmount,
     queue::outbox::{OutboxItem, OutboxRateLimit},
-    sequence::Sequence,
+    sequence::Sequence, endpoints::wormhole::messages::WormholeEndpoint,
 };
 use solana_program_test::*;
 use solana_sdk::{

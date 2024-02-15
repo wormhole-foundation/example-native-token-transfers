@@ -5,6 +5,7 @@ use example_native_token_transfers::{
         inbox::{InboxItem, InboxRateLimit},
         outbox::OutboxRateLimit,
     },
+    registered_endpoint::RegisteredEndpoint,
     sequence::Sequence,
 };
 use wormhole_anchor_sdk::wormhole;
@@ -83,6 +84,14 @@ impl NTT {
         token_authority
     }
 
+    pub fn registered_endpoint(&self, endpoint: &Pubkey) -> Pubkey {
+        let (registered_endpoint, _) = Pubkey::find_program_address(
+            &[RegisteredEndpoint::SEED_PREFIX, endpoint.as_ref()],
+            &self.program,
+        );
+        registered_endpoint
+    }
+
     pub fn emitter(&self) -> Pubkey {
         let (emitter, _) = Pubkey::find_program_address(&[b"emitter".as_ref()], &self.program);
         emitter
@@ -102,6 +111,22 @@ impl NTT {
             &self.program,
         );
         sibling
+    }
+
+    pub fn endpoint_sibling(&self, chain: u16) -> Pubkey {
+        let (sibling, _) = Pubkey::find_program_address(
+            &[b"endpoint_sibling".as_ref(), &chain.to_be_bytes()],
+            &self.program,
+        );
+        sibling
+    }
+
+    pub fn endpoint_message(&self, chain: u16, sequence: u64) -> Pubkey {
+        let (endpoint_message, _) = Pubkey::find_program_address(
+            &[b"endpoint_message".as_ref(), &chain.to_be_bytes(), &sequence.to_be_bytes()],
+            &self.program,
+        );
+        endpoint_message
     }
 
     pub fn custody(&self, mint: &Pubkey) -> Pubkey {
