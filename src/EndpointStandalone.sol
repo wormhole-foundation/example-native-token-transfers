@@ -35,8 +35,9 @@ abstract contract EndpointStandalone is
     }
 
     /// @dev transfer the ownership of the endpoint to a new address
-    function transferEndpointOwnership(address newOwner) external {
-        transferOwnership(newOwner);
+    /// the manager should be able to transfer endpoint ownership
+    function transferEndpointOwnership(address newOwner) external onlyManager {
+        _transferOwnership(newOwner);
     }
 
     function _initialize() internal override {
