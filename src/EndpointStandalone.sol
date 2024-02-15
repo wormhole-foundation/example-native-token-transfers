@@ -55,7 +55,7 @@ abstract contract EndpointStandalone is
         uint16 recipientChain,
         bytes memory managerMessage
     ) external payable nonReentrant onlyManager {
-        _sendMessage(recipientChain, msg.value, managerMessage);
+        _sendMessage(recipientChain, msg.value, msg.sender, managerMessage);
     }
 
     function quoteDeliveryPrice(uint16 targetChain) external view override returns (uint256) {
