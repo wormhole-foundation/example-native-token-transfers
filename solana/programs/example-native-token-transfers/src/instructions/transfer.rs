@@ -221,7 +221,7 @@ fn insert_into_outbox(
         }
     };
 
-    let sequence = common.seq.next();
+    let sequence = common.seq.next_sequence();
 
     common.outbox_item.set_inner(OutboxItem {
         sequence,

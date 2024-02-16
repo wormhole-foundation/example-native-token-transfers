@@ -1,5 +1,4 @@
 #![feature(type_changing_struct_update)]
-#![feature(async_fn_in_trait)]
 
 use anchor_lang::{
     prelude::{Clock, Pubkey},
@@ -69,7 +68,7 @@ fn init_redeem_accs(
     chain_id: u16,
     manager_message: ManagerMessage<NativeTokenTransfer>,
 ) -> Redeem {
-    let accs = Redeem {
+    Redeem {
         payer: ctx.payer.pubkey(),
         sibling: test_data.ntt.sibling(chain_id),
         endpoint: test_data.ntt.program,
@@ -78,9 +77,7 @@ fn init_redeem_accs(
             .endpoint_message(chain_id, manager_message.sequence),
         inbox_item: test_data.ntt.inbox_item(chain_id, manager_message),
         inbox_rate_limit: test_data.ntt.inbox_rate_limit(chain_id),
-    };
-
-    accs
+    }
 }
 
 fn init_receive_message_accs(

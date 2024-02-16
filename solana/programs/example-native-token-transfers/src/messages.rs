@@ -239,7 +239,7 @@ where
         Self {
             _phantom: PhantomData,
             message_data: EndpointMessageData {
-                source_manager: self.source_manager.clone(),
+                source_manager: self.source_manager,
                 manager_payload: self.manager_payload.clone(),
             },
         }

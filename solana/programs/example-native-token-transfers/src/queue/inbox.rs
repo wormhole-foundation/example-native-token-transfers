@@ -44,9 +44,7 @@ impl InboxItem {
                 self.release_status = ReleaseStatus::Released;
                 Ok(true)
             }
-            ReleaseStatus::Released => {
-                return Err(NTTError::TransferAlreadyRedeemed.into());
-            }
+            ReleaseStatus::Released => Err(NTTError::TransferAlreadyRedeemed.into()),
         }
     }
 }

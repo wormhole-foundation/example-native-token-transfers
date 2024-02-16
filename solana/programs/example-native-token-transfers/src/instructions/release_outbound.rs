@@ -98,7 +98,7 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, args: ReleaseOutboundArgs
             payload: NativeTokenTransfer {
                 amount: accs.outbox_item.amount,
                 source_token: accs.config.mint.to_bytes(),
-                to: accs.outbox_item.recipient_address.clone(),
+                to: accs.outbox_item.recipient_address,
                 to_chain: accs.outbox_item.recipient_chain,
             },
         },

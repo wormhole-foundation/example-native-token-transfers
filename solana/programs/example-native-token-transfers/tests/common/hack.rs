@@ -37,7 +37,7 @@ pub struct PostedVaaHack<A: AnchorSerialize + AnchorDeserialize> {
 
 impl<A: AnchorSerialize + AnchorDeserialize> AccountSerialize for PostedVaaHack<A> {
     fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<()> {
-        writer.write(b"vaa")?;
+        writer.write_all(b"vaa")?;
         Self::serialize(self, writer)?;
         Ok(())
     }

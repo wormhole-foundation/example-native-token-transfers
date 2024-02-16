@@ -10,7 +10,7 @@ pub struct Sequence {
 impl Sequence {
     pub const SEED_PREFIX: &'static [u8] = b"sequence";
 
-    pub fn next(&mut self) -> u64 {
+    pub fn next_sequence(&mut self) -> u64 {
         let next = self.sequence;
         self.sequence += 1;
         next

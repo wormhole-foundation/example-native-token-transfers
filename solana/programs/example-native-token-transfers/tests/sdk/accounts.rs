@@ -146,7 +146,7 @@ impl NTT {
     pub fn custody(&self, mint: &Pubkey) -> Pubkey {
         anchor_spl::associated_token::get_associated_token_address_with_program_id(
             &self.token_authority(),
-            &mint,
+            mint,
             &spl_token::ID,
         )
     }

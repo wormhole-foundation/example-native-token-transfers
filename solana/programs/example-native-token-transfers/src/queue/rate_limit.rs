@@ -107,16 +107,15 @@ impl RateLimitState {
 
         self.limit = limit;
 
-        let new_capacity: NormalizedAmount;
-        if old_limit > limit {
+        let new_capacity: NormalizedAmount = if old_limit > limit {
             // decrease in limit,
             let diff = old_limit - limit;
-            new_capacity = current_capacity.saturating_sub(diff);
+            current_capacity.saturating_sub(diff)
         } else {
             // increase in limit
             let diff = limit - old_limit;
-            new_capacity = current_capacity.saturating_add(diff);
-        }
+            current_capacity.saturating_add(diff)
+        };
 
         self.capacity_at_last_tx = new_capacity.min(limit);
         self.last_tx_timestamp = current_timestamp();

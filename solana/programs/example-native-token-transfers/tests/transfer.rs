@@ -1,5 +1,4 @@
 #![feature(type_changing_struct_update)]
-#![feature(async_fn_in_trait)]
 
 use anchor_lang::prelude::{Clock, Pubkey};
 use anchor_spl::token::{Mint, TokenAccount};

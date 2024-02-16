@@ -6,6 +6,12 @@ pub struct Bitmap {
     map: u128,
 }
 
+impl Default for Bitmap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Bitmap {
     pub fn new() -> Self {
         Bitmap { map: 0 }
@@ -42,16 +48,16 @@ mod tests {
         assert_eq!(bm.count_enabled_votes(enabled), 0);
         bm.set(0, true);
         assert_eq!(bm.count_enabled_votes(enabled), 1);
-        assert_eq!(bm.get(0), true);
-        assert_eq!(bm.get(1), false);
+        assert!(bm.get(0));
+        assert!(!bm.get(1));
         bm.set(1, true);
         assert_eq!(bm.count_enabled_votes(enabled), 2);
-        assert_eq!(bm.get(0), true);
-        assert_eq!(bm.get(1), true);
+        assert!(bm.get(0));
+        assert!(bm.get(1));
         bm.set(0, false);
         assert_eq!(bm.count_enabled_votes(enabled), 1);
-        assert_eq!(bm.get(0), false);
-        assert_eq!(bm.get(1), true);
+        assert!(!bm.get(0));
+        assert!(bm.get(1));
         bm.set(18, true);
         assert_eq!(bm.count_enabled_votes(enabled), 2);
 

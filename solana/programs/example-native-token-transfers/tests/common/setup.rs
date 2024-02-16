@@ -65,7 +65,7 @@ pub async fn setup_with_extra_accounts(
     let test_data = setup_accounts(&mut ctx).await;
     setup_ntt(&mut ctx, &test_data, mode).await;
 
-    return (ctx, test_data);
+    (ctx, test_data)
 }
 
 pub async fn setup(mode: Mode) -> (ProgramTestContext, TestData) {

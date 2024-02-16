@@ -152,7 +152,7 @@ mod test {
     fn test_normalize() {
         assert_eq!(
             NormalizedAmount::normalize(100_000_000_000_000_000, 18).amount(),
-            100_000_00
+            10_000_000
         );
 
         assert_eq!(
