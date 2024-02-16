@@ -13,7 +13,6 @@ contract DummyEndpoint is EndpointStandalone, IEndpointReceiver {
     constructor(address manager) EndpointStandalone(manager) {}
 
     function _quoteDeliveryPrice(
-        address, /* token */
         uint16, /* recipientChain */
         EndpointStructs.EndpointInstruction memory /* endpointInstruction */
     ) internal pure override returns (uint256) {
@@ -21,7 +20,6 @@ contract DummyEndpoint is EndpointStandalone, IEndpointReceiver {
     }
 
     function _sendMessage(
-        address, /* token */
         uint16, /* recipientChain */
         uint256, /* deliveryPayment */
         address, /* caller */

@@ -54,7 +54,6 @@ contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
     ) EndpointAndManager(token, mode, chainId, rateLimitDuration) {}
 
     function _quoteDeliveryPrice(
-        address, /* token */
         uint16, /* recipientChain */
         EndpointStructs.EndpointInstruction memory /* endpointInstruction */
     ) internal pure override returns (uint256) {
@@ -62,7 +61,6 @@ contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
     }
 
     function _sendMessage(
-        address, /* token */
         uint16, /* recipientChain */
         uint256, /* deliveryPayment */
         address, /* caller */

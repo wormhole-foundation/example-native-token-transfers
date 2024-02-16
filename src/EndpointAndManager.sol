@@ -43,7 +43,7 @@ abstract contract EndpointAndManager is Endpoint, Manager, Implementation {
         EndpointStructs.EndpointInstruction[] memory endpointInstructions
     ) public view override returns (uint256[] memory) {
         uint256[] memory quotes = new uint256[](1);
-        quotes[0] = _quoteDeliveryPrice(token, recipientChain, endpointInstructions[0]);
+        quotes[0] = _quoteDeliveryPrice(recipientChain, endpointInstructions[0]);
         return quotes;
     }
 
@@ -54,13 +54,12 @@ abstract contract EndpointAndManager is Endpoint, Manager, Implementation {
         bytes memory managerMessage
     ) internal override {
         return _sendMessage(
-            token,
-            recipientChain,
-            priceQuotes[0],
-            address(this),
-            endpointInstructions[0],
-            managerMessage
+            recipientChain, priceQuotes[0], address(this), endpointInstructions[0], managerMessage
         );
+    }
+
+    function getManagerToken() public view override returns (address) {
+        return token;
     }
 
     function _deliverToManager(

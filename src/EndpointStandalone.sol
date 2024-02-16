@@ -19,12 +19,12 @@ abstract contract EndpointStandalone is
     /// @dev updating bridgeManager requires a new Endpoint deployment.
     /// Projects should implement their own governance to remove the old Endpoint contract address and then add the new one.
     address public immutable manager;
-    address public immutable token;
+    address public immutable managerToken;
 
     constructor(address _manager) {
         manager = _manager;
         // TODO: ERC-165 check on the manager contract, otherwise revert
-        token = IManager(manager).token();
+        managerToken = IManager(manager).token();
     }
 
     modifier onlyManager() {
@@ -58,6 +58,7 @@ abstract contract EndpointStandalone is
     /// @dev When we add new immutables, this function should be updated
     function _checkImmutables() internal view override {
         assert(this.manager() == manager);
+        assert(this.managerToken() == managerToken);
     }
 
     function upgrade(address newImplementation) external onlyOwner {
@@ -74,14 +75,14 @@ abstract contract EndpointStandalone is
         EndpointStructs.EndpointInstruction memory instruction,
         bytes memory managerMessage
     ) external payable nonReentrant onlyManager {
-        _sendMessage(token, recipientChain, msg.value, msg.sender, instruction, managerMessage);
+        _sendMessage(recipientChain, msg.value, msg.sender, instruction, managerMessage);
     }
 
     function quoteDeliveryPrice(
         uint16 targetChain,
         EndpointStructs.EndpointInstruction memory instruction
     ) external view override returns (uint256) {
-        return _quoteDeliveryPrice(token, targetChain, instruction);
+        return _quoteDeliveryPrice(targetChain, instruction);
     }
 
     function _deliverToManager(
@@ -93,5 +94,9 @@ abstract contract EndpointStandalone is
         IManagerStandalone(manager).attestationReceived(
             sourceChainId, sourceManagerAddress, payload
         );
+    }
+
+    function getManagerToken() public view override returns (address) {
+        return managerToken;
     }
 }

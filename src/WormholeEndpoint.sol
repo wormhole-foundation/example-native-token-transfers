@@ -133,7 +133,6 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
     }
 
     function _quoteDeliveryPrice(
-        address token,
         uint16 targetChain,
         EndpointStructs.EndpointInstruction memory instruction
     ) internal view override returns (uint256 nativePriceQuote) {
@@ -152,7 +151,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
             (uint256 cost,) = wormholeRelayer.quoteEVMDeliveryPrice(targetChain, 0, GAS_LIMIT);
             return cost;
         } else if (isSpecialRelayingEnabled(targetChain)) {
-            uint256 cost = specialRelayer.quoteDeliveryPrice(token, targetChain, 0);
+            uint256 cost = specialRelayer.quoteDeliveryPrice(getManagerToken(), targetChain, 0);
             return cost;
         } else {
             return 0;
@@ -160,7 +159,6 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
     }
 
     function _sendMessage(
-        address token,
         uint16 recipientChain,
         uint256 deliveryPayment,
         address caller,
@@ -188,7 +186,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
             uint64 sequence = wormhole.publishMessage(0, encodedEndpointPayload, CONSISTENCY_LEVEL);
             specialRelayer.requestDelivery{value: deliveryPayment}(
-                token, recipientChain, 0, sequence
+                getManagerToken(), recipientChain, 0, sequence
             );
         } else {
             wormhole.publishMessage(0, encodedEndpointPayload, CONSISTENCY_LEVEL);
