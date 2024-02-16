@@ -61,6 +61,9 @@ abstract contract EndpointRegistry {
     bytes32 public constant ENABLED_ENDPOINTS_SLOT =
         bytes32(uint256(keccak256("ntt.enabledEndpoints")) - 1);
 
+    bytes32 public constant REGISTERED_ENDPOINTS_SLOT =
+        bytes32(uint256(keccak256("ntt.registeredEndpoints")) - 1);
+
     bytes32 public constant NUM_REGISTERED_ENDPOINTS_SLOT =
         bytes32(uint256(keccak256("ntt.numRegisteredEndpoints")) - 1);
 
@@ -89,8 +92,15 @@ abstract contract EndpointRegistry {
         }
     }
 
+    function _getRegisteredEndpointsStorage() internal pure returns (address[] storage $) {
+        uint256 slot = uint256(REGISTERED_ENDPOINTS_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
     function _getNumRegisteredEndpointsStorage()
-        private
+        internal
         pure
         returns (_NumRegisteredEndpoints storage $)
     {
@@ -124,6 +134,7 @@ abstract contract EndpointRegistry {
             endpointInfos[endpoint] =
                 EndpointInfo({registered: true, enabled: true, index: _numRegisteredEndpoints.num});
             _numRegisteredEndpoints.num++;
+            _getRegisteredEndpointsStorage().push(endpoint);
         }
 
         _enabledEndpoints.push(endpoint);
