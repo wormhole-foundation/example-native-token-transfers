@@ -46,6 +46,4 @@ interface IManager {
     function nextMessageSequence() external view returns (uint64);
 
     function token() external view returns (address);
-
-    function getOwner() external view returns (address);
 }

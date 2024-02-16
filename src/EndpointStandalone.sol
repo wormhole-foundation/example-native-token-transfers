@@ -7,6 +7,7 @@ import "./interfaces/IEndpointStandalone.sol";
 import "./libraries/Implementation.sol";
 import "./libraries/external/ReentrancyGuardUpgradeable.sol";
 import "./interfaces/IManager.sol";
+import "./interfaces/IOwnableUpgradeable.sol";
 
 abstract contract EndpointStandalone is
     IEndpointStandalone,
@@ -31,7 +32,7 @@ abstract contract EndpointStandalone is
 
     /// @dev Returns the owner of the manager contract
     function getManagerOwner() public view returns (address) {
-        return IManager(manager).getOwner();
+        return IOwnableUpgradeable(manager).owner();
     }
 
     /// @dev transfer the ownership of the endpoint to a new address
