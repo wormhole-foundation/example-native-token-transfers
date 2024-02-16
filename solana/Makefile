@@ -1,4 +1,5 @@
-# in this Makefile, ensure jq binary is available
+.PHONY: build
+build: _anchor-build target/idl/example_native_token_transfers.json
 
 # remove the generics from the idl file. This is necessary as of anchor 0.29.0, because
 # the javascript library does not support generics yet, and just panics
@@ -10,9 +11,6 @@ target/idl/example_native_token_transfers.json:
 .PHONY: anchor-build
 _anchor-build:
 	@anchor build
-
-.PHONY: build
-build: _anchor-build target/idl/example_native_token_transfers.json
 
 anchor-test: build target/idl/example_native_token_transfers.json
 	anchor test --skip-build
