@@ -81,7 +81,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         uint256 transferAmount = 3 * 10 ** decimals;
         token.approve(address(manager), transferAmount);
-        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
+        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
 
         vm.stopPrank();
 
@@ -118,7 +118,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         uint256 transferAmount = 3 * 10 ** decimals;
         token.approve(address(manager), transferAmount);
-        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
+        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
 
         vm.stopPrank();
 
@@ -152,7 +152,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         uint256 transferAmount = 3 * 10 ** decimals;
         token.approve(address(manager), transferAmount);
-        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
+        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
 
         vm.stopPrank();
 
@@ -198,7 +198,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         uint256 transferAmount = 4 * 10 ** decimals;
         token.approve(address(manager), transferAmount);
-        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
+        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
 
         vm.stopPrank();
 
@@ -238,7 +238,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         // transfer 2 tokens
         uint256 transferAmount = 2 * 10 ** decimals;
         token.approve(address(manager), transferAmount);
-        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
+        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
 
         vm.stopPrank();
 
@@ -286,7 +286,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         bytes4 selector = bytes4(keccak256("NotEnoughCapacity(uint256,uint256)"));
         vm.expectRevert(abi.encodeWithSelector(selector, outboundLimit, transferAmount));
-        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
+        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
     }
 
     function test_outboundRateLimit_multiHit() public {
@@ -305,7 +305,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         uint256 transferAmount = 3 * 10 ** decimals;
         token.approve(address(manager), transferAmount);
-        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false);
+        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
 
         // assert that first transfer went through
         assertEq(token.balanceOf(address(user_A)), 2 * 10 ** decimals);
@@ -323,7 +323,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         vm.expectRevert(
             abi.encodeWithSelector(selector, newCapacity.denormalize(decimals), badTransferAmount)
         );
-        manager.transfer(badTransferAmount, chainId, toWormholeFormat(user_B), false);
+        manager.transfer(badTransferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
     }
 
     // make a transfer with shouldQueue == true
@@ -349,7 +349,8 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         token.approve(address(manager), transferAmount);
 
         // transfer with shouldQueue == true
-        uint64 qSeq = manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), true);
+        uint64 qSeq =
+            manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), true, new bytes(1));
 
         // assert that the transfer got queued up
         assertEq(qSeq, 0);
@@ -410,7 +411,9 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
             token.approve(address(manager), 3 * 10 ** token.decimals());
             // TODO: parse recorded logs
-            manager.transfer(3 * 10 ** token.decimals(), chainId, toWormholeFormat(to), false);
+            manager.transfer(
+                3 * 10 ** token.decimals(), chainId, toWormholeFormat(to), false, new bytes(1)
+            );
 
             vm.stopPrank();
 
