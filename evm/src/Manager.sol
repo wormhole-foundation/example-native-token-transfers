@@ -367,6 +367,9 @@ abstract contract Manager is
 
         // otherwise, consume the outbound amount
         _consumeOutboundAmount(normalizedAmount);
+        // When sending a transfer, we refill the inbound rate limit for
+        // that chain by the same amount (we call this "backflow")
+        _backfillInboundAmount(normalizedAmount, recipientChain);
 
         return _transfer(
             sequence, normalizedAmount, recipientChain, recipient, msg.sender, endpointInstructions
@@ -497,6 +500,9 @@ abstract contract Manager is
 
         // consume the amount for the inbound rate limit
         _consumeInboundAmount(nativeTransferAmount, sourceChainId);
+        // When receiving a transfer, we refill the outbound rate limit
+        // by the same amount (we call this "backflow")
+        _backfillOutboundAmount(nativeTransferAmount);
 
         _mintOrUnlockToRecipient(transferRecipient, nativeTransferAmount);
     }
