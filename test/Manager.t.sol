@@ -65,6 +65,8 @@ contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
     function _sendMessage(
         uint16 recipientChain,
         uint256 deliveryPayment,
+        address caller,
+        EndpointStructs.EndpointInstruction memory instruction,
         bytes memory payload
     ) internal pure override {
         // do nothing
@@ -285,7 +287,9 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
             token.approve(address(manager), 3 * 10 ** token.decimals());
             // TODO: parse recorded logs
-            manager.transfer(3 * 10 ** token.decimals(), chainId, toWormholeFormat(to), false);
+            manager.transfer(
+                3 * 10 ** token.decimals(), chainId, toWormholeFormat(to), false, new bytes(1)
+            );
 
             vm.stopPrank();
 
@@ -315,7 +319,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         (em, encodedEm) = EndpointStructs.buildAndEncodeEndpointMessage(
             EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX,
             toWormholeFormat(address(manager)),
-            encodedM
+            encodedM,
+            new bytes(0)
         );
 
         for (uint256 i; i < endpoints.length; i++) {
@@ -337,7 +342,10 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         bytes memory managerMessage = EndpointStructs.encodeManagerMessage(m);
         bytes memory endpointMessage;
         (, endpointMessage) = EndpointStructs.buildAndEncodeEndpointMessage(
-            EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX, sourceManager, managerMessage
+            EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX,
+            sourceManager,
+            managerMessage,
+            new bytes(0)
         );
         return (m, endpointMessage);
     }
@@ -457,9 +465,15 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         token.approve(address(manager), 3 * 10 ** decimals);
 
-        uint64 s1 = manager.transfer(1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false);
-        uint64 s2 = manager.transfer(1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false);
-        uint64 s3 = manager.transfer(1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false);
+        uint64 s1 = manager.transfer(
+            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false, new bytes(1)
+        );
+        uint64 s2 = manager.transfer(
+            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false, new bytes(1)
+        );
+        uint64 s3 = manager.transfer(
+            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false, new bytes(1)
+        );
 
         assertEq(s1, 0);
         assertEq(s2, 1);
@@ -568,12 +582,10 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
                 "TransferAmountHasDust(uint256,uint256)", amountWithDust, dustAmount
             )
         );
-        manager.transfer(amountWithDust, chainId, toWormholeFormat(to), false);
+        manager.transfer(amountWithDust, chainId, toWormholeFormat(to), false, new bytes(1));
 
         vm.stopPrank();
     }
-
-    // === token transfer rate limiting
 
     // === upgradeability
 

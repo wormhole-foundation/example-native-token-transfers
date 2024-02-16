@@ -16,7 +16,7 @@ import "./libraries/RateLimiter.sol";
 import "./libraries/NormalizedAmount.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/IManagerEvents.sol";
-import "./interfaces/IEndpointToken.sol";
+import "./interfaces/INTTToken.sol";
 import "./Endpoint.sol";
 import "./EndpointRegistry.sol";
 import "./libraries/PausableOwnable.sol";
@@ -127,6 +127,7 @@ abstract contract Manager is
     function _sendMessageToEndpoints(
         uint16 recipientChain,
         uint256[] memory priceQuotes,
+        EndpointStructs.EndpointInstruction[] memory endpointInstructions,
         bytes memory managerMessage
     ) internal virtual;
 
@@ -202,7 +203,8 @@ abstract contract Manager is
             queuedTransfer.amount,
             queuedTransfer.recipientChain,
             queuedTransfer.recipient,
-            queuedTransfer.sender
+            queuedTransfer.sender,
+            queuedTransfer.endpointInstructions
         );
     }
 
@@ -246,11 +248,17 @@ abstract contract Manager is
         uint256 amount,
         uint16 recipientChain,
         bytes32 recipient,
-        bool shouldQueue
+        bool shouldQueue,
+        bytes memory endpointInstructions
     ) external payable nonReentrant whenNotPaused returns (uint64 msgSequence) {
         if (amount == 0) {
             revert ZeroAmount();
         }
+
+        // parse the instructions up front to ensure they:
+        // - are encoded correctly
+        // - follow payload length restrictions
+        EndpointStructs.parseEndpointInstructions(endpointInstructions);
 
         {
             // Lock/burn tokens before checking rate limits
@@ -321,7 +329,12 @@ abstract contract Manager is
 
                 // queue up and return
                 _enqueueOutboundTransfer(
-                    sequence, normalizedAmount, recipientChain, recipient, msg.sender
+                    sequence,
+                    normalizedAmount,
+                    recipientChain,
+                    recipient,
+                    msg.sender,
+                    endpointInstructions
                 );
 
                 // refund price quote back to sender
@@ -335,7 +348,9 @@ abstract contract Manager is
         // otherwise, consume the outbound amount
         _consumeOutboundAmount(normalizedAmount);
 
-        return _transfer(sequence, normalizedAmount, recipientChain, recipient, msg.sender);
+        return _transfer(
+            sequence, normalizedAmount, recipientChain, recipient, msg.sender, endpointInstructions
+        );
     }
 
     function _transfer(
@@ -343,7 +358,8 @@ abstract contract Manager is
         NormalizedAmount memory amount,
         uint16 recipientChain,
         bytes32 recipient,
-        address sender
+        address sender,
+        bytes memory endpointInstructions
     ) internal returns (uint64 msgSequence) {
         uint256[] memory priceQuotes = quoteDeliveryPrice(recipientChain);
         {
@@ -373,8 +389,14 @@ abstract contract Manager is
             )
         );
 
+        // parse and reorganize the endpoint instructions based on index
+        EndpointStructs.EndpointInstruction[] memory sortedInstructions = EndpointStructs
+            .sortEndpointInstructions(EndpointStructs.parseEndpointInstructions(endpointInstructions));
+
         // send the message
-        _sendMessageToEndpoints(recipientChain, priceQuotes, encodedManagerPayload);
+        _sendMessageToEndpoints(
+            recipientChain, priceQuotes, sortedInstructions, encodedManagerPayload
+        );
 
         emit TransferSent(recipient, amount.denormalize(_tokenDecimals()), recipientChain, sequence);
 
@@ -490,7 +512,7 @@ abstract contract Manager is
             IERC20(token).safeTransfer(recipient, denormalizedAmount);
         } else if (mode == Mode.BURNING) {
             // mint tokens to the specified recipient
-            IEndpointToken(token).mint(recipient, denormalizedAmount);
+            INTTToken(token).mint(recipient, denormalizedAmount);
         } else {
             revert InvalidMode(uint8(mode));
         }
