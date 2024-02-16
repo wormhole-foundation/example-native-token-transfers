@@ -76,7 +76,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
     function _getWormholeRelayingEnabledChainsStorage()
         internal
         pure
-        returns (mapping(uint16 => bool) storage $)
+        returns (mapping(uint16 => uint256) storage $)
     {
         uint256 slot = uint256(WORMHOLE_RELAYING_ENABLED_CHAINS_SLOT);
         assembly ("memory-safe") {
@@ -87,7 +87,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
     function _getSpecialRelayingEnabledChainsStorage()
         internal
         pure
-        returns (mapping(uint16 => bool) storage $)
+        returns (mapping(uint16 => uint256) storage $)
     {
         uint256 slot = uint256(SPECIAL_RELAYING_ENABLED_CHAINS_SLOT);
         assembly ("memory-safe") {
@@ -98,7 +98,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
     function _getWormholeEvmChainIdsStorage()
         internal
         pure
-        returns (mapping(uint16 => bool) storage $)
+        returns (mapping(uint16 => uint256) storage $)
     {
         uint256 slot = uint256(WORMHOLE_EVM_CHAIN_IDS);
         assembly ("memory-safe") {
@@ -314,40 +314,40 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
     }
 
     function isWormholeRelayingEnabled(uint16 chainId) public view returns (bool) {
-        return _getWormholeRelayingEnabledChainsStorage()[chainId];
+        return toBool(_getWormholeRelayingEnabledChainsStorage()[chainId]);
     }
 
     function _setIsWormholeRelayingEnabled(uint16 chainId, bool isEnabled) internal {
         if (chainId == 0) {
             revert InvalidWormholeChainIdZero();
         }
-        _getWormholeRelayingEnabledChainsStorage()[chainId] = isEnabled;
+        _getWormholeRelayingEnabledChainsStorage()[chainId] = toWord(isEnabled);
 
         emit SetIsWormholeRelayingEnabled(chainId, isEnabled);
     }
 
     function isSpecialRelayingEnabled(uint16 chainId) public view returns (bool) {
-        return _getSpecialRelayingEnabledChainsStorage()[chainId];
+        return toBool(_getSpecialRelayingEnabledChainsStorage()[chainId]);
     }
 
     function _setIsSpecialRelayingEnabled(uint16 chainId, bool isEnabled) internal {
         if (chainId == 0) {
             revert InvalidWormholeChainIdZero();
         }
-        _getSpecialRelayingEnabledChainsStorage()[chainId] = isEnabled;
+        _getSpecialRelayingEnabledChainsStorage()[chainId] = toWord(isEnabled);
 
         emit SetIsSpecialRelayingEnabled(chainId, isEnabled);
     }
 
     function isWormholeEvmChain(uint16 chainId) public view returns (bool) {
-        return _getWormholeEvmChainIdsStorage()[chainId];
+        return toBool(_getWormholeEvmChainIdsStorage()[chainId]);
     }
 
     function _setIsWormholeEvmChain(uint16 chainId) internal {
         if (chainId == 0) {
             revert InvalidWormholeChainIdZero();
         }
-        _getWormholeEvmChainIdsStorage()[chainId] = true;
+        _getWormholeEvmChainIdsStorage()[chainId] = TRUE;
 
         emit SetIsWormholeEvmChain(chainId);
     }
