@@ -65,6 +65,7 @@ contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
     function _sendMessage(
         uint16 recipientChain,
         uint256 deliveryPayment,
+        address caller,
         bytes memory payload
     ) internal pure override {
         // do nothing

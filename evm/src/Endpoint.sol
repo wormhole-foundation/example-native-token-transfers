@@ -8,6 +8,7 @@ abstract contract Endpoint is PausableOwnable {
     function _sendMessage(
         uint16 recipientChain,
         uint256 deliveryPayment,
+        address caller,
         bytes memory managerMessage
     ) internal virtual;
 
