@@ -36,6 +36,7 @@ abstract contract Manager is
     using NormalizedAmountLib for NormalizedAmount;
 
     error RefundFailed(uint256 refundAmount);
+    error CannotRenounceManagerOwnership(address owner);
 
     address public immutable token;
     Mode public immutable mode;

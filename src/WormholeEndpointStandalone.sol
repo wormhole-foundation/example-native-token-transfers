@@ -31,16 +31,14 @@ contract WormholeEndpointStandalone is WormholeEndpoint, EndpointStandalone {
     }
 
     /// @dev Override the [`transferOwnership`] method from OwnableUpgradeable
-    /// to ensure owner cannot transfer ownership
-    function transferOwnership(address newOwner) public override onlyOwner {
-        // do nothing
-        // this method body is empty
+    /// to ensure owner of this contract is in sync with the onwer of the Manager contract.
+    function transferOwnership(address newOwner) public view override onlyOwner {
+        revert CannotTransferEndpointOwnership(owner(), newOwner);
     }
 
     /// @dev Override the [`renounceOwnership`] function to ensure
-    /// the manager ownership is not renounced.
-    function renounceOwnership() public override onlyOwner {
-        // do nothing
-        // this method body is empty
+    /// the endpoint ownership is not renounced.
+    function renounceOwnership() public view override onlyOwner {
+        revert CannotRenounceEndpointOwnership(owner());
     }
 }

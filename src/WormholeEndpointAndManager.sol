@@ -32,8 +32,7 @@ contract WormholeEndpointAndManager is EndpointAndManager, WormholeEndpoint {
 
     /// @dev Override the [`renounceOwnership`] function to ensure
     /// the manager ownership is not renounced.
-    function renounceOwnership() public override onlyOwner {
-        // do nothing
-        // this method body is empty
+    function renounceOwnership() public view override onlyOwner {
+        revert CannotRenounceManagerOwnership(owner());
     }
 }
