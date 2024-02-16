@@ -29,6 +29,12 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         _checkEndpointsInvariants();
     }
 
+    /// @dev Override the [`renounceOwnership`] function to ensure
+    /// the manager ownership is not renounced.
+    function renounceOwnership() public view override onlyOwner {
+        revert CannotRenounceManagerOwnership(owner());
+    }
+
     /// @dev When we add new immutables, this function should be updated
     function _checkImmutables() internal view override {
         assert(this.token() == token);
@@ -42,8 +48,16 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         _upgrade(newImplementation);
     }
 
-    function upgradeEndpoint(address endpoint, address newImplementation) external onlyOwner {
-        IEndpointStandalone(endpoint).upgrade(newImplementation);
+    /// @dev Transfer ownership of the Manager contract and all Endpoint contracts to a new owner.
+    function transferOwnership(address newOwner) public override onlyOwner {
+        super.transferOwnership(newOwner);
+        // loop through all the registered endpoints and set the new owner of each endpoint to the newOwner
+        address[] storage _registeredEndpoints = _getRegisteredEndpointsStorage();
+        _checkRegisteredEndpointsInvariants();
+
+        for (uint256 i = 0; i < _registeredEndpoints.length; i++) {
+            IEndpointStandalone(_registeredEndpoints[i]).transferEndpointOwnership(newOwner);
+        }
     }
 
     struct _Threshold {
@@ -195,6 +209,14 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
     }
 
     /// ============== INVARIANTS =============================================
+
+    function _checkRegisteredEndpointsInvariants() internal view {
+        if (_getRegisteredEndpointsStorage().length != _getNumRegisteredEndpointsStorage().num) {
+            revert RetrievedIncorrectRegisteredEndpoints(
+                _getRegisteredEndpointsStorage().length, _getNumRegisteredEndpointsStorage().num
+            );
+        }
+    }
 
     function _checkThresholdInvariants() internal view {
         _Threshold storage _threshold = _getThresholdStorage();
