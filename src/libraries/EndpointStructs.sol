@@ -139,11 +139,15 @@ library EndpointStructs {
     ///      - sourceManagerAddress - 32 bytes
     ///      - managerPayloadLength - 2 bytes
     ///      - managerPayload - `managerPayloadLength` bytes
+    ///      - endpointPayloadLength - 2 bytes
+    ///      - endpointPayload - `endpointPayloadLength` bytes
     struct EndpointMessage {
         /// @notice Address of the Manager contract that emitted this message.
         bytes32 sourceManagerAddress;
         /// @notice Payload provided to the Endpoint contract by the Manager contract.
         bytes managerPayload;
+        /// @notice Optional payload that the endpoint can encode and use for its own message passing purposes.
+        bytes endpointPayload;
     }
 
     /*
@@ -160,20 +164,33 @@ library EndpointStructs {
         if (m.managerPayload.length > type(uint16).max) {
             revert PayloadTooLong(m.managerPayload.length);
         }
-
         uint16 managerPayloadLength = uint16(m.managerPayload.length);
-        return
-            abi.encodePacked(prefix, m.sourceManagerAddress, managerPayloadLength, m.managerPayload);
+
+        if (m.endpointPayload.length > type(uint16).max) {
+            revert PayloadTooLong(m.endpointPayload.length);
+        }
+        uint16 endpointPayloadLength = uint16(m.endpointPayload.length);
+
+        return abi.encodePacked(
+            prefix,
+            m.sourceManagerAddress,
+            managerPayloadLength,
+            m.managerPayload,
+            endpointPayloadLength,
+            m.endpointPayload
+        );
     }
 
     function buildAndEncodeEndpointMessage(
         bytes4 prefix,
         bytes32 sourceManagerAddress,
-        bytes memory managerMessage
+        bytes memory managerMessage,
+        bytes memory endpointPayload
     ) public pure returns (EndpointMessage memory, bytes memory) {
         EndpointMessage memory endpointMessage = EndpointMessage({
             sourceManagerAddress: sourceManagerAddress,
-            managerPayload: managerMessage
+            managerPayload: managerMessage,
+            endpointPayload: endpointPayload
         });
         bytes memory encoded = encodeEndpointMessage(prefix, endpointMessage);
         return (endpointMessage, encoded);
@@ -204,6 +221,10 @@ library EndpointStructs {
         (managerPayloadLength, offset) = encoded.asUint16Unchecked(offset);
         (endpointMessage.managerPayload, offset) =
             encoded.sliceUnchecked(offset, managerPayloadLength);
+        uint16 endpointPayloadLength;
+        (endpointPayloadLength, offset) = encoded.asUint16Unchecked(offset);
+        (endpointMessage.endpointPayload, offset) =
+            encoded.sliceUnchecked(offset, endpointPayloadLength);
 
         // Check if the entire byte array has been processed
         encoded.checkLength(offset);
