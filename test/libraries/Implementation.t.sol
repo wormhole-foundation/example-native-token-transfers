@@ -62,7 +62,7 @@ contract ImplementationTest is Test {
         TestImplementation impl = new TestImplementation();
 
         vm.expectRevert(abi.encodeWithSignature("OnlyDelegateCall()"));
-        impl.initialize();
+        impl.initialize(msg.sender);
     }
 
     function test_cantInitializeDirectly2() public {
@@ -76,7 +76,7 @@ contract ImplementationTest is Test {
         TestImplementation impl = new TestImplementation();
         TestImplementation proxy = TestImplementation(address(new ERC1967Proxy(address(impl), "")));
 
-        proxy.initialize();
+        proxy.initialize(msg.sender);
     }
 
     function test_cantUpgradeDirectly() public {
@@ -99,7 +99,7 @@ contract ImplementationTest is Test {
         TestImplementation proxy = TestImplementation(address(new ERC1967Proxy(address(impl), "")));
         TestImplementation2 impl2 = new TestImplementation2();
 
-        proxy.initialize();
+        proxy.initialize(msg.sender);
         proxy.upgrade(address(impl2));
 
         assertEq(proxy.upgradeCount(), 1);

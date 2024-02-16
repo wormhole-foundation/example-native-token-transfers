@@ -28,12 +28,12 @@ abstract contract EndpointStandalone is
         _;
     }
 
-    function _initialize() internal override {
-        // TODO: check if it's safe to not initialise reentrancy guard
+    function initialize(address _pauser) external override onlyDelegateCall initializer {
         __ReentrancyGuard_init();
-        // TODO: msg.sender may not be the right address
-        __PausedOwnable_init(msg.sender, msg.sender);
+        __PausedOwnable_init(pauser(), msg.sender);
     }
+
+    function _initialize() internal override {}
 
     function _migrate() internal override {}
 

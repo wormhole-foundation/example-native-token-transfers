@@ -125,7 +125,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             new ManagerStandalone(address(t), Manager.Mode.LOCKING, chainId, 1 days);
 
         manager = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
-        manager.initialize();
+        manager.initialize(msg.sender);
 
         // deploy sample token contract
         // deploy wormhole contract
