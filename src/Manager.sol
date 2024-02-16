@@ -241,16 +241,37 @@ abstract contract Manager is
         return normalizedAmount;
     }
 
+    /// @dev Simple quality of life transfer method that doesn't deal with queuing or passing endpoint instructions.
+    function transfer(
+        uint256 amount,
+        uint16 recipientChain,
+        bytes32 recipient
+    ) external payable nonReentrant whenNotPaused returns (uint64) {
+        return _transferEntryPoint(amount, recipientChain, recipient, false, new bytes(1));
+    }
+
     /// @notice Called by the user to send the token cross-chain.
     ///         This function will either lock or burn the sender's tokens.
-    ///         Finally, this function will call into the Endpoint contracts to send a message with the incrementing sequence number, msgType = 1y, and the token transfer payload.
+    ///         Finally, this function will call into the Endpoint contracts to send a message with the incrementing sequence number and the token transfer payload.
     function transfer(
         uint256 amount,
         uint16 recipientChain,
         bytes32 recipient,
         bool shouldQueue,
         bytes memory endpointInstructions
-    ) external payable nonReentrant whenNotPaused returns (uint64 msgSequence) {
+    ) external payable nonReentrant whenNotPaused returns (uint64) {
+        return _transferEntryPoint(
+            amount, recipientChain, recipient, shouldQueue, endpointInstructions
+        );
+    }
+
+    function _transferEntryPoint(
+        uint256 amount,
+        uint16 recipientChain,
+        bytes32 recipient,
+        bool shouldQueue,
+        bytes memory endpointInstructions
+    ) internal returns (uint64) {
         if (amount == 0) {
             revert ZeroAmount();
         }
