@@ -52,9 +52,12 @@ abstract contract EndpointAndManager is Endpoint, Manager, Implementation {
     function _sendMessageToEndpoints(
         uint16 recipientChain,
         uint256[] memory priceQuotes,
+        EndpointStructs.EndpointInstruction[] memory endpointInstructions,
         bytes memory managerMessage
     ) internal override {
-        return _sendMessage(recipientChain, priceQuotes[0], address(this), managerMessage);
+        return _sendMessage(
+            recipientChain, priceQuotes[0], address(this), endpointInstructions[0], managerMessage
+        );
     }
 
     function _deliverToManager(

@@ -2,6 +2,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "../libraries/NormalizedAmount.sol";
+import "../libraries/EndpointStructs.sol";
 
 interface IRateLimiter {
     error NotEnoughCapacity(uint256 currentCapacity, uint256 amount);
@@ -23,6 +24,7 @@ interface IRateLimiter {
         uint64 txTimestamp;
         uint16 recipientChain;
         address sender;
+        bytes endpointInstructions;
     }
 
     struct InboundQueuedTransfer {

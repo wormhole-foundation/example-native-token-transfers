@@ -9,6 +9,7 @@ abstract contract Endpoint is PausableOwnable {
         uint16 recipientChain,
         uint256 deliveryPayment,
         address caller,
+        EndpointStructs.EndpointInstruction memory endpointInstruction,
         bytes memory managerMessage
     ) internal virtual;
 

@@ -66,6 +66,7 @@ contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
         uint16 recipientChain,
         uint256 deliveryPayment,
         address caller,
+        EndpointStructs.EndpointInstruction memory instruction,
         bytes memory payload
     ) internal pure override {
         // do nothing
@@ -286,7 +287,9 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
             token.approve(address(manager), 3 * 10 ** token.decimals());
             // TODO: parse recorded logs
-            manager.transfer(3 * 10 ** token.decimals(), chainId, toWormholeFormat(to), false);
+            manager.transfer(
+                3 * 10 ** token.decimals(), chainId, toWormholeFormat(to), false, new bytes(1)
+            );
 
             vm.stopPrank();
 
@@ -462,9 +465,15 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         token.approve(address(manager), 3 * 10 ** decimals);
 
-        uint64 s1 = manager.transfer(1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false);
-        uint64 s2 = manager.transfer(1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false);
-        uint64 s3 = manager.transfer(1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false);
+        uint64 s1 = manager.transfer(
+            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false, new bytes(1)
+        );
+        uint64 s2 = manager.transfer(
+            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false, new bytes(1)
+        );
+        uint64 s3 = manager.transfer(
+            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false, new bytes(1)
+        );
 
         assertEq(s1, 0);
         assertEq(s2, 1);
@@ -573,12 +582,10 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
                 "TransferAmountHasDust(uint256,uint256)", amountWithDust, dustAmount
             )
         );
-        manager.transfer(amountWithDust, chainId, toWormholeFormat(to), false);
+        manager.transfer(amountWithDust, chainId, toWormholeFormat(to), false, new bytes(1));
 
         vm.stopPrank();
     }
-
-    // === token transfer rate limiting
 
     // === upgradeability
 
