@@ -37,6 +37,20 @@ impl Wormhole {
         );
         sequence
     }
+
+    pub fn guardian_set(&self, guardian_set_index: u32) -> Pubkey {
+        let (guardian_set, _) = Pubkey::find_program_address(
+            &[b"GuardianSet", &guardian_set_index.to_be_bytes()],
+            &self.program,
+        );
+        guardian_set
+    }
+
+    pub fn posted_vaa(&self, vaa_hash: &[u8]) -> Pubkey {
+        let (posted_vaa, _) =
+            Pubkey::find_program_address(&[b"PostedVAA", vaa_hash], &self.program);
+        posted_vaa
+    }
 }
 
 pub struct NTT {

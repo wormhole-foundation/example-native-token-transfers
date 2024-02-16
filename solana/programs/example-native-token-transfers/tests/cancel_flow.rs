@@ -1,9 +1,6 @@
 #![feature(type_changing_struct_update)]
 
-use anchor_lang::{
-    prelude::{Clock, Pubkey},
-    AccountSerialize,
-};
+use anchor_lang::prelude::*;
 use common::setup::{TestData, OTHER_CHAIN, OTHER_ENDPOINT, OTHER_MANAGER, THIS_CHAIN};
 use example_native_token_transfers::{
     chain_id::ChainId,
@@ -16,22 +13,20 @@ use example_native_token_transfers::{
 };
 use sdk::endpoints::wormhole::instructions::receive_message::ReceiveMessage;
 use solana_program_test::*;
-use solana_sdk::{account::Account, signature::Keypair, signer::Signer};
-use wormhole_io::TypePrefixedPayload;
+use solana_sdk::{signature::Keypair, signer::Signer};
+use wormhole_sdk::{Address, Vaa};
 
+use crate::{common::submit::Submittable, sdk::instructions::transfer::transfer};
 use crate::{
-    common::{hack::PostedVaaHack, query::GetAccountDataAnchor},
+    common::{query::GetAccountDataAnchor, setup::setup},
     sdk::{
         endpoints::wormhole::instructions::receive_message::receive_message,
         instructions::{
+            post_vaa::post_vaa,
             redeem::{redeem, Redeem},
             transfer::Transfer,
         },
     },
-};
-use crate::{
-    common::{setup::setup_with_extra_accounts, submit::Submittable},
-    sdk::instructions::transfer::transfer,
 };
 
 pub mod common;
@@ -96,19 +91,13 @@ fn init_receive_message_accs(
     }
 }
 
-/// helper function to write into vaa accounts.
-/// this is mostly to avoid having to go through the process of posting the vaa
-/// via the wormhole program
-/// TODO: in an ideal world it should be very easy to do that, but the sdk
-/// doesn't support posting vaas yet.
-/// TODO: in an ideal world, writing into these accounts should be even easier, but
-/// the sdk doesn't have a working serializer implementation for the vaa account either
-fn make_vaa(
+async fn post_transfer_vaa(
+    ctx: &mut ProgramTestContext,
+    test_data: &TestData,
     sequence: u64,
     amount: u64,
     recipient: &Keypair,
-) -> (Pubkey, Account, ManagerMessage<NativeTokenTransfer>) {
-    let vaa = Keypair::new();
+) -> (Pubkey, ManagerMessage<NativeTokenTransfer>) {
     let manager_message = ManagerMessage {
         sequence,
         sender: [4u8; 32],
@@ -125,33 +114,22 @@ fn make_vaa(
     let endpoint_message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
         EndpointMessage::new(OTHER_MANAGER, manager_message.clone());
 
-    let payload = endpoint_message.to_vec_payload();
-
-    let vaa_data = PostedVaaHack {
-        vaa_version: 1,
-        consistency_level: 32,
-        vaa_time: 0,
-        vaa_signature_account: Keypair::new().pubkey(),
-        submission_time: 0,
+    let vaa = Vaa {
+        version: 1,
+        guardian_set_index: 0,
+        signatures: vec![],
+        timestamp: 123232,
         nonce: 0,
-        sequence,
-        emitter_chain: OTHER_CHAIN,
-        emitter_address: OTHER_ENDPOINT,
-        payload,
+        emitter_chain: OTHER_CHAIN.into(),
+        emitter_address: Address(OTHER_ENDPOINT),
+        sequence: 0,
+        consistency_level: 0,
+        payload: endpoint_message,
     };
 
-    let mut serialized = vec![];
-    vaa_data.try_serialize(&mut serialized).unwrap();
+    let posted_vaa = post_vaa(&test_data.ntt.wormhole, ctx, vaa).await;
 
-    let vaa_account: Account = Account {
-        lamports: 1000000,
-        data: serialized,
-        owner: wormhole_anchor_sdk::wormhole::program::id(),
-        executable: false,
-        rent_epoch: u64::MAX,
-    };
-
-    (vaa.pubkey(), vaa_account, manager_message)
+    (posted_vaa, manager_message)
 }
 
 async fn outbound_capacity(ctx: &mut ProgramTestContext, test_data: &TestData) -> u64 {
@@ -181,11 +159,10 @@ async fn inbound_capacity(ctx: &mut ProgramTestContext, test_data: &TestData) ->
 #[tokio::test]
 async fn test_cancel() {
     let recipient = Keypair::new();
-    let (vaa0, vaa_account0, msg0) = make_vaa(0, 1000, &recipient);
-    let (vaa1, vaa_account1, msg1) = make_vaa(1, 2000, &recipient);
-    let (mut ctx, test_data) =
-        setup_with_extra_accounts(Mode::Locking, &[(vaa0, vaa_account0), (vaa1, vaa_account1)])
-            .await;
+    let (mut ctx, test_data) = setup(Mode::Locking).await;
+
+    let (vaa0, msg0) = post_transfer_vaa(&mut ctx, &test_data, 0, 1000, &recipient).await;
+    let (vaa1, msg1) = post_transfer_vaa(&mut ctx, &test_data, 1, 2000, &recipient).await;
 
     let inbound_limit_before = inbound_capacity(&mut ctx, &test_data).await;
     let outbound_limit_before = outbound_capacity(&mut ctx, &test_data).await;

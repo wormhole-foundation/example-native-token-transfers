@@ -32,6 +32,7 @@ wormhole-io = "0.1.3"
 
 [dev-dependencies]
 hex = "0.4.3"
+
 solana-program-test = "1.17.2"
 serde_json = "1.0.113"
 serde = "1.0.196"
@@ -40,3 +41,8 @@ solana-sdk = "1.17.2"
 spl-token = "4"
 spl-associated-token-account = "2.2.0"
 sha3 = "0.10.4"
+wormhole-governance = { path = "../wormhole-governance" }
+wormhole-raw-vaas = "0.2.0-alpha.2"
+libsecp256k1 = "=0.6.0"
+wormhole-sdk = { git = "https://github.com/wormhole-foundation/wormhole", rev = "eee4641" }
+serde_wormhole = { git = "https://github.com/wormhole-foundation/wormhole", rev = "eee4641" }
