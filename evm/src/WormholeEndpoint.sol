@@ -127,13 +127,14 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
     function _sendMessage(
         uint16 recipientChain,
         uint256 deliveryPayment,
+        address caller,
         bytes memory managerMessage
     ) internal override {
         (
             EndpointStructs.EndpointMessage memory endpointMessage,
             bytes memory encodedEndpointPayload
         ) = EndpointStructs.buildAndEncodeEndpointMessage(
-            WH_ENDPOINT_PAYLOAD_PREFIX, toWormholeFormat(msg.sender), managerMessage
+            WH_ENDPOINT_PAYLOAD_PREFIX, toWormholeFormat(caller), managerMessage
         );
 
         if (shouldRelayViaStandardRelaying(recipientChain)) {
