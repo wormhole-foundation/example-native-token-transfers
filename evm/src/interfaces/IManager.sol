@@ -19,7 +19,8 @@ interface IManager {
         uint256 amount,
         uint16 recipientChain,
         bytes32 recipient,
-        bool shouldQueue
+        bool shouldQueue,
+        bytes memory encodedInstructions
     ) external payable returns (uint64 msgId);
 
     function getSibling(uint16 chainId_) external view returns (bytes32);
