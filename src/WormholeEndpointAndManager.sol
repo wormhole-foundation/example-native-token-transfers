@@ -29,4 +29,10 @@ contract WormholeEndpointAndManager is EndpointAndManager, WormholeEndpoint {
     function setIsWormholeEvmChain(uint16 chainId) external onlyOwner {
         _setIsWormholeEvmChain(chainId);
     }
+
+    /// @dev Override the [`renounceOwnership`] function to ensure
+    /// the manager ownership is not renounced.
+    function renounceOwnership() public view override onlyOwner {
+        revert CannotRenounceManagerOwnership(owner());
+    }
 }
