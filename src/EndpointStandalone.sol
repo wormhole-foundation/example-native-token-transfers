@@ -23,6 +23,7 @@ abstract contract EndpointStandalone is
 
     constructor(address _manager) {
         manager = _manager;
+        // TODO: ERC-165 check on the manager contract, otherwise revert
         token = IManager(manager).token();
     }
 
