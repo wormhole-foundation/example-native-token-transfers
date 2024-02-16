@@ -11,10 +11,11 @@ contract WormholeEndpointAndManager is EndpointAndManager, WormholeEndpoint {
         uint16 chainId,
         uint64 rateLimitDuration,
         address wormholeCoreBridge,
-        address wormholeRelayerAddr
+        address wormholeRelayerAddr,
+        address specialRelayerAddr
     )
         EndpointAndManager(token, mode, chainId, rateLimitDuration)
-        WormholeEndpoint(wormholeCoreBridge, wormholeRelayerAddr)
+        WormholeEndpoint(wormholeCoreBridge, wormholeRelayerAddr, specialRelayerAddr)
     {}
 
     function setSibling(uint16 siblingChainId, bytes32 siblingContract) public override onlyOwner {

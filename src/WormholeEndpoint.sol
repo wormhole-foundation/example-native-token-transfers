@@ -7,6 +7,7 @@ import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 
 import "./libraries/EndpointHelpers.sol";
 import "./interfaces/IWormholeEndpoint.sol";
+import "./interfaces/ISpecialRelayer.sol";
 import "./Endpoint.sol";
 
 abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
@@ -24,6 +25,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
 
     IWormhole public immutable wormhole;
     IWormholeRelayer public immutable wormholeRelayer;
+    ISpecialRelayer public immutable specialRelayer;
     uint256 public immutable wormholeEndpoint_evmChainId;
 
     struct WormholeEndpointInstruction {
@@ -40,6 +42,9 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
 
     bytes32 public constant WORMHOLE_RELAYING_ENABLED_CHAINS_SLOT =
         bytes32(uint256(keccak256("whEndpoint.relayingEnabledChains")) - 1);
+
+    bytes32 public constant SPECIAL_RELAYING_ENABLED_CHAINS_SLOT =
+        bytes32(uint256(keccak256("whEndpoint.specialRelayingEnabledChains")) - 1);
 
     bytes32 public constant WORMHOLE_EVM_CHAIN_IDS =
         bytes32(uint256(keccak256("whEndpoint.evmChainIds")) - 1);
@@ -79,6 +84,17 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         }
     }
 
+    function _getSpecialRelayingEnabledChainsStorage()
+        internal
+        pure
+        returns (mapping(uint16 => bool) storage $)
+    {
+        uint256 slot = uint256(SPECIAL_RELAYING_ENABLED_CHAINS_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
     function _getWormholeEvmChainIdsStorage()
         internal
         pure
@@ -97,21 +113,27 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         _;
     }
 
-    constructor(address wormholeCoreBridge, address wormholeRelayerAddr) {
+    constructor(
+        address wormholeCoreBridge,
+        address wormholeRelayerAddr,
+        address specialRelayerAddr
+    ) {
         wormhole = IWormhole(wormholeCoreBridge);
         wormholeRelayer = IWormholeRelayer(wormholeRelayerAddr);
+        specialRelayer = ISpecialRelayer(specialRelayerAddr);
         wormholeEndpoint_evmChainId = block.chainid;
     }
 
-    function checkInvalidRelayingConfig(uint16 chainId) internal view returns (bool) {
+    function _checkInvalidRelayingConfig(uint16 chainId) internal view returns (bool) {
         return isWormholeRelayingEnabled(chainId) && !isWormholeEvmChain(chainId);
     }
 
-    function shouldRelayViaStandardRelaying(uint16 chainId) internal view returns (bool) {
+    function _shouldRelayViaStandardRelaying(uint16 chainId) internal view returns (bool) {
         return isWormholeRelayingEnabled(chainId) && isWormholeEvmChain(chainId);
     }
 
     function _quoteDeliveryPrice(
+        address token,
         uint16 targetChain,
         EndpointStructs.EndpointInstruction memory instruction
     ) internal view override returns (uint256 nativePriceQuote) {
@@ -122,12 +144,15 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
             return 0;
         }
 
-        if (checkInvalidRelayingConfig(targetChain)) {
+        if (_checkInvalidRelayingConfig(targetChain)) {
             revert InvalidRelayingConfig(targetChain);
         }
 
-        if (shouldRelayViaStandardRelaying(targetChain)) {
+        if (_shouldRelayViaStandardRelaying(targetChain)) {
             (uint256 cost,) = wormholeRelayer.quoteEVMDeliveryPrice(targetChain, 0, GAS_LIMIT);
+            return cost;
+        } else if (isSpecialRelayingEnabled(targetChain)) {
+            uint256 cost = specialRelayer.quoteDeliveryPrice(token, targetChain, 0);
             return cost;
         } else {
             return 0;
@@ -135,6 +160,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
     }
 
     function _sendMessage(
+        address token,
         uint16 recipientChain,
         uint256 deliveryPayment,
         address caller,
@@ -151,13 +177,18 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         WormholeEndpointInstruction memory weIns =
             parseWormholeEndpointInstruction(instruction.payload);
 
-        if (!weIns.shouldSkipRelayerSend && shouldRelayViaStandardRelaying(recipientChain)) {
+        if (!weIns.shouldSkipRelayerSend && _shouldRelayViaStandardRelaying(recipientChain)) {
             wormholeRelayer.sendPayloadToEvm{value: deliveryPayment}(
                 recipientChain,
                 fromWormholeFormat(getWormholeSibling(recipientChain)),
                 encodedEndpointPayload,
                 0,
                 GAS_LIMIT
+            );
+        } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
+            uint64 sequence = wormhole.publishMessage(0, encodedEndpointPayload, CONSISTENCY_LEVEL);
+            specialRelayer.requestDelivery{value: deliveryPayment}(
+                token, recipientChain, 0, sequence
             );
         } else {
             wormhole.publishMessage(0, encodedEndpointPayload, CONSISTENCY_LEVEL);
@@ -295,6 +326,19 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         _getWormholeRelayingEnabledChainsStorage()[chainId] = isEnabled;
 
         emit SetIsWormholeRelayingEnabled(chainId, isEnabled);
+    }
+
+    function isSpecialRelayingEnabled(uint16 chainId) public view returns (bool) {
+        return _getSpecialRelayingEnabledChainsStorage()[chainId];
+    }
+
+    function _setIsSpecialRelayingEnabled(uint16 chainId, bool isEnabled) internal {
+        if (chainId == 0) {
+            revert InvalidWormholeChainIdZero();
+        }
+        _getSpecialRelayingEnabledChainsStorage()[chainId] = isEnabled;
+
+        emit SetIsSpecialRelayingEnabled(chainId, isEnabled);
     }
 
     function isWormholeEvmChain(uint16 chainId) public view returns (bool) {

@@ -2,6 +2,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "./Endpoint.sol";
+import "./interfaces/IManager.sol";
 import "./interfaces/IManagerStandalone.sol";
 import "./interfaces/IEndpointStandalone.sol";
 import "./libraries/Implementation.sol";
@@ -18,9 +19,11 @@ abstract contract EndpointStandalone is
     /// @dev updating bridgeManager requires a new Endpoint deployment.
     /// Projects should implement their own governance to remove the old Endpoint contract address and then add the new one.
     address public immutable manager;
+    address public immutable token;
 
     constructor(address _manager) {
         manager = _manager;
+        token = IManager(manager).token();
     }
 
     modifier onlyManager() {
@@ -70,14 +73,14 @@ abstract contract EndpointStandalone is
         EndpointStructs.EndpointInstruction memory instruction,
         bytes memory managerMessage
     ) external payable nonReentrant onlyManager {
-        _sendMessage(recipientChain, msg.value, msg.sender, instruction, managerMessage);
+        _sendMessage(token, recipientChain, msg.value, msg.sender, instruction, managerMessage);
     }
 
     function quoteDeliveryPrice(
         uint16 targetChain,
         EndpointStructs.EndpointInstruction memory instruction
     ) external view override returns (uint256) {
-        return _quoteDeliveryPrice(targetChain, instruction);
+        return _quoteDeliveryPrice(token, targetChain, instruction);
     }
 
     function _deliverToManager(

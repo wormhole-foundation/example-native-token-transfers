@@ -6,6 +6,7 @@ import "./libraries/PausableOwnable.sol";
 
 abstract contract Endpoint is PausableOwnable {
     function _sendMessage(
+        address token,
         uint16 recipientChain,
         uint256 deliveryPayment,
         address caller,
@@ -20,6 +21,7 @@ abstract contract Endpoint is PausableOwnable {
     ) internal virtual;
 
     function _quoteDeliveryPrice(
+        address token,
         uint16 targetChain,
         EndpointStructs.EndpointInstruction memory endpointInstruction
     ) internal view virtual returns (uint256);

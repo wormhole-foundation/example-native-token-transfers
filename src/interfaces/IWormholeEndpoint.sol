@@ -12,6 +12,7 @@ interface IWormholeEndpoint {
     event SendEndpointMessage(uint16 recipientChain, EndpointStructs.EndpointMessage message);
     event SetWormholeSibling(uint16 chainId, bytes32 oldSiblingContract, bytes32 siblingContract);
     event SetIsWormholeRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
+    event SetIsSpecialRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
     event SetIsWormholeEvmChain(uint16 chainId);
 
     error InvalidRelayingConfig(uint16 chainId);
@@ -27,5 +28,6 @@ interface IWormholeEndpoint {
     function isVAAConsumed(bytes32 hash) external view returns (bool);
     function getWormholeSibling(uint16 chainId) external view returns (bytes32);
     function isWormholeRelayingEnabled(uint16 chainId) external view returns (bool);
+    function isSpecialRelayingEnabled(uint16 chainId) external view returns (bool);
     function isWormholeEvmChain(uint16 chainId) external view returns (bool);
 }
