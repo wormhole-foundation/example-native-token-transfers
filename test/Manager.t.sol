@@ -53,12 +53,10 @@ contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
         uint64 rateLimitDuration
     ) EndpointAndManager(token, mode, chainId, rateLimitDuration) {}
 
-    function _quoteDeliveryPrice(uint16 /* recipientChain */ )
-        internal
-        pure
-        override
-        returns (uint256)
-    {
+    function _quoteDeliveryPrice(
+        uint16, /* recipientChain */
+        EndpointStructs.EndpointInstruction memory /* endpointInstruction */
+    ) internal pure override returns (uint256) {
         return 0;
     }
 

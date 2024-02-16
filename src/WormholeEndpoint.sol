@@ -111,12 +111,17 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         return isWormholeRelayingEnabled(chainId) && isWormholeEvmChain(chainId);
     }
 
-    function _quoteDeliveryPrice(uint16 targetChain)
-        internal
-        view
-        override
-        returns (uint256 nativePriceQuote)
-    {
+    function _quoteDeliveryPrice(
+        uint16 targetChain,
+        EndpointStructs.EndpointInstruction memory instruction
+    ) internal view override returns (uint256 nativePriceQuote) {
+        // Check the special instruction up front to see if we should skip sending via a relayer
+        WormholeEndpointInstruction memory weIns =
+            parseWormholeEndpointInstruction(instruction.payload);
+        if (weIns.shouldSkipRelayerSend) {
+            return 0;
+        }
+
         if (checkInvalidRelayingConfig(targetChain)) {
             revert InvalidRelayingConfig(targetChain);
         }

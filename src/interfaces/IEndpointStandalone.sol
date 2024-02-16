@@ -8,7 +8,10 @@ interface IEndpointStandalone {
     error CannotRenounceEndpointOwnership(address currentOwner);
     error CannotTransferEndpointOwnership(address currentOwner, address newOwner);
 
-    function quoteDeliveryPrice(uint16 recipientChain) external view returns (uint256);
+    function quoteDeliveryPrice(
+        uint16 recipientChain,
+        EndpointStructs.EndpointInstruction memory instruction
+    ) external view returns (uint256);
 
     function sendMessage(
         uint16 recipientChain,
