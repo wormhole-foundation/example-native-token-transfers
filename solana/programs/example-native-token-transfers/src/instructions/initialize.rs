@@ -2,11 +2,12 @@ use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token_interface};
 
 use crate::{
+    bitmap::Bitmap,
     chain_id::ChainId,
     error::NTTError,
     normalized_amount::NormalizedAmount,
     queue::{outbox::OutboxRateLimit, rate_limit::RateLimitState},
-    sequence::Sequence, bitmap::Bitmap,
+    sequence::Sequence,
 };
 
 // TODO: upgradeability

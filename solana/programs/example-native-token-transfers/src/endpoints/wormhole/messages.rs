@@ -1,6 +1,5 @@
 use crate::messages::Endpoint;
 
-
 #[derive(PartialEq, Eq)]
 pub struct WormholeEndpoint {}
 

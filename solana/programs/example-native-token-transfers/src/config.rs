@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use anchor_lang::prelude::*;
 
-use crate::{chain_id::ChainId, bitmap::Bitmap};
+use crate::{bitmap::Bitmap, chain_id::ChainId};
 
 #[account]
 #[derive(InitSpace)]

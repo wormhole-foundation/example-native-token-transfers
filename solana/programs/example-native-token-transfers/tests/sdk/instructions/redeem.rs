@@ -23,7 +23,7 @@ pub fn redeem(ntt: &NTT, accs: Redeem, args: RedeemArgs) -> Instruction {
         sibling: accs.sibling,
         endpoint_message: accs.endpoint_message,
         endpoint: EnabledEndpoint {
-            endpoint: ntt.registered_endpoint(&accs.endpoint)
+            endpoint: ntt.registered_endpoint(&accs.endpoint),
         },
         inbox_item: accs.inbox_item,
         inbox_rate_limit: accs.inbox_rate_limit,

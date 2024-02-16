@@ -14,14 +14,7 @@ use wormhole_io::{Readable, Writeable};
 
 pub const NORMALIZED_DECIMALS: u8 = 8;
 
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    AnchorSerialize,
-    AnchorDeserialize,
-    InitSpace,
-)]
+#[derive(Debug, Clone, Copy, AnchorSerialize, AnchorDeserialize, InitSpace)]
 pub struct NormalizedAmount {
     pub amount: u64,
     pub decimals: u8,

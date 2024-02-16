@@ -1,7 +1,11 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
 
-use crate::{config::*, error::NTTError, queue::inbox::{InboxItem, ReleaseStatus}};
+use crate::{
+    config::*,
+    error::NTTError,
+    queue::inbox::{InboxItem, ReleaseStatus},
+};
 
 #[derive(Accounts)]
 pub struct ReleaseInbound<'info> {

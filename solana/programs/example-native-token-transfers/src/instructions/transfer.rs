@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
 
 use crate::{
+    bitmap::Bitmap,
     chain_id::ChainId,
     clock::current_timestamp,
     config::*,
@@ -11,7 +12,7 @@ use crate::{
         inbox::InboxRateLimit,
         outbox::{OutboxItem, OutboxRateLimit},
         rate_limit::RateLimitResult,
-    }, bitmap::Bitmap,
+    },
 };
 
 // this will burn the funds and create an account that either allows sending the

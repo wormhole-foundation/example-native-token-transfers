@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 
+pub mod bitmap;
 pub mod chain_id;
 pub mod clock;
 pub mod config;
@@ -12,7 +13,6 @@ pub mod queue;
 pub mod registered_endpoint;
 pub mod sequence;
 pub mod sibling;
-pub mod bitmap;
 
 use endpoints::wormhole::instructions::*;
 
