@@ -13,7 +13,7 @@ contract DummyToken is ERC20 {
         _mint(to, amount);
     }
 
-    function mint(address to, uint256 amount) public virtual{
+    function mint(address to, uint256 amount) public virtual {
         revert("Locking manager should not call 'mint()'");
     }
 
@@ -22,13 +22,13 @@ contract DummyToken is ERC20 {
     }
 }
 
-contract DummyTokenMintAndBurn is DummyToken{
-    function mint(address to, uint256 amount) public override{
+contract DummyTokenMintAndBurn is DummyToken {
+    function mint(address to, uint256 amount) public override {
         // TODO - add access control here
         _mint(to, amount);
     }
 
-    function burnFrom(address to, uint256 amount) public override{
+    function burnFrom(address to, uint256 amount) public override {
         // TODO - add access control here
         _burn(to, amount);
     }

@@ -27,14 +27,13 @@ import "wormhole-solidity-sdk/Utils.sol";
 //import "wormhole-solidity-sdk/testing/WormholeRelayerTest.sol";
 
 contract ManagerStandaloneMigrateBasic is ManagerStandalone {
-
     // Call the parents constructor
     constructor(
         address token,
         Mode mode,
         uint16 chainId,
         uint64 rateLimitDuration
-    ) ManagerStandalone(token, mode, chainId, rateLimitDuration){}
+    ) ManagerStandalone(token, mode, chainId, rateLimitDuration) {}
 
     function _migrate() internal override {
         _checkThresholdInvariants();
@@ -44,27 +43,23 @@ contract ManagerStandaloneMigrateBasic is ManagerStandalone {
 }
 
 contract ManagerStandaloneImmutableCheck is ManagerStandalone {
-
     // Call the parents constructor
     constructor(
         address token,
         Mode mode,
         uint16 chainId,
         uint64 rateLimitDuration
-    ) ManagerStandalone(token, mode, chainId, rateLimitDuration){}
-
+    ) ManagerStandalone(token, mode, chainId, rateLimitDuration) {}
 }
 
 contract ManagerStandaloneImmutableRemoveCheck is ManagerStandalone {
-
     // Call the parents constructor
     constructor(
         address token,
         Mode mode,
         uint16 chainId,
         uint64 rateLimitDuration
-    ) ManagerStandalone(token, mode, chainId, rateLimitDuration){}
-
+    ) ManagerStandalone(token, mode, chainId, rateLimitDuration) {}
 
     // Turns on the capability to EDIT the immutables
     function _migrate() internal override {
@@ -73,10 +68,9 @@ contract ManagerStandaloneImmutableRemoveCheck is ManagerStandalone {
 }
 
 contract ManagerStandaloneStorageLayoutChange is ManagerStandalone {
-
-    address a; 
-    address b; 
-    address c; 
+    address a;
+    address b;
+    address c;
 
     // Call the parents constructor
     constructor(
@@ -84,7 +78,7 @@ contract ManagerStandaloneStorageLayoutChange is ManagerStandalone {
         Mode mode,
         uint16 chainId,
         uint64 rateLimitDuration
-    ) ManagerStandalone(token, mode, chainId, rateLimitDuration){}
+    ) ManagerStandalone(token, mode, chainId, rateLimitDuration) {}
 
     function setData() public {
         a = address(0x1);
@@ -101,7 +95,7 @@ contract WormholeEndpointStandaloneMigrateBasic is WormholeEndpointStandalone {
     ) WormholeEndpointStandalone(manager, wormholeCoreBridge, wormholeRelayerAddr) {}
 
     function _migrate() internal override {
-        revert("Proper migrate called"); 
+        revert("Proper migrate called");
     }
 }
 
@@ -112,7 +106,7 @@ contract WormholeEndpointStandaloneImmutableCheck is WormholeEndpointStandalone 
     ) WormholeEndpointStandalone(address(0x1), wormholeCoreBridge, wormholeRelayerAddr) {}
 
     function _migrate() internal override {
-        revert("Proper migrate called"); 
+        revert("Proper migrate called");
     }
 }
 
@@ -129,10 +123,9 @@ contract WormholeEndpointStandaloneImmutableAllow is WormholeEndpointStandalone 
 }
 
 contract WormholeEndpointStandaloneLayoutChange is WormholeEndpointStandalone {
-
-    address a; 
-    address b; 
-    address c; 
+    address a;
+    address b;
+    address c;
 
     // Call the parents constructor
     constructor(
@@ -164,18 +157,17 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     WormholeSimulator guardian;
     uint256 initialBlockTimestamp;
 
-    WormholeEndpointStandalone wormholeEndpointChain1; 
-    WormholeEndpointStandalone wormholeEndpointChain2; 
-    address userA = address(0x123); 
-    address userB = address(0x456); 
+    WormholeEndpointStandalone wormholeEndpointChain1;
+    WormholeEndpointStandalone wormholeEndpointChain2;
+    address userA = address(0x123);
+    address userB = address(0x456);
     address userC = address(0x789);
     address userD = address(0xABC);
 
     address relayer = address(0x28D8F1Be96f97C1387e94A53e00eCcFb4E75175a);
     IWormhole wormhole = IWormhole(0x706abc4E45D419950511e474C7B9Ed348A4a716c);
 
-
-    function setUp() public virtual{
+    function setUp() public virtual {
         string memory url = "https://ethereum-goerli.publicnode.com";
         IWormhole wormhole = IWormhole(0x706abc4E45D419950511e474C7B9Ed348A4a716c);
         vm.createSelectFork(url);
@@ -187,16 +179,16 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         DummyToken t1 = new DummyToken();
         ManagerStandalone implementation =
             new ManagerStandalone(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
-        
+
         managerChain1 = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
         managerChain1.initialize();
 
         WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
-            address(managerChain1), 
-            address(wormhole),
-            address(relayer)
+            address(managerChain1), address(wormhole), address(relayer)
         );
-        wormholeEndpointChain1 = WormholeEndpointStandalone(address(new ERC1967Proxy(address(wormholeEndpointChain1Implementation), "")));
+        wormholeEndpointChain1 = WormholeEndpointStandalone(
+            address(new ERC1967Proxy(address(wormholeEndpointChain1Implementation), ""))
+        );
         wormholeEndpointChain1.initialize();
 
         managerChain1.setEndpoint(address(wormholeEndpointChain1));
@@ -208,16 +200,17 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         DummyToken t2 = new DummyTokenMintAndBurn();
         ManagerStandalone implementationChain2 =
             new ManagerStandalone(address(t2), Manager.Mode.BURNING, chainId2, 1 days);
-            
-        managerChain2 = ManagerStandalone(address(new ERC1967Proxy(address(implementationChain2), "")));
+
+        managerChain2 =
+            ManagerStandalone(address(new ERC1967Proxy(address(implementationChain2), "")));
         managerChain2.initialize();
 
         WormholeEndpointStandalone wormholeEndpointChain2Implementation = new WormholeEndpointStandalone(
-            address(managerChain2), 
-            address(wormhole),
-            address(relayer)
+            address(managerChain2), address(wormhole), address(relayer)
         );
-        wormholeEndpointChain2 = WormholeEndpointStandalone(address(new ERC1967Proxy(address(wormholeEndpointChain2Implementation), "")));
+        wormholeEndpointChain2 = WormholeEndpointStandalone(
+            address(new ERC1967Proxy(address(wormholeEndpointChain2Implementation), ""))
+        );
         wormholeEndpointChain2.initialize();
 
         managerChain2.setEndpoint(address(wormholeEndpointChain2));
@@ -228,81 +221,87 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         managerChain1.setSibling(chainId2, bytes32(uint256(uint160(address(managerChain2)))));
         managerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(managerChain1)))));
 
-        wormholeEndpointChain1.setWormholeSibling(chainId2, bytes32(uint256(uint160((address(wormholeEndpointChain2))))));
-        wormholeEndpointChain2.setWormholeSibling(chainId1, bytes32(uint256(uint160(address(wormholeEndpointChain1)))));
+        wormholeEndpointChain1.setWormholeSibling(
+            chainId2, bytes32(uint256(uint160((address(wormholeEndpointChain2)))))
+        );
+        wormholeEndpointChain2.setWormholeSibling(
+            chainId1, bytes32(uint256(uint160(address(wormholeEndpointChain1))))
+        );
 
         managerChain1.setThreshold(1);
         managerChain2.setThreshold(1);
         vm.chainId(chainId1);
     }
 
-    function test_basicUpgradeManager() public{
-
+    function test_basicUpgradeManager() public {
         // Basic call to upgrade with the same contact as ewll
-        ManagerStandalone newImplementation = new ManagerStandalone(address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days);
-        managerChain1.upgrade(address(newImplementation)); 
+        ManagerStandalone newImplementation = new ManagerStandalone(
+            address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
+        );
+        managerChain1.upgrade(address(newImplementation));
 
         basicFunctionality();
     }
 
     //Upgradability stuff for endpoints is real borked because of some missing implementation. Test this later once fixed.
-    function test_basicUpgradeEndpoint() public{
-
+    function test_basicUpgradeEndpoint() public {
         // Basic call to upgrade with the same contact as well
         WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
-            address(managerChain1), 
-            address(wormhole),
-            address(relayer)
-        ); 
-        managerChain1.upgradeEndpoint(address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)); 
+            address(managerChain1), address(wormhole), address(relayer)
+        );
+        managerChain1.upgradeEndpoint(
+            address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)
+        );
 
         basicFunctionality();
     }
-
 
     // Confirm that we can handle multiple upgrades as a manager
     function test_doubleUpgradeManager() public {
-
         // Basic call to upgrade with the same contact as ewll
-        ManagerStandalone newImplementation = new ManagerStandalone(address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days);
-        managerChain1.upgrade(address(newImplementation)); 
+        ManagerStandalone newImplementation = new ManagerStandalone(
+            address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
+        );
+        managerChain1.upgrade(address(newImplementation));
         basicFunctionality();
 
-        newImplementation = new ManagerStandalone(address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days);
-        managerChain1.upgrade(address(newImplementation)); 
+        newImplementation = new ManagerStandalone(
+            address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
+        );
+        managerChain1.upgrade(address(newImplementation));
 
         basicFunctionality();
     }
 
     //Upgradability stuff for endpoints is real borked because of some missing implementation. Test this later once fixed.
-    function test_doubleUpgradeEndpoint() public{
-
+    function test_doubleUpgradeEndpoint() public {
         // Basic call to upgrade with the same contact as well
         WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
-            address(managerChain1), 
-            address(wormhole),
-            address(relayer)
-        ); 
-        managerChain1.upgradeEndpoint(address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)); 
+            address(managerChain1), address(wormhole), address(relayer)
+        );
+        managerChain1.upgradeEndpoint(
+            address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)
+        );
 
         basicFunctionality();
 
         // Basic call to upgrade with the same contact as well
         WormholeEndpointStandalone wormholeEndpointChain1Implementation2 = new WormholeEndpointStandalone(
-            address(managerChain1), 
-            address(wormhole),
-            address(relayer)
-        ); 
-        managerChain1.upgradeEndpoint(address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation2)); 
+            address(managerChain1), address(wormhole), address(relayer)
+        );
+        managerChain1.upgradeEndpoint(
+            address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation2)
+        );
 
         basicFunctionality();
     }
 
     function test_storageSlotManager() public {
-        
         // Basic call to upgrade with the same contact as ewll
-        ManagerStandaloneStorageLayoutChange newImplementation = new ManagerStandaloneStorageLayoutChange(address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days);
-        managerChain1.upgrade(address(newImplementation)); 
+        ManagerStandaloneStorageLayoutChange newImplementation = new ManagerStandaloneStorageLayoutChange(
+            address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
+        );
+        managerChain1.upgrade(address(newImplementation));
 
         address oldOwner = managerChain1.owner();
         ManagerStandaloneStorageLayoutChange(address(managerChain1)).setData();
@@ -314,14 +313,11 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function test_storageSlotEndpoint() public {
-        
         // Basic call to upgrade with the same contact as ewll
         WormholeEndpointStandalone newImplementation = new WormholeEndpointStandaloneLayoutChange(
-            address(managerChain1), 
-            address(wormhole),
-            address(relayer)
-        ); 
-        managerChain1.upgradeEndpoint(address(wormholeEndpointChain1), address(newImplementation)); 
+            address(managerChain1), address(wormhole), address(relayer)
+        );
+        managerChain1.upgradeEndpoint(address(wormholeEndpointChain1), address(newImplementation));
 
         address oldOwner = managerChain1.owner();
         WormholeEndpointStandaloneLayoutChange(address(wormholeEndpointChain1)).setData();
@@ -333,9 +329,10 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function test_callMigrateManager() public {
-        
         // Basic call to upgrade with the same contact as ewll
-        ManagerStandalone newImplementation = new ManagerStandaloneMigrateBasic(address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days);
+        ManagerStandalone newImplementation = new ManagerStandaloneMigrateBasic(
+            address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
+        );
 
         vm.expectRevert("Proper migrate called");
         managerChain1.upgrade(address(newImplementation));
@@ -344,27 +341,27 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     //Upgradability stuff for endpoints is real borked because of some missing implementation. Test this later once fixed.
-    function test_callMigrateEndpoint() public{
-
+    function test_callMigrateEndpoint() public {
         // Basic call to upgrade with the same contact as well
         WormholeEndpointStandaloneMigrateBasic wormholeEndpointChain1Implementation = new WormholeEndpointStandaloneMigrateBasic(
-            address(managerChain1), 
-            address(wormhole),
-            address(relayer)
-        ); 
+            address(managerChain1), address(wormhole), address(relayer)
+        );
 
         vm.expectRevert("Proper migrate called");
-        managerChain1.upgradeEndpoint(address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)); 
+        managerChain1.upgradeEndpoint(
+            address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)
+        );
 
         basicFunctionality();
     }
 
     function test_immutableBlockUpdateFailureManager() public {
-        
         DummyToken tnew = new DummyToken();
 
         // Basic call to upgrade with the same contact as ewll
-        ManagerStandalone newImplementation = new ManagerStandaloneImmutableCheck(address(tnew), Manager.Mode.LOCKING, chainId1, 1 days);
+        ManagerStandalone newImplementation = new ManagerStandaloneImmutableCheck(
+            address(tnew), Manager.Mode.LOCKING, chainId1, 1 days
+        );
 
         vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
         managerChain1.upgrade(address(newImplementation));
@@ -372,29 +369,32 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         require(managerChain1.token() != address(tnew), "Token updated when it shouldn't be");
 
         basicFunctionality();
-
     }
 
     function test_mmutableBlockUpdateFailureEndpoint() public {
         // Don't allow upgrade to work with a change immutable
 
         address oldManager = wormholeEndpointChain1.manager();
-        WormholeEndpointStandaloneImmutableCheck wormholeEndpointChain1Implementation = new WormholeEndpointStandaloneImmutableCheck(
-            address(wormhole),
-            address(relayer)
-        ); 
+        WormholeEndpointStandaloneImmutableCheck wormholeEndpointChain1Implementation =
+            new WormholeEndpointStandaloneImmutableCheck(address(wormhole), address(relayer));
 
         vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
-        managerChain1.upgradeEndpoint(address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)); 
+        managerChain1.upgradeEndpoint(
+            address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)
+        );
 
-        require(wormholeEndpointChain1.manager() == oldManager, "Manager updated when it shouldn't be");
+        require(
+            wormholeEndpointChain1.manager() == oldManager, "Manager updated when it shouldn't be"
+        );
     }
 
     function test_immutableBlockUpdateSuccessManager() public {
         DummyToken tnew = new DummyToken();
-        
+
         // Basic call to upgrade with the same contact as ewll
-        ManagerStandalone newImplementation = new ManagerStandaloneImmutableRemoveCheck(address(tnew), Manager.Mode.LOCKING, chainId1, 1 days);
+        ManagerStandalone newImplementation = new ManagerStandaloneImmutableRemoveCheck(
+            address(tnew), Manager.Mode.LOCKING, chainId1, 1 days
+        );
 
         // Allow an upgrade, since we enabled the ability to edit the immutables within the code
         managerChain1.upgrade(address(newImplementation));
@@ -404,42 +404,48 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function test_immutableBlockUpdateSuccessEndpoint() public {
-        WormholeEndpointStandaloneImmutableAllow wormholeEndpointChain1Implementation = new WormholeEndpointStandaloneImmutableAllow(
-            address(wormhole),
-            address(relayer)
-        ); 
+        WormholeEndpointStandaloneImmutableAllow wormholeEndpointChain1Implementation =
+            new WormholeEndpointStandaloneImmutableAllow(address(wormhole), address(relayer));
 
         //vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
-        managerChain1.upgradeEndpoint(address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)); 
+        managerChain1.upgradeEndpoint(
+            address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)
+        );
 
-        require(wormholeEndpointChain1.manager() == address(0x1), "Manager updated when it shouldn't be");
+        require(
+            wormholeEndpointChain1.manager() == address(0x1), "Manager updated when it shouldn't be"
+        );
     }
 
     function test_authManager() public {
-
         // User not owner so this should fail
         vm.prank(userA);
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA));
-        managerChain1.upgrade(address(0x1)); 
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA)
+        );
+        managerChain1.upgrade(address(0x1));
 
         // Basic call to upgrade so that we can get the real implementation.
-        ManagerStandalone newImplementation = new ManagerStandalone(address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days);
-        managerChain1.upgrade(address(newImplementation)); 
+        ManagerStandalone newImplementation = new ManagerStandalone(
+            address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
+        );
+        managerChain1.upgrade(address(newImplementation));
 
         basicFunctionality(); // Ensure that the upgrade was proper
 
-
         vm.expectRevert(abi.encodeWithSelector(Implementation.NotMigrating.selector));
-        managerChain1.migrate(); 
+        managerChain1.migrate();
 
         // Test if we can 'migrate' from this point
         // Migrate without delegatecall
-        vm.expectRevert(abi.encodeWithSelector(Implementation.OnlyDelegateCall.selector)); 
+        vm.expectRevert(abi.encodeWithSelector(Implementation.OnlyDelegateCall.selector));
         newImplementation.migrate();
 
         // Transfer the ownership - shouldn't have permission for that
         vm.prank(userA);
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA));
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA)
+        );
         managerChain1.transferOwnership(address(0x1));
 
         // Should fail because it's already initialized
@@ -452,39 +458,43 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function test_authEndpoint() public {
-
         // User not owner so this should fail
         vm.prank(userA);
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA));
-        managerChain1.upgradeEndpoint(address(wormholeEndpointChain1), address(0x1)); 
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA)
+        );
+        managerChain1.upgradeEndpoint(address(wormholeEndpointChain1), address(0x1));
 
         // Basic call so that we can easily see what the new endpoint is.
         WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
-            address(managerChain1), 
-            address(wormhole),
-            address(relayer)
-        ); 
-        managerChain1.upgradeEndpoint(address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)); 
+            address(managerChain1), address(wormhole), address(relayer)
+        );
+        managerChain1.upgradeEndpoint(
+            address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)
+        );
         basicFunctionality(); // Ensure that the upgrade was proper
 
         // Test if we can 'migrate' from this point
         // Migrate without delegatecall
-        vm.expectRevert(abi.encodeWithSelector(Implementation.OnlyDelegateCall.selector)); 
+        vm.expectRevert(abi.encodeWithSelector(Implementation.OnlyDelegateCall.selector));
         wormholeEndpointChain1Implementation.migrate();
-
 
         // Migrate - should fail since we're executing something outside of a migration
         vm.expectRevert(abi.encodeWithSelector(Implementation.NotMigrating.selector));
-        wormholeEndpointChain1.migrate(); 
+        wormholeEndpointChain1.migrate();
 
         // Transfer the ownership - shouldn't have permission for that
         vm.prank(userA);
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA));
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA)
+        );
         wormholeEndpointChain1.transferOwnership(address(0x1));
 
         // Force remove user from ownership
         vm.prank(userA);
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA));
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA)
+        );
         wormholeEndpointChain1.renounceOwnership();
 
         // Should fail because it's already initialized
@@ -496,41 +506,38 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         wormholeEndpointChain1Implementation.initialize();
     }
 
-
     function basicFunctionality() public {
-       vm.chainId(chainId1);
+        vm.chainId(chainId1);
 
         // Setting up the transfer
         DummyToken token1 = DummyToken(managerChain1.token());
         DummyToken token2 = DummyTokenMintAndBurn(managerChain2.token());
 
         uint8 decimals = token1.decimals();
-        uint256 sendingAmount = 5 * 10 ** decimals; 
+        uint256 sendingAmount = 5 * 10 ** decimals;
         token1.mintDummy(address(userA), 5 * 10 ** decimals);
         vm.startPrank(userA);
-        token1.approve(
-            address(managerChain1),
-            sendingAmount
-        );
+        token1.approve(address(managerChain1), sendingAmount);
 
         vm.recordLogs();
 
-        // Send token through standard means (not relayer) 
+        // Send token through standard means (not relayer)
         {
             uint256 managerBalanceBefore = token1.balanceOf(address(managerChain1));
             uint256 userBalanceBefore = token1.balanceOf(address(userA));
-            managerChain1.transfer(
-                sendingAmount,
-                chainId2,
-                bytes32(uint256(uint160(userB))),
-                false
-            );
+            managerChain1.transfer(sendingAmount, chainId2, bytes32(uint256(uint160(userB))), false);
 
             // Balance check on funds going in and out working as expected
             uint256 managerBalanceAfter = token1.balanceOf(address(managerChain1));
             uint256 userBalanceAfter = token1.balanceOf(address(userB));
-            require(managerBalanceBefore + sendingAmount == managerBalanceAfter, "Should be locking the tokens");
-            require(userBalanceBefore - sendingAmount == userBalanceAfter, "User should have sent tokens");
+            require(
+                managerBalanceBefore + sendingAmount == managerBalanceAfter,
+                "Should be locking the tokens"
+            );
+            require(
+                userBalanceBefore - sendingAmount == userBalanceAfter,
+                "User should have sent tokens"
+            );
         }
 
         vm.stopPrank();
@@ -539,12 +546,10 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         Vm.Log[] memory entries = guardian.fetchWormholeMessageFromLog(vm.getRecordedLogs());
         bytes[] memory encodedVMs = new bytes[](entries.length);
         for (uint256 i = 0; i < encodedVMs.length; i++) {
-            encodedVMs[i] = guardian.fetchSignedMessageFromLogs(
-                entries[i], chainId1
-            );
+            encodedVMs[i] = guardian.fetchSignedMessageFromLogs(entries[i], chainId1);
         }
 
-        // Chain2 verification and checks 
+        // Chain2 verification and checks
         vm.chainId(chainId2);
 
         vm.expectRevert(); // Wrong chain receiving the signed VAA
@@ -575,28 +580,24 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         // Supply checks on the transfer
         {
             uint256 supplyBefore = token2.totalSupply();
-            managerChain2.transfer(
-                sendingAmount,
-                chainId1,
-                bytes32(uint256(uint160(userD))),
-                false
-            ); 
-            
+            managerChain2.transfer(sendingAmount, chainId1, bytes32(uint256(uint160(userD))), false);
+
             uint256 supplyAfter = token2.totalSupply();
 
             require(sendingAmount - supplyBefore == supplyAfter, "Supplies don't match");
             require(token2.balanceOf(userB) == 0, "OG user receive tokens");
             require(token2.balanceOf(userC) == 0, "Sending user didn't receive tokens");
-            require(token2.balanceOf(address(managerChain2)) == 0, "Manager didn't receive unintended funds");
+            require(
+                token2.balanceOf(address(managerChain2)) == 0,
+                "Manager didn't receive unintended funds"
+            );
         }
 
         // Get and sign the log to go down the other pipe. Thank you to whoever wrote this code in the past!
         entries = guardian.fetchWormholeMessageFromLog(vm.getRecordedLogs());
         encodedVMs = new bytes[](entries.length);
         for (uint256 i = 0; i < encodedVMs.length; i++) {
-            encodedVMs[i] = guardian.fetchSignedMessageFromLogs(
-                entries[i], chainId2
-            );
+            encodedVMs[i] = guardian.fetchSignedMessageFromLogs(entries[i], chainId2);
         }
 
         // Chain1 verification and checks with the receiving of the message
@@ -612,14 +613,16 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
             require(supplyBefore == supplyAfter, "Supplies don't match between operations");
             require(token1.balanceOf(userB) == 0, "OG user receive tokens");
             require(token1.balanceOf(userC) == 0, "Sending user didn't receive tokens");
-            require(token1.balanceOf(userD) == sendingAmount + userDBalanceBefore, "User received funds");
+            require(
+                token1.balanceOf(userD) == sendingAmount + userDBalanceBefore, "User received funds"
+            );
         }
 
         vm.stopPrank();
     }
 }
 
-contract TestInitialize is Test{
+contract TestInitialize is Test {
     function setUp() public {}
 
     ManagerStandalone managerChain1;
@@ -633,8 +636,8 @@ contract TestInitialize is Test{
     uint256 constant DEVNET_GUARDIAN_PK =
         0xcfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0;
 
-    WormholeEndpointStandalone wormholeEndpointChain1; 
-    address userA = address(0x123); 
+    WormholeEndpointStandalone wormholeEndpointChain1;
+    address userA = address(0x123);
 
     address relayer = address(0x28D8F1Be96f97C1387e94A53e00eCcFb4E75175a);
     IWormhole wormhole = IWormhole(0x706abc4E45D419950511e474C7B9Ed348A4a716c);
@@ -647,15 +650,15 @@ contract TestInitialize is Test{
         DummyToken t1 = new DummyToken();
         ManagerStandalone implementation =
             new ManagerStandalone(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
-        
+
         managerChain1 = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
 
         // Initialize once
-        managerChain1.initialize(); 
+        managerChain1.initialize();
 
         // Initialize twice
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        managerChain1.initialize(); 
+        managerChain1.initialize();
     }
 
     // TODO - Keep or remove depending on frontrunning discussion for deployment
@@ -667,7 +670,7 @@ contract TestInitialize is Test{
     //     DummyToken t1 = new DummyToken();
     //     ManagerStandalone implementation =
     //         new ManagerStandalone(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
-        
+
     //     managerChain1 = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
 
     //     vm.prank(userA);

@@ -23,8 +23,12 @@ import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "wormhole-solidity-sdk/Utils.sol";
 import {WormholeRelayerBasicTest} from "wormhole-solidity-sdk/testing/WormholeRelayerTest.sol";
 
-
-contract TestEndToEndRelayer is Test, IManagerEvents, IRateLimiterEvents, WormholeRelayerBasicTest{
+contract TestEndToEndRelayer is
+    Test,
+    IManagerEvents,
+    IRateLimiterEvents,
+    WormholeRelayerBasicTest
+{
     ManagerStandalone managerChain1;
     ManagerStandalone managerChain2;
 
@@ -37,14 +41,14 @@ contract TestEndToEndRelayer is Test, IManagerEvents, IRateLimiterEvents, Wormho
     WormholeSimulator guardian;
     uint256 initialBlockTimestamp;
 
-    WormholeEndpointStandalone wormholeEndpointChain1; 
-    WormholeEndpointStandalone wormholeEndpointChain2; 
-    address userA = address(0x123); 
-    address userB = address(0x456); 
+    WormholeEndpointStandalone wormholeEndpointChain1;
+    WormholeEndpointStandalone wormholeEndpointChain2;
+    address userA = address(0x123);
+    address userB = address(0x456);
     address userC = address(0x789);
     address userD = address(0xABC);
 
-    constructor(){
+    constructor() {
         setTestnetForkChains(chainId1, chainId2);
     }
 
@@ -61,12 +65,14 @@ contract TestEndToEndRelayer is Test, IManagerEvents, IRateLimiterEvents, Wormho
         managerChain1.initialize();
 
         wormholeEndpointChain1 = new WormholeEndpointStandalone(
-            address(managerChain1), 
+            address(managerChain1),
             address(chainInfosTestnet[chainId1].wormhole),
             address(relayerSource)
         );
 
-        wormholeEndpointChain1 = WormholeEndpointStandalone(address(new ERC1967Proxy(address(wormholeEndpointChain1), "")));
+        wormholeEndpointChain1 = WormholeEndpointStandalone(
+            address(new ERC1967Proxy(address(wormholeEndpointChain1), ""))
+        );
         wormholeEndpointChain1.initialize();
 
         managerChain1.setEndpoint(address(wormholeEndpointChain1));
@@ -84,15 +90,18 @@ contract TestEndToEndRelayer is Test, IManagerEvents, IRateLimiterEvents, Wormho
         ManagerStandalone implementationChain2 =
             new ManagerStandalone(address(t2), Manager.Mode.BURNING, chainId2, 1 days);
 
-        managerChain2 = ManagerStandalone(address(new ERC1967Proxy(address(implementationChain2), "")));
+        managerChain2 =
+            ManagerStandalone(address(new ERC1967Proxy(address(implementationChain2), "")));
         managerChain2.initialize();
         wormholeEndpointChain2 = new WormholeEndpointStandalone(
-            address(managerChain2), 
+            address(managerChain2),
             address(chainInfosTestnet[chainId2].wormhole),
-            address(relayerTarget) 
+            address(relayerTarget)
         );
 
-        wormholeEndpointChain2 = WormholeEndpointStandalone(address(new ERC1967Proxy(address(wormholeEndpointChain2), "")));
+        wormholeEndpointChain2 = WormholeEndpointStandalone(
+            address(new ERC1967Proxy(address(wormholeEndpointChain2), ""))
+        );
         wormholeEndpointChain2.initialize();
 
         managerChain2.setEndpoint(address(wormholeEndpointChain2));
@@ -102,62 +111,76 @@ contract TestEndToEndRelayer is Test, IManagerEvents, IRateLimiterEvents, Wormho
         managerChain2.setThreshold(1);
     }
 
-    function test_chainToChainReverts() public{
-
+    function test_chainToChainReverts() public {
         // record all of the logs for all of the occuring events
         vm.recordLogs();
 
         // Setup the information for interacting with the chains
         vm.selectFork(targetFork);
-        wormholeEndpointChain2.setWormholeSibling(chainId1, bytes32(uint256(uint160(address(wormholeEndpointChain1)))));
-        managerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(managerChain1)))));  
+        wormholeEndpointChain2.setWormholeSibling(
+            chainId1, bytes32(uint256(uint160(address(wormholeEndpointChain1))))
+        );
+        managerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(managerChain1)))));
         DummyToken token2 = DummyTokenMintAndBurn(managerChain2.token());
-        wormholeEndpointChain2.setIsWormholeRelayingEnabled(chainId1, true); 
+        wormholeEndpointChain2.setIsWormholeRelayingEnabled(chainId1, true);
         wormholeEndpointChain2.setIsWormholeEvmChain(chainId1);
 
         // Register sibling contracts for the manager and endpoint. Endpoints and manager each have the concept of siblings here.
         vm.selectFork(sourceFork);
         DummyToken token1 = DummyToken(managerChain1.token());
-        wormholeEndpointChain1.setWormholeSibling(chainId2, bytes32(uint256(uint160((address(wormholeEndpointChain2))))));
+        wormholeEndpointChain1.setWormholeSibling(
+            chainId2, bytes32(uint256(uint160((address(wormholeEndpointChain2)))))
+        );
         managerChain1.setSibling(chainId2, bytes32(uint256(uint160(address(managerChain2)))));
 
         // Enable general relaying on the chain to transfer for the funds.
-        wormholeEndpointChain1.setIsWormholeRelayingEnabled(chainId2, true); 
+        wormholeEndpointChain1.setIsWormholeRelayingEnabled(chainId2, true);
         wormholeEndpointChain1.setIsWormholeEvmChain(chainId2);
 
         // Setting up the transfer
         uint8 decimals = token1.decimals();
-        uint256 sendingAmount = 5 * 10 ** decimals; 
+        uint256 sendingAmount = 5 * 10 ** decimals;
         token1.mintDummy(address(userA), sendingAmount);
         vm.startPrank(userA);
-        token1.approve(
-            address(managerChain1),
-            sendingAmount
-        );
+        token1.approve(address(managerChain1), sendingAmount);
 
-        // Send token through standard means (not relayer) 
+        // Send token through standard means (not relayer)
         {
             uint256 managerBalanceBefore = token1.balanceOf(address(managerChain1));
             uint256 userBalanceBefore = token1.balanceOf(address(userA));
 
             uint256 priceQuote1 = wormholeEndpointChain1.quoteDeliveryPrice(chainId2);
             vm.expectRevert(); // Dust error
-            managerChain1.transfer{value: priceQuote1}(sendingAmount-1,chainId2,bytes32(uint256(uint160(userB))),false);
+            managerChain1.transfer{value: priceQuote1}(
+                sendingAmount - 1, chainId2, bytes32(uint256(uint160(userB))), false
+            );
 
             vm.expectRevert(); // Zero funds error
-            managerChain1.transfer{value: priceQuote1}(0,chainId2,bytes32(uint256(uint160(userB))),false);
+            managerChain1.transfer{value: priceQuote1}(
+                0, chainId2, bytes32(uint256(uint160(userB))), false
+            );
 
             vm.expectRevert(); // Not enough in gas costs from the 'quote'.
-            managerChain1.transfer{value: priceQuote1-1}(sendingAmount,chainId2,bytes32(uint256(uint160(userB))),false);
+            managerChain1.transfer{value: priceQuote1 - 1}(
+                sendingAmount, chainId2, bytes32(uint256(uint160(userB))), false
+            );
 
             // Do the payment with slightly more gas than needed. This should result in a *payback* of 1 wei.
-            managerChain1.transfer{value: priceQuote1+1}(sendingAmount,chainId2,bytes32(uint256(uint160(userB))),false);
+            managerChain1.transfer{value: priceQuote1 + 1}(
+                sendingAmount, chainId2, bytes32(uint256(uint160(userB))), false
+            );
 
             // Balance check on funds going in and out working as expected
             uint256 managerBalanceAfter = token1.balanceOf(address(managerChain1));
             uint256 userBalanceAfter = token1.balanceOf(address(userB));
-            require(managerBalanceBefore + sendingAmount == managerBalanceAfter, "Should be locking the tokens");
-            require(userBalanceBefore - sendingAmount == userBalanceAfter, "User should have sent tokens");
+            require(
+                managerBalanceBefore + sendingAmount == managerBalanceAfter,
+                "Should be locking the tokens"
+            );
+            require(
+                userBalanceBefore - sendingAmount == userBalanceAfter,
+                "User should have sent tokens"
+            );
         }
 
         vm.stopPrank();
@@ -167,7 +190,7 @@ contract TestEndToEndRelayer is Test, IManagerEvents, IRateLimiterEvents, Wormho
 
         // Deliver the TX via the relayer mechanism. That's pretty fly!
         vm.selectFork(sourceFork); // Move to back to the source chain for things to be processed
-        
+
         // Turn on the log recording because we want the test framework to pick up the events.
         // TODO - can't do easy testing on this.
         // Foundry *eats* the logs. So, once this fails, they're gone forever. Need to set up signer then, prank then make the call to relay manually.
@@ -182,56 +205,59 @@ contract TestEndToEndRelayer is Test, IManagerEvents, IRateLimiterEvents, Wormho
         require(token2.balanceOf(address(managerChain2)) == 0, "Manager has unintended funds");
     }
 
-    function test_chainToChain() public{
-
+    function test_chainToChain() public {
         // record all of the logs for all of the occuring events
         vm.recordLogs();
 
         // Setup the information for interacting with the chains
         vm.selectFork(targetFork);
-        wormholeEndpointChain2.setWormholeSibling(chainId1, bytes32(uint256(uint160(address(wormholeEndpointChain1)))));
-        managerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(managerChain1)))));  
+        wormholeEndpointChain2.setWormholeSibling(
+            chainId1, bytes32(uint256(uint160(address(wormholeEndpointChain1))))
+        );
+        managerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(managerChain1)))));
         DummyToken token2 = DummyTokenMintAndBurn(managerChain2.token());
-        wormholeEndpointChain2.setIsWormholeRelayingEnabled(chainId1, true); 
+        wormholeEndpointChain2.setIsWormholeRelayingEnabled(chainId1, true);
         wormholeEndpointChain2.setIsWormholeEvmChain(chainId1);
 
         // Register sibling contracts for the manager and endpoint. Endpoints and manager each have the concept of siblings here.
         vm.selectFork(sourceFork);
         managerChain1.setSibling(chainId2, bytes32(uint256(uint160(address(managerChain2)))));
-        wormholeEndpointChain1.setWormholeSibling(chainId2, bytes32(uint256(uint160((address(wormholeEndpointChain2))))));
+        wormholeEndpointChain1.setWormholeSibling(
+            chainId2, bytes32(uint256(uint160((address(wormholeEndpointChain2)))))
+        );
         DummyToken token1 = DummyToken(managerChain1.token());
 
         // Enable general relaying on the chain to transfer for the funds.
-        wormholeEndpointChain1.setIsWormholeRelayingEnabled(chainId2, true); 
+        wormholeEndpointChain1.setIsWormholeRelayingEnabled(chainId2, true);
         wormholeEndpointChain1.setIsWormholeEvmChain(chainId2);
 
         // Setting up the transfer
         uint8 decimals = token1.decimals();
-        uint256 sendingAmount = 5 * 10 ** decimals; 
+        uint256 sendingAmount = 5 * 10 ** decimals;
         token1.mintDummy(address(userA), 5 * 10 ** decimals);
         vm.startPrank(userA);
-        token1.approve(
-            address(managerChain1),
-            sendingAmount
-        );
+        token1.approve(address(managerChain1), sendingAmount);
 
-        // Send token through standard means (not relayer) 
+        // Send token through standard means (not relayer)
         {
             uint256 managerBalanceBefore = token1.balanceOf(address(managerChain1));
             uint256 userBalanceBefore = token1.balanceOf(address(userA));
 
             managerChain1.transfer{value: wormholeEndpointChain1.quoteDeliveryPrice(chainId2)}(
-                sendingAmount,
-                chainId2,
-                bytes32(uint256(uint160(userB))),
-                false
+                sendingAmount, chainId2, bytes32(uint256(uint160(userB))), false
             );
 
             // Balance check on funds going in and out working as expected
             uint256 managerBalanceAfter = token1.balanceOf(address(managerChain1));
             uint256 userBalanceAfter = token1.balanceOf(address(userB));
-            require(managerBalanceBefore + sendingAmount == managerBalanceAfter, "Should be locking the tokens");
-            require(userBalanceBefore - sendingAmount == userBalanceAfter, "User should have sent tokens");
+            require(
+                managerBalanceBefore + sendingAmount == managerBalanceAfter,
+                "Should be locking the tokens"
+            );
+            require(
+                userBalanceBefore - sendingAmount == userBalanceAfter,
+                "User should have sent tokens"
+            );
         }
 
         vm.stopPrank();
@@ -268,19 +294,19 @@ contract TestEndToEndRelayer is Test, IManagerEvents, IRateLimiterEvents, Wormho
         {
             supplyBefore = token2.totalSupply();
             managerChain2.transfer{value: wormholeEndpointChain2.quoteDeliveryPrice(chainId1)}(
-                sendingAmount,
-                chainId1,
-                bytes32(uint256(uint160(userD))),
-                false
+                sendingAmount, chainId1, bytes32(uint256(uint160(userD))), false
             );
-            
+
             supplyAfter = token2.totalSupply();
             console.log(supplyBefore, sendingAmount, supplyAfter);
 
             require(sendingAmount - supplyBefore == supplyAfter, "Supplies don't match");
             require(token2.balanceOf(userB) == 0, "OG user receive tokens");
             require(token2.balanceOf(userC) == 0, "Sending user didn't receive tokens");
-            require(token2.balanceOf(address(managerChain2)) == 0, "Manager didn't receive unintended funds");
+            require(
+                token2.balanceOf(address(managerChain2)) == 0,
+                "Manager didn't receive unintended funds"
+            );
         }
 
         // Receive the transfer
@@ -299,16 +325,18 @@ contract TestEndToEndRelayer is Test, IManagerEvents, IRateLimiterEvents, Wormho
         require(token1.balanceOf(userB) == 0, "UserB received funds on the transfer back");
         require(token1.balanceOf(userC) == 0, "UserC received funds on the transfer back");
         require(token1.balanceOf(userD) == sendingAmount, "User didn't receive tokens going back");
-        require(token1.balanceOf(address(managerChain1)) == 0, "Manager has unintended funds going back");
+        require(
+            token1.balanceOf(address(managerChain1)) == 0, "Manager has unintended funds going back"
+        );
     }
 
-    function copyBytes(bytes memory _bytes) private pure returns (bytes memory)
-    {
+    function copyBytes(bytes memory _bytes) private pure returns (bytes memory) {
         bytes memory copy = new bytes(_bytes.length);
         uint256 max = _bytes.length + 31;
-        for (uint256 i=32; i<=max; i+=32)
-        {
-            assembly { mstore(add(copy, i), mload(add(_bytes, i))) }
+        for (uint256 i = 32; i <= max; i += 32) {
+            assembly {
+                mstore(add(copy, i), mload(add(_bytes, i)))
+            }
         }
         return copy;
     }
@@ -330,10 +358,10 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
     WormholeSimulator guardian;
     uint256 initialBlockTimestamp;
 
-    WormholeEndpointStandalone wormholeEndpointChain1; 
-    WormholeEndpointStandalone wormholeEndpointChain2; 
-    address userA = address(0x123); 
-    address userB = address(0x456); 
+    WormholeEndpointStandalone wormholeEndpointChain1;
+    WormholeEndpointStandalone wormholeEndpointChain2;
+    address userA = address(0x123);
+    address userB = address(0x456);
     address userC = address(0x789);
     address userD = address(0xABC);
 
@@ -356,11 +384,11 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
         managerChain1.initialize();
 
         wormholeEndpointChain1 = new WormholeEndpointStandalone(
-            address(managerChain1), 
-            address(wormhole),
-            address(relayer)
+            address(managerChain1), address(wormhole), address(relayer)
         );
-        wormholeEndpointChain1 = WormholeEndpointStandalone(address(new ERC1967Proxy(address(wormholeEndpointChain1), "")));
+        wormholeEndpointChain1 = WormholeEndpointStandalone(
+            address(new ERC1967Proxy(address(wormholeEndpointChain1), ""))
+        );
         wormholeEndpointChain1.initialize();
 
         managerChain1.setEndpoint(address(wormholeEndpointChain1));
@@ -373,14 +401,17 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
         ManagerStandalone implementationChain2 =
             new ManagerStandalone(address(t2), Manager.Mode.BURNING, chainId2, 1 days);
 
-        managerChain2 = ManagerStandalone(address(new ERC1967Proxy(address(implementationChain2), "")));
+        managerChain2 =
+            ManagerStandalone(address(new ERC1967Proxy(address(implementationChain2), "")));
         managerChain2.initialize();
         wormholeEndpointChain2 = new WormholeEndpointStandalone(
-            address(managerChain2), 
+            address(managerChain2),
             address(wormhole),
             address(relayer) // TODO - add support for this later
         );
-        wormholeEndpointChain2 = WormholeEndpointStandalone(address(new ERC1967Proxy(address(wormholeEndpointChain2), "")));
+        wormholeEndpointChain2 = WormholeEndpointStandalone(
+            address(new ERC1967Proxy(address(wormholeEndpointChain2), ""))
+        );
         wormholeEndpointChain2.initialize();
 
         managerChain2.setEndpoint(address(wormholeEndpointChain2));
@@ -391,12 +422,15 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
         managerChain1.setSibling(chainId2, bytes32(uint256(uint160(address(managerChain2)))));
         managerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(managerChain1)))));
 
-        wormholeEndpointChain1.setWormholeSibling(chainId2, bytes32(uint256(uint160((address(wormholeEndpointChain2))))));
-        wormholeEndpointChain2.setWormholeSibling(chainId1, bytes32(uint256(uint160(address(wormholeEndpointChain1)))));
+        wormholeEndpointChain1.setWormholeSibling(
+            chainId2, bytes32(uint256(uint160((address(wormholeEndpointChain2)))))
+        );
+        wormholeEndpointChain2.setWormholeSibling(
+            chainId1, bytes32(uint256(uint160(address(wormholeEndpointChain1))))
+        );
     }
 
     function test_relayerEndpointAuth() public {
-
         vm.recordLogs();
         vm.chainId(chainId1);
 
@@ -405,13 +439,10 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
         DummyToken token2 = DummyTokenMintAndBurn(managerChain2.token());
 
         uint8 decimals = token1.decimals();
-        uint256 sendingAmount = 5 * 10 ** decimals; 
+        uint256 sendingAmount = 5 * 10 ** decimals;
         token1.mintDummy(address(userA), 5 * 10 ** decimals);
         vm.startPrank(userA);
-        token1.approve(
-            address(managerChain1),
-            sendingAmount
-        );
+        token1.approve(address(managerChain1), sendingAmount);
 
         // Send token through the relayer
         {
@@ -419,10 +450,7 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
             uint256 userBalanceBefore = token1.balanceOf(address(userA));
             vm.deal(userA, 1 ether);
             managerChain1.transfer{value: wormholeEndpointChain1.quoteDeliveryPrice(chainId2)}(
-                sendingAmount,
-                chainId2,
-                bytes32(uint256(uint160(userB))),
-                false
+                sendingAmount, chainId2, bytes32(uint256(uint160(userB))), false
             );
         }
 
@@ -431,9 +459,7 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
         Vm.Log[] memory entries = guardian.fetchWormholeMessageFromLog(vm.getRecordedLogs());
         bytes[] memory encodedVMs = new bytes[](entries.length);
         for (uint256 i = 0; i < encodedVMs.length; i++) {
-            encodedVMs[i] = guardian.fetchSignedMessageFromLogs(
-                entries[i], chainId1
-            );
+            encodedVMs[i] = guardian.fetchSignedMessageFromLogs(entries[i], chainId1);
         }
 
         console.logBytes(encodedVMs[0]);
@@ -441,7 +467,6 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
 
         vm.stopPrank();
         vm.chainId(chainId2);
- 
 
         console.log(vaa.emitterChainId);
         console.logAddress(address(wormholeEndpointChain1));
@@ -452,29 +477,67 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
         // Caller is not proper who to receive messages from
         wormholeEndpointChain2.setWormholeSibling(chainId1, bytes32(uint256(uint160(address(0x1)))));
         vm.startPrank(relayer);
-        vm.expectRevert(abi.encodeWithSelector(IWormholeEndpoint.InvalidWormholeSibling.selector, chainId1, address(wormholeEndpointChain1)));
-        wormholeEndpointChain2.receiveWormholeMessages(vaa.payload,a,bytes32(uint256(uint160(address(wormholeEndpointChain1)))), vaa.emitterChainId,vaa.hash );
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IWormholeEndpoint.InvalidWormholeSibling.selector,
+                chainId1,
+                address(wormholeEndpointChain1)
+            )
+        );
+        wormholeEndpointChain2.receiveWormholeMessages(
+            vaa.payload,
+            a,
+            bytes32(uint256(uint160(address(wormholeEndpointChain1)))),
+            vaa.emitterChainId,
+            vaa.hash
+        );
         vm.stopPrank();
 
         // Bad manager sibling calling
-        wormholeEndpointChain2.setWormholeSibling(chainId1, bytes32(uint256(uint160(address(wormholeEndpointChain1)))));
+        wormholeEndpointChain2.setWormholeSibling(
+            chainId1, bytes32(uint256(uint160(address(wormholeEndpointChain1))))
+        );
         managerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(0x1)))));
         vm.startPrank(relayer);
         vm.expectRevert(); // bad manager sibling
-        wormholeEndpointChain2.receiveWormholeMessages(vaa.payload,a,bytes32(uint256(uint160(address(wormholeEndpointChain1)))), vaa.emitterChainId,vaa.hash );
+        wormholeEndpointChain2.receiveWormholeMessages(
+            vaa.payload,
+            a,
+            bytes32(uint256(uint160(address(wormholeEndpointChain1)))),
+            vaa.emitterChainId,
+            vaa.hash
+        );
         vm.stopPrank();
 
         // Wrong caller - aka not relayer contract
         managerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(managerChain1)))));
         vm.prank(userD);
         vm.expectRevert(abi.encodeWithSelector(IWormholeEndpoint.CallerNotRelayer.selector, userD));
-        wormholeEndpointChain2.receiveWormholeMessages(vaa.payload,a,bytes32(uint256(uint160(address(wormholeEndpointChain1)))), vaa.emitterChainId,vaa.hash);
+        wormholeEndpointChain2.receiveWormholeMessages(
+            vaa.payload,
+            a,
+            bytes32(uint256(uint160(address(wormholeEndpointChain1)))),
+            vaa.emitterChainId,
+            vaa.hash
+        );
 
         vm.startPrank(relayer);
 
         // Bad chain ID for a given endpoint
-        vm.expectRevert(abi.encodeWithSelector(IWormholeEndpoint.InvalidWormholeSibling.selector, 0xFF, address(wormholeEndpointChain1)));
-        wormholeEndpointChain2.receiveWormholeMessages(vaa.payload,a,bytes32(uint256(uint160(address(wormholeEndpointChain1)))), 0xFF, vaa.hash);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IWormholeEndpoint.InvalidWormholeSibling.selector,
+                0xFF,
+                address(wormholeEndpointChain1)
+            )
+        );
+        wormholeEndpointChain2.receiveWormholeMessages(
+            vaa.payload,
+            a,
+            bytes32(uint256(uint160(address(wormholeEndpointChain1)))),
+            0xFF,
+            vaa.hash
+        );
 
         /*
         This information is assumed to be trusted since ONLY the relayer on a given chain can call it.
@@ -483,7 +546,7 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
         This attempt should actually work this time.
         */
         wormholeEndpointChain2.receiveWormholeMessages(
-            vaa.payload, // Verified 
+            vaa.payload, // Verified
             a, // Should be zero
             bytes32(uint256(uint160(address(wormholeEndpointChain1)))), // Must be a wormhole siblings
             vaa.emitterChainId, // ChainID from the call
@@ -493,7 +556,7 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
         // Should from sending a *duplicate* message
         vm.expectRevert(); // Uses a custom error with a hash - don't know how to calculate the hash
         wormholeEndpointChain2.receiveWormholeMessages(
-            vaa.payload, // Verified 
+            vaa.payload, // Verified
             a, // Should be zero
             bytes32(uint256(uint160(address(wormholeEndpointChain1)))), // Must be a wormhole siblings
             vaa.emitterChainId, // ChainID from the call

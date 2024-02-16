@@ -96,7 +96,9 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         // Instead, we leave it up to the owner to manually update the threshold
         // after some period of time, ideally once all chains have the new Endpoint
         // and transfers that were sent via the old configuration are all complete.
-
+        if (_threshold.num == 0) {
+            _threshold.num = 1;
+        }
         address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
 
         emit EndpointAdded(endpoint, _enabledEndpoints.length, _threshold.num);
