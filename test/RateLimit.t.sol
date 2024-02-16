@@ -39,13 +39,6 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         manager = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
         manager.initialize();
-
-        // deploy sample token contract
-        // deploy wormhole contract
-        // wormhole = deployWormholeForTest();
-        // deploy endpoint contracts
-        // instantiate endpoint manager contract
-        // manager = new ManagerContract();
     }
 
     function test_outboundRateLimit_setLimitSimple() public {
@@ -62,6 +55,45 @@ contract TestRateLimit is Test, IRateLimiterEvents {
             outboundLimitParams.currentCapacity.getAmount(), limit.normalize(decimals).getAmount()
         );
         assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
+    }
+
+    function test_outboundRateLimit() public {
+        // transfer 3 tokens
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(manager.token());
+
+        uint8 decimals = token.decimals();
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+        uint256 outboundLimit = 4 * 10 ** decimals;
+        manager.setOutboundLimit(outboundLimit);
+
+        vm.startPrank(user_A);
+
+        uint256 transferAmount = 3 * 10 ** decimals;
+        token.approve(address(manager), transferAmount);
+        manager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
+
+        vm.stopPrank();
+
+        // assert outbound rate limit was updated
+        IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
+        assertEq(
+            outboundLimitParams.currentCapacity.getAmount(),
+            (outboundLimit - transferAmount).normalize(decimals).getAmount()
+        );
+        assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
+
+        // assert inbound rate limit for destination chain is still at the max.
+        // the backflow should not override the limit.
+        IRateLimiter.RateLimitParams memory inboundLimitParams =
+            manager.getInboundLimitParams(chainId);
+        assertEq(
+            inboundLimitParams.currentCapacity.getAmount(), inboundLimitParams.limit.getAmount()
+        );
+        assertEq(inboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
     }
 
     function test_outboundRateLimit_setHigherLimit() public {
@@ -385,78 +417,45 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         manager.completeOutboundQueuedTransfer(0);
     }
 
-    function _attestEndpointsHelper(
-        address from,
-        address to,
-        uint64 sequence,
-        NormalizedAmount memory inboundLimit,
-        IEndpointReceiver[] memory endpoints
-    )
-        internal
-        returns (EndpointStructs.ManagerMessage memory, EndpointStructs.EndpointMessage memory)
-    {
+    function test_inboundRateLimit_simple() public {
+        address user_B = address(0x456);
+
+        (DummyEndpoint e1, DummyEndpoint e2) = EndpointHelpersLib.setup_endpoints(manager);
+
         DummyToken token = DummyToken(manager.token());
 
-        uint8 decimals = token.decimals(); // 18
-        {
-            token.mintDummy(from, 5 * 10 ** decimals);
-            ManagerHelpersLib.setConfigs(inboundLimit, manager, decimals);
-        }
+        IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
+        endpoints[0] = e1;
+        endpoints[1] = e2;
 
-        {
-            uint256 from_balanceBefore = token.balanceOf(from);
-            uint256 manager_balanceBefore = token.balanceOf(address(manager));
-
-            vm.startPrank(from);
-
-            token.approve(address(manager), 3 * 10 ** token.decimals());
-            // TODO: parse recorded logs
-            manager.transfer(
-                3 * 10 ** token.decimals(), chainId, toWormholeFormat(to), false, new bytes(1)
-            );
-
-            vm.stopPrank();
-
-            assertEq(token.balanceOf(from), from_balanceBefore - 3 * 10 ** token.decimals());
-            assertEq(
-                token.balanceOf(address(manager)),
-                manager_balanceBefore + 3 * 10 ** token.decimals()
-            );
-        }
-
-        EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
-            sequence,
-            toWormholeFormat(from),
-            EndpointStructs.encodeNativeTokenTransfer(
-                EndpointStructs.NativeTokenTransfer({
-                    amount: NormalizedAmount(50, 8),
-                    sourceToken: toWormholeFormat(address(token)),
-                    to: toWormholeFormat(to),
-                    toChain: chainId
-                })
-            )
-        );
-        bytes memory encodedM = EndpointStructs.encodeManagerMessage(m);
-
-        EndpointStructs.EndpointMessage memory em;
-        bytes memory encodedEm;
-        (em, encodedEm) = EndpointStructs.buildAndEncodeEndpointMessage(
-            EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX,
-            toWormholeFormat(address(manager)),
-            encodedM,
-            new bytes(0)
+        NormalizedAmount memory transferAmount = NormalizedAmount(50, 8);
+        NormalizedAmount memory limitAmount = NormalizedAmount(100, 8);
+        EndpointHelpersLib.attestEndpointsHelper(
+            user_B, 0, chainId, manager, transferAmount, limitAmount, endpoints
         );
 
-        for (uint256 i; i < endpoints.length; i++) {
-            IEndpointReceiver e = endpoints[i];
-            e.receiveMessage(encodedEm);
-        }
+        // assert that the user received tokens
+        assertEq(token.balanceOf(address(user_B)), transferAmount.denormalize(token.decimals()));
 
-        return (m, em);
+        // assert that the inbound limits updated
+        IRateLimiter.RateLimitParams memory inboundLimitParams =
+            manager.getInboundLimitParams(EndpointHelpersLib.SENDING_CHAIN_ID);
+        assertEq(
+            inboundLimitParams.currentCapacity.getAmount(),
+            limitAmount.sub(transferAmount).getAmount()
+        );
+        assertEq(inboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
+
+        // assert that the outbound limit is still at the max
+        // backflow should not go over the max limit
+        IRateLimiter.RateLimitParams memory outboundLimitParams = manager.getOutboundLimitParams();
+        assertEq(
+            outboundLimitParams.currentCapacity.getAmount(), outboundLimitParams.limit.getAmount()
+        );
+        assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
     }
 
-    function test_inboundRateLimit() public {
-        address user_A = address(0x123);
+    function test_inboundRateLimit_queue() public {
         address user_B = address(0x456);
 
         (DummyEndpoint e1, DummyEndpoint e2) = EndpointHelpersLib.setup_endpoints(manager);
@@ -470,8 +469,14 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         bytes memory encodedEm;
         {
             EndpointStructs.EndpointMessage memory em;
-            (m, em) = _attestEndpointsHelper(
-                user_A, user_B, 0, uint256(5).normalize(token.decimals()), endpoints
+            (m, em) = EndpointHelpersLib.attestEndpointsHelper(
+                user_B,
+                0,
+                chainId,
+                manager,
+                NormalizedAmount(50, 8),
+                uint256(5).normalize(token.decimals()),
+                endpoints
             );
             encodedEm = EndpointStructs.encodeEndpointMessage(
                 EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX, em
@@ -541,6 +546,127 @@ contract TestRateLimit is Test, IRateLimiterEvents {
                 entries[1].topics[2],
                 EndpointStructs.managerMessageDigest(EndpointHelpersLib.SENDING_CHAIN_ID, m)
             );
+        }
+    }
+
+    function test_circular_flow() public {
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(manager.token());
+
+        uint8 decimals = token.decimals();
+
+        NormalizedAmount memory mintAmount = NormalizedAmount(50, 8);
+        token.mintDummy(address(user_A), mintAmount.denormalize(decimals));
+        manager.setOutboundLimit(mintAmount.denormalize(decimals));
+
+        // transfer 10 tokens
+        vm.startPrank(user_A);
+
+        NormalizedAmount memory transferAmount = NormalizedAmount(10, 8);
+        token.approve(address(manager), type(uint256).max);
+        manager.transfer(
+            transferAmount.denormalize(decimals),
+            chainId,
+            toWormholeFormat(user_B),
+            false,
+            new bytes(1)
+        );
+
+        vm.stopPrank();
+
+        // assert manager has 10 tokens and user_A has 10 fewer tokens
+        assertEq(token.balanceOf(address(manager)), transferAmount.denormalize(decimals));
+        assertEq(token.balanceOf(user_A), mintAmount.sub(transferAmount).denormalize(decimals));
+
+        {
+            // assert outbound rate limit decreased
+            IRateLimiter.RateLimitParams memory outboundLimitParams =
+                manager.getOutboundLimitParams();
+            assertEq(
+                outboundLimitParams.currentCapacity.getAmount(),
+                outboundLimitParams.limit.sub(transferAmount).getAmount()
+            );
+            assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
+        }
+
+        // go 1 second into the future
+        uint256 receiveTime = initialBlockTimestamp + 1;
+        vm.warp(receiveTime);
+
+        // now receive 10 tokens from user_B -> user_A
+        (DummyEndpoint e1, DummyEndpoint e2) = EndpointHelpersLib.setup_endpoints(manager);
+
+        IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
+        endpoints[0] = e1;
+        endpoints[1] = e2;
+
+        EndpointHelpersLib.attestEndpointsHelper(
+            user_A, 0, chainId, manager, transferAmount, mintAmount, endpoints
+        );
+
+        // assert that user_A has original amount
+        assertEq(token.balanceOf(user_A), mintAmount.denormalize(decimals));
+
+        {
+            // assert that the inbound limits decreased
+            IRateLimiter.RateLimitParams memory inboundLimitParams =
+                manager.getInboundLimitParams(EndpointHelpersLib.SENDING_CHAIN_ID);
+            assertEq(
+                inboundLimitParams.currentCapacity.getAmount(),
+                inboundLimitParams.limit.sub(transferAmount).getAmount()
+            );
+            assertEq(inboundLimitParams.lastTxTimestamp, receiveTime);
+        }
+
+        {
+            // assert that outbound limit is at max again (because of backflow)
+            IRateLimiter.RateLimitParams memory outboundLimitParams =
+                manager.getOutboundLimitParams();
+            assertEq(
+                outboundLimitParams.currentCapacity.getAmount(),
+                outboundLimitParams.limit.getAmount()
+            );
+            assertEq(outboundLimitParams.lastTxTimestamp, receiveTime);
+        }
+
+        // go 1 second into the future
+        uint256 sendAgainTime = receiveTime + 1;
+        vm.warp(sendAgainTime);
+
+        // transfer 10 back to the contract
+        vm.startPrank(user_A);
+
+        manager.transfer(
+            transferAmount.denormalize(decimals),
+            EndpointHelpersLib.SENDING_CHAIN_ID,
+            toWormholeFormat(user_B),
+            false,
+            new bytes(1)
+        );
+
+        vm.stopPrank();
+
+        {
+            // assert outbound rate limit decreased
+            IRateLimiter.RateLimitParams memory outboundLimitParams =
+                manager.getOutboundLimitParams();
+            assertEq(
+                outboundLimitParams.currentCapacity.getAmount(),
+                outboundLimitParams.limit.sub(transferAmount).getAmount()
+            );
+            assertEq(outboundLimitParams.lastTxTimestamp, sendAgainTime);
+        }
+
+        {
+            // assert that the inbound limit is at max again (because of backflow)
+            IRateLimiter.RateLimitParams memory inboundLimitParams =
+                manager.getInboundLimitParams(EndpointHelpersLib.SENDING_CHAIN_ID);
+            assertEq(
+                inboundLimitParams.currentCapacity.getAmount(), inboundLimitParams.limit.getAmount()
+            );
+            assertEq(inboundLimitParams.lastTxTimestamp, sendAgainTime);
         }
     }
 }
