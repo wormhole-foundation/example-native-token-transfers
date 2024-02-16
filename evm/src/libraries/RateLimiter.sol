@@ -198,8 +198,22 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         );
     }
 
+    function _backfillOutboundAmount(NormalizedAmount memory amount) internal {
+        _backfillRateLimitAmount(
+            amount, _getCurrentCapacity(getOutboundLimitParams()), _getOutboundLimitParamsStorage()
+        );
+    }
+
     function _consumeInboundAmount(NormalizedAmount memory amount, uint16 chainId_) internal {
         _consumeRateLimitAmount(
+            amount,
+            _getCurrentCapacity(getInboundLimitParams(chainId_)),
+            _getInboundLimitParamsStorage()[chainId_]
+        );
+    }
+
+    function _backfillInboundAmount(NormalizedAmount memory amount, uint16 chainId_) internal {
+        _backfillRateLimitAmount(
             amount,
             _getCurrentCapacity(getInboundLimitParams(chainId_)),
             _getInboundLimitParamsStorage()[chainId_]
@@ -213,6 +227,17 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     ) internal {
         rateLimitParams.lastTxTimestamp = uint64(block.timestamp);
         rateLimitParams.currentCapacity = capacity.sub(amount);
+    }
+
+    /// @dev Refills the capacity by the given amount.
+    /// This is used to replenish the capacity via backflows.
+    function _backfillRateLimitAmount(
+        NormalizedAmount memory amount,
+        NormalizedAmount memory capacity,
+        RateLimitParams storage rateLimitParams
+    ) internal {
+        rateLimitParams.lastTxTimestamp = uint64(block.timestamp);
+        rateLimitParams.currentCapacity = capacity.add(amount).min(rateLimitParams.limit);
     }
 
     function _isOutboundAmountRateLimited(NormalizedAmount memory amount)

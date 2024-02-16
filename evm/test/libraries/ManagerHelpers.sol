@@ -16,7 +16,6 @@ library ManagerHelpersLib {
         uint8 decimals
     ) internal returns (uint8) {
         manager.setSibling(SENDING_CHAIN_ID, toWormholeFormat(address(manager)));
-        manager.setOutboundLimit(NormalizedAmount(type(uint64).max, 8).denormalize(decimals));
         manager.setInboundLimit(inboundLimit.denormalize(decimals), SENDING_CHAIN_ID);
     }
 }

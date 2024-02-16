@@ -261,101 +261,12 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
     // === attestation
 
-    function _attestEndpointsHelper(
-        address from,
-        address to,
-        uint64 sequence,
-        NormalizedAmount memory inboundLimit,
-        IEndpointReceiver[] memory endpoints
-    )
-        internal
-        returns (EndpointStructs.ManagerMessage memory, EndpointStructs.EndpointMessage memory)
-    {
-        DummyToken token = DummyToken(manager.token());
-
-        uint8 decimals = token.decimals(); // 18
-        {
-            token.mintDummy(from, 5 * 10 ** decimals);
-            ManagerHelpersLib.setConfigs(inboundLimit, manager, decimals);
-        }
-
-        {
-            uint256 from_balanceBefore = token.balanceOf(from);
-            uint256 manager_balanceBefore = token.balanceOf(address(manager));
-
-            vm.startPrank(from);
-
-            token.approve(address(manager), 3 * 10 ** token.decimals());
-            // TODO: parse recorded logs
-            manager.transfer(
-                3 * 10 ** token.decimals(), chainId, toWormholeFormat(to), false, new bytes(1)
-            );
-
-            vm.stopPrank();
-
-            assertEq(token.balanceOf(from), from_balanceBefore - 3 * 10 ** token.decimals());
-            assertEq(
-                token.balanceOf(address(manager)),
-                manager_balanceBefore + 3 * 10 ** token.decimals()
-            );
-        }
-
-        EndpointStructs.ManagerMessage memory m = EndpointStructs.ManagerMessage(
-            sequence,
-            toWormholeFormat(from),
-            EndpointStructs.encodeNativeTokenTransfer(
-                EndpointStructs.NativeTokenTransfer({
-                    amount: NormalizedAmount(50, 8),
-                    sourceToken: toWormholeFormat(address(token)),
-                    to: toWormholeFormat(to),
-                    toChain: chainId
-                })
-            )
-        );
-        bytes memory encodedM = EndpointStructs.encodeManagerMessage(m);
-
-        EndpointStructs.EndpointMessage memory em;
-        bytes memory encodedEm;
-        (em, encodedEm) = EndpointStructs.buildAndEncodeEndpointMessage(
-            EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX,
-            toWormholeFormat(address(manager)),
-            encodedM,
-            new bytes(0)
-        );
-
-        for (uint256 i; i < endpoints.length; i++) {
-            IEndpointReceiver e = endpoints[i];
-            e.receiveMessage(encodedEm);
-        }
-
-        return (m, em);
-    }
-
-    function buildEndpointMessageWithManagerPayload(
-        uint64 sequence,
-        bytes32 sender,
-        bytes32 sourceManager,
-        bytes memory payload
-    ) internal pure returns (EndpointStructs.ManagerMessage memory, bytes memory) {
-        EndpointStructs.ManagerMessage memory m =
-            EndpointStructs.ManagerMessage(sequence, sender, payload);
-        bytes memory managerMessage = EndpointStructs.encodeManagerMessage(m);
-        bytes memory endpointMessage;
-        (, endpointMessage) = EndpointStructs.buildAndEncodeEndpointMessage(
-            EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX,
-            sourceManager,
-            managerMessage,
-            new bytes(0)
-        );
-        return (m, endpointMessage);
-    }
-
     function test_onlyEnabledEndpointsCanAttest() public {
         (DummyEndpoint e1,) = EndpointHelpersLib.setup_endpoints(manager);
         manager.removeEndpoint(address(e1));
 
         bytes memory endpointMessage;
-        (, endpointMessage) = buildEndpointMessageWithManagerPayload(
+        (, endpointMessage) = EndpointHelpersLib.buildEndpointMessageWithManagerPayload(
             0, bytes32(0), toWormholeFormat(address(manager)), abi.encode("payload")
         );
 
@@ -371,8 +282,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         EndpointStructs.ManagerMessage memory managerMessage;
         bytes memory endpointMessage;
-        (managerMessage, endpointMessage) =
-            buildEndpointMessageWithManagerPayload(0, bytes32(0), sibling, abi.encode("payload"));
+        (managerMessage, endpointMessage) = EndpointHelpersLib
+            .buildEndpointMessageWithManagerPayload(0, bytes32(0), sibling, abi.encode("payload"));
 
         vm.expectRevert(
             abi.encodeWithSignature(
@@ -392,8 +303,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         EndpointStructs.ManagerMessage memory managerMessage;
         bytes memory endpointMessage;
-        (managerMessage, endpointMessage) =
-            buildEndpointMessageWithManagerPayload(0, bytes32(0), sibling, abi.encode("payload"));
+        (managerMessage, endpointMessage) = EndpointHelpersLib
+            .buildEndpointMessageWithManagerPayload(0, bytes32(0), sibling, abi.encode("payload"));
 
         e1.receiveMessage(endpointMessage);
 
@@ -413,8 +324,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         EndpointStructs.ManagerMessage memory managerMessage;
         bytes memory endpointMessage;
-        (managerMessage, endpointMessage) =
-            buildEndpointMessageWithManagerPayload(0, bytes32(0), sibling, abi.encode("payload"));
+        (managerMessage, endpointMessage) = EndpointHelpersLib
+            .buildEndpointMessageWithManagerPayload(0, bytes32(0), sibling, abi.encode("payload"));
 
         e1.receiveMessage(endpointMessage);
         e1.receiveMessage(endpointMessage);
@@ -434,8 +345,14 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         endpoints[0] = e1;
 
         EndpointStructs.ManagerMessage memory m;
-        (m,) = _attestEndpointsHelper(
-            address(0x123), address(0x456), 0, NormalizedAmount(type(uint64).max, 8), endpoints
+        (m,) = EndpointHelpersLib.attestEndpointsHelper(
+            address(0x456),
+            0,
+            chainId,
+            manager,
+            NormalizedAmount(50, 8),
+            NormalizedAmount(type(uint64).max, 8),
+            endpoints
         );
 
         manager.removeEndpoint(address(e1));
@@ -481,21 +398,27 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function test_attestationQuorum() public {
-        address user_A = address(0x123);
         address user_B = address(0x456);
 
         (DummyEndpoint e1, DummyEndpoint e2) = EndpointHelpersLib.setup_endpoints(manager);
+        NormalizedAmount memory transferAmount = NormalizedAmount(50, 8);
+
         EndpointStructs.ManagerMessage memory m;
         bytes memory encodedEm;
-
         {
             IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
             endpoints[0] = e1;
             endpoints[1] = e2;
 
             EndpointStructs.EndpointMessage memory em;
-            (m, em) = _attestEndpointsHelper(
-                user_A, user_B, 0, NormalizedAmount(type(uint64).max, 8), endpoints
+            (m, em) = EndpointHelpersLib.attestEndpointsHelper(
+                user_B,
+                0,
+                chainId,
+                manager,
+                transferAmount,
+                NormalizedAmount(type(uint64).max, 8),
+                endpoints
             );
             encodedEm = EndpointStructs.encodeEndpointMessage(
                 EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX, em
@@ -504,7 +427,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         {
             DummyToken token = DummyToken(manager.token());
-            assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (token.decimals() - 8));
+            assertEq(token.balanceOf(address(user_B)), transferAmount.denormalize(token.decimals()));
         }
 
         // replay protection
@@ -600,14 +523,13 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         //
         // This ensures that the storage slots don't get clobbered through the upgrades, and also that
 
-        address user_A = address(0x123);
         address user_B = address(0x456);
 
         DummyToken token = DummyToken(manager.token());
-        uint8 decimals = token.decimals();
 
         // Step 1
         // (contract is deployed by setUp())
+        NormalizedAmount memory transferAmount = NormalizedAmount(50, 8);
 
         (IEndpointReceiver e1, IEndpointReceiver e2) = EndpointHelpersLib.setup_endpoints(manager);
 
@@ -619,15 +541,21 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         bytes memory encodedEm;
         {
             EndpointStructs.EndpointMessage memory em;
-            (m, em) = _attestEndpointsHelper(
-                user_A, user_B, 0, NormalizedAmount(type(uint64).max, 8), endpoints
+            (m, em) = EndpointHelpersLib.attestEndpointsHelper(
+                user_B,
+                0,
+                chainId,
+                manager,
+                transferAmount,
+                NormalizedAmount(type(uint64).max, 8),
+                endpoints
             );
             encodedEm = EndpointStructs.encodeEndpointMessage(
                 EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX, em
             );
         }
 
-        assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (decimals - 8));
+        assertEq(token.balanceOf(address(user_B)), transferAmount.denormalize(token.decimals()));
 
         // Step 2
 
@@ -653,9 +581,17 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             );
         }
 
-        _attestEndpointsHelper(user_A, user_B, 1, NormalizedAmount(type(uint64).max, 8), endpoints);
+        EndpointHelpersLib.attestEndpointsHelper(
+            user_B,
+            1,
+            chainId,
+            manager,
+            transferAmount,
+            NormalizedAmount(type(uint64).max, 8),
+            endpoints
+        );
 
-        assertEq(token.balanceOf(address(user_B)), 100 * 10 ** (decimals - 8));
+        assertEq(token.balanceOf(address(user_B)), transferAmount.denormalize(token.decimals()) * 2);
 
         // Step 3
 
@@ -668,16 +604,32 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         // attest with e1 twice (just two make sure it's still not accepted)
         endpoints[1] = e1;
 
-        _attestEndpointsHelper(user_A, user_B, 2, NormalizedAmount(type(uint64).max, 8), endpoints);
+        EndpointHelpersLib.attestEndpointsHelper(
+            user_B,
+            2,
+            chainId,
+            manager,
+            transferAmount,
+            NormalizedAmount(type(uint64).max, 8),
+            endpoints
+        );
 
         // balance is the same as before
-        assertEq(token.balanceOf(address(user_B)), 100 * 10 ** (decimals - 8));
+        assertEq(token.balanceOf(address(user_B)), transferAmount.denormalize(token.decimals()) * 2);
 
         endpoints = new IEndpointReceiver[](1);
         endpoints[0] = e2;
 
-        _attestEndpointsHelper(user_A, user_B, 2, NormalizedAmount(type(uint64).max, 8), endpoints);
+        EndpointHelpersLib.attestEndpointsHelper(
+            user_B,
+            2,
+            chainId,
+            manager,
+            transferAmount,
+            NormalizedAmount(type(uint64).max, 8),
+            endpoints
+        );
 
-        assertEq(token.balanceOf(address(user_B)), 150 * 10 ** (decimals - 8));
+        assertEq(token.balanceOf(address(user_B)), transferAmount.denormalize(token.decimals()) * 3);
     }
 }
