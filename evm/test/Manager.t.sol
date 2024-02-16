@@ -316,7 +316,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         (em, encodedEm) = EndpointStructs.buildAndEncodeEndpointMessage(
             EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX,
             toWormholeFormat(address(manager)),
-            encodedM
+            encodedM,
+            new bytes(0)
         );
 
         for (uint256 i; i < endpoints.length; i++) {
@@ -338,7 +339,10 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         bytes memory managerMessage = EndpointStructs.encodeManagerMessage(m);
         bytes memory endpointMessage;
         (, endpointMessage) = EndpointStructs.buildAndEncodeEndpointMessage(
-            EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX, sourceManager, managerMessage
+            EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX,
+            sourceManager,
+            managerMessage,
+            new bytes(0)
         );
         return (m, endpointMessage);
     }
