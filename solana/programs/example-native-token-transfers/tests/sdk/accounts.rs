@@ -53,6 +53,17 @@ impl Wormhole {
     }
 }
 
+pub struct Governance {
+    pub program: Pubkey,
+}
+
+impl Governance {
+    pub fn governance(&self) -> Pubkey {
+        let (gov, _) = Pubkey::find_program_address(&[b"governance"], &self.program);
+        gov
+    }
+}
+
 pub struct NTT {
     pub program: Pubkey,
     pub wormhole: Wormhole,

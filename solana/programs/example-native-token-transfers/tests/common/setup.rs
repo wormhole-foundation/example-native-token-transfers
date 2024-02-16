@@ -16,7 +16,7 @@ use spl_token::instruction::AuthorityType;
 use wormhole_anchor_sdk::wormhole::{BridgeData, FeeCollector};
 
 use crate::sdk::{
-    accounts::{Wormhole, NTT},
+    accounts::{Governance, Wormhole, NTT},
     endpoints::wormhole::instructions::admin::{set_endpoint_sibling, SetEndpointSibling},
     instructions::{
         admin::{register_endpoint, set_sibling, RegisterEndpoint, SetSibling},
@@ -43,6 +43,7 @@ pub const OTHER_CHAIN: u16 = 2;
 
 pub struct TestData {
     pub ntt: NTT,
+    pub governance: Governance,
     pub program_owner: Keypair,
     pub mint_authority: Keypair,
     pub mint: Pubkey,
@@ -79,6 +80,8 @@ pub async fn setup_programs() -> Result<ProgramTest, Error> {
         example_native_token_transfers::ID,
         None,
     );
+
+    program_test.add_program("wormhole_governance", wormhole_governance::ID, None);
 
     program_test.add_program(
         "mainnet_core_bridge",
@@ -236,6 +239,9 @@ pub async fn setup_accounts(ctx: &mut ProgramTestContext) -> TestData {
             wormhole: Wormhole {
                 program: wormhole_anchor_sdk::wormhole::program::ID,
             },
+        },
+        governance: Governance {
+            program: wormhole_governance::ID,
         },
         program_owner,
         mint_authority,

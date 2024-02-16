@@ -5898,6 +5898,7 @@ dependencies = [
  "solana-program",
  "wormhole-anchor-sdk",
  "wormhole-io",
+ "wormhole-sdk",
 ]
 
 [[package]]

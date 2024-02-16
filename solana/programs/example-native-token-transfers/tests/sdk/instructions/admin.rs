@@ -39,8 +39,8 @@ pub fn set_paused(ntt: &NTT, accounts: SetPaused, pause: bool) -> Instruction {
     let data = example_native_token_transfers::instruction::SetPaused { pause };
 
     let accounts = example_native_token_transfers::accounts::SetPaused {
-        config: ntt.config(),
         owner: accounts.owner,
+        config: ntt.config(),
     };
 
     Instruction {
@@ -69,7 +69,7 @@ pub fn register_endpoint(ntt: &NTT, accounts: RegisterEndpoint) -> Instruction {
     };
 
     Instruction {
-        program_id: example_native_token_transfers::ID,
+        program_id: ntt.program,
         accounts: accounts.to_account_metas(None),
         data: data.data(),
     }

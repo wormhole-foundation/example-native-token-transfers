@@ -5,6 +5,8 @@ use anchor_lang::prelude::error_code;
 pub enum NTTError {
     #[msg("CantReleaseYet")]
     CantReleaseYet,
+    #[msg("InvalidPendingOwner")]
+    InvalidPendingOwner,
     #[msg("InvalidChainId")]
     InvalidChainId,
     #[msg("InvalidRecipientAddress")]

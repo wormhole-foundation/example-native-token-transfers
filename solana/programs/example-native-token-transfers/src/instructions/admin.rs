@@ -4,6 +4,7 @@ use anchor_spl::token_interface;
 use crate::{
     chain_id::ChainId,
     config::Config,
+    error::NTTError,
     normalized_amount::NormalizedAmount,
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit, rate_limit::RateLimitState},
     registered_endpoint::RegisteredEndpoint,
@@ -15,6 +16,7 @@ use crate::{
 #[derive(Accounts)]
 pub struct TransferOwnership<'info> {
     #[account(
+        mut,
         has_one = owner,
     )]
     pub config: Account<'info, Config>,
@@ -41,7 +43,7 @@ pub fn transfer_ownership(
 pub struct ClaimOwnership<'info> {
     #[account(
         mut,
-        constraint = config.pending_owner == Some(new_owner.key())
+        constraint = config.pending_owner == Some(new_owner.key()) @ NTTError::InvalidPendingOwner
     )]
     pub config: Account<'info, Config>,
 
@@ -61,15 +63,15 @@ pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
 #[derive(Accounts)]
 #[instruction(args: SetSiblingArgs)]
 pub struct SetSibling<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    pub owner: Signer<'info>,
+
     #[account(
         has_one = owner,
     )]
     pub config: Account<'info, Config>,
-
-    pub owner: Signer<'info>,
-
-    #[account(mut)]
-    pub payer: Signer<'info>,
 
     #[account(
         init,
@@ -245,13 +247,13 @@ pub fn set_inbound_limit(ctx: Context<SetInboundLimit>, args: SetInboundLimitArg
 // * Pausing
 #[derive(Accounts)]
 pub struct SetPaused<'info> {
+    pub owner: Signer<'info>,
+
     #[account(
         mut,
         has_one = owner,
     )]
     pub config: Account<'info, Config>,
-
-    pub owner: Signer<'info>,
 }
 
 pub fn set_paused(ctx: Context<SetPaused>, paused: bool) -> Result<()> {
