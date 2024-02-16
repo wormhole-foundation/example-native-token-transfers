@@ -248,7 +248,11 @@ contract TestEndToEndRelayer is
             uint256 userBalanceBefore = token1.balanceOf(address(userA));
 
             managerChain1.transfer{value: wormholeEndpointChain1.quoteDeliveryPrice(chainId2)}(
-                sendingAmount, chainId2, bytes32(uint256(uint160(userB))), false, encodeEndpointInstruction(false)
+                sendingAmount,
+                chainId2,
+                bytes32(uint256(uint160(userB))),
+                false,
+                encodeEndpointInstruction(false)
             );
             return;
 
@@ -293,12 +297,19 @@ contract TestEndToEndRelayer is
         {
             supplyBefore = token2.totalSupply();
             managerChain2.transfer{value: wormholeEndpointChain2.quoteDeliveryPrice(chainId1)}(
-                sendingAmount, chainId1, bytes32(uint256(uint160(userD))), false, encodeEndpointInstruction(false)
+                sendingAmount,
+                chainId1,
+                bytes32(uint256(uint160(userD))),
+                false,
+                encodeEndpointInstruction(false)
             );
 
             supplyAfter = token2.totalSupply();
 
-            require(sendingAmount - supplyBefore == supplyAfter, "Supplies don't match - tokens not burned");
+            require(
+                sendingAmount - supplyBefore == supplyAfter,
+                "Supplies don't match - tokens not burned"
+            );
             require(token2.balanceOf(userB) == 0, "OG user receive tokens");
             require(token2.balanceOf(userC) == 0, "Sending user didn't receive tokens");
             require(
@@ -338,15 +349,19 @@ contract TestEndToEndRelayer is
         }
         return copy;
     }
+
     function encodeEndpointInstruction(bool relayer_off) public view returns (bytes memory) {
-        WormholeEndpoint.WormholeEndpointInstruction memory instruction = WormholeEndpoint.WormholeEndpointInstruction(relayer_off);
-        bytes memory encodedInstructionWormhole = wormholeEndpointChain1.encodeWormholeEndpointInstruction(instruction);
-        EndpointStructs.EndpointInstruction memory EndpointInstruction = EndpointStructs.EndpointInstruction({index: 0, payload: encodedInstructionWormhole});
-        EndpointStructs.EndpointInstruction[] memory EndpointInstructions = new EndpointStructs.EndpointInstruction[](1);
+        WormholeEndpoint.WormholeEndpointInstruction memory instruction =
+            WormholeEndpoint.WormholeEndpointInstruction(relayer_off);
+        bytes memory encodedInstructionWormhole =
+            wormholeEndpointChain1.encodeWormholeEndpointInstruction(instruction);
+        EndpointStructs.EndpointInstruction memory EndpointInstruction =
+            EndpointStructs.EndpointInstruction({index: 0, payload: encodedInstructionWormhole});
+        EndpointStructs.EndpointInstruction[] memory EndpointInstructions =
+            new EndpointStructs.EndpointInstruction[](1);
         EndpointInstructions[0] = EndpointInstruction;
         return EndpointStructs.encodeEndpointInstructions(EndpointInstructions);
     }
-
 }
 
 contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
@@ -456,7 +471,11 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
             uint256 userBalanceBefore = token1.balanceOf(address(userA));
             vm.deal(userA, 1 ether);
             managerChain1.transfer{value: wormholeEndpointChain1.quoteDeliveryPrice(chainId2)}(
-                sendingAmount, chainId2, bytes32(uint256(uint160(userB))), false, encodeEndpointInstruction(false)
+                sendingAmount,
+                chainId2,
+                bytes32(uint256(uint160(userB))),
+                false,
+                encodeEndpointInstruction(false)
             );
         }
 
@@ -472,7 +491,6 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
 
         vm.stopPrank();
         vm.chainId(chainId2);
-
 
         // Caller is not proper who to receive messages from
         bytes[] memory a;
@@ -566,10 +584,14 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function encodeEndpointInstruction(bool relayer_off) public view returns (bytes memory) {
-        WormholeEndpoint.WormholeEndpointInstruction memory instruction = WormholeEndpoint.WormholeEndpointInstruction(relayer_off);
-        bytes memory encodedInstructionWormhole = wormholeEndpointChain1.encodeWormholeEndpointInstruction(instruction);
-        EndpointStructs.EndpointInstruction memory EndpointInstruction = EndpointStructs.EndpointInstruction({index: 0, payload: encodedInstructionWormhole});
-        EndpointStructs.EndpointInstruction[] memory EndpointInstructions = new EndpointStructs.EndpointInstruction[](1);
+        WormholeEndpoint.WormholeEndpointInstruction memory instruction =
+            WormholeEndpoint.WormholeEndpointInstruction(relayer_off);
+        bytes memory encodedInstructionWormhole =
+            wormholeEndpointChain1.encodeWormholeEndpointInstruction(instruction);
+        EndpointStructs.EndpointInstruction memory EndpointInstruction =
+            EndpointStructs.EndpointInstruction({index: 0, payload: encodedInstructionWormhole});
+        EndpointStructs.EndpointInstruction[] memory EndpointInstructions =
+            new EndpointStructs.EndpointInstruction[](1);
         EndpointInstructions[0] = EndpointInstruction;
         return EndpointStructs.encodeEndpointInstructions(EndpointInstructions);
     }

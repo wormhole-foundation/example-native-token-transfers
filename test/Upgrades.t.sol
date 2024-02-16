@@ -527,7 +527,13 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         {
             uint256 managerBalanceBefore = token1.balanceOf(address(managerChain1));
             uint256 userBalanceBefore = token1.balanceOf(address(userA));
-            managerChain1.transfer(sendingAmount, chainId2, bytes32(uint256(uint160(userB))), false, encodeEndpointInstruction(true));
+            managerChain1.transfer(
+                sendingAmount,
+                chainId2,
+                bytes32(uint256(uint160(userB))),
+                false,
+                encodeEndpointInstruction(true)
+            );
 
             // Balance check on funds going in and out working as expected
             uint256 managerBalanceAfter = token1.balanceOf(address(managerChain1));
@@ -582,7 +588,13 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         // Supply checks on the transfer
         {
             uint256 supplyBefore = token2.totalSupply();
-            managerChain2.transfer(sendingAmount, chainId1, bytes32(uint256(uint160(userD))), false, encodeEndpointInstruction(true));
+            managerChain2.transfer(
+                sendingAmount,
+                chainId1,
+                bytes32(uint256(uint160(userD))),
+                false,
+                encodeEndpointInstruction(true)
+            );
 
             uint256 supplyAfter = token2.totalSupply();
 
@@ -624,10 +636,14 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function encodeEndpointInstruction(bool relayer_off) public view returns (bytes memory) {
-        WormholeEndpoint.WormholeEndpointInstruction memory instruction = WormholeEndpoint.WormholeEndpointInstruction(relayer_off);
-        bytes memory encodedInstructionWormhole = wormholeEndpointChain1.encodeWormholeEndpointInstruction(instruction);
-        EndpointStructs.EndpointInstruction memory EndpointInstruction = EndpointStructs.EndpointInstruction({index: 0, payload: encodedInstructionWormhole});
-        EndpointStructs.EndpointInstruction[] memory EndpointInstructions = new EndpointStructs.EndpointInstruction[](1);
+        WormholeEndpoint.WormholeEndpointInstruction memory instruction =
+            WormholeEndpoint.WormholeEndpointInstruction(relayer_off);
+        bytes memory encodedInstructionWormhole =
+            wormholeEndpointChain1.encodeWormholeEndpointInstruction(instruction);
+        EndpointStructs.EndpointInstruction memory EndpointInstruction =
+            EndpointStructs.EndpointInstruction({index: 0, payload: encodedInstructionWormhole});
+        EndpointStructs.EndpointInstruction[] memory EndpointInstructions =
+            new EndpointStructs.EndpointInstruction[](1);
         EndpointInstructions[0] = EndpointInstruction;
         return EndpointStructs.encodeEndpointInstructions(EndpointInstructions);
     }
@@ -691,5 +707,4 @@ contract TestInitialize is Test {
 
     //     require(address(this) == managerChain1.owner(), "Unexpected owner");
     // }
-    
 }
