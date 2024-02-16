@@ -102,7 +102,7 @@ contract TestEndToEndRelayer is Test, IManagerEvents, IRateLimiterEvents, Wormho
         managerChain2.setThreshold(1);
     }
 
-    function testChainToChainReverts() public{
+    function test_chainToChainReverts() public{
 
         // record all of the logs for all of the occuring events
         vm.recordLogs();
@@ -182,7 +182,7 @@ contract TestEndToEndRelayer is Test, IManagerEvents, IRateLimiterEvents, Wormho
         require(token2.balanceOf(address(managerChain2)) == 0, "Manager has unintended funds");
     }
 
-    function testChainToChain() public{
+    function test_chainToChain() public{
 
         // record all of the logs for all of the occuring events
         vm.recordLogs();
@@ -395,7 +395,7 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
         wormholeEndpointChain2.setWormholeSibling(chainId1, bytes32(uint256(uint160(address(wormholeEndpointChain1)))));
     }
 
-    function testRelayerEndpointAuth() public {
+    function test_relayerEndpointAuth() public {
 
         vm.recordLogs();
         vm.chainId(chainId1);

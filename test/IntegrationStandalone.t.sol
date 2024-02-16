@@ -110,7 +110,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
        //console.log(managerChain1.getThreshold());
     }
 
-    function testChainToChainBase() public{
+    function test_chainToChainBase() public{
         managerChain1.setThreshold(1);
         managerChain2.setThreshold(1);
     
@@ -230,7 +230,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         }
     }
 
-    function testLotsOfReverts() public{
+    function test_lotsOfReverts() public{
 
         vm.chainId(chainId1);
 
@@ -399,7 +399,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         }
      }
 
-    function testMultiEndpoint() public {
+    function test_multiEndpoint() public {
         managerChain1.setThreshold(1);
         managerChain2.setThreshold(1);
  

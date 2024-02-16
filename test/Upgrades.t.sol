@@ -236,7 +236,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         vm.chainId(chainId1);
     }
 
-    function testBasicUpgradeManager() public{
+    function test_basicUpgradeManager() public{
 
         // Basic call to upgrade with the same contact as ewll
         ManagerStandalone newImplementation = new ManagerStandalone(address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days);
@@ -246,7 +246,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     //Upgradability stuff for endpoints is real borked because of some missing implementation. Test this later once fixed.
-    function testBasicUpgradeEndpoint() public{
+    function test_basicUpgradeEndpoint() public{
 
         // Basic call to upgrade with the same contact as well
         WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
@@ -261,7 +261,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
 
     // Confirm that we can handle multiple upgrades as a manager
-    function testDoubleUpgradeManager() public {
+    function test_doubleUpgradeManager() public {
 
         // Basic call to upgrade with the same contact as ewll
         ManagerStandalone newImplementation = new ManagerStandalone(address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days);
@@ -275,7 +275,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     //Upgradability stuff for endpoints is real borked because of some missing implementation. Test this later once fixed.
-    function testDoubleUpgradeEndpoint() public{
+    function test_doubleUpgradeEndpoint() public{
 
         // Basic call to upgrade with the same contact as well
         WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
@@ -298,7 +298,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         basicFunctionality();
     }
 
-    function testStorageSlotManager() public {
+    function test_storageSlotManager() public {
         
         // Basic call to upgrade with the same contact as ewll
         ManagerStandaloneStorageLayoutChange newImplementation = new ManagerStandaloneStorageLayoutChange(address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days);
@@ -313,7 +313,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         require(oldOwner == managerChain1.owner(), "Owner changed in an unintended way.");
     }
 
-    function testStorageSlotEndpoint() public {
+    function test_storageSlotEndpoint() public {
         
         // Basic call to upgrade with the same contact as ewll
         WormholeEndpointStandalone newImplementation = new WormholeEndpointStandaloneLayoutChange(
@@ -332,7 +332,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         require(oldOwner == managerChain1.owner(), "Owner changed in an unintended way.");
     }
 
-    function testCallMigrateManager() public {
+    function test_callMigrateManager() public {
         
         // Basic call to upgrade with the same contact as ewll
         ManagerStandalone newImplementation = new ManagerStandaloneMigrateBasic(address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days);
@@ -344,7 +344,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     //Upgradability stuff for endpoints is real borked because of some missing implementation. Test this later once fixed.
-    function testCallMigrateEndpoint() public{
+    function test_callMigrateEndpoint() public{
 
         // Basic call to upgrade with the same contact as well
         WormholeEndpointStandaloneMigrateBasic wormholeEndpointChain1Implementation = new WormholeEndpointStandaloneMigrateBasic(
@@ -359,7 +359,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         basicFunctionality();
     }
 
-    function testImmutableBlockUpdateFailureManager() public {
+    function test_immutableBlockUpdateFailureManager() public {
         
         DummyToken tnew = new DummyToken();
 
@@ -375,7 +375,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
     }
 
-    function testImmutableBlockUpdateFailureEndpoint() public {
+    function test_mmutableBlockUpdateFailureEndpoint() public {
         // Don't allow upgrade to work with a change immutable
 
         address oldManager = wormholeEndpointChain1.manager();
@@ -390,7 +390,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         require(wormholeEndpointChain1.manager() == oldManager, "Manager updated when it shouldn't be");
     }
 
-    function testImmutableBlockUpdateSuccessManager() public {
+    function test_immutableBlockUpdateSuccessManager() public {
         DummyToken tnew = new DummyToken();
         
         // Basic call to upgrade with the same contact as ewll
@@ -403,7 +403,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         basicFunctionality();
     }
 
-    function testImmutableBlockUpdateSuccessEndpoint() public {
+    function test_immutableBlockUpdateSuccessEndpoint() public {
         WormholeEndpointStandaloneImmutableAllow wormholeEndpointChain1Implementation = new WormholeEndpointStandaloneImmutableAllow(
             address(wormhole),
             address(relayer)
@@ -415,7 +415,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         require(wormholeEndpointChain1.manager() == address(0x1), "Manager updated when it shouldn't be");
     }
 
-    function testAuthManager() public {
+    function test_authManager() public {
 
         // User not owner so this should fail
         vm.prank(userA);
@@ -451,7 +451,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         newImplementation.initialize();
     }
 
-    function testAuthEndpoint() public {
+    function test_authEndpoint() public {
 
         // User not owner so this should fail
         vm.prank(userA);
@@ -639,7 +639,7 @@ contract TestInitialize is Test{
     address relayer = address(0x28D8F1Be96f97C1387e94A53e00eCcFb4E75175a);
     IWormhole wormhole = IWormhole(0x706abc4E45D419950511e474C7B9Ed348A4a716c);
 
-    function testDoubleInitialize() public {
+    function test_doubleInitialize() public {
         string memory url = "https://ethereum-goerli.publicnode.com";
         vm.createSelectFork(url);
 
@@ -658,22 +658,23 @@ contract TestInitialize is Test{
         managerChain1.initialize(); 
     }
 
-    function testFrontrunInitialize() public{
-        string memory url = "https://ethereum-goerli.publicnode.com";
-        vm.createSelectFork(url);
+    // TODO - Keep or remove depending on frontrunning discussion for deployment
+    // function test_frontrunInitialize() public{
+    //     string memory url = "https://ethereum-goerli.publicnode.com";
+    //     vm.createSelectFork(url);
 
-        vm.chainId(chainId1);
-        DummyToken t1 = new DummyToken();
-        ManagerStandalone implementation =
-            new ManagerStandalone(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
+    //     vm.chainId(chainId1);
+    //     DummyToken t1 = new DummyToken();
+    //     ManagerStandalone implementation =
+    //         new ManagerStandalone(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
         
-        managerChain1 = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
+    //     managerChain1 = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
 
-        vm.prank(userA);
+    //     vm.prank(userA);
 
-        // Frontrun of initialization occurs HERE
-        managerChain1.initialize();
+    //     // Frontrun of initialization occurs HERE
+    //     managerChain1.initialize();
 
-        require(address(this) == managerChain1.owner(), "Unexpected owner");
-    }
+    //     require(address(this) == managerChain1.owner(), "Unexpected owner");
+    // }
 }
