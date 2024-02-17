@@ -371,6 +371,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         // Chain1 verification and checks with the receiving of the message
         vm.chainId(chainId1);
         vm.stopPrank(); // Back to the owner of everything for this one.
+        vm.recordLogs();
 
         {
             uint256 supplyBefore = token1.totalSupply();
@@ -378,19 +379,16 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
             managerChain1.setInboundLimit(0, chainId2);
             wormholeEndpointChain1.receiveMessage(encodedVMs[0]);
 
-            // TODO - get a specific event - InboundTransferQueued - and use this hash instead
+            bytes32[] memory queuedDigests =
+                Utils.fetchQueuedTransferDigestsFromLogs(vm.getRecordedLogs());
 
             vm.warp(vm.getBlockTimestamp() + 100000);
-            managerChain1.completeInboundQueuedTransfer(
-                0xaec9ec1e50c5d68731ab3d17b9e7690c5fa900f94f2bd2315e92392499ae3f42
-            );
+            managerChain1.completeInboundQueuedTransfer(queuedDigests[0]);
 
             // Double redeem
             vm.warp(vm.getBlockTimestamp() + 100000);
             vm.expectRevert();
-            managerChain1.completeInboundQueuedTransfer(
-                0xaec9ec1e50c5d68731ab3d17b9e7690c5fa900f94f2bd2315e92392499ae3f42
-            );
+            managerChain1.completeInboundQueuedTransfer(queuedDigests[0]);
 
             uint256 supplyAfter = token1.totalSupply();
 
@@ -458,8 +456,6 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
 
         // Send token through standard means (not relayer)
         {
-            uint256 managerBalanceBefore = token1.balanceOf(address(managerChain1));
-            uint256 userBalanceBefore = token1.balanceOf(address(userA));
             managerChain1.transfer(
                 sendingAmount,
                 chainId2,
