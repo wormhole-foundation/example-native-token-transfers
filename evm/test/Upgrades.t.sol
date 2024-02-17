@@ -37,7 +37,7 @@ contract ManagerStandaloneMigrateBasic is ManagerStandalone {
         uint64 rateLimitDuration
     ) ManagerStandalone(token, mode, chainId, rateLimitDuration) {}
 
-    function _migrate() internal override {
+    function _migrate() internal view override {
         _checkThresholdInvariants();
         _checkEndpointsInvariants();
         revert("Proper migrate called");
@@ -96,7 +96,7 @@ contract WormholeEndpointStandaloneMigrateBasic is WormholeEndpointStandalone {
         address wormholeRelayerAddr
     ) WormholeEndpointStandalone(manager, wormholeCoreBridge, wormholeRelayerAddr) {}
 
-    function _migrate() internal override {
+    function _migrate() internal pure override {
         revert("Proper migrate called");
     }
 }
@@ -107,7 +107,7 @@ contract WormholeEndpointStandaloneImmutableCheck is WormholeEndpointStandalone 
         address wormholeRelayerAddr
     ) WormholeEndpointStandalone(address(0x1), wormholeCoreBridge, wormholeRelayerAddr) {}
 
-    function _migrate() internal override {
+    function _migrate() internal pure override {
         revert("Proper migrate called");
     }
 }
@@ -171,7 +171,6 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
     function setUp() public virtual {
         string memory url = "https://ethereum-goerli.publicnode.com";
-        IWormhole wormhole = IWormhole(0x706abc4E45D419950511e474C7B9Ed348A4a716c);
         vm.createSelectFork(url);
         initialBlockTimestamp = vm.getBlockTimestamp();
 
@@ -251,9 +250,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
             address(managerChain1), address(wormhole), address(relayer)
         );
-        managerChain1.upgradeEndpoint(
-            address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)
-        );
+        wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
 
         basicFunctionality();
     }
@@ -281,19 +278,12 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
             address(managerChain1), address(wormhole), address(relayer)
         );
-        managerChain1.upgradeEndpoint(
-            address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)
-        );
+        wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
 
         basicFunctionality();
 
         // Basic call to upgrade with the same contact as well
-        WormholeEndpointStandalone wormholeEndpointChain1Implementation2 = new WormholeEndpointStandalone(
-            address(managerChain1), address(wormhole), address(relayer)
-        );
-        managerChain1.upgradeEndpoint(
-            address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation2)
-        );
+        wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
 
         basicFunctionality();
     }
@@ -319,7 +309,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         WormholeEndpointStandalone newImplementation = new WormholeEndpointStandaloneLayoutChange(
             address(managerChain1), address(wormhole), address(relayer)
         );
-        managerChain1.upgradeEndpoint(address(wormholeEndpointChain1), address(newImplementation));
+        wormholeEndpointChain1.upgrade(address(newImplementation));
 
         address oldOwner = managerChain1.owner();
         WormholeEndpointStandaloneLayoutChange(address(wormholeEndpointChain1)).setData();
@@ -350,9 +340,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         );
 
         vm.expectRevert("Proper migrate called");
-        managerChain1.upgradeEndpoint(
-            address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)
-        );
+        wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
 
         basicFunctionality();
     }
@@ -381,9 +369,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
             new WormholeEndpointStandaloneImmutableCheck(address(wormhole), address(relayer));
 
         vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
-        managerChain1.upgradeEndpoint(
-            address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)
-        );
+        wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
 
         require(
             wormholeEndpointChain1.manager() == oldManager, "Manager updated when it shouldn't be"
@@ -410,9 +396,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
             new WormholeEndpointStandaloneImmutableAllow(address(wormhole), address(relayer));
 
         //vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
-        managerChain1.upgradeEndpoint(
-            address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)
-        );
+        wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
 
         require(
             wormholeEndpointChain1.manager() == address(0x1), "Manager updated when it shouldn't be"
@@ -465,15 +449,13 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         vm.expectRevert(
             abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA)
         );
-        managerChain1.upgradeEndpoint(address(wormholeEndpointChain1), address(0x1));
+        wormholeEndpointChain1.upgrade(address(0x01));
 
         // Basic call so that we can easily see what the new endpoint is.
         WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
             address(managerChain1), address(wormhole), address(relayer)
         );
-        managerChain1.upgradeEndpoint(
-            address(wormholeEndpointChain1), address(wormholeEndpointChain1Implementation)
-        );
+        wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
         basicFunctionality(); // Ensure that the upgrade was proper
 
         // Test if we can 'migrate' from this point

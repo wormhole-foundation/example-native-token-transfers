@@ -254,7 +254,6 @@ contract TestEndToEndRelayer is
                 false,
                 encodeEndpointInstruction(false)
             );
-            return;
 
             // Balance check on funds going in and out working as expected
             uint256 managerBalanceAfter = token1.balanceOf(address(managerChain1));
@@ -353,8 +352,16 @@ contract TestEndToEndRelayer is
     function encodeEndpointInstruction(bool relayer_off) public view returns (bytes memory) {
         WormholeEndpoint.WormholeEndpointInstruction memory instruction =
             WormholeEndpoint.WormholeEndpointInstruction(relayer_off);
-        bytes memory encodedInstructionWormhole =
-            wormholeEndpointChain1.encodeWormholeEndpointInstruction(instruction);
+
+        bytes memory encodedInstructionWormhole;
+        // Source fork has id 0 and corresponds to chain 1
+        if (vm.activeFork() == 0) {
+            encodedInstructionWormhole =
+                wormholeEndpointChain1.encodeWormholeEndpointInstruction(instruction);
+        } else {
+            encodedInstructionWormhole =
+                wormholeEndpointChain2.encodeWormholeEndpointInstruction(instruction);
+        }
         EndpointStructs.EndpointInstruction memory EndpointInstruction =
             EndpointStructs.EndpointInstruction({index: 0, payload: encodedInstructionWormhole});
         EndpointStructs.EndpointInstruction[] memory EndpointInstructions =
@@ -457,7 +464,6 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
 
         // Setting up the transfer
         DummyToken token1 = DummyToken(managerChain1.token());
-        DummyToken token2 = DummyTokenMintAndBurn(managerChain2.token());
 
         uint8 decimals = token1.decimals();
         uint256 sendingAmount = 5 * 10 ** decimals;
@@ -467,8 +473,6 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
 
         // Send token through the relayer
         {
-            uint256 managerBalanceBefore = token1.balanceOf(address(managerChain1));
-            uint256 userBalanceBefore = token1.balanceOf(address(userA));
             vm.deal(userA, 1 ether);
             managerChain1.transfer{value: wormholeEndpointChain1.quoteDeliveryPrice(chainId2)}(
                 sendingAmount,
