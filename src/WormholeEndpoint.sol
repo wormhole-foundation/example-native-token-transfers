@@ -2,12 +2,12 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "wormhole-solidity-sdk/WormholeRelayerSDK.sol";
+import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
+import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 
 import "./libraries/EndpointHelpers.sol";
-import "./interfaces/IWormhole.sol";
 import "./interfaces/IWormholeEndpoint.sol";
 import "./Endpoint.sol";
-import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 
 abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
     using BytesParsing for bytes;

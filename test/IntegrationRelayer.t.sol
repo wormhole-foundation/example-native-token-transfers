@@ -13,7 +13,7 @@ import "../src/interfaces/IManagerEvents.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
 import "../src/interfaces/IWormholeEndpoint.sol";
 import {Utils} from "./libraries/Utils.sol";
-import {DummyToken, DummyTokenMintAndBurn} from "./Manager.t.sol";
+import {DummyToken, DummyTokenMintAndBurn} from "./mocks/DummyToken.sol";
 import {WormholeEndpointStandalone} from "../src/WormholeEndpointStandalone.sol";
 import {WormholeEndpoint} from "../src/WormholeEndpoint.sol";
 import "../src/libraries/EndpointStructs.sol";
@@ -25,8 +25,42 @@ import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "wormhole-solidity-sdk/Utils.sol";
 import {WormholeRelayerBasicTest} from "wormhole-solidity-sdk/testing/WormholeRelayerTest.sol";
 
+contract TestEndToEndRelayerBase is Test {
+    WormholeEndpointStandalone wormholeEndpointChain1;
+    WormholeEndpointStandalone wormholeEndpointChain2;
+
+    function buildEndpointInstruction(bool relayer_off)
+        public
+        view
+        returns (EndpointStructs.EndpointInstruction memory)
+    {
+        WormholeEndpoint.WormholeEndpointInstruction memory instruction =
+            WormholeEndpoint.WormholeEndpointInstruction(relayer_off);
+
+        bytes memory encodedInstructionWormhole;
+        // Source fork has id 0 and corresponds to chain 1
+        if (vm.activeFork() == 0) {
+            encodedInstructionWormhole =
+                wormholeEndpointChain1.encodeWormholeEndpointInstruction(instruction);
+        } else {
+            encodedInstructionWormhole =
+                wormholeEndpointChain2.encodeWormholeEndpointInstruction(instruction);
+        }
+        return EndpointStructs.EndpointInstruction({index: 0, payload: encodedInstructionWormhole});
+    }
+
+    function encodeEndpointInstruction(bool relayer_off) public view returns (bytes memory) {
+        EndpointStructs.EndpointInstruction memory EndpointInstruction =
+            buildEndpointInstruction(relayer_off);
+        EndpointStructs.EndpointInstruction[] memory EndpointInstructions =
+            new EndpointStructs.EndpointInstruction[](1);
+        EndpointInstructions[0] = EndpointInstruction;
+        return EndpointStructs.encodeEndpointInstructions(EndpointInstructions);
+    }
+}
+
 contract TestEndToEndRelayer is
-    Test,
+    TestEndToEndRelayerBase,
     IManagerEvents,
     IRateLimiterEvents,
     WormholeRelayerBasicTest
@@ -43,8 +77,6 @@ contract TestEndToEndRelayer is
     WormholeSimulator guardian;
     uint256 initialBlockTimestamp;
 
-    WormholeEndpointStandalone wormholeEndpointChain1;
-    WormholeEndpointStandalone wormholeEndpointChain2;
     address userA = address(0x123);
     address userB = address(0x456);
     address userC = address(0x789);
@@ -151,7 +183,8 @@ contract TestEndToEndRelayer is
             uint256 managerBalanceBefore = token1.balanceOf(address(managerChain1));
             uint256 userBalanceBefore = token1.balanceOf(address(userA));
 
-            uint256 priceQuote1 = wormholeEndpointChain1.quoteDeliveryPrice(chainId2);
+            uint256 priceQuote1 =
+                wormholeEndpointChain1.quoteDeliveryPrice(chainId2, buildEndpointInstruction(false));
 
             bytes memory instructions = encodeEndpointInstruction(false);
             vm.expectRevert(); // Dust error
@@ -247,7 +280,11 @@ contract TestEndToEndRelayer is
             uint256 managerBalanceBefore = token1.balanceOf(address(managerChain1));
             uint256 userBalanceBefore = token1.balanceOf(address(userA));
 
-            managerChain1.transfer{value: wormholeEndpointChain1.quoteDeliveryPrice(chainId2)}(
+            managerChain1.transfer{
+                value: wormholeEndpointChain1.quoteDeliveryPrice(
+                    chainId2, buildEndpointInstruction(false)
+                    )
+            }(
                 sendingAmount,
                 chainId2,
                 bytes32(uint256(uint160(userB))),
@@ -295,7 +332,11 @@ contract TestEndToEndRelayer is
 
         {
             supplyBefore = token2.totalSupply();
-            managerChain2.transfer{value: wormholeEndpointChain2.quoteDeliveryPrice(chainId1)}(
+            managerChain2.transfer{
+                value: wormholeEndpointChain2.quoteDeliveryPrice(
+                    chainId1, buildEndpointInstruction(false)
+                    )
+            }(
                 sendingAmount,
                 chainId1,
                 bytes32(uint256(uint160(userD))),
@@ -348,30 +389,13 @@ contract TestEndToEndRelayer is
         }
         return copy;
     }
-
-    function encodeEndpointInstruction(bool relayer_off) public view returns (bytes memory) {
-        WormholeEndpoint.WormholeEndpointInstruction memory instruction =
-            WormholeEndpoint.WormholeEndpointInstruction(relayer_off);
-
-        bytes memory encodedInstructionWormhole;
-        // Source fork has id 0 and corresponds to chain 1
-        if (vm.activeFork() == 0) {
-            encodedInstructionWormhole =
-                wormholeEndpointChain1.encodeWormholeEndpointInstruction(instruction);
-        } else {
-            encodedInstructionWormhole =
-                wormholeEndpointChain2.encodeWormholeEndpointInstruction(instruction);
-        }
-        EndpointStructs.EndpointInstruction memory EndpointInstruction =
-            EndpointStructs.EndpointInstruction({index: 0, payload: encodedInstructionWormhole});
-        EndpointStructs.EndpointInstruction[] memory EndpointInstructions =
-            new EndpointStructs.EndpointInstruction[](1);
-        EndpointInstructions[0] = EndpointInstruction;
-        return EndpointStructs.encodeEndpointInstructions(EndpointInstructions);
-    }
 }
 
-contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
+contract TestRelayerEndToEndManual is
+    TestEndToEndRelayerBase,
+    IManagerEvents,
+    IRateLimiterEvents
+{
     ManagerStandalone managerChain1;
     ManagerStandalone managerChain2;
 
@@ -386,8 +410,6 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
     WormholeSimulator guardian;
     uint256 initialBlockTimestamp;
 
-    WormholeEndpointStandalone wormholeEndpointChain1;
-    WormholeEndpointStandalone wormholeEndpointChain2;
     address userA = address(0x123);
     address userB = address(0x456);
     address userC = address(0x789);
@@ -474,7 +496,11 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
         // Send token through the relayer
         {
             vm.deal(userA, 1 ether);
-            managerChain1.transfer{value: wormholeEndpointChain1.quoteDeliveryPrice(chainId2)}(
+            managerChain1.transfer{
+                value: wormholeEndpointChain1.quoteDeliveryPrice(
+                    chainId2, buildEndpointInstruction(false)
+                    )
+            }(
                 sendingAmount,
                 chainId2,
                 bytes32(uint256(uint160(userB))),
@@ -585,18 +611,5 @@ contract TestRelayerEndToEndManual is Test, IManagerEvents, IRateLimiterEvents {
             vaa.emitterChainId, // ChainID from the call
             vaa.hash // Hash of the VAA being used
         );
-    }
-
-    function encodeEndpointInstruction(bool relayer_off) public view returns (bytes memory) {
-        WormholeEndpoint.WormholeEndpointInstruction memory instruction =
-            WormholeEndpoint.WormholeEndpointInstruction(relayer_off);
-        bytes memory encodedInstructionWormhole =
-            wormholeEndpointChain1.encodeWormholeEndpointInstruction(instruction);
-        EndpointStructs.EndpointInstruction memory EndpointInstruction =
-            EndpointStructs.EndpointInstruction({index: 0, payload: encodedInstructionWormhole});
-        EndpointStructs.EndpointInstruction[] memory EndpointInstructions =
-            new EndpointStructs.EndpointInstruction[](1);
-        EndpointInstructions[0] = EndpointInstruction;
-        return EndpointStructs.encodeEndpointInstructions(EndpointInstructions);
     }
 }

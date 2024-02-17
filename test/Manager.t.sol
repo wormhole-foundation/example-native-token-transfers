@@ -85,16 +85,6 @@ contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
     }
 }
 
-// contract DummyToken is ERC20 {
-//     constructor() ERC20("DummyToken", "DTKN") {}
-
-//     // NOTE: this is purposefully not called mint() to so we can test that in
-//     // locking mode the Manager contract doesn't call mint (or burn)
-//     function mintDummy(address to, uint256 amount) public {
-//         _mint(to, amount);
-//     }
-// }
-
 // TODO: set this up so the common functionality tests can be run against both
 // the standalone and the integrated version of the endpoint manager
 contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
