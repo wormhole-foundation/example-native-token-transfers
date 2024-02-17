@@ -67,7 +67,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         managerChain1.initialize();
 
         WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
-            address(managerChain1), address(wormhole), address(relayer)
+            address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
         wormholeEndpointChain1 = WormholeEndpointStandalone(
             address(new ERC1967Proxy(address(wormholeEndpointChain1Implementation), ""))
@@ -89,7 +89,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         managerChain2.initialize();
 
         WormholeEndpointStandalone wormholeEndpointChain2Implementation = new WormholeEndpointStandalone(
-            address(managerChain2), address(wormhole), address(relayer)
+            address(managerChain2), address(wormhole), address(relayer), address(0x0)
         );
         wormholeEndpointChain2 = WormholeEndpointStandalone(
             address(new ERC1967Proxy(address(wormholeEndpointChain2Implementation), ""))
@@ -406,7 +406,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
 
         // Dual endpoint setup
         WormholeEndpointStandalone wormholeEndpointChain1_2 = new WormholeEndpointStandalone(
-            address(managerChain1), address(wormhole), address(relayer)
+            address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
 
         wormholeEndpointChain1_2 = WormholeEndpointStandalone(
@@ -419,7 +419,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
 
         // Dual endpoint setup
         WormholeEndpointStandalone wormholeEndpointChain2_2 = new WormholeEndpointStandalone(
-            address(managerChain2), address(wormhole), address(relayer)
+            address(managerChain2), address(wormhole), address(relayer), address(0x0)
         );
 
         wormholeEndpointChain2_2 = WormholeEndpointStandalone(
