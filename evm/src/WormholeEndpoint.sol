@@ -2,12 +2,12 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "wormhole-solidity-sdk/WormholeRelayerSDK.sol";
+import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
+import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 
 import "./libraries/EndpointHelpers.sol";
-import "./interfaces/IWormhole.sol";
 import "./interfaces/IWormholeEndpoint.sol";
 import "./Endpoint.sol";
-import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 
 abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
     using BytesParsing for bytes;
@@ -111,12 +111,17 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         return isWormholeRelayingEnabled(chainId) && isWormholeEvmChain(chainId);
     }
 
-    function _quoteDeliveryPrice(uint16 targetChain)
-        internal
-        view
-        override
-        returns (uint256 nativePriceQuote)
-    {
+    function _quoteDeliveryPrice(
+        uint16 targetChain,
+        EndpointStructs.EndpointInstruction memory instruction
+    ) internal view override returns (uint256 nativePriceQuote) {
+        // Check the special instruction up front to see if we should skip sending via a relayer
+        WormholeEndpointInstruction memory weIns =
+            parseWormholeEndpointInstruction(instruction.payload);
+        if (weIns.shouldSkipRelayerSend) {
+            return 0;
+        }
+
         if (checkInvalidRelayingConfig(targetChain)) {
             revert InvalidRelayingConfig(targetChain);
         }

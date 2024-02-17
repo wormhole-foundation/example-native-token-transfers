@@ -116,11 +116,10 @@ abstract contract Manager is
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
     ///      This method should return an array of delivery prices corresponding to each endpoint.
-    function quoteDeliveryPrice(uint16 recipientChain)
-        public
-        view
-        virtual
-        returns (uint256[] memory);
+    function quoteDeliveryPrice(
+        uint16 recipientChain,
+        EndpointStructs.EndpointInstruction[] memory endpointInstructions
+    ) public view virtual returns (uint256[] memory);
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
     function _sendMessageToEndpoints(
@@ -384,7 +383,11 @@ abstract contract Manager is
         address sender,
         bytes memory endpointInstructions
     ) internal returns (uint64 msgSequence) {
-        uint256[] memory priceQuotes = quoteDeliveryPrice(recipientChain);
+        // parse and reorganize the endpoint instructions based on index
+        EndpointStructs.EndpointInstruction[] memory sortedInstructions = EndpointStructs
+            .sortEndpointInstructions(EndpointStructs.parseEndpointInstructions(endpointInstructions));
+
+        uint256[] memory priceQuotes = quoteDeliveryPrice(recipientChain, sortedInstructions);
         {
             // check up front that msg.value will cover the delivery price
             uint256 totalPriceQuote = arraySum(priceQuotes);
@@ -411,10 +414,6 @@ abstract contract Manager is
                 sequence, toWormholeFormat(sender), encodedTransferPayload
             )
         );
-
-        // parse and reorganize the endpoint instructions based on index
-        EndpointStructs.EndpointInstruction[] memory sortedInstructions = EndpointStructs
-            .sortEndpointInstructions(EndpointStructs.parseEndpointInstructions(endpointInstructions));
 
         // send the message
         _sendMessageToEndpoints(

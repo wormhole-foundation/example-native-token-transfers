@@ -73,8 +73,11 @@ abstract contract EndpointStandalone is
         _sendMessage(recipientChain, msg.value, msg.sender, instruction, managerMessage);
     }
 
-    function quoteDeliveryPrice(uint16 targetChain) external view override returns (uint256) {
-        return _quoteDeliveryPrice(targetChain);
+    function quoteDeliveryPrice(
+        uint16 targetChain,
+        EndpointStructs.EndpointInstruction memory instruction
+    ) external view override returns (uint256) {
+        return _quoteDeliveryPrice(targetChain, instruction);
     }
 
     function _deliverToManager(
