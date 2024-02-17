@@ -2,6 +2,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "../libraries/NormalizedAmount.sol";
+import "../libraries/EndpointStructs.sol";
 
 interface IManager {
     error DeliveryPaymentTooLow(uint256 requiredPayment, uint256 providedPayment);
@@ -42,7 +43,10 @@ interface IManager {
 
     function setInboundLimit(uint256 limit, uint16 chainId) external;
 
-    function quoteDeliveryPrice(uint16 recipientChain) external view returns (uint256[] memory);
+    function quoteDeliveryPrice(
+        uint16 recipientChain,
+        EndpointStructs.EndpointInstruction[] memory endpointInstructions
+    ) external view returns (uint256[] memory);
 
     function nextMessageSequence() external view returns (uint64);
 

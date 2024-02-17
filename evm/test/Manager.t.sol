@@ -53,12 +53,10 @@ contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
         uint64 rateLimitDuration
     ) EndpointAndManager(token, mode, chainId, rateLimitDuration) {}
 
-    function _quoteDeliveryPrice(uint16 /* recipientChain */ )
-        internal
-        pure
-        override
-        returns (uint256)
-    {
+    function _quoteDeliveryPrice(
+        uint16, /* recipientChain */
+        EndpointStructs.EndpointInstruction memory /* endpointInstruction */
+    ) internal pure override returns (uint256) {
         return 0;
     }
 
@@ -86,16 +84,6 @@ contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
         );
     }
 }
-
-// contract DummyToken is ERC20 {
-//     constructor() ERC20("DummyToken", "DTKN") {}
-
-//     // NOTE: this is purposefully not called mint() to so we can test that in
-//     // locking mode the Manager contract doesn't call mint (or burn)
-//     function mintDummy(address to, uint256 amount) public {
-//         _mint(to, amount);
-//     }
-// }
 
 // TODO: set this up so the common functionality tests can be run against both
 // the standalone and the integrated version of the endpoint manager

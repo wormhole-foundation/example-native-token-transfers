@@ -38,14 +38,12 @@ abstract contract EndpointAndManager is Endpoint, Manager, Implementation {
         _upgrade(newImplementation);
     }
 
-    function quoteDeliveryPrice(uint16 recipientChain)
-        public
-        view
-        override
-        returns (uint256[] memory)
-    {
+    function quoteDeliveryPrice(
+        uint16 recipientChain,
+        EndpointStructs.EndpointInstruction[] memory endpointInstructions
+    ) public view override returns (uint256[] memory) {
         uint256[] memory quotes = new uint256[](1);
-        quotes[0] = _quoteDeliveryPrice(recipientChain);
+        quotes[0] = _quoteDeliveryPrice(recipientChain, endpointInstructions[0]);
         return quotes;
     }
 
