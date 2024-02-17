@@ -78,6 +78,10 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
     /// =============== GETTERS/SETTERS ========================================
 
     function setThreshold(uint8 threshold) external onlyOwner {
+        if (threshold == 0) {
+            revert ZeroThreshold();
+        }
+
         _Threshold storage _threshold = _getThresholdStorage();
         uint8 oldThreshold = _threshold.num;
 
@@ -110,9 +114,11 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
         // Instead, we leave it up to the owner to manually update the threshold
         // after some period of time, ideally once all chains have the new Endpoint
         // and transfers that were sent via the old configuration are all complete.
+        // However if the threshold is 0 (the initial case) we do increment to 1.
         if (_threshold.num == 0) {
             _threshold.num = 1;
         }
+
         address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
 
         emit EndpointAdded(endpoint, _enabledEndpoints.length, _threshold.num);
@@ -221,13 +227,14 @@ contract ManagerStandalone is IManagerStandalone, Manager, Implementation {
     function _checkThresholdInvariants() internal view {
         _Threshold storage _threshold = _getThresholdStorage();
         address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
+        address[] storage _registeredEndpoints = _getRegisteredEndpointsStorage();
 
         // invariant: threshold <= enabledEndpoints.length
         if (_threshold.num > _enabledEndpoints.length) {
             revert ThresholdTooHigh(_threshold.num, _enabledEndpoints.length);
         }
 
-        if (_enabledEndpoints.length > 0) {
+        if (_registeredEndpoints.length > 0) {
             if (_threshold.num == 0) {
                 revert ZeroThreshold();
             }
