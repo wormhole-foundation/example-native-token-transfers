@@ -14,7 +14,7 @@ library ManagerHelpersLib {
         NormalizedAmount memory inboundLimit,
         ManagerStandalone manager,
         uint8 decimals
-    ) internal returns (uint8) {
+    ) internal {
         manager.setSibling(SENDING_CHAIN_ID, toWormholeFormat(address(manager)));
         manager.setInboundLimit(inboundLimit.denormalize(decimals), SENDING_CHAIN_ID);
     }

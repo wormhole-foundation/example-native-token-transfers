@@ -13,11 +13,11 @@ contract DummyToken is ERC20 {
         _mint(to, amount);
     }
 
-    function mint(address to, uint256 amount) public virtual {
+    function mint(address, uint256) public virtual {
         revert("Locking manager should not call 'mint()'");
     }
 
-    function burnFrom(address to, uint256 amount) public virtual {
+    function burnFrom(address, uint256) public virtual {
         revert("Locking manager should not call 'burnFrom()'");
     }
 }

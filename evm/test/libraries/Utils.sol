@@ -2,7 +2,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import {Test} from "forge-std/Test.sol";
-import {VmSafe} from "forge-std/Vm.sol";
+import {VmSafe, Vm} from "forge-std/Vm.sol";
 
 import "../../src/libraries/external/Initializable.sol";
 
@@ -34,6 +34,34 @@ library Utils {
         if (!disabledInitializer) {
             revert("upgradeable implementation constructor didn't disable initializers");
         }
+    }
+
+    // Fetches the queued transfer digests from the logs when an inbound transfer is queued
+    function fetchQueuedTransferDigestsFromLogs(Vm.Log[] memory logs)
+        public
+        pure
+        returns (bytes32[] memory)
+    {
+        uint256 count = 0;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == keccak256("InboundTransferQueued(bytes32)")) {
+                count += 1;
+            }
+        }
+
+        // create log array to save published messages
+        bytes32[] memory published = new bytes32[](count);
+
+        uint256 publishedIndex = 0;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == keccak256("InboundTransferQueued(bytes32)")) {
+                published[publishedIndex] = bytes32(logs[i].data);
+                // console.logBytes(logs[i].data);
+                publishedIndex += 1;
+            }
+        }
+
+        return published;
     }
 }
 
