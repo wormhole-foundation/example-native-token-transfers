@@ -19,7 +19,10 @@ abstract contract Endpoint is PausableOwnable {
         EndpointStructs.ManagerMessage memory payload
     ) internal virtual;
 
-    function _quoteDeliveryPrice(uint16 targetChain) internal view virtual returns (uint256);
+    function _quoteDeliveryPrice(
+        uint16 targetChain,
+        EndpointStructs.EndpointInstruction memory endpointInstruction
+    ) internal view virtual returns (uint256);
 
     /// @notice pause the endpoint
     function _pauseEndpoint() internal {
