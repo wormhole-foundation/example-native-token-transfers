@@ -22,7 +22,8 @@ pub struct NormalizedAmount {
 
 impl PartialEq for NormalizedAmount {
     fn eq(&self, other: &Self) -> bool {
-        self.amount == other.change_decimals(self.decimals).amount
+        assert_eq!(self.decimals, other.decimals);
+        self.amount == other.amount
     }
 }
 
@@ -36,7 +37,7 @@ impl PartialOrd for NormalizedAmount {
 
 impl Ord for NormalizedAmount {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        let other = other.change_decimals(self.decimals);
+        assert_eq!(self.decimals, other.decimals);
         self.amount.cmp(&other.amount)
     }
 }
@@ -45,7 +46,7 @@ impl Sub for NormalizedAmount {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        let rhs = rhs.change_decimals(self.decimals);
+        assert_eq!(self.decimals, rhs.decimals);
         Self {
             amount: self.amount - rhs.amount,
             decimals: self.decimals,
@@ -59,7 +60,7 @@ impl NormalizedAmount {
     }
 
     pub fn saturating_sub(self, rhs: Self) -> Self {
-        let rhs = rhs.change_decimals(self.decimals);
+        assert_eq!(self.decimals, rhs.decimals);
         Self {
             amount: self.amount.saturating_sub(rhs.amount),
             decimals: self.decimals,
@@ -67,7 +68,7 @@ impl NormalizedAmount {
     }
 
     pub fn saturating_add(self, rhs: Self) -> Self {
-        let rhs = rhs.change_decimals(self.decimals);
+        assert_eq!(self.decimals, rhs.decimals);
         Self {
             amount: self.amount.saturating_add(rhs.amount),
             decimals: self.decimals,
@@ -172,20 +173,6 @@ mod test {
             }
             .denormalize(13),
             10000000
-        );
-
-        assert_eq!(
-            NormalizedAmount {
-                amount: 2,
-                decimals: 5,
-            } - NormalizedAmount {
-                amount: 10,
-                decimals: 6,
-            },
-            NormalizedAmount {
-                amount: 1,
-                decimals: 5,
-            }
         );
     }
 }
