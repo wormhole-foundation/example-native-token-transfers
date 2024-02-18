@@ -2,9 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use anchor_lang::prelude::*;
 
-use crate::{
-    bitmap::Bitmap, clock::current_timestamp, error::NTTError, normalized_amount::NormalizedAmount,
-};
+use crate::{bitmap::Bitmap, clock::current_timestamp, error::NTTError};
 
 use super::rate_limit::RateLimitState;
 
@@ -14,7 +12,7 @@ use super::rate_limit::RateLimitState;
 pub struct InboxItem {
     pub init: bool,
     pub bump: u8,
-    pub amount: NormalizedAmount,
+    pub amount: u64,
     pub recipient_address: Pubkey,
     pub votes: Bitmap,
     pub release_status: ReleaseStatus,

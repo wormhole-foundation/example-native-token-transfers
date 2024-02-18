@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token_interface;
 
 use crate::{
     bitmap::Bitmap,
@@ -40,6 +41,11 @@ pub struct Redeem<'info> {
     pub endpoint_message: Account<'info, ValidatedEndpointMessage<NativeTokenTransfer>>,
 
     pub endpoint: EnabledEndpoint<'info>,
+
+    #[account(
+        constraint = mint.key() == config.mint
+    )]
+    pub mint: InterfaceAccount<'info, token_interface::Mint>,
 
     #[account(
         init_if_needed,
@@ -84,8 +90,7 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let message: ManagerMessage<NativeTokenTransfer> =
         accs.endpoint_message.message.manager_payload.clone();
 
-    let amount = message.payload.amount;
-    let amount = amount.change_decimals(accs.outbox_rate_limit.rate_limit.limit.decimals);
+    let amount = message.payload.amount.denormalize(accs.mint.decimals);
 
     if !accs.inbox_item.init {
         let recipient_address =

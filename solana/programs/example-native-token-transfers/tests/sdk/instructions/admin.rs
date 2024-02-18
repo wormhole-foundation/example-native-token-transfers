@@ -20,7 +20,6 @@ pub fn set_sibling(ntt: &NTT, accounts: SetSibling, args: SetSiblingArgs) -> Ins
         payer: accounts.payer,
         sibling: ntt.sibling(chain_id),
         inbox_rate_limit: ntt.inbox_rate_limit(chain_id),
-        mint: accounts.mint,
         system_program: System::id(),
     };
 

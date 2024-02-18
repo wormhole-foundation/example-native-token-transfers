@@ -1,16 +1,16 @@
 use anchor_lang::{prelude::*, solana_program::clock::UnixTimestamp};
 
-use crate::{clock::current_timestamp, normalized_amount::NormalizedAmount};
+use crate::clock::current_timestamp;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace, PartialEq, Eq, Debug)]
 pub struct RateLimitState {
     /// The maximum capacity of the rate limiter.
-    pub limit: NormalizedAmount,
+    pub limit: u64,
     /// The capacity of the rate limiter at `last_tx_timestamp`.
     /// The actual current capacity is calculated in `capacity_at`, by
     /// accounting for the time that has passed since `last_tx_timestamp` and
     /// the refill rate.
-    pub capacity_at_last_tx: NormalizedAmount,
+    pub capacity_at_last_tx: u64,
     /// The timestamp of the last transaction that counted towards the current
     /// capacity. Transactions that exceeded the capacity do not count, they are
     /// just delayed.
@@ -29,7 +29,7 @@ pub enum RateLimitResult {
 }
 
 impl RateLimitState {
-    pub fn new(limit: NormalizedAmount) -> Self {
+    pub fn new(limit: u64) -> Self {
         Self {
             limit,
             capacity_at_last_tx: limit,
@@ -39,7 +39,7 @@ impl RateLimitState {
 
     pub const RATE_LIMIT_DURATION: i64 = 60 * 60 * 24; // 24 hours
 
-    pub fn capacity(&self) -> NormalizedAmount {
+    pub fn capacity(&self) -> u64 {
         self.capacity_at(current_timestamp())
     }
 
@@ -47,10 +47,10 @@ impl RateLimitState {
     /// On-chain programs and unit tests should always use [`capacity`].
     /// This function is useful in solana-program-test, where the clock sysvar
     ///
-    pub fn capacity_at(&self, now: UnixTimestamp) -> NormalizedAmount {
+    pub fn capacity_at(&self, now: UnixTimestamp) -> u64 {
         assert!(self.last_tx_timestamp <= now);
 
-        let limit = self.limit.amount() as u128;
+        let limit = self.limit as u128;
 
         // morally this is
         // capacity = old_capacity + (limit / rate_limit_duration) * time_passed
@@ -63,10 +63,7 @@ impl RateLimitState {
         // for the intermediate calculations. Theoretically it could also overflow u128
         // if limit == time_passed == u64 max, but that will take a very long time.
 
-        let NormalizedAmount {
-            amount: capacity_at_last_tx,
-            decimals,
-        } = self.capacity_at_last_tx;
+        let capacity_at_last_tx = self.capacity_at_last_tx;
 
         let calculated_capacity = {
             let time_passed = now - self.last_tx_timestamp;
@@ -74,7 +71,7 @@ impl RateLimitState {
                 + time_passed as u128 * limit / (Self::RATE_LIMIT_DURATION as u128)
         };
 
-        NormalizedAmount::new(calculated_capacity.min(limit) as u64, decimals)
+        calculated_capacity.min(limit) as u64
     }
 
     /// Computes the timestamp at which the given amount can be consumed.
@@ -82,7 +79,7 @@ impl RateLimitState {
     /// returned, and the remaining capacity is reduced.
     /// Otherwise, the timestamp at which the capacity will be available is
     /// returned.
-    pub fn consume_or_delay(&mut self, amount: NormalizedAmount) -> RateLimitResult {
+    pub fn consume_or_delay(&mut self, amount: u64) -> RateLimitResult {
         let now = current_timestamp();
         let capacity = self.capacity();
         if capacity >= amount {
@@ -96,18 +93,18 @@ impl RateLimitState {
 
     /// Refills the capacity by the given amount.
     /// This is used to replenish the capacity via backflows.
-    pub fn refill(&mut self, amount: NormalizedAmount) {
+    pub fn refill(&mut self, amount: u64) {
         self.capacity_at_last_tx = self.capacity().saturating_add(amount).min(self.limit);
         self.last_tx_timestamp = current_timestamp();
     }
 
-    pub fn set_limit(&mut self, limit: NormalizedAmount) {
+    pub fn set_limit(&mut self, limit: u64) {
         let old_limit = self.limit;
         let current_capacity = self.capacity();
 
         self.limit = limit;
 
-        let new_capacity: NormalizedAmount = if old_limit > limit {
+        let new_capacity: u64 = if old_limit > limit {
             // decrease in limit,
             let diff = old_limit - limit;
             current_capacity.saturating_sub(diff)
@@ -131,72 +128,51 @@ mod tests {
     #[test]
     fn test_rate_limit() {
         let mut rate_limit_state = RateLimitState {
-            limit: NormalizedAmount::new(100_000, 8),
-            capacity_at_last_tx: NormalizedAmount::new(100_000, 8),
+            limit: 100_000,
+            capacity_at_last_tx: 100_000,
             last_tx_timestamp: current_timestamp(),
         };
 
         // consume 30k. should be immediate
-        let immediately = rate_limit_state.consume_or_delay(NormalizedAmount::new(30_000, 8));
+        let immediately = rate_limit_state.consume_or_delay(30_000);
 
         assert_eq!(immediately, RateLimitResult::Consumed);
-        assert_eq!(
-            rate_limit_state.capacity(),
-            NormalizedAmount::new(70_000, 8)
-        );
-        assert_eq!(rate_limit_state.limit, NormalizedAmount::new(100_000, 8)); // unchanged
+        assert_eq!(rate_limit_state.capacity(), 70_000);
+        assert_eq!(rate_limit_state.limit, 100_000); // unchanged
         assert_eq!(rate_limit_state.last_tx_timestamp, current_timestamp());
 
         // replenish 1/4 of the limit, i.e. 25k
         set_test_timestamp(current_timestamp() + RateLimitState::RATE_LIMIT_DURATION / 4);
 
-        assert_eq!(
-            rate_limit_state.capacity(),
-            NormalizedAmount::new(70_000 + 25_000, 8)
-        );
+        assert_eq!(rate_limit_state.capacity(), 70_000 + 25_000);
 
         // now consume 150k. should be delayed
-        let tomorrow = rate_limit_state.consume_or_delay(NormalizedAmount::new(150_000, 8));
+        let tomorrow = rate_limit_state.consume_or_delay(150_000);
         assert_eq!(
             tomorrow,
             RateLimitResult::Delayed(current_timestamp() + RateLimitState::RATE_LIMIT_DURATION)
         );
 
         // the limit is not changed, since the tx was delayed
-        assert_eq!(
-            rate_limit_state.capacity(),
-            NormalizedAmount::new(70_000 + 25_000, 8)
-        );
+        assert_eq!(rate_limit_state.capacity(), 70_000 + 25_000);
 
         // now set the limit to 50k
-        rate_limit_state.set_limit(NormalizedAmount::new(50_000, 8));
+        rate_limit_state.set_limit(50_000);
 
         // this decreases the capacity by 50k, to 45k
-        assert_eq!(
-            rate_limit_state.capacity(),
-            NormalizedAmount::new(45_000, 8)
-        );
+        assert_eq!(rate_limit_state.capacity(), 45_000);
 
         // now set the limit to 100k
-        rate_limit_state.set_limit(NormalizedAmount::new(100_000, 8));
+        rate_limit_state.set_limit(100_000);
 
-        assert_eq!(
-            rate_limit_state.capacity(),
-            NormalizedAmount::new(95_000, 8)
-        );
+        assert_eq!(rate_limit_state.capacity(), 95_000);
 
         // now refill 2k
-        rate_limit_state.refill(NormalizedAmount::new(2_000, 8));
-        assert_eq!(
-            rate_limit_state.capacity(),
-            NormalizedAmount::new(97_000, 8)
-        );
+        rate_limit_state.refill(2_000);
+        assert_eq!(rate_limit_state.capacity(), 97_000);
 
         // now refill 50k
-        rate_limit_state.refill(NormalizedAmount::new(50_000, 8));
-        assert_eq!(
-            rate_limit_state.capacity(),
-            NormalizedAmount::new(100_000, 8)
-        );
+        rate_limit_state.refill(50_000);
+        assert_eq!(rate_limit_state.capacity(), 100_000);
     }
 }

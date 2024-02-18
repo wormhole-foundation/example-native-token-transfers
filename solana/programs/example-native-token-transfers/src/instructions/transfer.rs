@@ -98,7 +98,8 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
         should_queue,
     } = args;
 
-    let amount = NormalizedAmount::normalize(amount, accs.common.mint.decimals);
+    // TODO: should we revert if we have dust?
+    let amount = NormalizedAmount::remove_dust(amount, accs.common.mint.decimals);
 
     match accs.common.config.mode {
         Mode::Burning => token_interface::burn(
@@ -110,8 +111,7 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
                     authority: accs.common.from_authority.to_account_info(),
                 },
             ),
-            // TODO: should we revert if we have dust?
-            amount.denormalize(accs.common.mint.decimals),
+            amount,
         )?,
         Mode::Locking => return Err(NTTError::InvalidMode.into()),
     }
@@ -167,7 +167,8 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
         should_queue,
     } = args;
 
-    let amount = NormalizedAmount::normalize(amount, accs.common.mint.decimals);
+    // TODO: should we revert if we have dust?
+    let amount = NormalizedAmount::remove_dust(amount, accs.common.mint.decimals);
 
     match accs.common.config.mode {
         Mode::Burning => return Err(NTTError::InvalidMode.into()),
@@ -181,8 +182,7 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
                     mint: accs.common.mint.to_account_info(),
                 },
             ),
-            // TODO: should we revert if we have dust?
-            amount.denormalize(accs.common.mint.decimals),
+            amount,
             accs.common.mint.decimals,
         )?,
     }
@@ -200,7 +200,7 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
 fn insert_into_outbox(
     common: &mut Transfer<'_>,
     inbox_rate_limit: &mut InboxRateLimit,
-    amount: NormalizedAmount,
+    amount: u64,
     recipient_chain: ChainId,
     recipient_address: [u8; 32],
     should_queue: bool,
@@ -225,7 +225,7 @@ fn insert_into_outbox(
 
     common.outbox_item.set_inner(OutboxItem {
         sequence,
-        amount,
+        amount: NormalizedAmount::normalize(amount, common.mint.decimals),
         sender: common.from_authority.key(),
         recipient_chain,
         recipient_address,

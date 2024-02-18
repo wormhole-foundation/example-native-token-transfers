@@ -512,7 +512,6 @@ export class NTT {
         config: this.configAccountAddress(),
         sibling: this.siblingAccountAddress(args.chain),
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.chain),
-        mint: config.mint,
       })
       .signers([args.payer, args.owner])
       .rpc()
@@ -626,6 +625,7 @@ export class NTT {
         sibling: managerSibling,
         endpointMessage: this.endpointMessageAccountAddress(chainId, new BN(managerMessage.sequence.toString())),
         endpoint: { endpoint: this.registeredEndpointAddress(this.program.programId) },
+        mint: await this.mintAccountAddress(config),
         inboxItem: this.inboxItemAccountAddress(chainId, managerMessage),
         inboxRateLimit,
         outboxRateLimit: this.outboxRateLimitAccountAddress(),

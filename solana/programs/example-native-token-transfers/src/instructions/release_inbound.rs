@@ -87,9 +87,7 @@ pub fn release_inbound_mint(
                 },
                 &[&[b"token_authority", &[ctx.bumps.common.token_authority]]],
             ),
-            inbox_item
-                .amount
-                .denormalize(ctx.accounts.common.mint.decimals),
+            inbox_item.amount,
         ),
         Mode::Locking => Err(NTTError::InvalidMode.into()),
     }
@@ -143,9 +141,7 @@ pub fn release_inbound_unlock(
                 },
                 &[&[b"token_authority", &[ctx.bumps.common.token_authority]]],
             ),
-            inbox_item
-                .amount
-                .denormalize(ctx.accounts.common.mint.decimals),
+            inbox_item.amount,
             ctx.accounts.common.mint.decimals,
         ),
     }

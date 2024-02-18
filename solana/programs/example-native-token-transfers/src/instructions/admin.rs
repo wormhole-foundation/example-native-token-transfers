@@ -1,11 +1,9 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface;
 
 use crate::{
     chain_id::ChainId,
     config::Config,
     error::NTTError,
-    normalized_amount::NormalizedAmount,
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit, rate_limit::RateLimitState},
     registered_endpoint::RegisteredEndpoint,
     sibling::ManagerSibling,
@@ -94,13 +92,6 @@ pub struct SetSibling<'info> {
     )]
     pub inbox_rate_limit: Account<'info, InboxRateLimit>,
 
-    #[account(
-        constraint = mint.key() == config.mint
-    )]
-    // TODO: should we just store the decimals in the config? a lot of
-    // instructions just take mint for the decimals
-    pub mint: InterfaceAccount<'info, token_interface::Mint>,
-
     pub system_program: Program<'info, System>,
 }
 
@@ -119,10 +110,7 @@ pub fn set_sibling(ctx: Context<SetSibling>, args: SetSiblingArgs) -> Result<()>
 
     ctx.accounts.inbox_rate_limit.set_inner(InboxRateLimit {
         bump: ctx.bumps.inbox_rate_limit,
-        rate_limit: RateLimitState::new(NormalizedAmount::normalize(
-            args.limit,
-            ctx.accounts.mint.decimals,
-        )),
+        rate_limit: RateLimitState::new(args.limit),
     });
     Ok(())
 }
@@ -185,11 +173,6 @@ pub struct SetOutboundLimit<'info> {
 
     #[account(mut)]
     pub rate_limit: Account<'info, OutboxRateLimit>,
-
-    #[account(
-        constraint = mint.key() == config.mint
-    )]
-    pub mint: InterfaceAccount<'info, token_interface::Mint>,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -201,8 +184,7 @@ pub fn set_outbound_limit(
     ctx: Context<SetOutboundLimit>,
     args: SetOutboundLimitArgs,
 ) -> Result<()> {
-    let limit = NormalizedAmount::normalize(args.limit, ctx.accounts.mint.decimals);
-    ctx.accounts.rate_limit.set_limit(limit);
+    ctx.accounts.rate_limit.set_limit(args.limit);
     Ok(())
 }
 
@@ -225,11 +207,6 @@ pub struct SetInboundLimit<'info> {
         bump = rate_limit.bump
     )]
     pub rate_limit: Account<'info, InboxRateLimit>,
-
-    #[account(
-        constraint = mint.key() == config.mint
-    )]
-    pub mint: InterfaceAccount<'info, token_interface::Mint>,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -239,8 +216,7 @@ pub struct SetInboundLimitArgs {
 }
 
 pub fn set_inbound_limit(ctx: Context<SetInboundLimit>, args: SetInboundLimitArgs) -> Result<()> {
-    let limit = NormalizedAmount::normalize(args.limit, ctx.accounts.mint.decimals);
-    ctx.accounts.rate_limit.set_limit(limit);
+    ctx.accounts.rate_limit.set_limit(args.limit);
     Ok(())
 }
 

@@ -290,11 +290,8 @@ async fn test_rate_limit() {
         .get_account_data_anchor(test_data.ntt.outbox_rate_limit())
         .await;
 
-    assert_eq!(NormalizedAmount::normalize(100, 9).amount, 10);
-
     assert_eq!(
-        outbound_limit_before.capacity_at(clock.unix_timestamp)
-            - NormalizedAmount::normalize(100, 9),
+        outbound_limit_before.capacity_at(clock.unix_timestamp) - 100,
         outbound_limit_after.capacity_at(clock.unix_timestamp)
     );
 }

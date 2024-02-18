@@ -72,6 +72,7 @@ fn init_redeem_accs(
             .endpoint_message(chain_id, manager_message.sequence),
         inbox_item: test_data.ntt.inbox_item(chain_id, manager_message),
         inbox_rate_limit: test_data.ntt.inbox_rate_limit(chain_id),
+        mint: test_data.mint,
     }
 }
 
@@ -138,10 +139,7 @@ async fn outbound_capacity(ctx: &mut ProgramTestContext, test_data: &TestData) -
         .get_account_data_anchor(test_data.ntt.outbox_rate_limit())
         .await;
 
-    rate_limit
-        .rate_limit
-        .capacity_at(clock.unix_timestamp)
-        .denormalize(9)
+    rate_limit.rate_limit.capacity_at(clock.unix_timestamp)
 }
 
 async fn inbound_capacity(ctx: &mut ProgramTestContext, test_data: &TestData) -> u64 {
@@ -150,10 +148,7 @@ async fn inbound_capacity(ctx: &mut ProgramTestContext, test_data: &TestData) ->
         .get_account_data_anchor(test_data.ntt.inbox_rate_limit(OTHER_CHAIN))
         .await;
 
-    rate_limit
-        .rate_limit
-        .capacity_at(clock.unix_timestamp)
-        .denormalize(9)
+    rate_limit.rate_limit.capacity_at(clock.unix_timestamp)
 }
 
 #[tokio::test]

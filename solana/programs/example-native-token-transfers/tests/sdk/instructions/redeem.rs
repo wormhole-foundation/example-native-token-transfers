@@ -10,6 +10,7 @@ pub struct Redeem {
     pub sibling: Pubkey,
     pub endpoint_message: Pubkey,
     pub endpoint: Pubkey,
+    pub mint: Pubkey,
     pub inbox_item: Pubkey,
     pub inbox_rate_limit: Pubkey,
 }
@@ -25,6 +26,7 @@ pub fn redeem(ntt: &NTT, accs: Redeem, args: RedeemArgs) -> Instruction {
         endpoint: EnabledEndpoint {
             endpoint: ntt.registered_endpoint(&accs.endpoint),
         },
+        mint: accs.mint,
         inbox_item: accs.inbox_item,
         inbox_rate_limit: accs.inbox_rate_limit,
         outbox_rate_limit: ntt.outbox_rate_limit(),

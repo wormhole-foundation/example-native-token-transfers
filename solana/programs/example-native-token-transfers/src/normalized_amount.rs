@@ -7,7 +7,7 @@
 //! The functions [`normalize`] and [`denormalize`] take care of convertion to/from
 //! this type given the original amount's decimals.
 
-use std::{io, ops::Sub};
+use std::io;
 
 use anchor_lang::prelude::*;
 use wormhole_io::{Readable, Writeable};
@@ -16,8 +16,8 @@ pub const NORMALIZED_DECIMALS: u8 = 8;
 
 #[derive(Debug, Clone, Copy, AnchorSerialize, AnchorDeserialize, InitSpace)]
 pub struct NormalizedAmount {
-    pub amount: u64,
-    pub decimals: u8,
+    amount: u64,
+    decimals: u8,
 }
 
 impl PartialEq for NormalizedAmount {
@@ -29,50 +29,9 @@ impl PartialEq for NormalizedAmount {
 
 impl Eq for NormalizedAmount {}
 
-impl PartialOrd for NormalizedAmount {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for NormalizedAmount {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        assert_eq!(self.decimals, other.decimals);
-        self.amount.cmp(&other.amount)
-    }
-}
-
-impl Sub for NormalizedAmount {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        assert_eq!(self.decimals, rhs.decimals);
-        Self {
-            amount: self.amount - rhs.amount,
-            decimals: self.decimals,
-        }
-    }
-}
-
 impl NormalizedAmount {
     pub fn new(amount: u64, decimals: u8) -> Self {
         Self { amount, decimals }
-    }
-
-    pub fn saturating_sub(self, rhs: Self) -> Self {
-        assert_eq!(self.decimals, rhs.decimals);
-        Self {
-            amount: self.amount.saturating_sub(rhs.amount),
-            decimals: self.decimals,
-        }
-    }
-
-    pub fn saturating_add(self, rhs: Self) -> Self {
-        assert_eq!(self.decimals, rhs.decimals);
-        Self {
-            amount: self.amount.saturating_add(rhs.amount),
-            decimals: self.decimals,
-        }
     }
 
     pub fn change_decimals(&self, new_decimals: u8) -> Self {
@@ -106,6 +65,10 @@ impl NormalizedAmount {
 
     pub fn denormalize(&self, to_decimals: u8) -> u64 {
         Self::scale(self.amount, self.decimals, to_decimals)
+    }
+
+    pub fn remove_dust(amount: u64, from_decimals: u8) -> u64 {
+        Self::normalize(amount, from_decimals).denormalize(from_decimals)
     }
 
     pub fn amount(&self) -> u64 {

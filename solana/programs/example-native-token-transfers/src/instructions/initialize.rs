@@ -5,7 +5,6 @@ use crate::{
     bitmap::Bitmap,
     chain_id::ChainId,
     error::NTTError,
-    normalized_amount::NormalizedAmount,
     queue::{outbox::OutboxRateLimit, rate_limit::RateLimitState},
     sequence::Sequence,
 };
@@ -107,10 +106,8 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
         sequence: 0,
     });
 
-    let decimals: u8 = ctx.accounts.mint.decimals;
-
     ctx.accounts.rate_limit.set_inner(OutboxRateLimit {
-        rate_limit: RateLimitState::new(NormalizedAmount::normalize(args.limit, decimals)),
+        rate_limit: RateLimitState::new(args.limit),
     });
 
     Ok(())
