@@ -13,12 +13,12 @@ import "./libraries/external/ReentrancyGuardUpgradeable.sol";
 import "./libraries/EndpointStructs.sol";
 import "./libraries/EndpointHelpers.sol";
 import "./libraries/RateLimiter.sol";
-import "./libraries/NormalizedAmount.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/IManagerEvents.sol";
 import "./interfaces/INTTToken.sol";
 import "./Endpoint.sol";
 import "./EndpointRegistry.sol";
+import "./NttNormalizer.sol";
 import "./libraries/PausableOwnable.sol";
 
 // TODO: rename this (it's really the business logic)
@@ -27,13 +27,12 @@ abstract contract Manager is
     IManagerEvents,
     EndpointRegistry,
     RateLimiter,
+    NttNormalizer,
     ReentrancyGuardUpgradeable,
     PausableOwnable
 {
     using BytesParsing for bytes;
     using SafeERC20 for IERC20;
-    using NormalizedAmountLib for uint256;
-    using NormalizedAmountLib for NormalizedAmount;
 
     error RefundFailed(uint256 refundAmount);
     error CannotRenounceManagerOwnership(address owner);
@@ -100,7 +99,7 @@ abstract contract Manager is
         Mode _mode,
         uint16 _chainId,
         uint64 _rateLimitDuration
-    ) RateLimiter(_rateLimitDuration) {
+    ) RateLimiter(_rateLimitDuration) NttNormalizer(_token) {
         token = _token;
         mode = _mode;
         chainId = _chainId;
@@ -163,15 +162,11 @@ abstract contract Manager is
     }
 
     function setOutboundLimit(uint256 limit) external onlyOwner {
-        uint8 decimals = _tokenDecimals();
-        NormalizedAmount memory normalized = NormalizedAmountLib.normalize(limit, decimals);
-        _setOutboundLimit(normalized);
+        _setOutboundLimit(nttNormalize(limit));
     }
 
     function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
-        uint8 decimals = _tokenDecimals();
-        NormalizedAmount memory normalized = NormalizedAmountLib.normalize(limit, decimals);
-        _setInboundLimit(normalized, chainId_);
+        _setInboundLimit(nttNormalize(limit), chainId_);
     }
 
     function completeOutboundQueuedTransfer(uint64 messageSequence)
@@ -225,12 +220,9 @@ abstract contract Manager is
     {
         NormalizedAmount memory normalizedAmount;
         {
-            // query tokens decimals
-            uint8 decimals = _tokenDecimals();
-
-            normalizedAmount = amount.normalize(decimals);
+            normalizedAmount = nttNormalize(amount);
             // don't deposit dust that can not be bridged due to the decimal shift
-            uint256 newAmount = normalizedAmount.denormalize(decimals);
+            uint256 newAmount = nttDenormalize(normalizedAmount);
             if (amount != newAmount) {
                 revert TransferAmountHasDust(amount, amount - newAmount);
             }
@@ -420,7 +412,7 @@ abstract contract Manager is
             recipientChain, priceQuotes, sortedInstructions, encodedManagerPayload
         );
 
-        emit TransferSent(recipient, amount.denormalize(_tokenDecimals()), recipientChain, sequence);
+        emit TransferSent(recipient, nttDenormalize(amount), recipientChain, sequence);
 
         // return the sequence number
         return sequence;
@@ -481,7 +473,7 @@ abstract contract Manager is
             revert InvalidTargetChain(nativeTokenTransfer.toChain, chainId);
         }
 
-        NormalizedAmount memory nativeTransferAmount = nativeTokenTransfer.amount;
+        NormalizedAmount memory nativeTransferAmount = nttFixDecimals(nativeTokenTransfer.amount);
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
@@ -527,10 +519,8 @@ abstract contract Manager is
 
     function _mintOrUnlockToRecipient(address recipient, NormalizedAmount memory amount) internal {
         // calculate proper amount of tokens to unlock/mint to recipient
-        // query the decimals of the token contract that's tied to this manager
-        // adjust the decimals of the amount in the nativeTokenTransfer payload accordingly
-        uint8 decimals = _tokenDecimals();
-        uint256 denormalizedAmount = amount.denormalize(decimals);
+        // denormalize the amount
+        uint256 denormalizedAmount = nttDenormalize(amount);
 
         if (mode == Mode.LOCKING) {
             // unlock tokens to the specified recipient
@@ -585,7 +575,6 @@ abstract contract Manager is
     }
 
     function _tokenDecimals() internal view override returns (uint8) {
-        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
-        return abi.decode(queriedDecimals, (uint8));
+        return tokenDecimals;
     }
 }
