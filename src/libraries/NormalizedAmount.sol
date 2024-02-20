@@ -132,12 +132,16 @@ library NormalizedAmountLib {
         return a.amount < b.amount ? a : b;
     }
 
-    /// @dev scale the amount from origDecimals to normDecimals (base 10)
+    /// @dev scale the amount from original decimals to target decimals (base 10)
     function scale(
         uint256 amount,
         uint8 fromDecimals,
         uint8 toDecimals
     ) internal pure returns (uint256) {
+        if (fromDecimals == toDecimals) {
+            return amount;
+        }
+
         if (fromDecimals > toDecimals) {
             return amount / (10 ** (fromDecimals - toDecimals));
         } else {
