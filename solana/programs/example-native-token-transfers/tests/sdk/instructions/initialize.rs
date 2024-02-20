@@ -2,21 +2,24 @@ use anchor_lang::{prelude::Pubkey, system_program::System, Id, InstructionData, 
 use anchor_spl::{associated_token::AssociatedToken, token::Token};
 use example_native_token_transfers::instructions::InitializeArgs;
 use solana_sdk::instruction::Instruction;
+use wormhole_solana_utils::cpi::bpf_loader_upgradeable::BpfLoaderUpgradeable;
 
 use crate::sdk::accounts::NTT;
 
 pub struct Initialize {
     pub payer: Pubkey,
-    pub owner: Pubkey,
+    pub deployer: Pubkey,
     pub mint: Pubkey,
 }
 
 pub fn initialize(ntt: &NTT, accounts: Initialize, args: InitializeArgs) -> Instruction {
     let data = example_native_token_transfers::instruction::Initialize { args };
 
+    let bpf_loader_upgradeable_program = BpfLoaderUpgradeable::id();
     let accounts = example_native_token_transfers::accounts::Initialize {
         payer: accounts.payer,
-        owner: accounts.owner,
+        deployer: accounts.deployer,
+        program_data: ntt.program_data(),
         config: ntt.config(),
         mint: accounts.mint,
         seq: ntt.sequence(),
@@ -25,6 +28,7 @@ pub fn initialize(ntt: &NTT, accounts: Initialize, args: InitializeArgs) -> Inst
         custody: ntt.custody(&accounts.mint),
         token_program: Token::id(),
         associated_token_program: AssociatedToken::id(),
+        bpf_loader_upgradeable_program,
         system_program: System::id(),
     };
 

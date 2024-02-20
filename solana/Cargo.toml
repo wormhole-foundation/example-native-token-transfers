@@ -4,6 +4,20 @@ members = [
 ]
 resolver = "2"
 
+[workspace.dependencies]
+wormhole-io = "0.1.3"
+wormhole-solana-utils = "0.2.0-alpha.15"
+
+anchor-lang = "0.29.0"
+anchor-spl = "0.29.0"
+solana-program = "=1.17.2"
+
+wormhole-anchor-sdk = "0.29.0-alpha.1"
+wormhole-sdk = { git = "https://github.com/wormhole-foundation/wormhole", rev = "eee4641" }
+serde_wormhole = { git = "https://github.com/wormhole-foundation/wormhole", rev = "eee4641" }
+
+hex = "0.4.3"
+
 [profile.release]
 overflow-checks = true
 lto = "fat"

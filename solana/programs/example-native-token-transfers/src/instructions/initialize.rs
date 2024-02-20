@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token_interface};
+use wormhole_solana_utils::cpi::bpf_loader_upgradeable::BpfLoaderUpgradeable;
 
 use crate::{
     bitmap::Bitmap,
@@ -16,7 +17,15 @@ pub struct Initialize<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    pub owner: Signer<'info>,
+    #[account(address = program_data.upgrade_authority_address.unwrap_or_default())]
+    pub deployer: Signer<'info>,
+
+    #[account(
+        seeds = [crate::ID.as_ref()],
+        bump,
+        seeds::program = bpf_loader_upgradeable_program,
+    )]
+    program_data: Account<'info, ProgramData>,
 
     #[account(
         init,
@@ -74,6 +83,7 @@ pub struct Initialize<'info> {
     /// associated token account for the given mint.
     pub token_program: Interface<'info, token_interface::TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
+    bpf_loader_upgradeable_program: Program<'info, BpfLoaderUpgradeable>,
 
     system_program: Program<'info, System>,
 }
@@ -92,7 +102,7 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
         token_program: ctx.accounts.token_program.key(),
         mode: args.mode,
         chain_id: ChainId { id: args.chain_id },
-        owner: ctx.accounts.owner.key(),
+        owner: ctx.accounts.deployer.key(),
         pending_owner: None,
         paused: false,
         next_endpoint_id: 0,

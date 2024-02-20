@@ -1,10 +1,7 @@
 #![feature(type_changing_struct_update)]
 
 use anchor_lang::{prelude::*, InstructionData};
-use example_native_token_transfers::{
-    config::{Config, Mode},
-    instructions::TransferOwnershipArgs,
-};
+use example_native_token_transfers::config::{Config, Mode};
 use sdk::accounts::{Governance, Wormhole};
 use solana_program::instruction::{Instruction, InstructionError};
 use solana_program_test::*;
@@ -14,6 +11,7 @@ use wormhole_governance::{
     instructions::{GovernanceMessage, OWNER},
 };
 use wormhole_sdk::{Address, Vaa, GOVERNANCE_EMITTER};
+use wormhole_solana_utils::cpi::bpf_loader_upgradeable;
 
 use crate::{
     common::{query::GetAccountDataAnchor, setup::setup, submit::Submittable},
@@ -55,15 +53,15 @@ async fn test_governance() {
     let governance_pda = test_data.governance.governance();
 
     // step 1. transfer ownership to governance
-    let ix = example_native_token_transfers::instruction::TransferOwnership {
-        args: TransferOwnershipArgs {
-            new_owner: governance_pda,
-        },
-    };
+    let ix = example_native_token_transfers::instruction::TransferOwnership;
 
     let accs = example_native_token_transfers::accounts::TransferOwnership {
         config: test_data.ntt.config(),
         owner: test_data.program_owner.pubkey(),
+        new_owner: governance_pda,
+        upgrade_lock: test_data.ntt.upgrade_lock(),
+        program_data: test_data.ntt.program_data(),
+        bpf_loader_upgradeable_program: bpf_loader_upgradeable::id(),
     };
 
     Instruction {
@@ -80,6 +78,9 @@ async fn test_governance() {
     let inner_ix_accs = example_native_token_transfers::accounts::ClaimOwnership {
         new_owner: OWNER,
         config: test_data.ntt.config(),
+        upgrade_lock: test_data.ntt.upgrade_lock(),
+        program_data: test_data.ntt.program_data(),
+        bpf_loader_upgradeable_program: bpf_loader_upgradeable::id(),
     };
 
     let inner_ix: Instruction = Instruction {

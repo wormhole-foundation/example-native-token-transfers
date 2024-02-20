@@ -31,4 +31,6 @@ pub enum NTTError {
     Paused,
     #[msg("DisabledEndpoint")]
     DisabledEndpoint,
+    #[msg("InvalidDeployer")]
+    InvalidDeployer,
 }

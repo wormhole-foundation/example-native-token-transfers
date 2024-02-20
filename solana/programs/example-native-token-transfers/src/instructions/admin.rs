@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use wormhole_solana_utils::cpi::bpf_loader_upgradeable::{self, BpfLoaderUpgradeable};
 
 use crate::{
     chain_id::ChainId,
@@ -20,19 +21,45 @@ pub struct TransferOwnership<'info> {
     pub config: Account<'info, Config>,
 
     pub owner: Signer<'info>,
+
+    /// CHECK: This account will be the signer in the [claim_ownership] instruction.
+    new_owner: AccountInfo<'info>,
+
+    /// CHECK: Seeds must be \["upgrade-lock"\].
+    #[account(
+        seeds = [b"upgrade-lock"],
+        bump,
+    )]
+    upgrade_lock: AccountInfo<'info>,
+
+    #[account(
+        mut,
+        seeds = [crate::ID.as_ref()],
+        bump,
+        seeds::program = bpf_loader_upgradeable_program,
+    )]
+    program_data: Account<'info, ProgramData>,
+
+    bpf_loader_upgradeable_program: Program<'info, BpfLoaderUpgradeable>,
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct TransferOwnershipArgs {
-    pub new_owner: Pubkey,
-}
+pub fn transfer_ownership(ctx: Context<TransferOwnership>) -> Result<()> {
+    ctx.accounts.config.pending_owner = Some(ctx.accounts.new_owner.key());
 
-pub fn transfer_ownership(
-    ctx: Context<TransferOwnership>,
-    args: TransferOwnershipArgs,
-) -> Result<()> {
-    ctx.accounts.config.pending_owner = Some(args.new_owner);
-    Ok(())
+    bpf_loader_upgradeable::set_upgrade_authority_checked(
+        CpiContext::new_with_signer(
+            ctx.accounts
+                .bpf_loader_upgradeable_program
+                .to_account_info(),
+            bpf_loader_upgradeable::SetUpgradeAuthorityChecked {
+                program_data: ctx.accounts.program_data.to_account_info(),
+                current_authority: ctx.accounts.owner.to_account_info(),
+                new_authority: ctx.accounts.upgrade_lock.to_account_info(),
+            },
+            &[&[b"upgrade-lock", &[ctx.bumps.upgrade_lock]]],
+        ),
+        &crate::ID,
+    )
 }
 
 // * Claim ownership
@@ -45,13 +72,44 @@ pub struct ClaimOwnership<'info> {
     )]
     pub config: Account<'info, Config>,
 
+    /// CHECK: Seeds must be \["upgrade-lock"\].
+    #[account(
+        seeds = [b"upgrade-lock"],
+        bump,
+    )]
+    upgrade_lock: AccountInfo<'info>,
+
     pub new_owner: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [crate::ID.as_ref()],
+        bump,
+        seeds::program = bpf_loader_upgradeable_program,
+    )]
+    program_data: Account<'info, ProgramData>,
+
+    bpf_loader_upgradeable_program: Program<'info, BpfLoaderUpgradeable>,
 }
 
 pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
     ctx.accounts.config.pending_owner = None;
     ctx.accounts.config.owner = ctx.accounts.new_owner.key();
-    Ok(())
+
+    bpf_loader_upgradeable::set_upgrade_authority_checked(
+        CpiContext::new_with_signer(
+            ctx.accounts
+                .bpf_loader_upgradeable_program
+                .to_account_info(),
+            bpf_loader_upgradeable::SetUpgradeAuthorityChecked {
+                program_data: ctx.accounts.program_data.to_account_info(),
+                current_authority: ctx.accounts.upgrade_lock.to_account_info(),
+                new_authority: ctx.accounts.new_owner.to_account_info(),
+            },
+            &[&[b"upgrade-lock", &[ctx.bumps.upgrade_lock]]],
+        ),
+        &crate::ID,
+    )
 }
 
 // * Set siblings

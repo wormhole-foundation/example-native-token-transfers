@@ -62,7 +62,8 @@ pub async fn setup_with_extra_accounts(
     mode: Mode,
     accounts: &[(Pubkey, Account)],
 ) -> (ProgramTestContext, TestData) {
-    let mut program_test = setup_programs().await.unwrap();
+    let program_owner = Keypair::new();
+    let mut program_test = setup_programs(program_owner.pubkey()).await.unwrap();
 
     for (pubkey, account) in accounts {
         program_test.add_account(*pubkey, account.clone());
@@ -70,7 +71,7 @@ pub async fn setup_with_extra_accounts(
 
     let mut ctx = program_test.start_with_context().await;
 
-    let test_data = setup_accounts(&mut ctx).await;
+    let test_data = setup_accounts(&mut ctx, program_owner).await;
     setup_ntt(&mut ctx, &test_data, mode).await;
 
     (ctx, test_data)
@@ -84,13 +85,14 @@ fn prefer_bpf() -> bool {
     std::env::var("BPF_OUT_DIR").is_ok() || std::env::var("SBF_OUT_DIR").is_ok()
 }
 
-pub async fn setup_programs() -> Result<ProgramTest, Error> {
+pub async fn setup_programs(program_owner: Pubkey) -> Result<ProgramTest, Error> {
     let mut program_test = ProgramTest::default();
     add_program_upgradeable(
         &mut program_test,
         "example_native_token_transfers",
         example_native_token_transfers::ID,
         None,
+        Some(program_owner),
     );
 
     add_program_upgradeable(
@@ -98,12 +100,14 @@ pub async fn setup_programs() -> Result<ProgramTest, Error> {
         "wormhole_governance",
         wormhole_governance::ID,
         None,
+        None,
     );
 
     add_program_upgradeable(
         &mut program_test,
         "mainnet_core_bridge",
         wormhole_anchor_sdk::wormhole::program::ID,
+        None,
         None,
     );
 
@@ -149,7 +153,7 @@ pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
         &test_data.ntt,
         Initialize {
             payer: ctx.payer.pubkey(),
-            owner: test_data.program_owner.pubkey(),
+            deployer: test_data.program_owner.pubkey(),
             mint: test_data.mint,
         },
         InitializeArgs {
@@ -208,10 +212,8 @@ pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
     .unwrap();
 }
 
-pub async fn setup_accounts(ctx: &mut ProgramTestContext) -> TestData {
+pub async fn setup_accounts(ctx: &mut ProgramTestContext, program_owner: Keypair) -> TestData {
     // create mint
-    let program_owner = Keypair::new();
-
     let mint = Keypair::new();
     let mint_authority = Keypair::new();
 
@@ -319,6 +321,7 @@ pub fn add_program_upgradeable(
     program_name: &str,
     program_id: Pubkey,
     process_instruction: Option<ProcessInstructionWithContext>,
+    upgrade_authority_address: Option<Pubkey>,
 ) {
     let add_bpf = |this: &mut ProgramTest, program_file: PathBuf| {
         let elf = read_file(program_file);
@@ -329,7 +332,7 @@ pub fn add_program_upgradeable(
         );
         let mut program_data = bincode::serialize(&UpgradeableLoaderState::ProgramData {
             slot: 0,
-            upgrade_authority_address: Some(Pubkey::default()),
+            upgrade_authority_address: upgrade_authority_address.or(Some(Pubkey::default())),
         })
         .unwrap();
         program_data.extend_from_slice(&elf);

@@ -76,9 +76,9 @@ dependencies = [
 
 [[package]]
 name = "ahash"
-version = "0.8.6"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91429305e9f0a25f6205c5b8e0d2db09e0708a7a6df0f42212bb56c32c8ac97a"
+checksum = "cd7d5a2cecb58716e47d67d5703a249964b14c7be1ec3cad3affc295b2d1c35d"
 dependencies = [
  "cfg-if",
  "getrandom 0.2.12",
@@ -1485,7 +1485,7 @@ checksum = "0206175f82b8d6bf6652ff7d71a1e27fd2e4efde587fd368662814d6ec1d9ce0"
 name = "example-native-token-transfers"
 version = "0.1.0"
 dependencies = [
- "ahash 0.8.6",
+ "ahash 0.8.5",
  "anchor-lang",
  "anchor-spl",
  "base64 0.21.7",
@@ -1508,6 +1508,7 @@ dependencies = [
  "wormhole-io",
  "wormhole-raw-vaas",
  "wormhole-sdk",
+ "wormhole-solana-utils",
 ]
 
 [[package]]
@@ -1773,7 +1774,7 @@ version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
 dependencies = [
- "ahash 0.8.6",
+ "ahash 0.8.5",
 ]
 
 [[package]]
@@ -3872,7 +3873,7 @@ version = "1.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "098378043a888c680de07eee987bf927e23e0720b472ba61c753d7b3757e6b3e"
 dependencies = [
- "ahash 0.8.6",
+ "ahash 0.8.5",
  "blake3",
  "block-buffer 0.10.4",
  "bs58 0.4.0",
@@ -3985,7 +3986,7 @@ version = "1.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fcffede3b37ccdddbd57f93e4228b268f05c0a5cb44cb6e382ed8a31a15f5573"
 dependencies = [
- "ahash 0.8.6",
+ "ahash 0.8.5",
  "bincode",
  "bv",
  "caps",
@@ -5927,6 +5928,16 @@ dependencies = [
  "serde_wormhole",
  "sha3 0.10.8",
  "thiserror",
+]
+
+[[package]]
+name = "wormhole-solana-utils"
+version = "0.2.0-alpha.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eae4412bb88773852fe58215601cda7d8f7f0204a700526f25a9ece951715774"
+dependencies = [
+ "anchor-lang",
+ "solana-program",
 ]
 
 [[package]]

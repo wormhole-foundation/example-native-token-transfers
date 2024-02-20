@@ -62,11 +62,8 @@ pub mod example_native_token_transfers {
         instructions::release_inbound_unlock(ctx, args)
     }
 
-    pub fn transfer_ownership(
-        ctx: Context<TransferOwnership>,
-        args: TransferOwnershipArgs,
-    ) -> Result<()> {
-        instructions::transfer_ownership(ctx, args)
+    pub fn transfer_ownership(ctx: Context<TransferOwnership>) -> Result<()> {
+        instructions::transfer_ownership(ctx)
     }
 
     pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {

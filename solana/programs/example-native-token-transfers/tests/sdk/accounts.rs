@@ -12,6 +12,7 @@ use example_native_token_transfers::{
 use sha3::{Digest, Keccak256};
 use wormhole_anchor_sdk::wormhole;
 use wormhole_io::TypePrefixedPayload;
+use wormhole_solana_utils::cpi::bpf_loader_upgradeable;
 
 pub struct Wormhole {
     pub program: Pubkey,
@@ -178,5 +179,16 @@ impl NTT {
 
     pub fn wormhole_sequence(&self) -> Pubkey {
         self.wormhole.sequence(&self.emitter())
+    }
+
+    pub fn program_data(&self) -> Pubkey {
+        let (addr, _) =
+            Pubkey::find_program_address(&[self.program.as_ref()], &bpf_loader_upgradeable::id());
+        addr
+    }
+
+    pub fn upgrade_lock(&self) -> Pubkey {
+        let (addr, _) = Pubkey::find_program_address(&[b"upgrade-lock"], &self.program);
+        addr
     }
 }
