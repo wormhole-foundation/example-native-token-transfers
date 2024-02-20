@@ -154,7 +154,6 @@ pub fn register_endpoint(ctx: Context<RegisterEndpoint>) -> Result<()> {
             bump: ctx.bumps.registered_endpoint,
             id,
             endpoint_address: ctx.accounts.endpoint.key(),
-            enabled: true,
         });
 
     ctx.accounts.config.enabled_endpoints.set(id, true);

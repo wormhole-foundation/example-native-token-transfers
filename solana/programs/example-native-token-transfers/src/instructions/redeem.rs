@@ -40,7 +40,10 @@ pub struct Redeem<'info> {
     )]
     pub endpoint_message: Account<'info, ValidatedEndpointMessage<NativeTokenTransfer>>,
 
-    pub endpoint: EnabledEndpoint<'info>,
+    #[account(
+        constraint = config.enabled_endpoints.get(endpoint.id) @ NTTError::DisabledEndpoint
+    )]
+    pub endpoint: Account<'info, RegisteredEndpoint>,
 
     #[account(
         constraint = mint.key() == config.mint

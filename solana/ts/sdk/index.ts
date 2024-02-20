@@ -339,7 +339,7 @@ export class NTT {
         outboxItem: args.outboxItem,
         wormholeMessage: this.wormholeMessageAccountAddress(args.outboxItem),
         emitter: whAccs.wormholeEmitter,
-        endpoint: { endpoint: this.registeredEndpointAddress(this.program.programId) },
+        endpoint: this.registeredEndpointAddress(this.program.programId),
         wormholeBridge: whAccs.wormholeBridge,
         wormholeFeeCollector: whAccs.wormholeFeeCollector,
         wormholeSequence: whAccs.wormholeSequence,
@@ -499,8 +499,6 @@ export class NTT {
     limit: BN
     config?: Config
   }): Promise<void> {
-    const config = await this.getConfig(args.config)
-
     await this.program.methods.setSibling({
       chainId: { id: toChainId(args.chain) },
       address: Array.from(args.address),
@@ -624,7 +622,7 @@ export class NTT {
         config: this.configAccountAddress(),
         sibling: managerSibling,
         endpointMessage: this.endpointMessageAccountAddress(chainId, new BN(managerMessage.sequence.toString())),
-        endpoint: { endpoint: this.registeredEndpointAddress(this.program.programId) },
+        endpoint: this.registeredEndpointAddress(this.program.programId),
         mint: await this.mintAccountAddress(config),
         inboxItem: this.inboxItemAccountAddress(chainId, managerMessage),
         inboxRateLimit,

@@ -27,8 +27,9 @@ pub struct ReleaseOutbound<'info> {
 
     #[account(
         constraint = endpoint.endpoint_address == crate::ID,
+        constraint = config.enabled_endpoints.get(endpoint.id) @ NTTError::DisabledEndpoint
     )]
-    pub endpoint: EnabledEndpoint<'info>,
+    pub endpoint: Account<'info, RegisteredEndpoint>,
 
     #[account(
         mut,

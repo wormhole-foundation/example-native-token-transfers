@@ -1,5 +1,5 @@
 use anchor_lang::{prelude::Pubkey, system_program::System, Id, InstructionData, ToAccountMetas};
-use example_native_token_transfers::{accounts::EnabledEndpoint, instructions::RedeemArgs};
+use example_native_token_transfers::instructions::RedeemArgs;
 use solana_sdk::instruction::Instruction;
 
 use crate::sdk::accounts::NTT;
@@ -23,9 +23,7 @@ pub fn redeem(ntt: &NTT, accs: Redeem, args: RedeemArgs) -> Instruction {
         config: ntt.config(),
         sibling: accs.sibling,
         endpoint_message: accs.endpoint_message,
-        endpoint: EnabledEndpoint {
-            endpoint: ntt.registered_endpoint(&accs.endpoint),
-        },
+        endpoint: ntt.registered_endpoint(&accs.endpoint),
         mint: accs.mint,
         inbox_item: accs.inbox_item,
         inbox_rate_limit: accs.inbox_rate_limit,

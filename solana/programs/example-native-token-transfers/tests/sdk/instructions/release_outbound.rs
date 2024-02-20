@@ -1,7 +1,6 @@
 use anchor_lang::{prelude::*, InstructionData};
 use example_native_token_transfers::{
-    accounts::{EnabledEndpoint, NotPausedConfig},
-    instructions::ReleaseOutboundArgs,
+    accounts::NotPausedConfig, instructions::ReleaseOutboundArgs,
 };
 use solana_sdk::{instruction::Instruction, sysvar::SysvarId};
 
@@ -26,9 +25,7 @@ pub fn release_outbound(
         outbox_item: release_outbound.outbox_item,
         wormhole_message: ntt.wormhole_message(&release_outbound.outbox_item),
         emitter: ntt.emitter(),
-        endpoint: EnabledEndpoint {
-            endpoint: ntt.registered_endpoint(&ntt.program),
-        },
+        endpoint: ntt.registered_endpoint(&ntt.program),
         wormhole_bridge: ntt.wormhole.bridge(),
         wormhole_fee_collector: ntt.wormhole.fee_collector(),
         wormhole_sequence: ntt.wormhole_sequence(),
