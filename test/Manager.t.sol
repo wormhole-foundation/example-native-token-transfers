@@ -61,11 +61,11 @@ contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
     }
 
     function _sendMessage(
-        uint16 recipientChain,
-        uint256 deliveryPayment,
-        address caller,
-        EndpointStructs.EndpointInstruction memory instruction,
-        bytes memory payload
+        uint16, /* recipientChain */
+        uint256, /* deliveryPayment */
+        address, /* caller */
+        EndpointStructs.EndpointInstruction memory, /* instruction */
+        bytes memory /* payload */
     ) internal pure override {
         // do nothing
     }
@@ -114,13 +114,6 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         manager = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
         manager.initialize();
-
-        // deploy sample token contract
-        // deploy wormhole contract
-        // wormhole = deployWormholeForTest();
-        // deploy endpoint contracts
-        // instantiate endpoint manager contract
-        // manager = new ManagerContract();
     }
 
     // === pure unit tests
@@ -199,10 +192,19 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function test_endpointIncompatibleManager() public {
+        // Endpoint instantiation reverts if the manager doesn't have the proper token method
+        vm.expectRevert(bytes(""));
+        new DummyEndpoint(address(0xBEEF));
+    }
+
+    function test_endpointWrongManager() public {
         // TODO: this is accepted currently. should we include a check to ensure
         // only endpoints whose manager is us can be registered? (this would be
         // a convenience check, not a security one)
-        DummyEndpoint e = new DummyEndpoint(address(0xBEEF));
+        DummyToken t = new DummyToken();
+        ManagerStandalone altManager =
+            new ManagerStandalone(address(t), Manager.Mode.LOCKING, chainId, 1 days);
+        DummyEndpoint e = new DummyEndpoint(address(altManager));
         manager.setEndpoint(address(e));
     }
 
