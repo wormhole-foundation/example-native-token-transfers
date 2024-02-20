@@ -180,7 +180,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
             difference = oldLimit.sub(newLimit);
             newCurrentCapacity = currentCapacity.gt(difference)
                 ? currentCapacity.sub(difference)
-                : NormalizedAmount(0, 0);
+                : NormalizedAmount(0, currentCapacity.decimals);
         } else {
             difference = newLimit.sub(oldLimit);
             newCurrentCapacity = currentCapacity.add(difference);

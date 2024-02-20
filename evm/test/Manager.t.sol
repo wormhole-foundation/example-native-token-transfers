@@ -446,14 +446,17 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     // === storage
 
     function test_noAutomaticSlot() public {
-        ManagerContract c = new ManagerContract(address(0x123), Manager.Mode.LOCKING, 1, 1 days);
+        DummyToken t = new DummyToken();
+        ManagerContract c = new ManagerContract(address(t), Manager.Mode.LOCKING, 1, 1 days);
         assertEq(c.lastSlot(), 0x0);
     }
 
     function test_constructor() public {
+        DummyToken t = new DummyToken();
+
         vm.startStateDiffRecording();
 
-        new ManagerStandalone(address(0x123), Manager.Mode.LOCKING, 1, 1 days);
+        new ManagerStandalone(address(t), Manager.Mode.LOCKING, 1, 1 days);
 
         Utils.assertSafeUpgradeableConstructor(vm.stopAndReturnStateDiff());
     }
