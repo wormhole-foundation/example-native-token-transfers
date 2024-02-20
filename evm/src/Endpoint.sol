@@ -24,6 +24,8 @@ abstract contract Endpoint is PausableOwnable {
         EndpointStructs.EndpointInstruction memory endpointInstruction
     ) internal view virtual returns (uint256);
 
+    function getManagerToken() public view virtual returns (address);
+
     /// @notice pause the endpoint
     function _pauseEndpoint() internal {
         _pause();

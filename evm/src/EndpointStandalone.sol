@@ -2,6 +2,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "./Endpoint.sol";
+import "./interfaces/IManager.sol";
 import "./interfaces/IManagerStandalone.sol";
 import "./interfaces/IEndpointStandalone.sol";
 import "./libraries/Implementation.sol";
@@ -18,9 +19,12 @@ abstract contract EndpointStandalone is
     /// @dev updating bridgeManager requires a new Endpoint deployment.
     /// Projects should implement their own governance to remove the old Endpoint contract address and then add the new one.
     address public immutable manager;
+    address public immutable managerToken;
 
     constructor(address _manager) {
         manager = _manager;
+        // TODO: ERC-165 check on the manager contract, otherwise revert
+        managerToken = IManager(manager).token();
     }
 
     modifier onlyManager() {
@@ -54,6 +58,7 @@ abstract contract EndpointStandalone is
     /// @dev When we add new immutables, this function should be updated
     function _checkImmutables() internal view override {
         assert(this.manager() == manager);
+        assert(this.managerToken() == managerToken);
     }
 
     function upgrade(address newImplementation) external onlyOwner {
@@ -89,5 +94,9 @@ abstract contract EndpointStandalone is
         IManagerStandalone(manager).attestationReceived(
             sourceChainId, sourceManagerAddress, payload
         );
+    }
+
+    function getManagerToken() public view override returns (address) {
+        return managerToken;
     }
 }

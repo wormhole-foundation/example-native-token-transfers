@@ -93,19 +93,11 @@ contract WormholeEndpointStandaloneMigrateBasic is WormholeEndpointStandalone {
     constructor(
         address manager,
         address wormholeCoreBridge,
-        address wormholeRelayerAddr
-    ) WormholeEndpointStandalone(manager, wormholeCoreBridge, wormholeRelayerAddr) {}
-
-    function _migrate() internal pure override {
-        revert("Proper migrate called");
-    }
-}
-
-contract WormholeEndpointStandaloneImmutableCheck is WormholeEndpointStandalone {
-    constructor(
-        address wormholeCoreBridge,
-        address wormholeRelayerAddr
-    ) WormholeEndpointStandalone(address(0x1), wormholeCoreBridge, wormholeRelayerAddr) {}
+        address wormholeRelayerAddr,
+        address specialRelayerAddr
+    )
+        WormholeEndpointStandalone(manager, wormholeCoreBridge, wormholeRelayerAddr, specialRelayerAddr)
+    {}
 
     function _migrate() internal pure override {
         revert("Proper migrate called");
@@ -114,9 +106,13 @@ contract WormholeEndpointStandaloneImmutableCheck is WormholeEndpointStandalone 
 
 contract WormholeEndpointStandaloneImmutableAllow is WormholeEndpointStandalone {
     constructor(
+        address manager,
         address wormholeCoreBridge,
-        address wormholeRelayerAddr
-    ) WormholeEndpointStandalone(address(0x1), wormholeCoreBridge, wormholeRelayerAddr) {}
+        address wormholeRelayerAddr,
+        address specialRelayerAddr
+    )
+        WormholeEndpointStandalone(manager, wormholeCoreBridge, wormholeRelayerAddr, specialRelayerAddr)
+    {}
 
     // Allow for the immutables to be migrated
     function _migrate() internal override {
@@ -133,8 +129,11 @@ contract WormholeEndpointStandaloneLayoutChange is WormholeEndpointStandalone {
     constructor(
         address manager,
         address wormholeCoreBridge,
-        address wormholeRelayerAddr
-    ) WormholeEndpointStandalone(manager, wormholeCoreBridge, wormholeRelayerAddr) {}
+        address wormholeRelayerAddr,
+        address specialRelayerAddr
+    )
+        WormholeEndpointStandalone(manager, wormholeCoreBridge, wormholeRelayerAddr, specialRelayerAddr)
+    {}
 
     function setData() public {
         a = address(0x1);
@@ -185,7 +184,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         managerChain1.initialize();
 
         WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
-            address(managerChain1), address(wormhole), address(relayer)
+            address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
         wormholeEndpointChain1 = WormholeEndpointStandalone(
             address(new ERC1967Proxy(address(wormholeEndpointChain1Implementation), ""))
@@ -207,7 +206,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         managerChain2.initialize();
 
         WormholeEndpointStandalone wormholeEndpointChain2Implementation = new WormholeEndpointStandalone(
-            address(managerChain2), address(wormhole), address(relayer)
+            address(managerChain2), address(wormhole), address(relayer), address(0x0)
         );
         wormholeEndpointChain2 = WormholeEndpointStandalone(
             address(new ERC1967Proxy(address(wormholeEndpointChain2Implementation), ""))
@@ -248,7 +247,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     function test_basicUpgradeEndpoint() public {
         // Basic call to upgrade with the same contact as well
         WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
-            address(managerChain1), address(wormhole), address(relayer)
+            address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
         wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
 
@@ -276,7 +275,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     function test_doubleUpgradeEndpoint() public {
         // Basic call to upgrade with the same contact as well
         WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
-            address(managerChain1), address(wormhole), address(relayer)
+            address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
         wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
 
@@ -307,7 +306,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     function test_storageSlotEndpoint() public {
         // Basic call to upgrade with the same contact as ewll
         WormholeEndpointStandalone newImplementation = new WormholeEndpointStandaloneLayoutChange(
-            address(managerChain1), address(wormhole), address(relayer)
+            address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
         wormholeEndpointChain1.upgrade(address(newImplementation));
 
@@ -336,7 +335,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     function test_callMigrateEndpoint() public {
         // Basic call to upgrade with the same contact as well
         WormholeEndpointStandaloneMigrateBasic wormholeEndpointChain1Implementation = new WormholeEndpointStandaloneMigrateBasic(
-            address(managerChain1), address(wormhole), address(relayer)
+            address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
 
         vm.expectRevert("Proper migrate called");
@@ -361,12 +360,13 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         basicFunctionality();
     }
 
-    function test_mmutableBlockUpdateFailureEndpoint() public {
+    function test_immutableBlockUpdateFailureEndpoint() public {
         // Don't allow upgrade to work with a change immutable
 
         address oldManager = wormholeEndpointChain1.manager();
-        WormholeEndpointStandaloneImmutableCheck wormholeEndpointChain1Implementation =
-            new WormholeEndpointStandaloneImmutableCheck(address(wormhole), address(relayer));
+        WormholeEndpointStandaloneMigrateBasic wormholeEndpointChain1Implementation = new WormholeEndpointStandaloneMigrateBasic(
+            address(managerChain2), address(wormhole), address(relayer), address(0x0)
+        );
 
         vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
         wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
@@ -392,14 +392,16 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function test_immutableBlockUpdateSuccessEndpoint() public {
-        WormholeEndpointStandaloneImmutableAllow wormholeEndpointChain1Implementation =
-            new WormholeEndpointStandaloneImmutableAllow(address(wormhole), address(relayer));
+        WormholeEndpointStandaloneImmutableAllow wormholeEndpointChain1Implementation = new WormholeEndpointStandaloneImmutableAllow(
+            address(managerChain1), address(wormhole), address(relayer), address(0x0)
+        );
 
         //vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
         wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
 
         require(
-            wormholeEndpointChain1.manager() == address(0x1), "Manager updated when it shouldn't be"
+            wormholeEndpointChain1.manager() == address(managerChain1),
+            "Manager updated when it shouldn't be"
         );
     }
 
@@ -453,7 +455,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
         // Basic call so that we can easily see what the new endpoint is.
         WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
-            address(managerChain1), address(wormhole), address(relayer)
+            address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
         wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
         basicFunctionality(); // Ensure that the upgrade was proper
