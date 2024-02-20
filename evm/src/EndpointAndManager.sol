@@ -58,6 +58,10 @@ abstract contract EndpointAndManager is Endpoint, Manager, Implementation {
         );
     }
 
+    function getManagerToken() public view override returns (address) {
+        return token;
+    }
+
     function _deliverToManager(
         uint16 sourceChainId,
         bytes32 sourceManagerAddress,

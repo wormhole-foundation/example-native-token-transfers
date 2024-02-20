@@ -8,8 +8,12 @@ contract WormholeEndpointStandalone is WormholeEndpoint, EndpointStandalone {
     constructor(
         address manager,
         address wormholeCoreBridge,
-        address wormholeRelayerAddr
-    ) EndpointStandalone(manager) WormholeEndpoint(wormholeCoreBridge, wormholeRelayerAddr) {}
+        address wormholeRelayerAddr,
+        address specialRelayerAddr
+    )
+        EndpointStandalone(manager)
+        WormholeEndpoint(wormholeCoreBridge, wormholeRelayerAddr, specialRelayerAddr)
+    {}
 
     function setWormholeSibling(
         uint16 siblingChainId,

@@ -101,7 +101,8 @@ contract TestEndToEndRelayer is
         wormholeEndpointChain1 = new WormholeEndpointStandalone(
             address(managerChain1),
             address(chainInfosTestnet[chainId1].wormhole),
-            address(relayerSource)
+            address(relayerSource),
+            address(0x0)
         );
 
         wormholeEndpointChain1 = WormholeEndpointStandalone(
@@ -130,7 +131,8 @@ contract TestEndToEndRelayer is
         wormholeEndpointChain2 = new WormholeEndpointStandalone(
             address(managerChain2),
             address(chainInfosTestnet[chainId2].wormhole),
-            address(relayerTarget)
+            address(relayerTarget),
+            address(0x0)
         );
 
         wormholeEndpointChain2 = WormholeEndpointStandalone(
@@ -434,7 +436,7 @@ contract TestRelayerEndToEndManual is
         managerChain1.initialize();
 
         wormholeEndpointChain1 = new WormholeEndpointStandalone(
-            address(managerChain1), address(wormhole), address(relayer)
+            address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
         wormholeEndpointChain1 = WormholeEndpointStandalone(
             address(new ERC1967Proxy(address(wormholeEndpointChain1), ""))
@@ -457,7 +459,8 @@ contract TestRelayerEndToEndManual is
         wormholeEndpointChain2 = new WormholeEndpointStandalone(
             address(managerChain2),
             address(wormhole),
-            address(relayer) // TODO - add support for this later
+            address(relayer), // TODO - add support for this later
+            address(0x0) // TODO - add support for this later
         );
         wormholeEndpointChain2 = WormholeEndpointStandalone(
             address(new ERC1967Proxy(address(wormholeEndpointChain2), ""))
