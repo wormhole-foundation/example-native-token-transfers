@@ -46,3 +46,5 @@ wormhole-raw-vaas = "0.2.0-alpha.2"
 libsecp256k1 = "=0.6.0"
 wormhole-sdk = { git = "https://github.com/wormhole-foundation/wormhole", rev = "eee4641" }
 serde_wormhole = { git = "https://github.com/wormhole-foundation/wormhole", rev = "eee4641" }
+solana-program-runtime = "1.17.2"
+bincode = "1.3.3"

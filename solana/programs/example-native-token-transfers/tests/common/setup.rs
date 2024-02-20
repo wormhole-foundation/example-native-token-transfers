@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use anchor_lang::prelude::{Error, Id, Pubkey};
 use anchor_spl::token::{Mint, Token};
 use example_native_token_transfers::{
@@ -6,7 +8,12 @@ use example_native_token_transfers::{
     endpoints::wormhole::SetEndpointSiblingArgs,
     instructions::{InitializeArgs, SetSiblingArgs},
 };
-use solana_program_test::{ProgramTest, ProgramTestContext};
+use solana_program::{bpf_loader_upgradeable::UpgradeableLoaderState, rent::Rent};
+use solana_program_runtime::{
+    invoke_context::ProcessInstructionWithContext,
+    log_collector::log::{trace, warn},
+};
+use solana_program_test::{find_file, read_file, ProgramTest, ProgramTestContext};
 use solana_sdk::{
     account::Account, signature::Keypair, signer::Signer, system_instruction,
     transaction::Transaction,
@@ -73,17 +80,28 @@ pub async fn setup(mode: Mode) -> (ProgramTestContext, TestData) {
     setup_with_extra_accounts(mode, &[]).await
 }
 
+fn prefer_bpf() -> bool {
+    std::env::var("BPF_OUT_DIR").is_ok() || std::env::var("SBF_OUT_DIR").is_ok()
+}
+
 pub async fn setup_programs() -> Result<ProgramTest, Error> {
     let mut program_test = ProgramTest::default();
-    program_test.add_program(
+    add_program_upgradeable(
+        &mut program_test,
         "example_native_token_transfers",
         example_native_token_transfers::ID,
         None,
     );
 
-    program_test.add_program("wormhole_governance", wormhole_governance::ID, None);
+    add_program_upgradeable(
+        &mut program_test,
+        "wormhole_governance",
+        wormhole_governance::ID,
+        None,
+    );
 
-    program_test.add_program(
+    add_program_upgradeable(
+        &mut program_test,
         "mainnet_core_bridge",
         wormhole_anchor_sdk::wormhole::program::ID,
         None,
@@ -284,4 +302,139 @@ pub async fn create_mint(
         &[&ctx.payer, mint],
         blockhash,
     )
+}
+
+// TODO: upstream this to solana-program-test
+
+/// Add a SBF program to the test environment. (copied from solana_program_test
+/// `add_program`, but the owner is bpf_loader_upgradeable)
+///
+/// `program_name` will also be used to locate the SBF shared object in the current or fixtures
+/// directory.
+///
+/// If `process_instruction` is provided, the natively built-program may be used instead of the
+/// SBF shared object depending on the `BPF_OUT_DIR` environment variable.
+pub fn add_program_upgradeable(
+    program_test: &mut ProgramTest,
+    program_name: &str,
+    program_id: Pubkey,
+    process_instruction: Option<ProcessInstructionWithContext>,
+) {
+    let add_bpf = |this: &mut ProgramTest, program_file: PathBuf| {
+        let elf = read_file(program_file);
+
+        let (programdata_address, _) = Pubkey::find_program_address(
+            &[program_id.as_ref()],
+            &solana_sdk::bpf_loader_upgradeable::id(),
+        );
+        let mut program_data = bincode::serialize(&UpgradeableLoaderState::ProgramData {
+            slot: 0,
+            upgrade_authority_address: Some(Pubkey::default()),
+        })
+        .unwrap();
+        program_data.extend_from_slice(&elf);
+
+        this.add_account(
+            programdata_address,
+            Account {
+                lamports: Rent::default().minimum_balance(program_data.len()).max(1),
+                data: program_data,
+                owner: solana_sdk::bpf_loader_upgradeable::id(),
+                executable: false,
+                rent_epoch: 0,
+            },
+        );
+
+        let data = bincode::serialize(&UpgradeableLoaderState::Program {
+            programdata_address,
+        })
+        .unwrap();
+
+        this.add_account(
+            program_id,
+            Account {
+                lamports: Rent::default().minimum_balance(data.len()).max(1),
+                data,
+                owner: solana_sdk::bpf_loader_upgradeable::id(),
+                executable: true,
+                rent_epoch: 0,
+            },
+        );
+    };
+
+    let warn_invalid_program_name = || {
+        let valid_program_names = default_shared_object_dirs()
+            .iter()
+            .filter_map(|dir| dir.read_dir().ok())
+            .flat_map(|read_dir| {
+                read_dir.filter_map(|entry| {
+                    let path = entry.ok()?.path();
+                    if !path.is_file() {
+                        return None;
+                    }
+                    match path.extension()?.to_str()? {
+                        "so" => Some(path.file_stem()?.to_os_string()),
+                        _ => None,
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
+
+        if valid_program_names.is_empty() {
+            // This should be unreachable as `test-bpf` should guarantee at least one shared
+            // object exists somewhere.
+            warn!("No SBF shared objects found.");
+            return;
+        }
+
+        warn!(
+            "Possible bogus program name. Ensure the program name ({}) \
+                matches one of the following recognizable program names:",
+            program_name,
+        );
+        for name in valid_program_names {
+            warn!(" - {}", name.to_str().unwrap());
+        }
+    };
+
+    let program_file = find_file(&format!("{program_name}.so"));
+    match (prefer_bpf(), program_file, process_instruction) {
+        // If SBF is preferred (i.e., `test-sbf` is invoked) and a BPF shared object exists,
+        // use that as the program data.
+        (true, Some(file), _) => add_bpf(program_test, file),
+
+        // If SBF is not required (i.e., we were invoked with `test`), use the provided
+        // processor function as is.
+        //
+        // TODO: figure out why tests hang if a processor panics when running native code.
+        (false, _, Some(process)) => {
+            program_test.add_builtin_program(program_name, program_id, process)
+        }
+
+        // Invalid: `test-sbf` invocation with no matching SBF shared object.
+        (true, None, _) => {
+            warn_invalid_program_name();
+            panic!("Program file data not available for {program_name} ({program_id})");
+        }
+
+        // Invalid: regular `test` invocation without a processor.
+        (false, _, None) => {
+            panic!("Program processor not available for {program_name} ({program_id})");
+        }
+    }
+}
+
+fn default_shared_object_dirs() -> Vec<PathBuf> {
+    let mut search_path = vec![];
+    if let Ok(bpf_out_dir) = std::env::var("BPF_OUT_DIR") {
+        search_path.push(PathBuf::from(bpf_out_dir));
+    } else if let Ok(bpf_out_dir) = std::env::var("SBF_OUT_DIR") {
+        search_path.push(PathBuf::from(bpf_out_dir));
+    }
+    search_path.push(PathBuf::from("tests/fixtures"));
+    if let Ok(dir) = std::env::current_dir() {
+        search_path.push(dir);
+    }
+    trace!("SBF .so search path: {:?}", search_path);
+    search_path
 }
