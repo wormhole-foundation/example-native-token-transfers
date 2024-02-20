@@ -11,7 +11,7 @@ use solana_program_test::*;
 use solana_sdk::{signer::Signer, transaction::TransactionError};
 use wormhole_governance::{
     error::GovernanceError,
-    instructions::{GovernanceMessage, OWNER, PAYER},
+    instructions::{GovernanceMessage, OWNER},
 };
 use wormhole_sdk::{Address, Vaa, GOVERNANCE_EMITTER};
 
@@ -45,9 +45,7 @@ async fn post_governance_vaa<A: Clone + AnchorSerialize>(
         payload: gov_message,
     };
 
-    let posted_vaa = post_vaa(&wormhole, ctx, vaa).await;
-
-    posted_vaa
+    post_vaa(wormhole, ctx, vaa).await
 }
 
 #[tokio::test]
@@ -153,7 +151,7 @@ async fn wrap_governance(
 
     let gov_message: GovernanceMessage = ix.clone().into();
 
-    let vaa = post_governance_vaa(ctx, &wormhole, gov_message, emitter_override).await;
+    let vaa = post_governance_vaa(ctx, wormhole, gov_message, emitter_override).await;
 
     let gov_accounts = wormhole_governance::accounts::Governance {
         payer: ctx.payer.pubkey(),

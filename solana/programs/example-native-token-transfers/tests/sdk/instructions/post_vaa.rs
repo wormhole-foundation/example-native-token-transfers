@@ -21,7 +21,7 @@ use wormhole_sdk::vaa::*;
 
 pub const MAX_LEN_GUARDIAN_KEYS: usize = 19;
 
-pub const GUARDIAN_SECRET_KEY: &'static str =
+pub const GUARDIAN_SECRET_KEY: &str =
     "cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0";
 
 pub struct VerifySignatures {

@@ -102,7 +102,11 @@ jobs:
 
           BPF_PACKAGES=(
             programs/example-native-token-transfers/Cargo.toml
+            programs/wormhole-governance/Cargo.toml
           )
+          for p in "${BPF_PACKAGES[@]}"; do
+            cargo build-sbf --manifest-path "${p}"
+          done
           for p in "${BPF_PACKAGES[@]}"; do
             cargo test-sbf --manifest-path "${p}"
           done

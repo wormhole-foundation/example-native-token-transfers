@@ -16,8 +16,8 @@ pub const NORMALIZED_DECIMALS: u8 = 8;
 
 #[derive(Debug, Clone, Copy, AnchorSerialize, AnchorDeserialize, InitSpace)]
 pub struct NormalizedAmount {
-    amount: u64,
-    decimals: u8,
+    pub amount: u64,
+    pub decimals: u8,
 }
 
 impl PartialEq for NormalizedAmount {

@@ -53,13 +53,13 @@ pub struct GovernanceMessage {
     pub data: Vec<u8>,
 }
 
-impl Into<Instruction> for GovernanceMessage {
-    fn into(self) -> Instruction {
+impl From<GovernanceMessage> for Instruction {
+    fn from(val: GovernanceMessage) -> Self {
         let GovernanceMessage {
             program_id,
             accounts,
             data,
-        } = self;
+        } = val;
         let accounts: Vec<AccountMeta> = accounts.into_iter().map(|a| a.into()).collect();
         Instruction {
             program_id,
@@ -95,13 +95,13 @@ pub struct Acc {
     pub is_writable: bool,
 }
 
-impl Into<AccountMeta> for Acc {
-    fn into(self) -> AccountMeta {
+impl From<Acc> for AccountMeta {
+    fn from(val: Acc) -> Self {
         let Acc {
             pubkey,
             is_signer,
             is_writable,
-        } = self;
+        } = val;
         AccountMeta {
             pubkey,
             is_signer,
