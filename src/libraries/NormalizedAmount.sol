@@ -16,30 +16,31 @@ library NormalizedAmountLib {
 
     error AmountTooLarge(uint256 amount);
     error NumberOfDecimalsNotEqual(uint8 decimals, uint8 decimalsOther);
+    error TransferAmountHasDust(uint256 amount, uint256 dust);
 
-    function unwrap(NormalizedAmount memory a) internal pure returns (uint64, uint8) {
+    function unwrap(NormalizedAmount memory a) public pure returns (uint64, uint8) {
         return (a.amount, a.decimals);
     }
 
-    function getAmount(NormalizedAmount memory a) internal pure returns (uint64) {
+    function getAmount(NormalizedAmount memory a) public pure returns (uint64) {
         return a.amount;
     }
 
-    function getDecimals(NormalizedAmount memory a) internal pure returns (uint8) {
+    function getDecimals(NormalizedAmount memory a) public pure returns (uint8) {
         return a.decimals;
     }
 
     function eq(
         NormalizedAmount memory a,
         NormalizedAmount memory b
-    ) internal pure returns (bool) {
+    ) public pure returns (bool) {
         return a.amount == b.amount && a.decimals == b.decimals;
     }
 
     function gt(
         NormalizedAmount memory a,
         NormalizedAmount memory b
-    ) internal pure returns (bool) {
+    ) public pure returns (bool) {
         // on initialization
         if (isZero(b) && !isZero(a)) {
             return true;
@@ -58,7 +59,7 @@ library NormalizedAmountLib {
     function lt(
         NormalizedAmount memory a,
         NormalizedAmount memory b
-    ) internal pure returns (bool) {
+    ) public pure returns (bool) {
         // on initialization
         if (isZero(b) && !isZero(a)) {
             return false;
@@ -74,14 +75,14 @@ library NormalizedAmountLib {
         return a.amount < b.amount;
     }
 
-    function isZero(NormalizedAmount memory a) internal pure returns (bool) {
+    function isZero(NormalizedAmount memory a) public pure returns (bool) {
         return (a.amount == 0 && a.decimals == 0);
     }
 
     function sub(
         NormalizedAmount memory a,
         NormalizedAmount memory b
-    ) internal pure returns (NormalizedAmount memory) {
+    ) public pure returns (NormalizedAmount memory) {
         // on initialization
         if (isZero(b)) {
             return a;
@@ -97,7 +98,7 @@ library NormalizedAmountLib {
     function add(
         NormalizedAmount memory a,
         NormalizedAmount memory b
-    ) internal pure returns (NormalizedAmount memory) {
+    ) public pure returns (NormalizedAmount memory) {
         // on initialization
         if (isZero(a)) {
             return b;
@@ -137,7 +138,7 @@ library NormalizedAmountLib {
         uint256 amount,
         uint8 fromDecimals,
         uint8 toDecimals
-    ) internal pure returns (uint256) {
+    ) public pure returns (uint256) {
         if (fromDecimals > toDecimals) {
             return amount / (10 ** (fromDecimals - toDecimals));
         } else {
@@ -148,7 +149,7 @@ library NormalizedAmountLib {
     function normalize(
         uint256 amt,
         uint8 fromDecimals
-    ) internal pure returns (NormalizedAmount memory) {
+    ) public pure returns (NormalizedAmount memory) {
         uint8 toDecimals = minUint8(NORMALIZED_DECIMALS, fromDecimals);
         uint256 amountScaled = scale(amt, fromDecimals, toDecimals);
 
@@ -163,10 +164,28 @@ library NormalizedAmountLib {
     function denormalize(
         NormalizedAmount memory amt,
         uint8 toDecimals
-    ) internal pure returns (uint256) {
+    ) public pure returns (uint256) {
         (uint256 deNorm, uint8 fromDecimals) = unwrap(amt);
         uint256 amountScaled = scale(deNorm, fromDecimals, toDecimals);
 
         return amountScaled;
+    }
+
+        /// @dev Returns normalized amount and checks for dust
+    function normalizeTransferAmount(uint256 amount, uint8 decimals)
+        internal
+        pure
+        returns (NormalizedAmount memory)
+    {
+        NormalizedAmount memory normalizedAmount;
+
+        normalizedAmount = normalize(amount, decimals);
+        // don't deposit dust that can not be bridged due to the decimal shift
+        uint256 newAmount = denormalize(normalizedAmount, decimals);
+        if (amount != newAmount) {
+            revert TransferAmountHasDust(amount, amount - newAmount);
+        }
+
+        return normalizedAmount;
     }
 }

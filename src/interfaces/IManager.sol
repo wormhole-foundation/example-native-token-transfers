@@ -6,7 +6,6 @@ import "../libraries/EndpointStructs.sol";
 
 interface IManager {
     error DeliveryPaymentTooLow(uint256 requiredPayment, uint256 providedPayment);
-    error TransferAmountHasDust(uint256 amount, uint256 dust);
     error MessageNotApproved(bytes32 msgHash);
     error InvalidTargetChain(uint16 targetChain, uint16 thisChain);
     error ZeroAmount();

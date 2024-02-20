@@ -206,7 +206,7 @@ library EndpointStructs {
     function parseEndpointMessage(
         bytes4 expectedPrefix,
         bytes memory encoded
-    ) internal pure returns (EndpointMessage memory endpointMessage) {
+    ) public pure returns (EndpointMessage memory endpointMessage) {
         uint256 offset = 0;
         bytes4 prefix;
 

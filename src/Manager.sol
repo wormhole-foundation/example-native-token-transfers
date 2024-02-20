@@ -26,7 +26,6 @@ abstract contract Manager is
     IManager,
     IManagerEvents,
     EndpointRegistry,
-    RateLimiter,
     ReentrancyGuardUpgradeable,
     PausableOwnable
 {
@@ -38,10 +37,21 @@ abstract contract Manager is
     error RefundFailed(uint256 refundAmount);
     error CannotRenounceManagerOwnership(address owner);
 
+    error NotEnoughCapacity(uint256 currentCapacity, uint256 amount);
+    error OutboundQueuedTransferNotFound(uint64 queueSequence);
+    error OutboundQueuedTransferStillQueued(uint64 queueSequence, uint256 transferTimestamp);
+    error InboundQueuedTransferNotFound(bytes32 digest);
+    error InboundQueuedTransferStillQueued(bytes32 digest, uint256 transferTimestamp);
+    error CapacityCannotExceedLimit(NormalizedAmount newCurrentCapacity, NormalizedAmount newLimit);
+    event OutboundTransferRateLimited(
+        address indexed sender, uint64 sequence, uint256 amount, uint256 currentCapacity
+    );
+
     address public immutable token;
     Mode public immutable mode;
     uint16 public immutable chainId;
     uint256 public immutable evmChainId;
+    address public immutable rateLimiter;
 
     enum Mode {
         LOCKING,
@@ -100,11 +110,12 @@ abstract contract Manager is
         Mode _mode,
         uint16 _chainId,
         uint64 _rateLimitDuration
-    ) RateLimiter(_rateLimitDuration) {
+    ) {
         token = _token;
         mode = _mode;
         chainId = _chainId;
         evmChainId = block.chainid;
+        rateLimiter = address(new RateLimiter(address(this), _rateLimitDuration, _tokenDecimals()));
     }
 
     function __Manager_init() internal onlyInitializing {
@@ -151,8 +162,7 @@ abstract contract Manager is
 
     /// @dev Returns the bitmap of attestations from enabled endpoints for a given message.
     function _getMessageAttestations(bytes32 digest) internal view returns (uint64) {
-        uint64 enabledEndpointBitmap = _getEnabledEndpointsBitmap();
-        return _getMessageAttestationsStorage()[digest].attestedEndpoints & enabledEndpointBitmap;
+        return _getMessageAttestationsStorage()[digest].attestedEndpoints & _getEnabledEndpointsBitmap();
     }
 
     function _getEnabledEndpointAttestedToMessage(
@@ -163,15 +173,13 @@ abstract contract Manager is
     }
 
     function setOutboundLimit(uint256 limit) external onlyOwner {
-        uint8 decimals = _tokenDecimals();
-        NormalizedAmount memory normalized = NormalizedAmountLib.normalize(limit, decimals);
-        _setOutboundLimit(normalized);
+        NormalizedAmount memory normalized = NormalizedAmountLib.normalize(limit, _tokenDecimals());
+        IRateLimiter(rateLimiter).setOutboundLimit(normalized);
     }
 
     function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
-        uint8 decimals = _tokenDecimals();
-        NormalizedAmount memory normalized = NormalizedAmountLib.normalize(limit, decimals);
-        _setInboundLimit(normalized, chainId_);
+        NormalizedAmount memory normalized = NormalizedAmountLib.normalize(limit, _tokenDecimals());
+        IRateLimiter(rateLimiter).setInboundLimit(normalized, chainId_);
     }
 
     function completeOutboundQueuedTransfer(uint64 messageSequence)
@@ -182,18 +190,18 @@ abstract contract Manager is
         returns (uint64)
     {
         // find the message in the queue
-        OutboundQueuedTransfer memory queuedTransfer = _getOutboundQueueStorage()[messageSequence];
+        IRateLimiter.OutboundQueuedTransfer memory queuedTransfer = IRateLimiter(rateLimiter).getOutboundQueuedTransfer(messageSequence);
         if (queuedTransfer.txTimestamp == 0) {
             revert OutboundQueuedTransferNotFound(messageSequence);
         }
 
         // check that > RATE_LIMIT_DURATION has elapsed
-        if (block.timestamp - queuedTransfer.txTimestamp < rateLimitDuration) {
+        if (block.timestamp - queuedTransfer.txTimestamp < IRateLimiter(rateLimiter).rateLimitDuration()) {
             revert OutboundQueuedTransferStillQueued(messageSequence, queuedTransfer.txTimestamp);
         }
 
         // remove transfer from the queue
-        delete _getOutboundQueueStorage()[messageSequence];
+        IRateLimiter(rateLimiter).deleteFromOutboundQueue(messageSequence);
 
         // run it through the transfer logic and skip the rate limit
         return _transfer(
@@ -215,28 +223,6 @@ abstract contract Manager is
         if (!refundSuccessful) {
             revert RefundFailed(refundAmount);
         }
-    }
-
-    /// @dev Returns normalized amount and checks for dust
-    function normalizeTransferAmount(uint256 amount)
-        internal
-        view
-        returns (NormalizedAmount memory)
-    {
-        NormalizedAmount memory normalizedAmount;
-        {
-            // query tokens decimals
-            uint8 decimals = _tokenDecimals();
-
-            normalizedAmount = amount.normalize(decimals);
-            // don't deposit dust that can not be bridged due to the decimal shift
-            uint256 newAmount = normalizedAmount.denormalize(decimals);
-            if (amount != newAmount) {
-                revert TransferAmountHasDust(amount, amount - newAmount);
-            }
-        }
-
-        return normalizedAmount;
     }
 
     /// @dev Simple quality of life transfer method that doesn't deal with queuing or passing endpoint instructions.
@@ -329,25 +315,25 @@ abstract contract Manager is
         }
 
         // normalize amount after burning to ensure transfer amount matches (amount - fee)
-        NormalizedAmount memory normalizedAmount = normalizeTransferAmount(amount);
+        NormalizedAmount memory normalizedAmount = amount.normalizeTransferAmount(_tokenDecimals());
 
         // get the sequence for this transfer
         uint64 sequence = _useMessageSequence();
 
         {
             // now check rate limits
-            bool isAmountRateLimited = _isOutboundAmountRateLimited(normalizedAmount);
+            bool isAmountRateLimited = IRateLimiter(rateLimiter).isOutboundAmountRateLimited(normalizedAmount);
             if (!shouldQueue && isAmountRateLimited) {
-                revert NotEnoughCapacity(getCurrentOutboundCapacity(), amount);
+                revert NotEnoughCapacity(IRateLimiter(rateLimiter).getCurrentOutboundCapacity(), amount);
             }
             if (shouldQueue && isAmountRateLimited) {
                 // emit an event to notify the user that the transfer is rate limited
                 emit OutboundTransferRateLimited(
-                    msg.sender, sequence, amount, getCurrentOutboundCapacity()
+                    msg.sender, sequence, amount, IRateLimiter(rateLimiter).getCurrentOutboundCapacity()
                 );
 
                 // queue up and return
-                _enqueueOutboundTransfer(
+                IRateLimiter(rateLimiter).enqueueOutboundTransfer(
                     sequence,
                     normalizedAmount,
                     recipientChain,
@@ -365,10 +351,10 @@ abstract contract Manager is
         }
 
         // otherwise, consume the outbound amount
-        _consumeOutboundAmount(normalizedAmount);
+        IRateLimiter(rateLimiter).consumeOutboundAmount(normalizedAmount);
         // When sending a transfer, we refill the inbound rate limit for
         // that chain by the same amount (we call this "backflow")
-        _backfillInboundAmount(normalizedAmount, recipientChain);
+        IRateLimiter(rateLimiter).backfillInboundAmount(normalizedAmount, recipientChain);
 
         return _transfer(
             sequence, normalizedAmount, recipientChain, recipient, msg.sender, endpointInstructions
@@ -487,10 +473,10 @@ abstract contract Manager is
 
         {
             // Check inbound rate limits
-            bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, sourceChainId);
+            bool isRateLimited = IRateLimiter(rateLimiter).isInboundAmountRateLimited(nativeTransferAmount, sourceChainId);
             if (isRateLimited) {
                 // queue up the transfer
-                _enqueueInboundTransfer(digest, nativeTransferAmount, transferRecipient);
+                IRateLimiter(rateLimiter).enqueueInboundTransfer(digest, nativeTransferAmount, transferRecipient);
 
                 // end execution early
                 return;
@@ -498,28 +484,28 @@ abstract contract Manager is
         }
 
         // consume the amount for the inbound rate limit
-        _consumeInboundAmount(nativeTransferAmount, sourceChainId);
+        IRateLimiter(rateLimiter).consumeInboundAmount(nativeTransferAmount, sourceChainId);
         // When receiving a transfer, we refill the outbound rate limit
         // by the same amount (we call this "backflow")
-        _backfillOutboundAmount(nativeTransferAmount);
+        IRateLimiter(rateLimiter).backfillOutboundAmount(nativeTransferAmount);
 
         _mintOrUnlockToRecipient(transferRecipient, nativeTransferAmount);
     }
 
     function completeInboundQueuedTransfer(bytes32 digest) external nonReentrant whenNotPaused {
         // find the message in the queue
-        InboundQueuedTransfer memory queuedTransfer = getInboundQueuedTransfer(digest);
+        IRateLimiter.InboundQueuedTransfer memory queuedTransfer = IRateLimiter(rateLimiter).getInboundQueuedTransfer(digest);
         if (queuedTransfer.txTimestamp == 0) {
             revert InboundQueuedTransferNotFound(digest);
         }
 
         // check that > RATE_LIMIT_DURATION has elapsed
-        if (block.timestamp - queuedTransfer.txTimestamp < rateLimitDuration) {
+        if (block.timestamp - queuedTransfer.txTimestamp < IRateLimiter(rateLimiter).rateLimitDuration()) {
             revert InboundQueuedTransferStillQueued(digest, queuedTransfer.txTimestamp);
         }
 
         // remove transfer from the queue
-        delete _getInboundQueueStorage()[digest];
+        IRateLimiter(rateLimiter).deleteFromInboundQueue(digest);
 
         // run it through the mint/unlock logic
         _mintOrUnlockToRecipient(queuedTransfer.recipient, queuedTransfer.amount);
@@ -584,7 +570,7 @@ abstract contract Manager is
         emit SiblingUpdated(siblingChainId, oldSiblingContract, siblingContract);
     }
 
-    function _tokenDecimals() internal view override returns (uint8) {
+    function _tokenDecimals() internal view returns (uint8) {
         (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
         return abi.decode(queriedDecimals, (uint8));
     }

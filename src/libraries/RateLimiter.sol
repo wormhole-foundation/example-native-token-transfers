@@ -7,13 +7,17 @@ import "./EndpointHelpers.sol";
 import "./EndpointStructs.sol";
 import "../libraries/NormalizedAmount.sol";
 
-abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
+contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     using NormalizedAmountLib for NormalizedAmount;
     /**
      * @dev The duration it takes for the limits to fully replenish
      */
 
     uint64 public immutable rateLimitDuration;
+    address public immutable manager;
+    uint8 public immutable tokenDecimals;
+
+    error NotManager(address);
 
     /// =============== STORAGE ===============================================
 
@@ -68,8 +72,17 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         }
     }
 
-    constructor(uint64 _rateLimitDuration) {
+    constructor(address _manager, uint64 _rateLimitDuration, uint8 _tokenDecimals) {
+        manager = _manager;
         rateLimitDuration = _rateLimitDuration;
+        tokenDecimals = _tokenDecimals;
+    }
+
+    modifier onlyManager {
+        if (msg.sender != manager) {
+            revert NotManager(msg.sender);
+        }
+        _;
     }
 
     function _setLimit(
@@ -86,7 +99,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         rateLimitParams.lastTxTimestamp = uint64(block.timestamp);
     }
 
-    function _setOutboundLimit(NormalizedAmount memory limit) internal {
+    function setOutboundLimit(NormalizedAmount memory limit) public onlyManager {
         _setLimit(limit, _getOutboundLimitParamsStorage());
     }
 
@@ -96,8 +109,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
 
     function getCurrentOutboundCapacity() public view returns (uint256) {
         NormalizedAmount memory normalizedCapacity = _getCurrentCapacity(getOutboundLimitParams());
-        uint8 decimals = _tokenDecimals();
-        return normalizedCapacity.denormalize(decimals);
+        return normalizedCapacity.denormalize(tokenDecimals);
     }
 
     function getOutboundQueuedTransfer(uint64 queueSequence)
@@ -108,7 +120,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         return _getOutboundQueueStorage()[queueSequence];
     }
 
-    function _setInboundLimit(NormalizedAmount memory limit, uint16 chainId_) internal {
+    function setInboundLimit(NormalizedAmount memory limit, uint16 chainId_) public onlyManager {
         _setLimit(limit, _getInboundLimitParamsStorage()[chainId_]);
     }
 
@@ -119,8 +131,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     function getCurrentInboundCapacity(uint16 chainId_) public view returns (uint256) {
         NormalizedAmount memory normalizedCapacity =
             _getCurrentCapacity(getInboundLimitParams(chainId_));
-        uint8 decimals = _tokenDecimals();
-        return normalizedCapacity.denormalize(decimals);
+        return normalizedCapacity.denormalize(tokenDecimals);
     }
 
     function getInboundQueuedTransfer(bytes32 digest)
@@ -129,6 +140,14 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         returns (InboundQueuedTransfer memory)
     {
         return _getInboundQueueStorage()[digest];
+    }
+
+    function deleteFromInboundQueue(bytes32 digest) public onlyManager {
+        delete _getInboundQueueStorage()[digest];
+    }
+
+    function deleteFromOutboundQueue(uint64 sequence) public onlyManager {
+        delete _getOutboundQueueStorage()[sequence];
     }
 
     /**
@@ -192,19 +211,19 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         }
     }
 
-    function _consumeOutboundAmount(NormalizedAmount memory amount) internal {
+    function consumeOutboundAmount(NormalizedAmount memory amount) public onlyManager {
         _consumeRateLimitAmount(
             amount, _getCurrentCapacity(getOutboundLimitParams()), _getOutboundLimitParamsStorage()
         );
     }
 
-    function _backfillOutboundAmount(NormalizedAmount memory amount) internal {
+    function backfillOutboundAmount(NormalizedAmount memory amount) public onlyManager {
         _backfillRateLimitAmount(
             amount, _getCurrentCapacity(getOutboundLimitParams()), _getOutboundLimitParamsStorage()
         );
     }
 
-    function _consumeInboundAmount(NormalizedAmount memory amount, uint16 chainId_) internal {
+    function consumeInboundAmount(NormalizedAmount memory amount, uint16 chainId_) public onlyManager {
         _consumeRateLimitAmount(
             amount,
             _getCurrentCapacity(getInboundLimitParams(chainId_)),
@@ -212,7 +231,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         );
     }
 
-    function _backfillInboundAmount(NormalizedAmount memory amount, uint16 chainId_) internal {
+    function backfillInboundAmount(NormalizedAmount memory amount, uint16 chainId_) public onlyManager {
         _backfillRateLimitAmount(
             amount,
             _getCurrentCapacity(getInboundLimitParams(chainId_)),
@@ -240,18 +259,18 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         rateLimitParams.currentCapacity = capacity.add(amount).min(rateLimitParams.limit);
     }
 
-    function _isOutboundAmountRateLimited(NormalizedAmount memory amount)
-        internal
+    function isOutboundAmountRateLimited(NormalizedAmount memory amount)
+        public
         view
         returns (bool)
     {
         return _isAmountRateLimited(_getCurrentCapacity(getOutboundLimitParams()), amount);
     }
 
-    function _isInboundAmountRateLimited(
+    function isInboundAmountRateLimited(
         NormalizedAmount memory amount,
         uint16 chainId_
-    ) internal view returns (bool) {
+    ) public view returns (bool) {
         return _isAmountRateLimited(_getCurrentCapacity(getInboundLimitParams(chainId_)), amount);
     }
 
@@ -262,14 +281,14 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         return capacity.lt(amount);
     }
 
-    function _enqueueOutboundTransfer(
+    function enqueueOutboundTransfer(
         uint64 sequence,
         NormalizedAmount memory amount,
         uint16 recipientChain,
         bytes32 recipient,
         address senderAddress,
         bytes memory endpointInstructions
-    ) internal {
+    ) public onlyManager {
         _getOutboundQueueStorage()[sequence] = OutboundQueuedTransfer({
             amount: amount,
             recipientChain: recipientChain,
@@ -282,11 +301,11 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         emit OutboundTransferQueued(sequence);
     }
 
-    function _enqueueInboundTransfer(
+    function enqueueInboundTransfer(
         bytes32 digest,
         NormalizedAmount memory amount,
         address recipient
-    ) internal {
+    ) public onlyManager {
         _getInboundQueueStorage()[digest] = InboundQueuedTransfer({
             amount: amount,
             recipient: recipient,
@@ -295,6 +314,4 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
 
         emit InboundTransferQueued(digest);
     }
-
-    function _tokenDecimals() internal view virtual returns (uint8);
 }

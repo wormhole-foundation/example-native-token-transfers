@@ -33,6 +33,8 @@ interface IRateLimiter {
         address recipient;
     }
 
+    function rateLimitDuration() external view returns (uint64);
+
     function getOutboundLimitParams() external view returns (RateLimitParams memory);
 
     function getCurrentOutboundCapacity() external view returns (uint256);
@@ -50,4 +52,45 @@ interface IRateLimiter {
         external
         view
         returns (InboundQueuedTransfer memory);
+
+    function enqueueInboundTransfer(
+        bytes32 digest,
+        NormalizedAmount memory amount,
+        address recipient
+    ) external;
+
+    function enqueueOutboundTransfer(
+        uint64 sequence,
+        NormalizedAmount memory amount,
+        uint16 recipientChain,
+        bytes32 recipient,
+        address senderAddress,
+        bytes memory endpointInstructions
+    ) external;
+
+    function isInboundAmountRateLimited(
+        NormalizedAmount memory amount,
+        uint16 chainId_
+    ) external view returns (bool);
+
+    function isOutboundAmountRateLimited(NormalizedAmount memory amount)
+        external
+        view
+        returns (bool);
+
+    function backfillInboundAmount(NormalizedAmount memory amount, uint16 chainId_) external;
+
+    function consumeInboundAmount(NormalizedAmount memory amount, uint16 chainId_) external;
+
+    function backfillOutboundAmount(NormalizedAmount memory amount) external;
+
+    function consumeOutboundAmount(NormalizedAmount memory amount) external;
+
+    function setInboundLimit(NormalizedAmount memory limit, uint16 chainId_) external;
+
+    function setOutboundLimit(NormalizedAmount memory limit) external;
+
+    function deleteFromInboundQueue(bytes32 digest) external;
+
+    function deleteFromOutboundQueue(uint64 sequence) external;
 }

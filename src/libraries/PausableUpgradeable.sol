@@ -124,17 +124,10 @@ abstract contract PausableUpgradeable is Initializable {
      * @dev Modifier to allow only the Pauser to access pausing functionality
      */
     modifier onlyPauser() {
-        _checkPauser();
-        _;
-    }
-
-    /*
-     * @dev Modifier to allow only the Pauser to access some functionality
-     */
-    function _checkPauser() internal view {
         if (pauser() != msg.sender) {
             revert InvalidPauser(msg.sender);
         }
+        _;
     }
 
     /**

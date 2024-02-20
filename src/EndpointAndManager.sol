@@ -31,7 +31,6 @@ abstract contract EndpointAndManager is Endpoint, Manager, Implementation {
         assert(this.mode() == mode);
         assert(this.chainId() == chainId);
         assert(this.evmChainId() == evmChainId);
-        assert(this.rateLimitDuration() == rateLimitDuration);
     }
 
     function upgrade(address newImplementation) external onlyOwner {

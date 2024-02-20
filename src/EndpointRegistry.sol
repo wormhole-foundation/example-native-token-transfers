@@ -204,7 +204,7 @@ abstract contract EndpointRegistry {
     }
 
     /// @notice Returns the Endpoint contracts that have been registered via governance.
-    function getEndpoints() external pure returns (address[] memory result) {
+    function getEndpoints() public pure returns (address[] memory result) {
         result = _getEnabledEndpointsStorage();
     }
 

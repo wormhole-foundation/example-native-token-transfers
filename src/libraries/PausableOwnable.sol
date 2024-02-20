@@ -10,17 +10,10 @@ abstract contract PausableOwnable is PausableUpgradeable, OwnableUpgradeable {
      * @dev Modifier to allow only the Pauser and the Owner to access pausing functionality
      */
     modifier onlyOwnerOrPauser() {
-        _checkOwnerOrPauser(owner());
-        _;
-    }
-
-    /*
-     * @dev Modifier to allow only the Pauser to access some functionality
-     */
-    function _checkOwnerOrPauser(address owner) internal view {
-        if (pauser() != msg.sender && owner != msg.sender) {
+        if (pauser() != msg.sender && owner() != msg.sender) {
             revert InvalidPauser(msg.sender);
         }
+        _;
     }
 
     function __PausedOwnable_init(address initialPauser, address owner) internal onlyInitializing {
