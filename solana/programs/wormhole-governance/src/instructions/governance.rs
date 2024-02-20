@@ -125,9 +125,7 @@ impl From<AccountMeta> for Acc {
     }
 }
 
-pub fn governance<'a, 'b, 'c, 'info>(
-    ctx: Context<'a, 'b, 'c, 'info, Governance<'info>>,
-) -> Result<()> {
+pub fn governance<'info>(ctx: Context<'_, '_, '_, 'info, Governance<'info>>) -> Result<()> {
     let vaa_data = ctx.accounts.vaa.data();
 
     let mut instruction: Instruction = vaa_data.clone().into();
@@ -135,38 +133,17 @@ pub fn governance<'a, 'b, 'c, 'info>(
     instruction.accounts.iter_mut().for_each(|acc| {
         if acc.pubkey == OWNER {
             acc.pubkey = ctx.accounts.governance.key();
-            acc.is_writable = ctx.accounts.governance.is_writable;
-            acc.is_signer = true;
         } else if acc.pubkey == PAYER {
             acc.pubkey = ctx.accounts.payer.key();
-            acc.is_writable = ctx.accounts.payer.is_writable;
-            acc.is_signer = true;
         }
     });
 
-    // TODO(SECURITY): what does the runtime verify about these accounts?
-    // should we match them against the accounts in the instruction? the runtime
-    // *should* do that but I'll add tests
-    let account_infos: Vec<AccountInfo<'_>> = ctx
-        .remaining_accounts
-        .iter()
-        .map(|acc| {
-            if acc.key() == OWNER {
-                AccountInfo {
-                    is_signer: true,
-                    ..ctx.accounts.governance.to_account_info()
-                }
-            } else if acc.key() == PAYER {
-                ctx.accounts.payer.to_account_info()
-            } else {
-                acc.clone()
-            }
-        })
-        .collect();
+    let mut all_account_infos = ctx.accounts.to_account_infos();
+    all_account_infos.extend_from_slice(ctx.remaining_accounts);
 
     solana_program::program::invoke_signed(
         &instruction,
-        &account_infos,
+        &all_account_infos,
         &[&[b"governance", &[ctx.bumps.governance]]],
     )?;
 

@@ -143,24 +143,15 @@ async fn wrap_governance(
     ctx: &mut ProgramTestContext,
     gov_program: &Governance,
     wormhole: &Wormhole,
-    mut ix: Instruction,
+    ix: Instruction,
     emitter_override: Option<Address>,
 ) -> core::result::Result<(), BanksClientError> {
     let program = ix.program_id;
     // TODO: LUTs?
 
-    // map over ix.accounts and make "owner" and "payer" not signers
-    ix.accounts.iter_mut().for_each(|acc| {
-        if acc.pubkey == OWNER || acc.pubkey == PAYER {
-            acc.is_signer = false;
-        }
-    });
-
-    let other_accounts = ix.accounts.to_vec();
-
-    let gov_message: GovernanceMessage = ix.into();
-
     let data = wormhole_governance::instruction::Governance {};
+
+    let gov_message: GovernanceMessage = ix.clone().into();
 
     let vaa = post_governance_vaa(ctx, &wormhole, gov_message, emitter_override).await;
 
@@ -172,7 +163,13 @@ async fn wrap_governance(
     };
 
     let mut accounts = gov_accounts.to_account_metas(None);
-    accounts.extend(other_accounts);
+
+    let remaining_accounts = ix.accounts.iter().map(|acc| AccountMeta {
+        is_signer: false,
+        ..acc.clone()
+    });
+
+    accounts.extend(remaining_accounts);
 
     let gov_ix = Instruction {
         program_id: gov_program.program,
