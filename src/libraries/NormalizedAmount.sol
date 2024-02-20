@@ -138,12 +138,14 @@ library NormalizedAmountLib {
         uint8 fromDecimals,
         uint8 toDecimals
     ) internal pure returns (uint256) {
+        if (fromDecimals == toDecimals) {
+            return amount;
+        }
+
         if (fromDecimals > toDecimals) {
             return amount / (10 ** (fromDecimals - toDecimals));
-        } else if (fromDecimals < toDecimals) {
-            return amount * (10 ** (toDecimals - fromDecimals));
         } else {
-            return amount;
+            return amount * (10 ** (toDecimals - fromDecimals));
         }
     }
 
