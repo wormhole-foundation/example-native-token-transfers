@@ -14,6 +14,10 @@ build-evm:
 check-format:
 	cd evm && forge fmt --check
 
+.PHONY: fix-format
+fix-format:
+	cd evm && forge fmt
+
 .PHONY: test
 test-evm:
 	cd evm && forge test -vvv
