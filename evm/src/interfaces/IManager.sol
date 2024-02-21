@@ -15,6 +15,9 @@ interface IManager {
     error InvalidSibling(uint16 chainId, bytes32 siblingAddress);
     error InvalidSiblingChainIdZero();
     error InvalidSiblingZeroAddress();
+    error ZeroThreshold();
+    error ThresholdTooHigh(uint256 threshold, uint256 endpoints);
+    error RetrievedIncorrectRegisteredEndpoints(uint256 retrieved, uint256 registered);
 
     function transfer(
         uint256 amount,
@@ -51,4 +54,12 @@ interface IManager {
     function nextMessageSequence() external view returns (uint64);
 
     function token() external view returns (address);
+
+    function attestationReceived(
+        uint16 sourceChainId,
+        bytes32 sourceManagerAddress,
+        EndpointStructs.ManagerMessage memory payload
+    ) external;
+
+    function upgrade(address newImplementation) external;
 }
