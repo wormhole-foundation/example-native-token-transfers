@@ -672,23 +672,20 @@ contract TestInitialize is Test {
         managerChain1.initialize();
     }
 
-    // TODO - Keep or remove depending on frontrunning discussion for deployment
-    // function test_frontrunInitialize() public{
-    //     string memory url = "https://ethereum-goerli.publicnode.com";
-    //     vm.createSelectFork(url);
+    function test_cannotFrontrunInitialize() public{
+        string memory url = "https://ethereum-goerli.publicnode.com";
+        vm.createSelectFork(url);
 
-    //     vm.chainId(chainId1);
-    //     DummyToken t1 = new DummyToken();
-    //     ManagerStandalone implementation =
-    //         new ManagerStandalone(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
+        vm.chainId(chainId1);
+        DummyToken t1 = new DummyToken();
+        ManagerStandalone implementation =
+            new ManagerStandalone(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
 
-    //     managerChain1 = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
+        managerChain1 = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
 
-    //     vm.prank(userA);
-
-    //     // Frontrun of initialization occurs HERE
-    //     managerChain1.initialize();
-
-    //     require(address(this) == managerChain1.owner(), "Unexpected owner");
-    // }
+        // Attempt to initialize the contract from a non-deployer account. 
+        vm.prank(userA);
+        vm.expectRevert(abi.encodeWithSignature("UnexpectedOwner(address,address)", address(this), userA));
+        managerChain1.initialize();
+    }
 }
