@@ -24,3 +24,64 @@ contract MockManagerContract is Manager {
         }
     }
 }
+
+contract MockManagerMigrateBasic is Manager {
+    // Call the parents constructor
+    constructor(
+        address token,
+        Mode mode,
+        uint16 chainId,
+        uint64 rateLimitDuration
+    ) Manager(token, mode, chainId, rateLimitDuration) {}
+
+    function _migrate() internal view override {
+        _checkThresholdInvariants();
+        _checkEndpointsInvariants();
+        revert("Proper migrate called");
+    }
+}
+
+contract MockManagerImmutableCheck is Manager {
+    // Call the parents constructor
+    constructor(
+        address token,
+        Mode mode,
+        uint16 chainId,
+        uint64 rateLimitDuration
+    ) Manager(token, mode, chainId, rateLimitDuration) {}
+}
+
+contract MockManagerImmutableRemoveCheck is Manager {
+    // Call the parents constructor
+    constructor(
+        address token,
+        Mode mode,
+        uint16 chainId,
+        uint64 rateLimitDuration
+    ) Manager(token, mode, chainId, rateLimitDuration) {}
+
+    // Turns on the capability to EDIT the immutables
+    function _migrate() internal override {
+        _setMigratesImmutables(true);
+    }
+}
+
+contract MockManagerStorageLayoutChange is Manager {
+    address a;
+    address b;
+    address c;
+
+    // Call the parents constructor
+    constructor(
+        address token,
+        Mode mode,
+        uint16 chainId,
+        uint64 rateLimitDuration
+    ) Manager(token, mode, chainId, rateLimitDuration) {}
+
+    function setData() public {
+        a = address(0x1);
+        b = address(0x2);
+        c = address(0x3);
+    }
+}

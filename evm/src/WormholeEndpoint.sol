@@ -114,10 +114,11 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
     }
 
     constructor(
+        address manager,
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
         address specialRelayerAddr
-    ) {
+    ) Endpoint(manager) {
         wormhole = IWormhole(wormholeCoreBridge);
         wormholeRelayer = IWormholeRelayer(wormholeRelayerAddr);
         specialRelayer = ISpecialRelayer(specialRelayerAddr);
@@ -298,6 +299,13 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         return _getWormholeSiblingsStorage()[chainId];
     }
 
+    function setWormholeSibling(
+        uint16 siblingChainId,
+        bytes32 siblingContract
+    ) external onlyOwner {
+        _setWormholeSibling(siblingChainId, siblingContract);
+    }
+
     function _setWormholeSibling(uint16 chainId, bytes32 siblingContract) internal {
         if (chainId == 0) {
             revert InvalidWormholeChainIdZero();
@@ -315,6 +323,10 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
 
     function isWormholeRelayingEnabled(uint16 chainId) public view returns (bool) {
         return toBool(_getWormholeRelayingEnabledChainsStorage()[chainId]);
+    }
+
+    function setIsWormholeRelayingEnabled(uint16 chainId, bool isEnabled) external onlyOwner {
+        _setIsWormholeRelayingEnabled(chainId, isEnabled);
     }
 
     function _setIsWormholeRelayingEnabled(uint16 chainId, bool isEnabled) internal {
