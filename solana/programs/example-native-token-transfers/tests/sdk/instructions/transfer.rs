@@ -65,7 +65,7 @@ pub fn approve_token_authority(
         &spl_token::id(), // TODO: look into how token account was originally created
         user_token_account,
         &ntt.token_authority(),
-        &user,
+        user,
         &[user],
         amount,
     )
