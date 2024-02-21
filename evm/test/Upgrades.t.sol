@@ -672,7 +672,7 @@ contract TestInitialize is Test {
         managerChain1.initialize();
     }
 
-    function test_cannotFrontrunInitialize() public{
+    function test_cannotFrontrunInitialize() public {
         string memory url = "https://ethereum-goerli.publicnode.com";
         vm.createSelectFork(url);
 
@@ -683,9 +683,11 @@ contract TestInitialize is Test {
 
         managerChain1 = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
 
-        // Attempt to initialize the contract from a non-deployer account. 
+        // Attempt to initialize the contract from a non-deployer account.
         vm.prank(userA);
-        vm.expectRevert(abi.encodeWithSignature("UnexpectedOwner(address,address)", address(this), userA));
+        vm.expectRevert(
+            abi.encodeWithSignature("UnexpectedOwner(address,address)", address(this), userA)
+        );
         managerChain1.initialize();
     }
 }
