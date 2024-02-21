@@ -20,7 +20,6 @@ import "./Endpoint.sol";
 import "./EndpointRegistry.sol";
 import "./NttNormalizer.sol";
 import "./libraries/PausableOwnable.sol";
-import {ContextUpgradeable} from "./libraries/external/ContextUpgradeable.sol";
 
 // TODO: rename this (it's really the business logic)
 abstract contract Manager is
@@ -108,7 +107,7 @@ abstract contract Manager is
         chainId = _chainId;
         evmChainId = block.chainid;
         // save the deployer (check this on iniitialization)
-        deployer = _msgSender();
+        deployer = msg.sender;
     }
 
     function __Manager_init() internal onlyInitializing {
