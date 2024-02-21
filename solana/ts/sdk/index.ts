@@ -12,7 +12,7 @@ import {
   type TransactionSignature
 } from '@solana/web3.js'
 import { Keccak } from 'sha3'
-import { type ExampleNativeTokenTransfers } from '../../target/types/example_native_token_transfers'
+import { type ExampleNativeTokenTransfers as Idl } from '../../target/types/example_native_token_transfers'
 import { ManagerMessage } from './payloads/common'
 import { NativeTokenTransfer } from './payloads/transfers'
 import { WormholeEndpointMessage } from './payloads/wormhole'
@@ -23,6 +23,18 @@ export { NativeTokenTransfer } from './payloads/transfers'
 export { WormholeEndpointMessage } from './payloads/wormhole'
 
 export * from './utils/wormhole'
+
+// This is a workaround for the fact that the anchor idl doesn't support generics
+// yet. This type is used to remove the generics from the idl types.
+type OmitGenerics<T> = {
+  [P in keyof T]: T[P] extends Record<"generics", any>
+  ? never
+  : T[P] extends object
+  ? OmitGenerics<T[P]>
+  : T[P];
+};
+
+export type ExampleNativeTokenTransfers = OmitGenerics<Idl>
 
 export type Config = IdlAccounts<ExampleNativeTokenTransfers>['config']
 export type InboxItem = IdlAccounts<ExampleNativeTokenTransfers>['inboxItem']
