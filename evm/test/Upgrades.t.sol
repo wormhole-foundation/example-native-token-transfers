@@ -41,6 +41,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         0xcfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0;
     WormholeSimulator guardian;
     uint256 initialBlockTimestamp;
+    uint8 constant FAST_CONSISTENCY_LEVEL = 200;
 
     WormholeEndpoint wormholeEndpointChain1;
     WormholeEndpoint wormholeEndpointChain2;
@@ -68,7 +69,11 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         managerChain1.initialize();
 
         WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointContract(
-            address(managerChain1), address(wormhole), address(relayer), address(0x0)
+            address(managerChain1),
+            address(wormhole),
+            address(relayer),
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL
         );
         wormholeEndpointChain1 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain1Implementation), ""))
@@ -90,7 +95,11 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         managerChain2.initialize();
 
         WormholeEndpoint wormholeEndpointChain2Implementation = new MockWormholeEndpointContract(
-            address(managerChain2), address(wormhole), address(relayer), address(0x0)
+            address(managerChain2),
+            address(wormhole),
+            address(relayer),
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL
         );
         wormholeEndpointChain2 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain2Implementation), ""))
@@ -131,7 +140,11 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     function test_basicUpgradeEndpoint() public {
         // Basic call to upgrade with the same contact as well
         WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointContract(
-            address(managerChain1), address(wormhole), address(relayer), address(0x0)
+            address(managerChain1),
+            address(wormhole),
+            address(relayer),
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL
         );
         wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
 
@@ -159,7 +172,11 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     function test_doubleUpgradeEndpoint() public {
         // Basic call to upgrade with the same contact as well
         WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointContract(
-            address(managerChain1), address(wormhole), address(relayer), address(0x0)
+            address(managerChain1),
+            address(wormhole),
+            address(relayer),
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL
         );
         wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
 
@@ -190,7 +207,11 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     function test_storageSlotEndpoint() public {
         // Basic call to upgrade with the same contact as ewll
         WormholeEndpoint newImplementation = new MockWormholeEndpointLayoutChange(
-            address(managerChain1), address(wormhole), address(relayer), address(0x0)
+            address(managerChain1),
+            address(wormhole),
+            address(relayer),
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL
         );
         wormholeEndpointChain1.upgrade(address(newImplementation));
 
@@ -219,7 +240,11 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     function test_callMigrateEndpoint() public {
         // Basic call to upgrade with the same contact as well
         MockWormholeEndpointMigrateBasic wormholeEndpointChain1Implementation = new MockWormholeEndpointMigrateBasic(
-            address(managerChain1), address(wormhole), address(relayer), address(0x0)
+            address(managerChain1),
+            address(wormhole),
+            address(relayer),
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL
         );
 
         vm.expectRevert("Proper migrate called");
@@ -248,7 +273,11 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
         address oldManager = wormholeEndpointChain1.manager();
         WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointMigrateBasic(
-            address(managerChain2), address(wormhole), address(relayer), address(0x0)
+            address(managerChain2),
+            address(wormhole),
+            address(relayer),
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL
         );
 
         vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
@@ -276,7 +305,11 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
     function test_immutableBlockUpdateSuccessEndpoint() public {
         WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointImmutableAllow(
-            address(managerChain1), address(wormhole), address(relayer), address(0x0)
+            address(managerChain1),
+            address(wormhole),
+            address(relayer),
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL
         );
 
         //vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
@@ -338,7 +371,11 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
         // Basic call so that we can easily see what the new endpoint is.
         WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointContract(
-            address(managerChain1), address(wormhole), address(relayer), address(0x0)
+            address(managerChain1),
+            address(wormhole),
+            address(relayer),
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL
         );
         wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
         basicFunctionality(); // Ensure that the upgrade was proper
