@@ -46,7 +46,7 @@ contract Governance {
     * @dev General purpose governance message to call arbitrary methods on a governed smart contract.
     *      This message adheres to the Wormhole governance packet standard: https://github.com/wormhole-foundation/wormhole/blob/main/whitepapers/0002_governance_messaging.md
     *      The wire format for this message is:
-    *      - module - 32 bytes
+    *      - MODULE - 32 bytes
     *      - action - 1 byte
     *      - chain - 2 bytes
     *      - governanceContract - 20 bytes
@@ -55,7 +55,6 @@ contract Governance {
     *      - callData - `callDataLength` bytes
     */
     struct GeneralPurposeGovernanceMessage {
-        bytes32 module;
         uint8 action;
         uint16 chain;
         address governanceContract;
@@ -71,10 +70,6 @@ contract Governance {
         IWormhole.VM memory verified = _verifyGovernanceVAA(vaa);
         GeneralPurposeGovernanceMessage memory message =
             parseGeneralPurposeGovernanceMessage(verified.payload);
-
-        if (message.module != MODULE) {
-            revert InvalidModule(message.module);
-        }
 
         if (message.action != uint8(GovernanceAction.EVM_CALL)) {
             revert InvalidAction(message.action);
@@ -138,7 +133,7 @@ contract Governance {
         }
         uint16 callDataLength = uint16(m.callData.length);
         return abi.encodePacked(
-            m.module,
+            MODULE,
             m.action,
             m.chain,
             m.governanceContract,
@@ -154,7 +149,13 @@ contract Governance {
         returns (GeneralPurposeGovernanceMessage memory message)
     {
         uint256 offset = 0;
-        (message.module, offset) = encoded.asBytes32Unchecked(offset);
+
+        bytes32 module;
+        (module, offset) = encoded.asBytes32Unchecked(offset);
+        if (module != MODULE) {
+            revert InvalidModule(module);
+        }
+
         (message.action, offset) = encoded.asUint8Unchecked(offset);
         (message.chain, offset) = encoded.asUint16Unchecked(offset);
         (message.governanceContract, offset) = encoded.asAddressUnchecked(offset);
