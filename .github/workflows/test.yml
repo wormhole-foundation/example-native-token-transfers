@@ -34,7 +34,7 @@ jobs:
 
       - name: Run Forge tests
         run: |
-          cd evm && make test
+          make test-evm
         id: test
 
       - name: Run Forge fmt
