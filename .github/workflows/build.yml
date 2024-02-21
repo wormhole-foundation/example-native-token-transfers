@@ -23,7 +23,7 @@ jobs:
       - name: Get solana version
         id: solana
         run: |
-          SOLANA_VERSION="$(awk '/solana-program =/ { print substr($3, 3, length($3)-3) }' solana/programs/example-native-token-transfers/Cargo.toml)"
+          SOLANA_VERSION="$(awk '/solana-program =/ { print substr($3, 3, length($3)-3) }' solana/Cargo.toml)"
           echo "::set-output name=version::${SOLANA_VERSION}"
 
       - name: Cache rust toolchain
