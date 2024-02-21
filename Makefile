@@ -4,7 +4,7 @@ all: build
 ## BUILD
 
 .PHONY: build
-build:
+build-evm:
 	cd evm && forge build
 
 #######################
@@ -12,11 +12,11 @@ build:
 
 .PHONY: check-format
 check-format:
-	forge fmt --check
+	cd evm && forge fmt --check
 
 .PHONY: test
-test:
-	forge test -vvv
+test-evm:
+	cd evm && forge test -vvv
 
 # Verify that the contracts do not include PUSH0 opcodes
 test-push0:
