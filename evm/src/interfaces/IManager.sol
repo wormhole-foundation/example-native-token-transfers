@@ -133,4 +133,12 @@ interface IManager {
     ///
     /// @param newImplementation The address of the new implementation.
     function upgrade(address newImplementation) external;
+
+    /// @notice Returns the mode (locking or burning) of the Manager.
+    /// @return mode A uint8 corresponding to the mode
+    function getMode() external view returns (uint8);
+
+    /// @notice Returns the number of decimals of the token managed by the Manager.
+    /// @return decimals The number of decimals of the token.
+    function tokenDecimals() external view returns (uint8);
 }

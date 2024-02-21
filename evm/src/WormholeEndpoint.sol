@@ -6,8 +6,10 @@ import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 
 import "./libraries/EndpointHelpers.sol";
+import "./libraries/EndpointStructs.sol";
 import "./interfaces/IWormholeEndpoint.sol";
 import "./interfaces/ISpecialRelayer.sol";
+import "./interfaces/IManager.sol";
 import "./Endpoint.sol";
 
 contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
@@ -21,6 +23,14 @@ contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
     /// @notice Magic string (constant value set by messaging provider) that idenfies the payload as an endpoint-emitted payload.
     ///         Note that this is not a security critical field. It's meant to be used by messaging providers to identify which messages are Endpoint-related.
     bytes4 constant WH_ENDPOINT_PAYLOAD_PREFIX = 0x9945FF10;
+
+    /// @dev Prefix for all Wormhole endpoint initialisation payloads
+    ///      This is bytes4(keccak256("WormholeEndpointInit"))
+    bytes4 constant WH_ENDPOINT_INIT_PREFIX = 0xc83e3d2e;
+
+    /// @dev Prefix for all Wormhole sibling registration payloads
+    ///      This is bytes4(keccak256("WormholeSiblingRegistration"))
+    bytes4 constant WH_SIBLING_REGISTRATION_PREFIX = 0xd0d292f1;
 
     IWormhole public immutable wormhole;
     IWormholeRelayer public immutable wormholeRelayer;
@@ -124,6 +134,22 @@ contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
         specialRelayer = ISpecialRelayer(specialRelayerAddr);
         wormholeEndpoint_evmChainId = block.chainid;
         consistencyLevel = _consistencyLevel;
+    }
+
+    function _initialize() internal override {
+        super._initialize();
+        _initializeEndpoint();
+    }
+
+    function _initializeEndpoint() internal {
+        EndpointStructs.EndpointInit memory init = EndpointStructs.EndpointInit({
+            endpointIdentifier: WH_ENDPOINT_INIT_PREFIX,
+            managerAddress: toWormholeFormat(manager),
+            managerMode: IManager(manager).getMode(),
+            tokenAddress: toWormholeFormat(managerToken),
+            tokenDecimals: IManager(manager).tokenDecimals()
+        });
+        wormhole.publishMessage(0, EndpointStructs.encodeEndpointInit(init), consistencyLevel);
     }
 
     function _checkInvalidRelayingConfig(uint16 chainId) internal view returns (bool) {
@@ -328,9 +354,27 @@ contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
 
         bytes32 oldSiblingContract = _getWormholeSiblingsStorage()[chainId];
 
+        // We don't want to allow updating a sibling since this adds complexity in the accountant
+        // If the owner makes a mistake with sibling registration they should deploy a new Wormhole
+        // endpoint and register this new endpoint with the Manager
+        if (oldSiblingContract != bytes32(0)) {
+            revert SiblingAlreadySet(chainId, oldSiblingContract);
+        }
+
         _getWormholeSiblingsStorage()[chainId] = siblingContract;
 
-        emit SetWormholeSibling(chainId, oldSiblingContract, siblingContract);
+        // Publish a message for this endpoint registration
+        EndpointStructs.EndpointRegistration memory registration = EndpointStructs
+            .EndpointRegistration({
+            endpointIdentifier: WH_SIBLING_REGISTRATION_PREFIX,
+            endpointChainId: chainId,
+            endpointAddress: siblingContract
+        });
+        wormhole.publishMessage(
+            0, EndpointStructs.encodeEndpointRegistration(registration), consistencyLevel
+        );
+
+        emit SetWormholeSibling(chainId, siblingContract);
     }
 
     function isWormholeRelayingEnabled(uint16 chainId) public view returns (bool) {

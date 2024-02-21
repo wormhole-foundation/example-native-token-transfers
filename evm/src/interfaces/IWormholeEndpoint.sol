@@ -10,7 +10,7 @@ interface IWormholeEndpoint {
     );
 
     event SendEndpointMessage(uint16 recipientChain, EndpointStructs.EndpointMessage message);
-    event SetWormholeSibling(uint16 chainId, bytes32 oldSiblingContract, bytes32 siblingContract);
+    event SetWormholeSibling(uint16 chainId, bytes32 siblingContract);
     event SetIsWormholeRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
     event SetIsSpecialRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
     event SetIsWormholeEvmChain(uint16 chainId);
@@ -20,6 +20,7 @@ interface IWormholeEndpoint {
     error UnexpectedAdditionalMessages();
     error InvalidVaa(string reason);
     error InvalidWormholeSibling(uint16 chainId, bytes32 siblingAddress);
+    error SiblingAlreadySet(uint16 chainId, bytes32 siblingAddress);
     error TransferAlreadyCompleted(bytes32 vaaHash);
     error InvalidWormholeSiblingZeroAddress();
     error InvalidWormholeChainIdZero();
