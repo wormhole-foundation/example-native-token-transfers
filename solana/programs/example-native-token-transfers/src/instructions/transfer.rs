@@ -24,6 +24,9 @@ pub struct Transfer<'info> {
 
     pub config: NotPausedConfig<'info>,
 
+    /// This signer will be encoded in the outbox.
+    sender: Signer<'info>,
+
     #[account(
         mut,
         address = config.mint,
@@ -36,10 +39,6 @@ pub struct Transfer<'info> {
         token::mint = mint,
     )]
     pub from: InterfaceAccount<'info, token_interface::TokenAccount>,
-
-    /// authority to burn the tokens (owner)
-    /// CHECK: this is checked by the token program
-    pub from_authority: Signer<'info>,
 
     pub token_program: Interface<'info, token_interface::TokenInterface>,
 
@@ -59,6 +58,14 @@ pub struct Transfer<'info> {
 
     #[account(mut)]
     pub outbox_rate_limit: Account<'info, OutboxRateLimit>,
+
+    /// CHECK: This authority will need to have been delegated authority to
+    /// transfer or burn tokens in the [from](Self::from) account.
+    #[account(
+        seeds = [crate::TOKEN_AUTHORITY_SEED],
+        bump,
+    )]
+    token_authority: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -103,13 +110,17 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
 
     match accs.common.config.mode {
         Mode::Burning => token_interface::burn(
-            CpiContext::new(
+            CpiContext::new_with_signer(
                 accs.common.token_program.to_account_info(),
                 token_interface::Burn {
                     mint: accs.common.mint.to_account_info(),
                     from: accs.common.from.to_account_info(),
-                    authority: accs.common.from_authority.to_account_info(),
+                    authority: accs.common.token_authority.to_account_info(),
                 },
+                &[&[
+                    crate::TOKEN_AUTHORITY_SEED,
+                    &[ctx.bumps.common.token_authority],
+                ]],
             ),
             amount,
         )?,
@@ -143,15 +154,9 @@ pub struct TransferLock<'info> {
     pub inbox_rate_limit: Account<'info, InboxRateLimit>,
 
     #[account(
-        seeds = [b"token_authority"],
-        bump,
-    )]
-    pub token_authority: AccountInfo<'info>,
-
-    #[account(
         mut,
         token::mint = common.mint,
-        token::authority = token_authority,
+        token::authority = common.token_authority,
     )]
     pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
 }
@@ -173,14 +178,18 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
     match accs.common.config.mode {
         Mode::Burning => return Err(NTTError::InvalidMode.into()),
         Mode::Locking => token_interface::transfer_checked(
-            CpiContext::new(
+            CpiContext::new_with_signer(
                 accs.common.token_program.to_account_info(),
                 token_interface::TransferChecked {
                     from: accs.common.from.to_account_info(),
                     to: accs.custody.to_account_info(),
-                    authority: accs.common.from_authority.to_account_info(),
+                    authority: accs.common.token_authority.to_account_info(),
                     mint: accs.common.mint.to_account_info(),
                 },
+                &[&[
+                    crate::TOKEN_AUTHORITY_SEED,
+                    &[ctx.bumps.common.token_authority],
+                ]],
             ),
             amount,
             accs.common.mint.decimals,
@@ -226,7 +235,7 @@ fn insert_into_outbox(
     common.outbox_item.set_inner(OutboxItem {
         sequence,
         amount: NormalizedAmount::normalize(amount, common.mint.decimals),
-        sender: common.from_authority.key(),
+        sender: common.sender.key(),
         recipient_chain,
         recipient_address,
         release_timestamp,

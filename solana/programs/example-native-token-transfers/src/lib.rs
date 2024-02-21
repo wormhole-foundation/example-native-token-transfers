@@ -20,6 +20,8 @@ use instructions::*;
 
 declare_id!("F2DDaJgSfJTVYVjVkxmsFYy771QgXfqCjanF7nRQt4HV");
 
+const TOKEN_AUTHORITY_SEED: &[u8] = b"token_authority";
+
 #[program]
 pub mod example_native_token_transfers {
 

@@ -63,7 +63,7 @@ pub struct Initialize<'info> {
     pub rate_limit: Account<'info, OutboxRateLimit>,
 
     #[account(
-        seeds = [b"token_authority"],
+        seeds = [crate::TOKEN_AUTHORITY_SEED],
         bump,
     )]
     pub token_authority: AccountInfo<'info>,

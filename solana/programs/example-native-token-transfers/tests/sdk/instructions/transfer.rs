@@ -1,5 +1,5 @@
 use anchor_lang::{prelude::Pubkey, system_program::System, Id, InstructionData, ToAccountMetas};
-use anchor_spl::token::Token;
+use anchor_spl::{token::Token, token_2022::spl_token_2022};
 use example_native_token_transfers::{
     accounts::NotPausedConfig, config::Mode, instructions::TransferArgs,
 };
@@ -46,7 +46,6 @@ pub fn transfer_lock(ntt: &NTT, transfer: Transfer, args: TransferArgs) -> Instr
     let accounts = example_native_token_transfers::accounts::TransferLock {
         common: common(ntt, &transfer),
         inbox_rate_limit: ntt.inbox_rate_limit(chain_id),
-        token_authority: ntt.token_authority(),
         custody: ntt.custody(&transfer.mint),
     };
     Instruction {
@@ -56,19 +55,37 @@ pub fn transfer_lock(ntt: &NTT, transfer: Transfer, args: TransferArgs) -> Instr
     }
 }
 
+pub fn approve_token_authority(
+    ntt: &NTT,
+    user_token_account: &Pubkey,
+    user: &Pubkey,
+    amount: u64,
+) -> Instruction {
+    spl_token_2022::instruction::approve(
+        &spl_token::id(), // TODO: look into how token account was originally created
+        user_token_account,
+        &ntt.token_authority(),
+        &user,
+        &[user],
+        amount,
+    )
+    .unwrap()
+}
+
 fn common(ntt: &NTT, transfer: &Transfer) -> example_native_token_transfers::accounts::Transfer {
     example_native_token_transfers::accounts::Transfer {
         payer: transfer.payer,
         config: NotPausedConfig {
             config: ntt.config(),
         },
+        sender: transfer.from_authority,
         mint: transfer.mint,
         from: transfer.from,
-        from_authority: transfer.from_authority,
         token_program: Token::id(),
         seq: ntt.sequence(),
         outbox_item: transfer.outbox_item,
         outbox_rate_limit: ntt.outbox_rate_limit(),
+        token_authority: ntt.token_authority(),
         system_program: System::id(),
     }
 }

@@ -25,7 +25,7 @@ pub struct ReleaseInbound<'info> {
     pub recipient: InterfaceAccount<'info, token_interface::TokenAccount>,
 
     #[account(
-        seeds = [b"token_authority"],
+        seeds = [crate::TOKEN_AUTHORITY_SEED],
         bump,
     )]
     pub token_authority: AccountInfo<'info>,
@@ -85,7 +85,10 @@ pub fn release_inbound_mint(
                     to: ctx.accounts.common.recipient.to_account_info(),
                     authority: ctx.accounts.common.token_authority.clone(),
                 },
-                &[&[b"token_authority", &[ctx.bumps.common.token_authority]]],
+                &[&[
+                    crate::TOKEN_AUTHORITY_SEED,
+                    &[ctx.bumps.common.token_authority],
+                ]],
             ),
             inbox_item.amount,
         ),
@@ -139,7 +142,10 @@ pub fn release_inbound_unlock(
                     authority: ctx.accounts.common.token_authority.clone(),
                     mint: ctx.accounts.common.mint.to_account_info(),
                 },
-                &[&[b"token_authority", &[ctx.bumps.common.token_authority]]],
+                &[&[
+                    crate::TOKEN_AUTHORITY_SEED,
+                    &[ctx.bumps.common.token_authority],
+                ]],
             ),
             inbox_item.amount,
             ctx.accounts.common.mint.decimals,

@@ -26,7 +26,7 @@ use crate::{
     common::submit::Submittable,
     sdk::instructions::{
         admin::{set_paused, SetPaused},
-        transfer::transfer,
+        transfer::{approve_token_authority, transfer},
     },
 };
 use crate::{
@@ -99,6 +99,15 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
 
     let (accs, args) = init_accs_args(ctx, test_data, outbox_item.pubkey(), 100, false);
 
+    approve_token_authority(
+        &test_data.ntt,
+        &test_data.user_token_account,
+        &test_data.user.pubkey(),
+        args.amount,
+    )
+    .submit_with_signers(&[&test_data.user], ctx)
+    .await
+    .unwrap();
     transfer(&test_data.ntt, accs, args, mode)
         .submit_with_signers(&[&test_data.user, &outbox_item], ctx)
         .await
@@ -198,6 +207,15 @@ async fn test_burn_mode_burns_tokens() {
         .get_account_data_anchor(test_data.user_token_account)
         .await;
 
+    approve_token_authority(
+        &test_data.ntt,
+        &test_data.user_token_account,
+        &test_data.user.pubkey(),
+        args.amount,
+    )
+    .submit_with_signers(&[&test_data.user], &mut ctx)
+    .await
+    .unwrap();
     transfer(&test_data.ntt, accs, args, Mode::Burning)
         .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
         .await
@@ -237,6 +255,15 @@ async fn locking_mode_locks_tokens() {
 
     let mint_before: Mint = ctx.get_account_data_anchor(test_data.mint).await;
 
+    approve_token_authority(
+        &test_data.ntt,
+        &test_data.user_token_account,
+        &test_data.user.pubkey(),
+        args.amount,
+    )
+    .submit_with_signers(&[&test_data.user], &mut ctx)
+    .await
+    .unwrap();
     transfer(&test_data.ntt, accs, args, Mode::Locking)
         .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
         .await
@@ -281,6 +308,15 @@ async fn test_rate_limit() {
         .get_account_data_anchor(test_data.ntt.outbox_rate_limit())
         .await;
 
+    approve_token_authority(
+        &test_data.ntt,
+        &test_data.user_token_account,
+        &test_data.user.pubkey(),
+        args.amount,
+    )
+    .submit_with_signers(&[&test_data.user], &mut ctx)
+    .await
+    .unwrap();
     transfer(&test_data.ntt, accs, args, Mode::Locking)
         .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
         .await
@@ -303,6 +339,15 @@ async fn test_transfer_wrong_mode() {
 
     let (accs, args) = init_accs_args(&mut ctx, &test_data, outbox_item.pubkey(), 100, false);
 
+    approve_token_authority(
+        &test_data.ntt,
+        &test_data.user_token_account,
+        &test_data.user.pubkey(),
+        args.amount,
+    )
+    .submit_with_signers(&[&test_data.user], &mut ctx)
+    .await
+    .unwrap();
     // make sure we can't transfer in the wrong mode
     let err = transfer(&test_data.ntt, accs.clone(), args.clone(), Mode::Locking)
         .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
@@ -347,6 +392,15 @@ async fn test_large_tx_queue() {
         .get_account_data_anchor(test_data.ntt.outbox_rate_limit())
         .await;
 
+    approve_token_authority(
+        &test_data.ntt,
+        &test_data.user_token_account,
+        &test_data.user.pubkey(),
+        args.amount,
+    )
+    .submit_with_signers(&[&test_data.user], &mut ctx)
+    .await
+    .unwrap();
     transfer(&test_data.ntt, accs, args, Mode::Locking)
         .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
         .await
@@ -381,6 +435,15 @@ async fn test_cant_transfer_when_paused() {
     .await
     .unwrap();
 
+    approve_token_authority(
+        &test_data.ntt,
+        &test_data.user_token_account,
+        &test_data.user.pubkey(),
+        args.amount,
+    )
+    .submit_with_signers(&[&test_data.user], &mut ctx)
+    .await
+    .unwrap();
     let err = transfer(&test_data.ntt, accs.clone(), args.clone(), Mode::Locking)
         .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
         .await
@@ -403,6 +466,15 @@ async fn test_cant_transfer_when_paused() {
     .await
     .unwrap();
 
+    approve_token_authority(
+        &test_data.ntt,
+        &test_data.user_token_account,
+        &test_data.user.pubkey(),
+        args.amount,
+    )
+    .submit_with_signers(&[&test_data.user], &mut ctx)
+    .await
+    .unwrap();
     transfer(&test_data.ntt, accs, args, Mode::Locking)
         .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
         .await
@@ -425,6 +497,15 @@ async fn test_large_tx_no_queue() {
         should_queue,
     );
 
+    approve_token_authority(
+        &test_data.ntt,
+        &test_data.user_token_account,
+        &test_data.user.pubkey(),
+        args.amount,
+    )
+    .submit_with_signers(&[&test_data.user], &mut ctx)
+    .await
+    .unwrap();
     let err = transfer(&test_data.ntt, accs, args, Mode::Locking)
         .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
         .await
@@ -448,6 +529,15 @@ async fn test_cant_release_queued() {
     let too_much = OUTBOUND_LIMIT + 1000;
     let (accs, args) = init_accs_args(&mut ctx, &test_data, outbox_item.pubkey(), too_much, true);
 
+    approve_token_authority(
+        &test_data.ntt,
+        &test_data.user_token_account,
+        &test_data.user.pubkey(),
+        args.amount,
+    )
+    .submit_with_signers(&[&test_data.user], &mut ctx)
+    .await
+    .unwrap();
     transfer(&test_data.ntt, accs, args, Mode::Locking)
         .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
         .await
@@ -513,6 +603,15 @@ async fn test_cant_release_twice() {
 
     let (accs, args) = init_accs_args(&mut ctx, &test_data, outbox_item.pubkey(), 100, false);
 
+    approve_token_authority(
+        &test_data.ntt,
+        &test_data.user_token_account,
+        &test_data.user.pubkey(),
+        args.amount,
+    )
+    .submit_with_signers(&[&test_data.user], &mut ctx)
+    .await
+    .unwrap();
     transfer(&test_data.ntt, accs, args, Mode::Locking)
         .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
         .await

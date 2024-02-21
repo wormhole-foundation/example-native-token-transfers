@@ -16,7 +16,10 @@ use solana_program_test::*;
 use solana_sdk::{signature::Keypair, signer::Signer};
 use wormhole_sdk::{Address, Vaa};
 
-use crate::{common::submit::Submittable, sdk::instructions::transfer::transfer};
+use crate::{
+    common::submit::Submittable,
+    sdk::instructions::transfer::{approve_token_authority, transfer},
+};
 use crate::{
     common::{query::GetAccountDataAnchor, setup::setup},
     sdk::{
@@ -194,6 +197,15 @@ async fn test_cancel() {
     let (accs, args) =
         init_transfer_accs_args(&mut ctx, &test_data, outbox_item.pubkey(), 7000, true);
 
+    approve_token_authority(
+        &test_data.ntt,
+        &test_data.user_token_account,
+        &test_data.user.pubkey(),
+        args.amount,
+    )
+    .submit_with_signers(&[&test_data.user], &mut ctx)
+    .await
+    .unwrap();
     transfer(&test_data.ntt, accs, args, Mode::Locking)
         .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
         .await
