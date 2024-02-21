@@ -7,7 +7,8 @@ on:
       - main
       - dev
 jobs:
-  solana:
+  solana-sbf:
+    name: Solana Cargo SBF
     runs-on: ubuntu-20.04
     env:
       RUSTFLAGS: -Dwarnings
@@ -90,7 +91,7 @@ jobs:
           sh -c "$(curl -sSfL https://release.solana.com/v${SOLANA_VERSION}/install)"
           ~/.local/share/solana/install/active_release/bin/sdk/sbf/scripts/install.sh
 
-      - name: Run unit tests
+      - name: cargo build-sbf && cargo test-sbf
         env:
           RUST_BACKTRACE: "1"
         run: |
@@ -110,3 +111,19 @@ jobs:
           for p in "${BPF_PACKAGES[@]}"; do
             cargo test-sbf --manifest-path "${p}"
           done
+  anchor-test:
+    name: Anchor Test
+    runs-on: ubuntu-latest
+    # Anchor Docker image: https://www.anchor-lang.com/docs/verifiable-builds#images
+    container: backpackapp/build:v0.29.0
+    steps:
+        - uses: actions/checkout@v4
+        - name: Set default Rust toolchain
+          run: rustup default stable
+          working-directory: ./solana
+        - name: yarn
+          run: yarn
+          working-directory: ./solana
+        - name: anchor test --arch sbf
+          run: anchor test --arch sbf
+          working-directory: ./solana
