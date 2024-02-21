@@ -356,6 +356,16 @@ impl<D> Hack for PhantomData<D> {
     }
 }
 
+impl Hack for ProgramData {
+    fn __anchor_private_full_path() -> String {
+        String::new()
+    }
+    fn __anchor_private_insert_idl_defined<A>(_a: &mut HashMap<String, A>) {}
+    fn __anchor_private_gen_idl_type<A>() -> Option<A> {
+        None
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::endpoints::wormhole::messages::WormholeEndpoint;

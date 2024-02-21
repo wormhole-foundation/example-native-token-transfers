@@ -1,6 +1,9 @@
 use anchor_lang::prelude::*;
 use wormhole_solana_utils::cpi::bpf_loader_upgradeable::{self, BpfLoaderUpgradeable};
 
+#[cfg(feature = "idl-build")]
+use crate::messages::Hack;
+
 use crate::{
     chain_id::ChainId,
     config::Config,
