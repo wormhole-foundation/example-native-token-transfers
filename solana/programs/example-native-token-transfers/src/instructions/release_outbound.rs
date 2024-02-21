@@ -103,6 +103,7 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, args: ReleaseOutboundArgs
                 to_chain: accs.outbox_item.recipient_chain,
             },
         },
+        vec![],
     );
 
     if accs.wormhole_bridge.fee() > 0 {

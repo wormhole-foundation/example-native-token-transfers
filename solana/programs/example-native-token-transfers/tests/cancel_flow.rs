@@ -116,7 +116,7 @@ async fn post_transfer_vaa(
         },
     };
     let endpoint_message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
-        EndpointMessage::new(OTHER_MANAGER, manager_message.clone());
+        EndpointMessage::new(OTHER_MANAGER, manager_message.clone(), vec![]);
 
     let vaa = Vaa {
         version: 1,

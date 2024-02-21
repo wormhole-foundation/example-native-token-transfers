@@ -5,10 +5,12 @@ export class EndpointMessage<A> {
   static prefix: Buffer
   sourceManager: Buffer
   managerPayload: ManagerMessage<A>
+  endpointPayload: Buffer
 
-  constructor(sourceManager: Buffer, managerPayload: ManagerMessage<A>) {
+  constructor(sourceManager: Buffer, managerPayload: ManagerMessage<A>, endpointPayload: Buffer) {
     this.sourceManager = sourceManager
     this.managerPayload = managerPayload
+    this.endpointPayload = endpointPayload
   }
 
   static deserialize<A>(data: Buffer, deserializer: (data: Buffer) => ManagerMessage<A>): EndpointMessage<A> {
@@ -22,13 +24,17 @@ export class EndpointMessage<A> {
     const sourceManager = data.subarray(4, 36)
     const managerPayloadLen = data.readUInt16BE(36)
     const managerPayload = deserializer(data.subarray(38, 38 + managerPayloadLen))
-    return new EndpointMessage(sourceManager, managerPayload)
+    const endpointPayloadLen = data.readUInt16BE(38 + managerPayloadLen)
+    const endpointPayload = data.subarray(40 + managerPayloadLen, 40 + managerPayloadLen + endpointPayloadLen)
+    return new EndpointMessage(sourceManager, managerPayload, endpointPayload)
   }
 
   static serialize<A>(msg: EndpointMessage<A>, serializer: (payload: ManagerMessage<A>) => Buffer): Buffer {
     const payload = serializer(msg.managerPayload)
     assert(msg.sourceManager.length == 32, 'sourceManager must be 32 bytes')
-    const buffer = Buffer.concat([this.prefix, msg.sourceManager, new BN(payload.length).toBuffer('be', 2), payload])
+    const payloadLen = new BN(payload.length).toBuffer('be', 2)
+    const endpointPayloadLen = new BN(msg.endpointPayload.length).toBuffer('be', 2)
+    const buffer = Buffer.concat([this.prefix, msg.sourceManager, payloadLen, payload, endpointPayloadLen, msg.endpointPayload])
     return buffer
   }
 }

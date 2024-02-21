@@ -185,7 +185,8 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
                     to: [1u8; 32],
                     to_chain: ChainId { id: 2 },
                 }
-            }
+            },
+            vec![]
         )
     );
 

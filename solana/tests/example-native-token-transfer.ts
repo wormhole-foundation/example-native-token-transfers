@@ -159,8 +159,9 @@ describe('example-native-token-transfers', () => {
             new NormalizedAmount(BigInt(10000), 8),
             toChainId('solana'),
             user.publicKey.toBuffer()
-          )
-        )
+          ),
+        ),
+        endpointPayload: Buffer.alloc(0)
       }
 
       const serialized = WormholeEndpointMessage.serialize(sendingEndpointMessage, a => ManagerMessage.serialize(a, NativeTokenTransfer.serialize))

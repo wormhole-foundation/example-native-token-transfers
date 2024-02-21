@@ -182,6 +182,7 @@ pub struct EndpointMessage<E: Endpoint, A: AnchorDeserialize + AnchorSerialize +
     _phantom: PhantomData<E>,
     // TODO: check sibling registration at the manager level
     pub message_data: EndpointMessageData<A>,
+    pub endpoint_payload: Vec<u8>,
 }
 
 impl<E: Endpoint, A: AnchorDeserialize + AnchorSerialize + Space + Clone> std::ops::Deref
@@ -244,6 +245,7 @@ where
                 source_manager: self.source_manager,
                 manager_payload: self.manager_payload.clone(),
             },
+            endpoint_payload: self.endpoint_payload.clone(),
         }
     }
 }
@@ -252,13 +254,18 @@ impl<E: Endpoint, A> EndpointMessage<E, A>
 where
     A: AnchorDeserialize + AnchorSerialize + Space + Clone,
 {
-    pub fn new(source_manager: [u8; 32], manager_payload: ManagerMessage<A>) -> Self {
+    pub fn new(
+        source_manager: [u8; 32],
+        manager_payload: ManagerMessage<A>,
+        endpoint_payload: Vec<u8>,
+    ) -> Self {
         Self {
             _phantom: PhantomData,
             message_data: EndpointMessageData {
                 source_manager,
                 manager_payload,
             },
+            endpoint_payload,
         }
     }
 }
@@ -294,8 +301,15 @@ where
         // consumes the expected amount of bytes
         let _manager_payload_len: u16 = Readable::read(reader)?;
         let manager_payload = ManagerMessage::read(reader)?;
+        let endpoint_payload_len: u16 = Readable::read(reader)?;
+        let mut endpoint_payload = vec![0; endpoint_payload_len as usize];
+        reader.read_exact(&mut endpoint_payload)?;
 
-        Ok(EndpointMessage::new(source_manager, manager_payload))
+        Ok(EndpointMessage::new(
+            source_manager,
+            manager_payload,
+            endpoint_payload,
+        ))
     }
 }
 
@@ -321,6 +335,7 @@ where
                     source_manager,
                     manager_payload,
                 },
+            endpoint_payload,
         } = self;
 
         E::PREFIX.write(writer)?;
@@ -331,7 +346,11 @@ where
         // a better API would be
         // foo.write_with_prefix_be::<u16>(writer)
         // which writes the length as a big endian u16.
-        manager_payload.write(writer)
+        manager_payload.write(writer)?;
+        let len: u16 = u16::try_from(endpoint_payload.len()).expect("u16 overflow");
+        len.write(writer)?;
+        writer.write_all(endpoint_payload)?;
+        Ok(())
     }
 }
 
@@ -376,7 +395,7 @@ mod test {
     //
     #[test]
     fn test_deserialize_endpoint_message() {
-        let data = hex::decode("9945ff10042942fafabe00000000000000000000000000000000000000000000000000000079000000367999a1014667921341234300000000000000000000000000000000000000000000000000004f994e545407000000000012d687beefface00000000000000000000000000000000000000000000000000000000feebcafe000000000000000000000000000000000000000000000000000000000011").unwrap();
+        let data = hex::decode("9945ff10042942fafabe00000000000000000000000000000000000000000000000000000079000000367999a1014667921341234300000000000000000000000000000000000000000000000000004f994e545407000000000012d687beefface00000000000000000000000000000000000000000000000000000000feebcafe0000000000000000000000000000000000000000000000000000000000110000").unwrap();
         let mut vec = &data[..];
         let message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
             TypePrefixedPayload::read_payload(&mut vec).unwrap();
@@ -411,6 +430,7 @@ mod test {
                     },
                 },
             },
+            endpoint_payload: vec![],
         };
         assert_eq!(message, expected);
         assert_eq!(vec.len(), 0);
