@@ -2,6 +2,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "../../src/wormhole/Governance.sol";
+import "forge-std/console.sol";
 import "forge-std/Test.sol";
 import "openzeppelin-contracts/contracts/access/Ownable.sol";
 import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
@@ -41,7 +42,6 @@ contract GovernanceTest is Test {
     }
 
     function buildGovernanceVaa(
-        bytes32 module,
         uint8 action,
         uint16 chainId,
         address governanceContract,
@@ -50,7 +50,6 @@ contract GovernanceTest is Test {
     ) public view returns (bytes memory) {
         Governance.GeneralPurposeGovernanceMessage memory message = Governance
             .GeneralPurposeGovernanceMessage({
-            module: module,
             action: action,
             chain: chainId,
             governanceContract: governanceContract,
@@ -58,7 +57,14 @@ contract GovernanceTest is Test {
             callData: callData
         });
 
-        IWormhole.VM memory vaa = IWormhole.VM({
+        IWormhole.VM memory vaa =
+            buildVaa(governance.encodeGeneralPurposeGovernanceMessage(message));
+
+        return guardian.encodeAndSignMessage(vaa);
+    }
+
+    function buildVaa(bytes memory payload) public view returns (IWormhole.VM memory) {
+        return IWormhole.VM({
             version: 1,
             timestamp: uint32(block.timestamp),
             nonce: 0,
@@ -66,31 +72,22 @@ contract GovernanceTest is Test {
             emitterAddress: wormhole.governanceContract(),
             sequence: 0,
             consistencyLevel: 200,
-            payload: governance.encodeGeneralPurposeGovernanceMessage(message),
+            payload: payload,
             guardianSetIndex: 0,
             signatures: new IWormhole.Signature[](0),
             hash: bytes32("")
         });
-
-        return guardian.encodeAndSignMessage(vaa);
     }
 
     function test_invalidModule() public {
-        uint16 thisChain = wormhole.chainId();
         bytes32 coreBridgeModule =
             0x00000000000000000000000000000000000000000000000000000000436f7265;
-
-        bytes memory signed = buildGovernanceVaa(
-            coreBridgeModule,
-            uint8(Governance.GovernanceAction.EVM_CALL),
-            thisChain,
-            address(governance),
-            address(myContract),
-            abi.encodeWithSignature("governanceStuff()")
-        );
+        bytes memory restOfPayload =
+            "0x0100022e234dae75c793f67a35089c9d99245e1c58470bf62849f9a0b5bf2913b396098f7c7019b51a820a000471cd25f9";
+        bytes memory badModulePayload = abi.encodePacked(coreBridgeModule, restOfPayload);
 
         vm.expectRevert(abi.encodeWithSignature("InvalidModule(bytes32)", coreBridgeModule));
-        governance.performGovernance(signed);
+        governance.parseGeneralPurposeGovernanceMessage(badModulePayload);
     }
 
     // TODO: this should ideally test all actions that != 1
@@ -98,7 +95,6 @@ contract GovernanceTest is Test {
         uint16 thisChain = wormhole.chainId();
 
         bytes memory signed = buildGovernanceVaa(
-            governance.MODULE(),
             uint8(Governance.GovernanceAction.UNDEFINED),
             thisChain,
             address(governance),
@@ -113,7 +109,6 @@ contract GovernanceTest is Test {
     // TODO: this should ideally test all chainIds that != wormhole.chainId()
     function test_invalidChain() public {
         bytes memory signed = buildGovernanceVaa(
-            governance.MODULE(),
             uint8(Governance.GovernanceAction.EVM_CALL),
             0,
             address(governance),
@@ -131,7 +126,6 @@ contract GovernanceTest is Test {
         address random = address(0x1234);
 
         bytes memory signed = buildGovernanceVaa(
-            governance.MODULE(),
             uint8(Governance.GovernanceAction.EVM_CALL),
             thisChain,
             random,
@@ -147,7 +141,6 @@ contract GovernanceTest is Test {
         uint16 thisChain = wormhole.chainId();
 
         bytes memory signed = buildGovernanceVaa(
-            governance.MODULE(),
             uint8(Governance.GovernanceAction.EVM_CALL),
             thisChain,
             address(governance),
@@ -163,7 +156,6 @@ contract GovernanceTest is Test {
         uint16 thisChain = wormhole.chainId();
 
         bytes memory signed = buildGovernanceVaa(
-            governance.MODULE(),
             uint8(Governance.GovernanceAction.EVM_CALL),
             thisChain,
             address(governance),
@@ -181,7 +173,6 @@ contract GovernanceTest is Test {
         uint16 thisChain = wormhole.chainId();
 
         bytes memory signed = buildGovernanceVaa(
-            governance.MODULE(),
             uint8(Governance.GovernanceAction.EVM_CALL),
             thisChain,
             address(governance),
