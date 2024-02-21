@@ -5,7 +5,7 @@ pragma solidity >=0.8.8 <0.9.0;
 import "./ManagerHelpers.sol";
 import "../mocks/DummyEndpoint.sol";
 import "../mocks/DummyToken.sol";
-import "../../src/ManagerStandalone.sol";
+import "../../src/Manager.sol";
 import "../../src/libraries/NormalizedAmount.sol";
 
 library EndpointHelpersLib {
@@ -15,10 +15,7 @@ library EndpointHelpersLib {
     bytes4 constant TEST_ENDPOINT_PAYLOAD_PREFIX = 0x99455454;
     uint16 constant SENDING_CHAIN_ID = 1;
 
-    function setup_endpoints(ManagerStandalone manager)
-        internal
-        returns (DummyEndpoint, DummyEndpoint)
-    {
+    function setup_endpoints(Manager manager) internal returns (DummyEndpoint, DummyEndpoint) {
         DummyEndpoint e1 = new DummyEndpoint(address(manager));
         DummyEndpoint e2 = new DummyEndpoint(address(manager));
         manager.setEndpoint(address(e1));
@@ -31,7 +28,7 @@ library EndpointHelpersLib {
         address to,
         uint64 sequence,
         uint16 toChain,
-        ManagerStandalone manager,
+        Manager manager,
         NormalizedAmount memory amount,
         NormalizedAmount memory inboundLimit,
         IEndpointReceiver[] memory endpoints
@@ -63,7 +60,7 @@ library EndpointHelpersLib {
         address to,
         uint64 sequence,
         uint16 toChain,
-        ManagerStandalone manager,
+        Manager manager,
         NormalizedAmount memory amount
     ) internal view returns (EndpointStructs.ManagerMessage memory) {
         DummyToken token = DummyToken(manager.token());
@@ -83,7 +80,7 @@ library EndpointHelpersLib {
     }
 
     function prepTokenReceive(
-        ManagerStandalone manager,
+        Manager manager,
         NormalizedAmount memory amount,
         NormalizedAmount memory inboundLimit
     ) internal {
