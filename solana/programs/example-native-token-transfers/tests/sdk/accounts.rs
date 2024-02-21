@@ -101,12 +101,12 @@ impl NTT {
         manager_message: ManagerMessage<NativeTokenTransfer>,
     ) -> Pubkey {
         let mut hasher = Keccak256::new();
+        hasher.update(&chain.to_be_bytes());
         hasher.update(&TypePrefixedPayload::to_vec_payload(&manager_message));
 
         let (inbox_item, _) = Pubkey::find_program_address(
             &[
                 InboxItem::SEED_PREFIX,
-                &chain.to_be_bytes(),
                 &hasher.finalize(),
             ],
             &self.program,

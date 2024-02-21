@@ -94,12 +94,12 @@ export class NTT {
     const chainId = coalesceChainId(chain)
     const serialized = ManagerMessage.serialize(managerMessage, NativeTokenTransfer.serialize)
     const hasher = new Keccak(256)
+    hasher.update(new BN(chainId).toBuffer('be', 2))
     hasher.update(serialized)
     const hash = hasher.digest('hex')
     return this.derive_pda(
       [
         Buffer.from('inbox_item'),
-        new BN(chainId).toBuffer('be', 2),
         Buffer.from(hash, 'hex')
       ])
   }

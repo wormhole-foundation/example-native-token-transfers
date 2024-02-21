@@ -17,9 +17,11 @@ pub struct ManagerMessage<A: Space> {
 }
 
 impl<A: Space + AnchorSerialize + fmt::Debug + TypePrefixedPayload> ManagerMessage<A> {
-    pub fn keccak256(&self) -> Hash {
-        let payload = TypePrefixedPayload::to_vec_payload(self);
-        solana_program::keccak::hash(&payload)
+    pub fn keccak256(&self, chain_id: ChainId) -> Hash {
+        let mut bytes: Vec<u8> = Vec::new();
+        bytes.extend_from_slice(&chain_id.id.to_be_bytes());
+        bytes.extend_from_slice(&TypePrefixedPayload::to_vec_payload(self));
+        solana_program::keccak::hash(&bytes)
     }
 }
 

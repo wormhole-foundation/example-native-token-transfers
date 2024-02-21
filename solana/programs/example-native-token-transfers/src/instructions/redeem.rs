@@ -56,8 +56,9 @@ pub struct Redeem<'info> {
         space = 8 + InboxItem::INIT_SPACE,
         seeds = [
             InboxItem::SEED_PREFIX,
-            endpoint_message.from_chain.id.to_be_bytes().as_ref(),
-            endpoint_message.message.manager_payload.keccak256().as_ref(),
+            endpoint_message.message.manager_payload.keccak256(
+                endpoint_message.from_chain
+            ).as_ref(),
         ],
         bump,
     )]
