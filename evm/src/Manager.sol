@@ -36,8 +36,10 @@ abstract contract Manager is
 
     error RefundFailed(uint256 refundAmount);
     error CannotRenounceManagerOwnership(address owner);
+    error UnexpectedOwner(address expectedOwner, address owner);
 
     address public immutable token;
+    address public immutable deployer;
     Mode public immutable mode;
     uint16 public immutable chainId;
     uint256 public immutable evmChainId;
@@ -104,9 +106,15 @@ abstract contract Manager is
         mode = _mode;
         chainId = _chainId;
         evmChainId = block.chainid;
+        // save the deployer (check this on iniitialization)
+        deployer = msg.sender;
     }
 
     function __Manager_init() internal onlyInitializing {
+        // check if the owner is the deployer of this contract
+        if (msg.sender != deployer) {
+            revert UnexpectedOwner(deployer, msg.sender);
+        }
         // TODO: msg.sender may not be the right address for both
         __PausedOwnable_init(msg.sender, msg.sender);
         // TODO: check if it's safe to not initialise reentrancy guard
