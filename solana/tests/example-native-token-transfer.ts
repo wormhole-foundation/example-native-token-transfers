@@ -1,11 +1,12 @@
 import * as anchor from '@coral-xyz/anchor'
 import { BN, type Program } from '@coral-xyz/anchor'
 import * as spl from '@solana/spl-token'
-import { type ExampleNativeTokenTransfers } from '../target/types/example_native_token_transfers'
+import { type ExampleNativeTokenTransfers } from '../ts/sdk'
 import { PostedMessageData } from '@certusone/wormhole-sdk/lib/cjs/solana/wormhole'
 import { expect } from 'chai'
 import { toChainId } from '@certusone/wormhole-sdk'
 import { MockEmitter, MockGuardians } from '@certusone/wormhole-sdk/lib/cjs/mock'
+import * as fs from "fs";
 
 import { type EndpointMessage, ManagerMessage, NativeTokenTransfer, NormalizedAmount, postVaa, WormholeEndpointMessage, NTT } from '../ts/sdk'
 
@@ -15,9 +16,11 @@ describe('example-native-token-transfers', () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env())
 
+  const payerSecretKey = Uint8Array.from(JSON.parse(fs.readFileSync(`${__dirname}/../keys/test.json`, { encoding: "utf-8" })));
+  const payer = anchor.web3.Keypair.fromSecretKey(payerSecretKey);
+
   const program = anchor.workspace.ExampleNativeTokenTransfers as Program<ExampleNativeTokenTransfers>
   const owner = anchor.web3.Keypair.generate()
-  const payer = anchor.web3.Keypair.generate()
   const ntt = new NTT({
     program,
     wormholeId: 'worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth'
@@ -30,8 +33,6 @@ describe('example-native-token-transfers', () => {
 
   before(async () => {
     // airdrop some tokens to payer
-    const signature = await program.provider.connection.requestAirdrop(payer.publicKey, 1000000000)
-    await program.provider.connection.confirmTransaction(signature)
     mint = await spl.createMint(
       program.provider.connection,
       payer,
@@ -57,7 +58,7 @@ describe('example-native-token-transfers', () => {
 
       await ntt.initialize({
         payer,
-        owner,
+        owner: payer,
         chain: 'solana',
         mint,
         outboundLimit: new BN(1000000),
@@ -66,20 +67,20 @@ describe('example-native-token-transfers', () => {
 
       await ntt.registerEndpoint({
         payer,
-        owner,
+        owner: payer,
         endpoint: ntt.program.programId
       })
 
       await ntt.setWormholeEndpointSibling({
         payer,
-        owner,
+        owner: payer,
         chain: 'ethereum',
         address: Buffer.from('endpoint'.padStart(32, '\0')),
       })
 
       await ntt.setSibling({
         payer,
-        owner,
+        owner: payer,
         chain: 'ethereum',
         address: Buffer.from('manager'.padStart(32, '\0')),
         limit: new BN(1000000)

@@ -16,6 +16,8 @@ import { type ExampleNativeTokenTransfers as Idl } from '../../target/types/exam
 import { ManagerMessage } from './payloads/common'
 import { NativeTokenTransfer } from './payloads/transfers'
 import { WormholeEndpointMessage } from './payloads/wormhole'
+import { BPF_LOADER_UPGRADEABLE_PROGRAM_ID, programDataAddress } from './utils'
+import * as splToken from '@solana/spl-token';
 
 export { NormalizedAmount } from './normalized_amount'
 export { EndpointMessage, ManagerMessage } from './payloads/common'
@@ -162,14 +164,16 @@ export class NTT {
       .initialize({ chainId, limit: args.outboundLimit, mode })
       .accounts({
         payer: args.payer.publicKey,
-        owner: args.owner.publicKey,
+        deployer: args.owner.publicKey,
+        programData: programDataAddress(this.program.programId),
         config: this.configAccountAddress(),
         mint: args.mint,
         seq: this.sequenceTrackerAccountAddress(),
         rateLimit: this.outboxRateLimitAccountAddress(),
         tokenProgram,
         tokenAuthority: this.tokenAuthorityAddress(),
-        custody: await this.custodyAccountAddress(args.mint)
+        custody: await this.custodyAccountAddress(args.mint),
+        bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
       })
       .signers([args.payer, args.owner])
       .rpc()
@@ -215,9 +219,14 @@ export class NTT {
 
     const signers = [args.payer, args.fromAuthority, outboxItem]
 
+    const approveIx = splToken.createApproveInstruction(
+      args.from,
+      this.tokenAuthorityAddress(),
+      args.fromAuthority.publicKey,
+      BigInt(args.amount.toString())
+    );
     const tx = new Transaction()
-    tx.add(transferIx)
-    tx.add(releaseIx)
+    tx.add(approveIx, transferIx, releaseIx)
     await this.sendAndConfirmTransaction(tx, signers)
 
     return outboxItem.publicKey
@@ -271,10 +280,11 @@ export class NTT {
           config: { config: this.configAccountAddress() },
           mint,
           from: args.from,
-          fromAuthority: args.fromAuthority,
+          sender: args.fromAuthority,
           seq: this.sequenceTrackerAccountAddress(),
           outboxItem: args.outboxItem,
           outboxRateLimit: this.outboxRateLimitAccountAddress(),
+          tokenAuthority: this.tokenAuthorityAddress(),
         },
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain)
       })
@@ -318,14 +328,14 @@ export class NTT {
           config: { config: this.configAccountAddress() },
           mint,
           from: args.from,
-          fromAuthority: args.fromAuthority,
+          sender: args.fromAuthority,
           tokenProgram: await this.tokenProgram(config),
           seq: this.sequenceTrackerAccountAddress(),
           outboxItem: args.outboxItem,
           outboxRateLimit: this.outboxRateLimitAccountAddress(),
+          tokenAuthority: this.tokenAuthorityAddress(),
         },
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain),
-        tokenAuthority: this.tokenAuthorityAddress(),
         custody: await this.custodyAccountAddress(config)
       })
       .instruction()
