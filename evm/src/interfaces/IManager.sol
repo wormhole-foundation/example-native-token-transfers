@@ -43,15 +43,6 @@ interface IManager {
     error ThresholdTooHigh(uint256 threshold, uint256 endpoints);
     error RetrievedIncorrectRegisteredEndpoints(uint256 retrieved, uint256 registered);
 
-    /// @notice The number of thresholds should not be zero.
-    error ZeroThreshold();
-
-    /// @notice The threshold for endpoint attestations is too high.
-    /// @param threshold The threshold.
-    /// @param endpoints The number of endpoints.
-    error ThresholdTooHigh(uint256 threshold, uint256 endpoints);
-    error RetrievedIncorrectRegisteredEndpoints(uint256 retrieved, uint256 registered);
-
     // @notice                       transfer a given amount to a recipient on a given chain.
     // @dev                          transfers are queued if the outbound limit is hit
     //                               and must be completed by the client.
@@ -138,4 +129,12 @@ interface IManager {
     ///
     /// @param newImplementation The address of the new implementation.
     function upgrade(address newImplementation) external;
+
+    /// @notice Returns the mode (locking or burning) of the Manager.
+    /// @return mode A uint8 corresponding to the mode
+    function getMode() external view returns (uint8);
+
+    /// @notice Returns the number of decimals of the token managed by the Manager.
+    /// @return decimals The number of decimals of the token.
+    function tokenDecimals() external view returns (uint8);
 }

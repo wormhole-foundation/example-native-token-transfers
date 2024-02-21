@@ -331,6 +331,68 @@ library EndpointStructs {
         return instructions;
     }
 
+    struct EndpointInit {
+        bytes4 endpointIdentifier;
+        bytes32 managerAddress;
+        uint8 managerMode;
+        bytes32 tokenAddress;
+        uint8 tokenDecimals;
+    }
+
+    function encodeEndpointInit(EndpointInit memory init) public pure returns (bytes memory) {
+        return abi.encodePacked(
+            init.endpointIdentifier,
+            init.managerAddress,
+            init.managerMode,
+            init.tokenAddress,
+            init.tokenDecimals
+        );
+    }
+
+    function decodeEndpointInit(bytes memory encoded)
+        public
+        pure
+        returns (EndpointInit memory init)
+    {
+        uint256 offset = 0;
+        (init.endpointIdentifier, offset) = encoded.asBytes4Unchecked(offset);
+        (init.managerAddress, offset) = encoded.asBytes32Unchecked(offset);
+        (init.managerMode, offset) = encoded.asUint8Unchecked(offset);
+        (init.tokenAddress, offset) = encoded.asBytes32Unchecked(offset);
+        (init.tokenDecimals, offset) = encoded.asUint8Unchecked(offset);
+        encoded.checkLength(offset);
+    }
+
+    struct EndpointRegistration {
+        bytes4 endpointIdentifier;
+        uint16 endpointChainId;
+        bytes32 endpointAddress;
+    }
+
+    function encodeEndpointRegistration(EndpointRegistration memory registration)
+        public
+        pure
+        returns (bytes memory)
+    {
+        return abi.encodePacked(
+            registration.endpointIdentifier,
+            registration.endpointChainId,
+            registration.endpointAddress
+        );
+    }
+
+    function decodeEndpointRegistration(bytes memory encoded)
+        public
+        pure
+        returns (EndpointRegistration memory registration)
+    {
+        uint256 offset = 0;
+        (registration.endpointIdentifier, offset) = encoded.asBytes4Unchecked(offset);
+        (registration.endpointChainId, offset) = encoded.asUint16Unchecked(offset);
+        (registration.endpointAddress, offset) = encoded.asBytes32Unchecked(offset);
+        encoded.checkLength(offset);
+    }
+
     /*
     * @dev This function takes a list of EndpointInstructions and expands them to a 256-length list,
     *      inserting each instruction into the expanded list based on `instruction.index`.

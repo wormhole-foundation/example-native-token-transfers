@@ -7,10 +7,10 @@ abstract contract NttNormalizer {
     using NormalizedAmountLib for uint256;
     using NormalizedAmountLib for NormalizedAmount;
 
-    uint8 immutable tokenDecimals;
+    uint8 internal immutable tokenDecimals_;
 
     constructor(address _token) {
-        tokenDecimals = _tokenDecimals(_token);
+        tokenDecimals_ = _tokenDecimals(_token);
     }
 
     function _tokenDecimals(address token) internal view returns (uint8) {
@@ -19,11 +19,11 @@ abstract contract NttNormalizer {
     }
 
     function nttNormalize(uint256 amount) public view returns (NormalizedAmount memory) {
-        return amount.normalize(tokenDecimals);
+        return amount.normalize(tokenDecimals_);
     }
 
     function nttDenormalize(NormalizedAmount memory amount) public view returns (uint256) {
-        return amount.denormalize(tokenDecimals);
+        return amount.denormalize(tokenDecimals_);
     }
 
     /// @dev Shift decimals of `amount` to match the token decimals

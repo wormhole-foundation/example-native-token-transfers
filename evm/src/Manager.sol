@@ -127,6 +127,10 @@ contract Manager is
         emit ThresholdChanged(oldThreshold, threshold);
     }
 
+    function getMode() public view returns (uint8) {
+        return uint8(mode);
+    }
+
     /// @notice Returns the number of Endpoints that must attest to a msgId for
     ///         it to be considered valid and acted upon.
     function getThreshold() public view returns (uint8) {
@@ -195,7 +199,6 @@ contract Manager is
         __PausedOwnable_init(msg.sender, msg.sender);
         __ReentrancyGuard_init();
     }
-
 
     function _initialize() internal virtual override {
         __Manager_init();
@@ -755,8 +758,8 @@ contract Manager is
         return countSetBits(_getMessageAttestations(digest));
     }
 
-    function _tokenDecimals() internal view override returns (uint8) {
-        return tokenDecimals;
+    function tokenDecimals() public view override(IManager, RateLimiter) returns (uint8) {
+        return tokenDecimals_;
     }
 
     // @dev Count the number of set bits in a uint64
