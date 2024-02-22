@@ -64,7 +64,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
             new MockManagerContract(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
 
         managerChain1 = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
-        managerChain1.initialize();
+        managerChain1.initialize("");
 
         WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointContract(
             address(managerChain1), address(wormhole), address(relayer), address(0x0)
@@ -72,7 +72,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         wormholeEndpointChain1 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain1Implementation), ""))
         );
-        wormholeEndpointChain1.initialize();
+        wormholeEndpointChain1.initialize("");
 
         managerChain1.setEndpoint(address(wormholeEndpointChain1));
         managerChain1.setOutboundLimit(type(uint64).max);
@@ -86,7 +86,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
 
         managerChain2 =
             MockManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
-        managerChain2.initialize();
+        managerChain2.initialize("");
 
         WormholeEndpoint wormholeEndpointChain2Implementation = new MockWormholeEndpointContract(
             address(managerChain2), address(wormhole), address(relayer), address(0x0)
@@ -94,7 +94,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         wormholeEndpointChain2 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain2Implementation), ""))
         );
-        wormholeEndpointChain2.initialize();
+        wormholeEndpointChain2.initialize("");
 
         managerChain2.setEndpoint(address(wormholeEndpointChain2));
         managerChain2.setOutboundLimit(type(uint64).max);
@@ -412,7 +412,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         wormholeEndpointChain1_2 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain1_2), ""))
         );
-        wormholeEndpointChain1_2.initialize();
+        wormholeEndpointChain1_2.initialize("");
 
         vm.chainId(chainId2);
         WormholeEndpoint wormholeEndpointChain2_1 = wormholeEndpointChain2;
@@ -425,7 +425,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         wormholeEndpointChain2_2 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain2_2), ""))
         );
-        wormholeEndpointChain2_2.initialize();
+        wormholeEndpointChain2_2.initialize("");
 
         // Setup the new entrypoint hook ups to allow the transfers to occur
         wormholeEndpointChain1_2.setWormholeSibling(

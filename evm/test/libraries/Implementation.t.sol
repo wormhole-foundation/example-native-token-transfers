@@ -8,7 +8,7 @@ import "../../src/libraries/Implementation.sol";
 contract TestImplementation is Implementation {
     uint256 public upgradeCount;
 
-    function _initialize() internal override {
+    function _initialize(bytes memory) internal override {
         upgradeCount = 0;
     }
 
@@ -34,7 +34,7 @@ contract TestImplementation is Implementation {
 contract TestImplementation2 is Implementation {
     uint256 public upgradeCount;
 
-    function _initialize() internal override {}
+    function _initialize(bytes memory) internal override {}
 
     function _migrate() internal override {
         incrementCounter();
@@ -62,7 +62,7 @@ contract ImplementationTest is Test {
         TestImplementation impl = new TestImplementation();
 
         vm.expectRevert(abi.encodeWithSignature("OnlyDelegateCall()"));
-        impl.initialize();
+        impl.initialize("");
     }
 
     function test_cantInitializeDirectly2() public {
@@ -76,7 +76,7 @@ contract ImplementationTest is Test {
         TestImplementation impl = new TestImplementation();
         TestImplementation proxy = TestImplementation(address(new ERC1967Proxy(address(impl), "")));
 
-        proxy.initialize();
+        proxy.initialize("");
     }
 
     function test_cantUpgradeDirectly() public {
@@ -99,7 +99,7 @@ contract ImplementationTest is Test {
         TestImplementation proxy = TestImplementation(address(new ERC1967Proxy(address(impl), "")));
         TestImplementation2 impl2 = new TestImplementation2();
 
-        proxy.initialize();
+        proxy.initialize("");
         proxy.upgrade(address(impl2));
 
         assertEq(proxy.upgradeCount(), 1);

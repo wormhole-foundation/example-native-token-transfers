@@ -65,7 +65,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
             new MockManagerContract(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
 
         managerChain1 = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
-        managerChain1.initialize();
+        managerChain1.initialize("");
 
         WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointContract(
             address(managerChain1), address(wormhole), address(relayer), address(0x0)
@@ -73,7 +73,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         wormholeEndpointChain1 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain1Implementation), ""))
         );
-        wormholeEndpointChain1.initialize();
+        wormholeEndpointChain1.initialize("");
 
         managerChain1.setEndpoint(address(wormholeEndpointChain1));
         managerChain1.setOutboundLimit(type(uint64).max);
@@ -87,7 +87,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
         managerChain2 =
             MockManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
-        managerChain2.initialize();
+        managerChain2.initialize("");
 
         WormholeEndpoint wormholeEndpointChain2Implementation = new MockWormholeEndpointContract(
             address(managerChain2), address(wormhole), address(relayer), address(0x0)
@@ -95,7 +95,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         wormholeEndpointChain2 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain2Implementation), ""))
         );
-        wormholeEndpointChain2.initialize();
+        wormholeEndpointChain2.initialize("");
 
         managerChain2.setEndpoint(address(wormholeEndpointChain2));
         managerChain2.setOutboundLimit(type(uint64).max);
@@ -321,11 +321,11 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
         // Should fail because it's already initialized
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        managerChain1.initialize();
+        managerChain1.initialize("");
 
         // Should fail because we're calling the implementation directly instead of the proxy.
         vm.expectRevert(Implementation.OnlyDelegateCall.selector);
-        newImplementation.initialize();
+        newImplementation.initialize("");
     }
 
     function test_authEndpoint() public {
@@ -368,11 +368,11 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
         // Should fail because it's already initialized
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        wormholeEndpointChain1.initialize();
+        wormholeEndpointChain1.initialize("");
 
         // // Should fail because we're calling the implementation directly instead of the proxy.
         vm.expectRevert(Implementation.OnlyDelegateCall.selector);
-        wormholeEndpointChain1Implementation.initialize();
+        wormholeEndpointChain1Implementation.initialize("");
     }
 
     function basicFunctionality() public {
@@ -548,11 +548,11 @@ contract TestInitialize is Test {
         managerChain1 = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
 
         // Initialize once
-        managerChain1.initialize();
+        managerChain1.initialize("");
 
         // Initialize twice
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        managerChain1.initialize();
+        managerChain1.initialize("");
     }
 
     function test_cannotFrontrunInitialize() public {
@@ -571,6 +571,6 @@ contract TestInitialize is Test {
         vm.expectRevert(
             abi.encodeWithSignature("UnexpectedOwner(address,address)", address(this), userA)
         );
-        managerChain1.initialize();
+        managerChain1.initialize("");
     }
 }

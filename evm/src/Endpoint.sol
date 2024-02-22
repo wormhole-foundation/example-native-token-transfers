@@ -36,7 +36,7 @@ abstract contract Endpoint is
 
     /// =============== ADMIN ===============================================
 
-    function _initialize() internal override {
+    function _initialize(bytes memory) internal override {
         __ReentrancyGuard_init();
         // owner of the endpoint is set to the owner of the manager
         __PausedOwnable_init(msg.sender, getManagerOwner());

@@ -10,7 +10,7 @@ contract MockManagerContract is Manager {
         Mode mode,
         uint16 chainId,
         uint64 rateLimitDuration
-    ) Manager(token, mode, chainId, rateLimitDuration) {}
+    ) Manager(token, mode, chainId) {}
 
     /// We create a dummy storage variable here with standard solidity slot assignment.
     /// Then we check that its assigned slot is 0, i.e. that the super contract doesn't
@@ -32,7 +32,7 @@ contract MockManagerMigrateBasic is Manager {
         Mode mode,
         uint16 chainId,
         uint64 rateLimitDuration
-    ) Manager(token, mode, chainId, rateLimitDuration) {}
+    ) Manager(token, mode, chainId) {}
 
     function _migrate() internal view override {
         _checkThresholdInvariants();
@@ -48,7 +48,7 @@ contract MockManagerImmutableCheck is Manager {
         Mode mode,
         uint16 chainId,
         uint64 rateLimitDuration
-    ) Manager(token, mode, chainId, rateLimitDuration) {}
+    ) Manager(token, mode, chainId) {}
 }
 
 contract MockManagerImmutableRemoveCheck is Manager {
@@ -58,7 +58,7 @@ contract MockManagerImmutableRemoveCheck is Manager {
         Mode mode,
         uint16 chainId,
         uint64 rateLimitDuration
-    ) Manager(token, mode, chainId, rateLimitDuration) {}
+    ) Manager(token, mode, chainId) {}
 
     // Turns on the capability to EDIT the immutables
     function _migrate() internal override {
@@ -77,7 +77,7 @@ contract MockManagerStorageLayoutChange is Manager {
         Mode mode,
         uint16 chainId,
         uint64 rateLimitDuration
-    ) Manager(token, mode, chainId, rateLimitDuration) {}
+    ) Manager(token, mode, chainId) {}
 
     function setData() public {
         a = address(0x1);

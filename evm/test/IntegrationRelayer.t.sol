@@ -96,7 +96,7 @@ contract TestEndToEndRelayer is
             new MockManagerContract(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
 
         managerChain1 = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
-        managerChain1.initialize();
+        managerChain1.initialize("");
 
         wormholeEndpointChain1 = new MockWormholeEndpointContract(
             address(managerChain1),
@@ -108,7 +108,7 @@ contract TestEndToEndRelayer is
         wormholeEndpointChain1 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain1), ""))
         );
-        wormholeEndpointChain1.initialize();
+        wormholeEndpointChain1.initialize("");
 
         managerChain1.setEndpoint(address(wormholeEndpointChain1));
         managerChain1.setOutboundLimit(type(uint64).max);
@@ -127,7 +127,7 @@ contract TestEndToEndRelayer is
 
         managerChain2 =
             MockManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
-        managerChain2.initialize();
+        managerChain2.initialize("");
         wormholeEndpointChain2 = new MockWormholeEndpointContract(
             address(managerChain2),
             address(chainInfosTestnet[chainId2].wormhole),
@@ -138,7 +138,7 @@ contract TestEndToEndRelayer is
         wormholeEndpointChain2 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain2), ""))
         );
-        wormholeEndpointChain2.initialize();
+        wormholeEndpointChain2.initialize("");
 
         managerChain2.setEndpoint(address(wormholeEndpointChain2));
         managerChain2.setOutboundLimit(type(uint64).max);
@@ -433,7 +433,7 @@ contract TestRelayerEndToEndManual is
             new MockManagerContract(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
 
         managerChain1 = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
-        managerChain1.initialize();
+        managerChain1.initialize("");
 
         wormholeEndpointChain1 = new MockWormholeEndpointContract(
             address(managerChain1), address(wormhole), address(relayer), address(0x0)
@@ -441,7 +441,7 @@ contract TestRelayerEndToEndManual is
         wormholeEndpointChain1 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain1), ""))
         );
-        wormholeEndpointChain1.initialize();
+        wormholeEndpointChain1.initialize("");
 
         managerChain1.setEndpoint(address(wormholeEndpointChain1));
         managerChain1.setOutboundLimit(type(uint64).max);
@@ -455,7 +455,7 @@ contract TestRelayerEndToEndManual is
 
         managerChain2 =
             MockManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
-        managerChain2.initialize();
+        managerChain2.initialize("");
         wormholeEndpointChain2 = new MockWormholeEndpointContract(
             address(managerChain2),
             address(wormhole),
@@ -465,7 +465,7 @@ contract TestRelayerEndToEndManual is
         wormholeEndpointChain2 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain2), ""))
         );
-        wormholeEndpointChain2.initialize();
+        wormholeEndpointChain2.initialize("");
 
         managerChain2.setEndpoint(address(wormholeEndpointChain2));
         managerChain2.setOutboundLimit(type(uint64).max);

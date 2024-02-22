@@ -18,7 +18,7 @@ contract OwnershipTests is Test {
             new MockManagerContract(address(t), Manager.Mode.LOCKING, chainId, 1 days);
 
         manager = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
-        manager.initialize();
+        manager.initialize("");
     }
 
     function checkOwnership(DummyEndpoint e, address managerOwner) public {

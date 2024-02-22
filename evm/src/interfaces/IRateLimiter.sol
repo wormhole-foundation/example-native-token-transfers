@@ -5,12 +5,19 @@ import "../libraries/NormalizedAmount.sol";
 import "../libraries/EndpointStructs.sol";
 
 interface IRateLimiter {
+    event InboundTransferQueued(bytes32 digest);
+    event OutboundTransferQueued(uint64 queueSequence);
+    event OutboundTransferRateLimited(
+        address indexed sender, uint64 sequence, uint256 amount, uint256 currentCapacity
+    );
+
     error NotEnoughCapacity(uint256 currentCapacity, uint256 amount);
     error OutboundQueuedTransferNotFound(uint64 queueSequence);
     error OutboundQueuedTransferStillQueued(uint64 queueSequence, uint256 transferTimestamp);
     error InboundQueuedTransferNotFound(bytes32 digest);
     error InboundQueuedTransferStillQueued(bytes32 digest, uint256 transferTimestamp);
     error CapacityCannotExceedLimit(NormalizedAmount newCurrentCapacity, NormalizedAmount newLimit);
+    error NotManager(address caller, address manager);
 
     struct RateLimitParams {
         NormalizedAmount limit;
@@ -50,4 +57,47 @@ interface IRateLimiter {
         external
         view
         returns (InboundQueuedTransfer memory);
+
+    function setOutboundLimit(NormalizedAmount memory limit) external;
+
+    function setInboundLimit(NormalizedAmount memory limit, uint16 chainId_) external;
+
+    function rateLimitDuration() external view returns (uint64);
+
+    function deleteOutboundQueuedTransfer(uint64 messageSequence) external;
+
+    function deleteInboundQueuedTransfer(bytes32 digest) external;
+
+    function isOutboundAmountRateLimited(NormalizedAmount memory amount)
+        external
+        view
+        returns (bool);
+
+    function isInboundAmountRateLimited(
+        NormalizedAmount memory amount,
+        uint16 chainId_
+    ) external view returns (bool);
+
+    function enqueueOutboundTransfer(
+        uint64 sequence,
+        NormalizedAmount memory amount,
+        uint16 recipientChain,
+        bytes32 recipient,
+        address senderAddress,
+        bytes memory endpointInstructions
+    ) external;
+
+    function enqueueInboundTransfer(
+        bytes32 digest,
+        NormalizedAmount memory amount,
+        address recipient
+    ) external;
+
+    function consumeOutboundAmount(NormalizedAmount memory amount) external;
+
+    function backfillOutboundAmount(NormalizedAmount memory amount) external;
+
+    function consumeInboundAmount(NormalizedAmount memory amount, uint16 chainId_) external;
+
+    function backfillInboundAmount(NormalizedAmount memory amount, uint16 chainId_) external;
 }

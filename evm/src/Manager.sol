@@ -13,6 +13,7 @@ import "./libraries/external/ReentrancyGuardUpgradeable.sol";
 import "./libraries/EndpointStructs.sol";
 import "./libraries/EndpointHelpers.sol";
 import "./libraries/RateLimiter.sol";
+import "./interfaces/IRateLimiterEvents.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/IManagerEvents.sol";
 import "./interfaces/INTTToken.sol";
@@ -25,8 +26,8 @@ import "./libraries/Implementation.sol";
 contract Manager is
     IManager,
     IManagerEvents,
+    // IRateLimiterEvents,
     EndpointRegistry,
-    RateLimiter,
     NttNormalizer,
     ReentrancyGuardUpgradeable,
     PausableOwnable,
@@ -67,6 +68,10 @@ contract Manager is
         uint8 num;
     }
 
+    struct _RateLimiter {
+        address _rateLimiter;
+    }
+
     /// =============== STORAGE ===============================================
 
     bytes32 public constant MESSAGE_ATTESTATIONS_SLOT =
@@ -78,6 +83,8 @@ contract Manager is
     bytes32 public constant SIBLINGS_SLOT = bytes32(uint256(keccak256("ntt.siblings")) - 1);
 
     bytes32 public constant THRESHOLD_SLOT = bytes32(uint256(keccak256("ntt.threshold")) - 1);
+
+    bytes32 public constant RATE_LIMITER_SLOT = bytes32(uint256(keccak256("ntt.rateLimiter")) - 1);
 
     /// =============== GETTERS/SETTERS ========================================
 
@@ -108,6 +115,13 @@ contract Manager is
 
     function _getSiblingsStorage() internal pure returns (mapping(uint16 => bytes32) storage $) {
         uint256 slot = uint256(SIBLINGS_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
+    function _getRateLimiterStorage() internal pure returns (_RateLimiter storage $) {
+        uint256 slot = uint256(RATE_LIMITER_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
         }
@@ -176,9 +190,8 @@ contract Manager is
     constructor(
         address _token,
         Mode _mode,
-        uint16 _chainId,
-        uint64 _rateLimitDuration
-    ) RateLimiter(_rateLimitDuration) NttNormalizer(_token) {
+        uint16 _chainId
+    ) NttNormalizer(_token) {
         token = _token;
         mode = _mode;
         chainId = _chainId;
@@ -187,17 +200,28 @@ contract Manager is
         deployer = msg.sender;
     }
 
-    function __Manager_init() internal onlyInitializing {
+    function __Manager_init(uint64 rateLimitDuration) internal onlyInitializing {
         // check if the owner is the deployer of this contract
         if (msg.sender != deployer) {
             revert UnexpectedOwner(deployer, msg.sender);
         }
+
+        // Deploy the rate limiter
+        RateLimiter newRateLimiter = new RateLimiter(rateLimitDuration, address(this), _tokenDecimals());
+        _RateLimiter storage rateLimiter = _getRateLimiterStorage();
+        rateLimiter._rateLimiter = address(newRateLimiter);
+
         __PausedOwnable_init(msg.sender, msg.sender);
         __ReentrancyGuard_init();
     }
 
-    function _initialize() internal virtual override {
-        __Manager_init();
+    function _initialize(bytes memory encoded) internal virtual override {
+        uint256 offset = 0;
+        uint64 rateLimitDuration;
+        (rateLimitDuration, offset) = encoded.asUint64Unchecked(offset);
+        encoded.checkLength(offset);
+        
+        __Manager_init(rateLimitDuration);
         _checkThresholdInvariants();
         _checkEndpointsInvariants();
     }
@@ -228,6 +252,12 @@ contract Manager is
     /// the manager ownership is not renounced.
     function renounceOwnership() public view override onlyOwner {
         revert CannotRenounceManagerOwnership(owner());
+    }
+
+    /// @dev Update to use a new rate limiter implementation
+    function changeRateLimiter(address newRateLimiter) public onlyOwner {
+        _RateLimiter storage rateLimiter = _getRateLimiterStorage();
+        rateLimiter._rateLimiter = newRateLimiter;
     }
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
@@ -311,11 +341,11 @@ contract Manager is
     }
 
     function setOutboundLimit(uint256 limit) external onlyOwner {
-        _setOutboundLimit(nttNormalize(limit));
+        IRateLimiter(_getRateLimiterStorage()._rateLimiter).setOutboundLimit(nttNormalize(limit));
     }
 
     function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
-        _setInboundLimit(nttNormalize(limit), chainId_);
+        IRateLimiter(_getRateLimiterStorage()._rateLimiter).setInboundLimit(nttNormalize(limit), chainId_);
     }
 
     function completeOutboundQueuedTransfer(uint64 messageSequence)
@@ -325,19 +355,20 @@ contract Manager is
         whenNotPaused
         returns (uint64)
     {
+        IRateLimiter rateLimiter = IRateLimiter(_getRateLimiterStorage()._rateLimiter);
         // find the message in the queue
-        OutboundQueuedTransfer memory queuedTransfer = _getOutboundQueueStorage()[messageSequence];
+        IRateLimiter.OutboundQueuedTransfer memory queuedTransfer = rateLimiter.getOutboundQueuedTransfer(messageSequence);
         if (queuedTransfer.txTimestamp == 0) {
-            revert OutboundQueuedTransferNotFound(messageSequence);
+            revert IRateLimiter.OutboundQueuedTransferNotFound(messageSequence);
         }
 
         // check that > RATE_LIMIT_DURATION has elapsed
-        if (block.timestamp - queuedTransfer.txTimestamp < rateLimitDuration) {
-            revert OutboundQueuedTransferStillQueued(messageSequence, queuedTransfer.txTimestamp);
+        if (block.timestamp - queuedTransfer.txTimestamp < rateLimiter.rateLimitDuration()) {
+            revert IRateLimiter.OutboundQueuedTransferStillQueued(messageSequence, queuedTransfer.txTimestamp);
         }
 
         // remove transfer from the queue
-        delete _getOutboundQueueStorage()[messageSequence];
+        rateLimiter.deleteOutboundQueuedTransfer(messageSequence);
 
         // run it through the transfer logic and skip the rate limit
         return _transfer(
@@ -474,21 +505,23 @@ contract Manager is
 
         // get the sequence for this transfer
         uint64 sequence = _useMessageSequence();
+        IRateLimiter rateLimiter = IRateLimiter(_getRateLimiterStorage()._rateLimiter);
 
         {
             // now check rate limits
-            bool isAmountRateLimited = _isOutboundAmountRateLimited(normalizedAmount);
+            bool isAmountRateLimited = rateLimiter.isOutboundAmountRateLimited(normalizedAmount);
             if (!shouldQueue && isAmountRateLimited) {
-                revert NotEnoughCapacity(getCurrentOutboundCapacity(), amount);
+                revert IRateLimiter.NotEnoughCapacity(rateLimiter.getCurrentOutboundCapacity(), amount);
             }
             if (shouldQueue && isAmountRateLimited) {
                 // emit an event to notify the user that the transfer is rate limited
-                emit OutboundTransferRateLimited(
-                    msg.sender, sequence, amount, getCurrentOutboundCapacity()
-                );
+                uint256 currentCapacity = rateLimiter.getCurrentOutboundCapacity();
+                // emit OutboundTransferRateLimited(
+                //     msg.sender, sequence, amount, currentCapacity 
+                // );
 
                 // queue up and return
-                _enqueueOutboundTransfer(
+                rateLimiter.enqueueOutboundTransfer(
                     sequence,
                     normalizedAmount,
                     recipientChain,
@@ -506,10 +539,10 @@ contract Manager is
         }
 
         // otherwise, consume the outbound amount
-        _consumeOutboundAmount(normalizedAmount);
+        rateLimiter.consumeOutboundAmount(normalizedAmount);
         // When sending a transfer, we refill the inbound rate limit for
         // that chain by the same amount (we call this "backflow")
-        _backfillInboundAmount(normalizedAmount, recipientChain);
+        rateLimiter.backfillInboundAmount(normalizedAmount, recipientChain);
 
         return _transfer(
             sequence, normalizedAmount, recipientChain, recipient, msg.sender, endpointInstructions
@@ -624,13 +657,14 @@ contract Manager is
         NormalizedAmount memory nativeTransferAmount = nttFixDecimals(nativeTokenTransfer.amount);
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
+        IRateLimiter rateLimiter = IRateLimiter(_getRateLimiterStorage()._rateLimiter);
 
         {
             // Check inbound rate limits
-            bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, sourceChainId);
+            bool isRateLimited = rateLimiter.isInboundAmountRateLimited(nativeTransferAmount, sourceChainId);
             if (isRateLimited) {
                 // queue up the transfer
-                _enqueueInboundTransfer(digest, nativeTransferAmount, transferRecipient);
+                rateLimiter.enqueueInboundTransfer(digest, nativeTransferAmount, transferRecipient);
 
                 // end execution early
                 return;
@@ -638,28 +672,29 @@ contract Manager is
         }
 
         // consume the amount for the inbound rate limit
-        _consumeInboundAmount(nativeTransferAmount, sourceChainId);
+        rateLimiter.consumeInboundAmount(nativeTransferAmount, sourceChainId);
         // When receiving a transfer, we refill the outbound rate limit
         // by the same amount (we call this "backflow")
-        _backfillOutboundAmount(nativeTransferAmount);
+        rateLimiter.backfillOutboundAmount(nativeTransferAmount);
 
         _mintOrUnlockToRecipient(transferRecipient, nativeTransferAmount);
     }
 
     function completeInboundQueuedTransfer(bytes32 digest) external nonReentrant whenNotPaused {
+        IRateLimiter rateLimiter = IRateLimiter(_getRateLimiterStorage()._rateLimiter);
         // find the message in the queue
-        InboundQueuedTransfer memory queuedTransfer = getInboundQueuedTransfer(digest);
+        IRateLimiter.InboundQueuedTransfer memory queuedTransfer = rateLimiter.getInboundQueuedTransfer(digest);
         if (queuedTransfer.txTimestamp == 0) {
-            revert InboundQueuedTransferNotFound(digest);
+            revert IRateLimiter.InboundQueuedTransferNotFound(digest);
         }
 
         // check that > RATE_LIMIT_DURATION has elapsed
-        if (block.timestamp - queuedTransfer.txTimestamp < rateLimitDuration) {
-            revert InboundQueuedTransferStillQueued(digest, queuedTransfer.txTimestamp);
+        if (block.timestamp - queuedTransfer.txTimestamp < rateLimiter.rateLimitDuration()) {
+            revert IRateLimiter.InboundQueuedTransferStillQueued(digest, queuedTransfer.txTimestamp);
         }
 
         // remove transfer from the queue
-        delete _getInboundQueueStorage()[digest];
+        rateLimiter.deleteInboundQueuedTransfer(digest);
 
         // run it through the mint/unlock logic
         _mintOrUnlockToRecipient(queuedTransfer.recipient, queuedTransfer.amount);
@@ -760,7 +795,7 @@ contract Manager is
         return countSetBits(_getMessageAttestations(digest));
     }
 
-    function _tokenDecimals() internal view override returns (uint8) {
+    function _tokenDecimals() internal view returns (uint8) {
         return tokenDecimals;
     }
 
@@ -782,7 +817,6 @@ contract Manager is
         assert(this.mode() == mode);
         assert(this.chainId() == chainId);
         assert(this.evmChainId() == evmChainId);
-        assert(this.rateLimitDuration() == rateLimitDuration);
     }
 
     function _checkRegisteredEndpointsInvariants() internal view {

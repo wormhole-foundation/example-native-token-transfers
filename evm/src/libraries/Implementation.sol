@@ -58,8 +58,8 @@ abstract contract Implementation is Initializable, ERC1967Upgrade {
         }
     }
 
-    function initialize() external onlyDelegateCall initializer {
-        _initialize();
+    function initialize(bytes memory encoded) external onlyDelegateCall initializer {
+        _initialize(encoded);
     }
 
     function migrate() external onlyDelegateCall reinitializer(_getInitializedVersion() + 1) {
@@ -73,7 +73,7 @@ abstract contract Implementation is Initializable, ERC1967Upgrade {
 
     function _migrate() internal virtual;
 
-    function _initialize() internal virtual;
+    function _initialize(bytes memory encoded) internal virtual;
 
     function _checkImmutables() internal view virtual;
 

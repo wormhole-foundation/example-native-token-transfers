@@ -54,10 +54,10 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             new MockManagerContract(address(t), Manager.Mode.LOCKING, chainId, 1 days);
 
         manager = Manager(address(new ERC1967Proxy(address(implementation), "")));
-        manager.initialize();
+        manager.initialize("");
 
         managerOther = Manager(address(new ERC1967Proxy(address(otherImplementation), "")));
-        managerOther.initialize();
+        managerOther.initialize("");
     }
 
     // === pure unit tests
