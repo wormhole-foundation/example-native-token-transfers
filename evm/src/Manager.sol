@@ -643,7 +643,7 @@ contract Manager is
         // by the same amount (we call this "backflow")
         _backfillOutboundAmount(nativeTransferAmount);
 
-        _mintOrUnlockToRecipient(transferRecipient, nativeTransferAmount);
+        _mintOrUnlockToRecipient(digest, transferRecipient, nativeTransferAmount);
     }
 
     function completeInboundQueuedTransfer(bytes32 digest) external nonReentrant whenNotPaused {
@@ -662,13 +662,19 @@ contract Manager is
         delete _getInboundQueueStorage()[digest];
 
         // run it through the mint/unlock logic
-        _mintOrUnlockToRecipient(queuedTransfer.recipient, queuedTransfer.amount);
+        _mintOrUnlockToRecipient(digest, queuedTransfer.recipient, queuedTransfer.amount);
     }
 
-    function _mintOrUnlockToRecipient(address recipient, NormalizedAmount memory amount) internal {
+    function _mintOrUnlockToRecipient(
+        bytes32 digest,
+        address recipient,
+        NormalizedAmount memory amount
+    ) internal {
         // calculate proper amount of tokens to unlock/mint to recipient
         // denormalize the amount
         uint256 denormalizedAmount = nttDenormalize(amount);
+
+        emit TransferRedeemed(digest);
 
         if (mode == Mode.LOCKING) {
             // unlock tokens to the specified recipient
