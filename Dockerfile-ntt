@@ -1,0 +1,58 @@
+FROM ubuntu:24.04
+
+# Update the container
+RUN apt-get update -y && apt-get upgrade -y
+
+# Add uesful tools
+RUN apt-get install git vim curl ca-certificates curl gnupg -y 
+
+# Use 'bash' instead of 'sh' so that 'source' will work.
+SHELL ["/bin/bash", "--login", "-c"]
+
+# Add npm and node via the node version manager
+# https://linuxize.com/post/how-to-install-node-js-on-ubuntu-20-04/
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+RUN echo 'export NVM_DIR="$HOME/.nvm"'                                       >> "$HOME/.bashrc"
+RUN echo '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm' >> "$HOME/.bashrc"
+RUN echo '[ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion" # This loads nvm bash_completion' >> "$HOME/.bashrc"
+
+ENV NODE_VERSION=20.11.1
+RUN bash -c 'source $HOME/.nvm/nvm.sh && \
+    nvm install $NODE_VERSION && nvm use $NODE_VERSION && nvm alias default $NODE_VERSION       && \
+    npm install -g doctoc urchin eclint dockerfile_lint && \
+    npm install --prefix "$HOME/.nvm/"';
+
+# Load npm dependencies, such as typechain
+RUN source $HOME/.nvm/nvm.sh && npm install -g typechain
+
+# Add foundry to the toolset
+RUN curl -L https://foundry.paradigm.xyz | bash && /root/.foundry/bin/foundryup
+
+# TODO - use a remote version for this later. Easier to cache the non-script stuff rn.
+WORKDIR /example-native-token-transfers
+COPY Makefile .
+COPY .gitmodules .
+COPY .github/ ./.github
+# Looks weird but MUST be here because of how Foundry finds dependencies. Don't remove.
+#COPY .git/ ./.git 
+COPY evm/ ./evm
+
+# Set the path for later usage with foundry
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.foundry/bin
+WORKDIR /example-native-token-transfers/evm
+
+# Build with dependencies
+RUN forge build 
+
+# Deployment and tests for the scripts later. We want to cache what we can :)
+WORKDIR /example-native-token-transfers
+COPY ci_tests/package.json ./ci_tests/package.json
+
+WORKDIR /example-native-token-transfers/ci_tests
+RUN source $HOME/.nvm/nvm.sh && npm install && npm install -g ts-node
+
+# Bulid the bindings for the EVM
+RUN source $HOME/.nvm/nvm.sh && typechain --target ethers-v6 --out-dir evm_binding/ '../evm/out/*/*.json'
+
+# Copy the actual tests after we build the bindings.
+COPY ci_tests/ .

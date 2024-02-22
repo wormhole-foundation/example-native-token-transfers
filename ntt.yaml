@@ -1,0 +1,42 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ntt-test
+  labels:
+    app: ntt-test
+spec:
+  ports:
+    - port: 8545
+      name: rpc
+      protocol: TCP
+  clusterIP: None
+  selector:
+    app: ntt-test
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ntt-test
+spec:
+  selector:
+    matchLabels:
+      app: ntt-test
+  serviceName: ntt-test
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ntt-test
+    spec:
+      terminationGracePeriodSeconds: 1
+      containers:
+        - name: ntt-deploy
+          image: ntt-setup
+          command:
+            - /bin/sh
+            - -c
+            #- "nc -lkn 2000"
+            - "sleep 10000000000000000; #forge script script/DeployBaseNTT.s.sol  --rpc-url http://eth-devnet:8545 --broadcast --private-key 0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d && nc -lkn 2000"
+---
+
