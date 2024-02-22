@@ -1,11 +1,12 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
+use ntt_messages::{manager::ManagerMessage, ntt::NativeTokenTransfer};
 
 use crate::{
     bitmap::Bitmap,
     config::*,
     error::NTTError,
-    messages::{ManagerMessage, NativeTokenTransfer, ValidatedEndpointMessage},
+    messages::ValidatedEndpointMessage,
     queue::{
         inbox::{InboxItem, InboxRateLimit, ReleaseStatus},
         outbox::OutboxRateLimit,

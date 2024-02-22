@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
+use ntt_messages::chain_id::ChainId;
 
-use crate::{chain_id::ChainId, config::Config, endpoints::accounts::sibling::EndpointSibling};
+use crate::{config::Config, endpoints::accounts::sibling::EndpointSibling};
 
 #[derive(Accounts)]
 #[instruction(args: SetEndpointSiblingArgs)]

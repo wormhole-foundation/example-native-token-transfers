@@ -1,4 +1,4 @@
-use crate::messages::Endpoint;
+use crate::endpoint::Endpoint;
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct WormholeEndpoint {}

@@ -1493,6 +1493,7 @@ dependencies = [
  "bitmaps 3.2.1",
  "hex",
  "libsecp256k1",
+ "ntt-messages",
  "serde",
  "serde_json",
  "serde_wormhole",
@@ -2340,6 +2341,16 @@ checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
 dependencies = [
  "memchr",
  "minimal-lexical",
+]
+
+[[package]]
+name = "ntt-messages"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "hex",
+ "solana-program",
+ "wormhole-io",
 ]
 
 [[package]]

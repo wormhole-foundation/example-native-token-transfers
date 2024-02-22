@@ -1,7 +1,6 @@
 use anchor_lang::prelude::Pubkey;
 use example_native_token_transfers::{
     config::Config,
-    messages::{ManagerMessage, NativeTokenTransfer},
     queue::{
         inbox::{InboxItem, InboxRateLimit},
         outbox::OutboxRateLimit,
@@ -9,6 +8,7 @@ use example_native_token_transfers::{
     registered_endpoint::RegisteredEndpoint,
     sequence::Sequence,
 };
+use ntt_messages::{manager::ManagerMessage, ntt::NativeTokenTransfer};
 use sha3::{Digest, Keccak256};
 use wormhole_anchor_sdk::wormhole;
 use wormhole_io::TypePrefixedPayload;

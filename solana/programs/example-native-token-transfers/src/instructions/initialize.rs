@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token_interface};
+use ntt_messages::chain_id::ChainId;
 use wormhole_solana_utils::cpi::bpf_loader_upgradeable::BpfLoaderUpgradeable;
 
 #[cfg(feature = "idl-build")]
@@ -7,7 +8,6 @@ use crate::messages::Hack;
 
 use crate::{
     bitmap::Bitmap,
-    chain_id::ChainId,
     error::NTTError,
     queue::{outbox::OutboxRateLimit, rate_limit::RateLimitState},
     sequence::Sequence,

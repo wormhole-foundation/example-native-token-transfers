@@ -1,8 +1,9 @@
 use std::ops::{Deref, DerefMut};
 
 use anchor_lang::prelude::*;
+use ntt_messages::chain_id::ChainId;
 
-use crate::{bitmap::Bitmap, chain_id::ChainId};
+use crate::bitmap::Bitmap;
 
 #[account]
 #[derive(InitSpace)]

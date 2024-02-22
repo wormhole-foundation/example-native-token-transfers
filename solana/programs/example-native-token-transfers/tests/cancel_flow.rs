@@ -3,13 +3,13 @@
 use anchor_lang::prelude::*;
 use common::setup::{TestData, OTHER_CHAIN, OTHER_ENDPOINT, OTHER_MANAGER, THIS_CHAIN};
 use example_native_token_transfers::{
-    chain_id::ChainId,
     config::Mode,
-    endpoints::wormhole::messages::WormholeEndpoint,
     instructions::{RedeemArgs, TransferArgs},
-    messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer},
-    normalized_amount::NormalizedAmount,
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit},
+};
+use ntt_messages::{
+    chain_id::ChainId, endpoint::EndpointMessage, endpoints::wormhole::WormholeEndpoint,
+    manager::ManagerMessage, normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer,
 };
 use sdk::endpoints::wormhole::instructions::receive_message::ReceiveMessage;
 use solana_program_test::*;

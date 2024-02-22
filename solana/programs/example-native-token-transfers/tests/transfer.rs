@@ -5,15 +5,16 @@ use anchor_spl::token::{Mint, TokenAccount};
 use common::setup::TestData;
 use example_native_token_transfers::{
     bitmap::Bitmap,
-    chain_id::ChainId,
     config::Mode,
-    endpoints::wormhole::{messages::WormholeEndpoint, ReleaseOutboundArgs},
+    endpoints::wormhole::ReleaseOutboundArgs,
     error::NTTError,
     instructions::TransferArgs,
-    messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer},
-    normalized_amount::NormalizedAmount,
     queue::outbox::{OutboxItem, OutboxRateLimit},
     sequence::Sequence,
+};
+use ntt_messages::{
+    chain_id::ChainId, endpoint::EndpointMessage, manager::ManagerMessage,
+    normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer, endpoints::wormhole::WormholeEndpoint,
 };
 use solana_program_test::*;
 use solana_sdk::{

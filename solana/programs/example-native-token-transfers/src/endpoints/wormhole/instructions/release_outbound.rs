@@ -1,16 +1,13 @@
 use anchor_lang::prelude::*;
 
+use ntt_messages::{
+    endpoint::EndpointMessage, endpoints::wormhole::WormholeEndpoint, manager::ManagerMessage,
+    ntt::NativeTokenTransfer,
+};
 use wormhole_anchor_sdk::wormhole;
 use wormhole_io::TypePrefixedPayload;
 
-use crate::{
-    config::*,
-    endpoints::wormhole::messages::WormholeEndpoint,
-    error::NTTError,
-    messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer},
-    queue::outbox::OutboxItem,
-    registered_endpoint::*,
-};
+use crate::{config::*, error::NTTError, queue::outbox::OutboxItem, registered_endpoint::*};
 
 #[derive(Accounts)]
 pub struct ReleaseOutbound<'info> {

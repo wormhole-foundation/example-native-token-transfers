@@ -1,12 +1,11 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
+use ntt_messages::{chain_id::ChainId, normalized_amount::NormalizedAmount};
 
 use crate::{
     bitmap::Bitmap,
-    chain_id::ChainId,
     config::*,
     error::NTTError,
-    normalized_amount::NormalizedAmount,
     queue::{
         inbox::InboxRateLimit,
         outbox::{OutboxItem, OutboxRateLimit},

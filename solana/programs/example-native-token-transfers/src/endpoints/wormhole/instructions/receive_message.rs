@@ -1,15 +1,16 @@
 use anchor_lang::prelude::*;
 
+use ntt_messages::{
+    chain_id::ChainId,
+    endpoint::{EndpointMessage, EndpointMessageData},
+    endpoints::wormhole::WormholeEndpoint,
+    ntt::NativeTokenTransfer,
+};
 use wormhole_anchor_sdk::wormhole::PostedVaa;
 
 use crate::{
-    chain_id::ChainId,
-    config::*,
-    endpoints::{accounts::sibling::EndpointSibling, wormhole::messages::WormholeEndpoint},
-    error::NTTError,
-    messages::{
-        EndpointMessage, EndpointMessageData, NativeTokenTransfer, ValidatedEndpointMessage,
-    },
+    config::*, endpoints::accounts::sibling::EndpointSibling, error::NTTError,
+    messages::ValidatedEndpointMessage,
 };
 
 #[derive(Accounts)]
