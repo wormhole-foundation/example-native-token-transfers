@@ -182,7 +182,7 @@ contract Manager is
         mode = _mode;
         chainId = _chainId;
         evmChainId = block.chainid;
-        // save the deployer (check this on iniitialization)
+        // save the deployer (check this on initialization)
         deployer = msg.sender;
     }
 
@@ -197,7 +197,7 @@ contract Manager is
         __ReentrancyGuard_init();
     }
 
-    function _initialize() internal override {
+    function _initialize() internal virtual override {
         __Manager_init();
         _checkThresholdInvariants();
         _checkEndpointsInvariants();
@@ -237,7 +237,7 @@ contract Manager is
     function quoteDeliveryPrice(
         uint16 recipientChain,
         EndpointStructs.EndpointInstruction[] memory endpointInstructions
-    ) public view virtual returns (uint256[] memory) {
+    ) public view returns (uint256[] memory) {
         address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
         mapping(address => EndpointInfo) storage endpointInfos = _getEndpointInfosStorage();
 
@@ -260,7 +260,7 @@ contract Manager is
         uint256[] memory priceQuotes,
         EndpointStructs.EndpointInstruction[] memory endpointInstructions,
         bytes memory managerMessage
-    ) internal virtual {
+    ) internal {
         address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
         mapping(address => EndpointInfo) storage endpointInfos = _getEndpointInfosStorage();
         // call into endpoint contracts to send the message
@@ -274,7 +274,7 @@ contract Manager is
     }
 
     // TODO: do we want additional information (like chain etc)
-    function isMessageApproved(bytes32 digest) public view virtual returns (bool) {
+    function isMessageApproved(bytes32 digest) public view returns (bool) {
         uint8 threshold = getThreshold();
         return messageAttestations(digest) >= threshold && threshold > 0;
     }
@@ -292,7 +292,7 @@ contract Manager is
     /*
      * @dev pause the Endpoint.
      */
-    function pause() public virtual onlyOwnerOrPauser {
+    function pause() public onlyOwnerOrPauser {
         _pause();
     }
 
@@ -707,7 +707,7 @@ contract Manager is
         return _getSiblingsStorage()[chainId_];
     }
 
-    function setSibling(uint16 siblingChainId, bytes32 siblingContract) public virtual onlyOwner {
+    function setSibling(uint16 siblingChainId, bytes32 siblingContract) public onlyOwner {
         if (siblingChainId == 0) {
             revert InvalidSiblingChainIdZero();
         }
