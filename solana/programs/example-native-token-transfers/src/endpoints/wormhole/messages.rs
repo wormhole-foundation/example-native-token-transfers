@@ -1,6 +1,6 @@
 use crate::messages::Endpoint;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct WormholeEndpoint {}
 
 impl Endpoint for WormholeEndpoint {

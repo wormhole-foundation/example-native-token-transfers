@@ -172,22 +172,20 @@ impl<A: AnchorDeserialize + AnchorSerialize + Space + Clone> ValidatedEndpointMe
 }
 
 #[derive(Debug, PartialEq, Eq, InitSpace, Clone, AnchorSerialize, AnchorDeserialize)]
-pub struct EndpointMessageData<A: AnchorDeserialize + AnchorSerialize + Space + Clone> {
+pub struct EndpointMessageData<A: Space> {
     pub source_manager: [u8; 32],
     pub manager_payload: ManagerMessage<A>,
 }
 
-#[derive(Eq, PartialEq)]
-pub struct EndpointMessage<E: Endpoint, A: AnchorDeserialize + AnchorSerialize + Space + Clone> {
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct EndpointMessage<E: Endpoint, A: Space> {
     _phantom: PhantomData<E>,
     // TODO: check sibling registration at the manager level
     pub message_data: EndpointMessageData<A>,
     pub endpoint_payload: Vec<u8>,
 }
 
-impl<E: Endpoint, A: AnchorDeserialize + AnchorSerialize + Space + Clone> std::ops::Deref
-    for EndpointMessage<E, A>
-{
+impl<E: Endpoint, A: Space> std::ops::Deref for EndpointMessage<E, A> {
     type Target = EndpointMessageData<A>;
 
     fn deref(&self) -> &Self::Target {
@@ -195,29 +193,15 @@ impl<E: Endpoint, A: AnchorDeserialize + AnchorSerialize + Space + Clone> std::o
     }
 }
 
-impl<E: Endpoint, A: AnchorDeserialize + AnchorSerialize + Space + Clone> std::ops::DerefMut
-    for EndpointMessage<E, A>
-{
+impl<E: Endpoint, A: Space> std::ops::DerefMut for EndpointMessage<E, A> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.message_data
     }
 }
 
-impl<E, A: fmt::Debug> fmt::Debug for EndpointMessage<E, A>
-where
-    E: Endpoint,
-    A: AnchorDeserialize + AnchorSerialize + Space + Clone,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("EndpointMessage")
-            .field("manager_payload", &self.manager_payload)
-            .finish()
-    }
-}
-
 impl<E: Endpoint, A: TypePrefixedPayload> AnchorDeserialize for EndpointMessage<E, A>
 where
-    A: AnchorDeserialize + AnchorSerialize + Space,
+    A: Space,
 {
     fn deserialize_reader<R: io::Read>(reader: &mut R) -> io::Result<Self> {
         Readable::read(reader)
@@ -226,33 +210,16 @@ where
 
 impl<E: Endpoint, A: TypePrefixedPayload> AnchorSerialize for EndpointMessage<E, A>
 where
-    A: AnchorDeserialize + AnchorSerialize + Space,
+    A: Space,
 {
     fn serialize<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
         Writeable::write(self, writer)
     }
 }
 
-impl<E, A: Clone> Clone for EndpointMessage<E, A>
-where
-    E: Endpoint,
-    A: AnchorDeserialize + AnchorSerialize + Space,
-{
-    fn clone(&self) -> Self {
-        Self {
-            _phantom: PhantomData,
-            message_data: EndpointMessageData {
-                source_manager: self.source_manager,
-                manager_payload: self.manager_payload.clone(),
-            },
-            endpoint_payload: self.endpoint_payload.clone(),
-        }
-    }
-}
-
 impl<E: Endpoint, A> EndpointMessage<E, A>
 where
-    A: AnchorDeserialize + AnchorSerialize + Space + Clone,
+    A: Space,
 {
     pub fn new(
         source_manager: [u8; 32],
@@ -270,16 +237,17 @@ where
     }
 }
 
-impl<A: TypePrefixedPayload, E: Endpoint> TypePrefixedPayload for EndpointMessage<E, A>
+impl<A: TypePrefixedPayload, E: Endpoint + Clone + fmt::Debug> TypePrefixedPayload
+    for EndpointMessage<E, A>
 where
-    A: AnchorDeserialize + AnchorSerialize + Space,
+    A: Space + Clone,
 {
     const TYPE: Option<u8> = None;
 }
 
-impl<E: Endpoint, A: Readable + TypePrefixedPayload> Readable for EndpointMessage<E, A>
+impl<E: Endpoint, A: TypePrefixedPayload> Readable for EndpointMessage<E, A>
 where
-    A: AnchorDeserialize + AnchorSerialize + Space,
+    A: Space,
 {
     const SIZE: Option<usize> = None;
 
@@ -313,9 +281,9 @@ where
     }
 }
 
-impl<E: Endpoint, A: Writeable + TypePrefixedPayload> Writeable for EndpointMessage<E, A>
+impl<E: Endpoint, A: TypePrefixedPayload> Writeable for EndpointMessage<E, A>
 where
-    A: AnchorDeserialize + AnchorSerialize + Space,
+    A: Space,
 {
     fn written_size(&self) -> usize {
         4 // prefix
