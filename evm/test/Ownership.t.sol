@@ -3,21 +3,21 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "forge-std/Test.sol";
+import "./mocks/MockManager.sol";
+import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {DummyEndpoint} from "./Manager.t.sol";
 import {DummyToken} from "./Manager.t.sol";
-import "../src/ManagerStandalone.sol";
-import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract OwnershipTests is Test {
-    ManagerStandalone manager;
+    Manager manager;
     uint16 constant chainId = 7;
 
     function setUp() public {
         DummyToken t = new DummyToken();
-        ManagerStandalone implementation =
-            new ManagerStandalone(address(t), Manager.Mode.LOCKING, chainId, 1 days);
+        Manager implementation =
+            new MockManagerContract(address(t), Manager.Mode.LOCKING, chainId, 1 days);
 
-        manager = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
+        manager = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         manager.initialize();
     }
 

@@ -2,9 +2,10 @@
 
 import "forge-std/Test.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
-import "../src/ManagerStandalone.sol";
+import "../src/Manager.sol";
 import "./mocks/DummyEndpoint.sol";
 import "./mocks/DummyToken.sol";
+import "./mocks/MockManager.sol";
 import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "./libraries/EndpointHelpers.sol";
@@ -13,7 +14,7 @@ import "./libraries/ManagerHelpers.sol";
 pragma solidity >=0.8.8 <0.9.0;
 
 contract TestRateLimit is Test, IRateLimiterEvents {
-    ManagerStandalone manager;
+    Manager manager;
 
     using NormalizedAmountLib for uint256;
     using NormalizedAmountLib for NormalizedAmount;
@@ -34,10 +35,10 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         guardian = new WormholeSimulator(address(wormhole), DEVNET_GUARDIAN_PK);
 
         DummyToken t = new DummyToken();
-        ManagerStandalone implementation =
-            new ManagerStandalone(address(t), Manager.Mode.LOCKING, chainId, 1 days);
+        Manager implementation =
+            new MockManagerContract(address(t), Manager.Mode.LOCKING, chainId, 1 days);
 
-        manager = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
+        manager = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         manager.initialize();
     }
 

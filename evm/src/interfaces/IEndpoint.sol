@@ -3,7 +3,7 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import "../libraries/EndpointStructs.sol";
 
-interface IEndpointStandalone {
+interface IEndpoint {
     error CallerNotManager(address caller);
     error CannotRenounceEndpointOwnership(address currentOwner);
     error CannotTransferEndpointOwnership(address currentOwner, address newOwner);

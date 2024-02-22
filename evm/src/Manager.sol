@@ -20,16 +20,17 @@ import "./Endpoint.sol";
 import "./EndpointRegistry.sol";
 import "./NttNormalizer.sol";
 import "./libraries/PausableOwnable.sol";
+import "./libraries/Implementation.sol";
 
-// TODO: rename this (it's really the business logic)
-abstract contract Manager is
+contract Manager is
     IManager,
     IManagerEvents,
     EndpointRegistry,
     RateLimiter,
     NttNormalizer,
     ReentrancyGuardUpgradeable,
-    PausableOwnable
+    PausableOwnable,
+    Implementation
 {
     using BytesParsing for bytes;
     using SafeERC20 for IERC20;
@@ -37,6 +38,7 @@ abstract contract Manager is
     error RefundFailed(uint256 refundAmount);
     error CannotRenounceManagerOwnership(address owner);
     error UnexpectedOwner(address expectedOwner, address owner);
+    error EndpointAlreadyAttestedToMessage(bytes32 managerMessageHash);
 
     address public immutable token;
     address public immutable deployer;
@@ -61,6 +63,10 @@ abstract contract Manager is
         uint64 num;
     }
 
+    struct _Threshold {
+        uint8 num;
+    }
+
     /// =============== STORAGE ===============================================
 
     bytes32 public constant MESSAGE_ATTESTATIONS_SLOT =
@@ -70,6 +76,17 @@ abstract contract Manager is
         bytes32(uint256(keccak256("ntt.messageSequence")) - 1);
 
     bytes32 public constant SIBLINGS_SLOT = bytes32(uint256(keccak256("ntt.siblings")) - 1);
+
+    bytes32 public constant THRESHOLD_SLOT = bytes32(uint256(keccak256("ntt.threshold")) - 1);
+
+    /// =============== GETTERS/SETTERS ========================================
+
+    function _getThresholdStorage() private pure returns (_Threshold storage $) {
+        uint256 slot = uint256(THRESHOLD_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
 
     function _getMessageAttestationsStorage()
         internal
@@ -96,6 +113,66 @@ abstract contract Manager is
         }
     }
 
+    function setThreshold(uint8 threshold) external onlyOwner {
+        if (threshold == 0) {
+            revert ZeroThreshold();
+        }
+
+        _Threshold storage _threshold = _getThresholdStorage();
+        uint8 oldThreshold = _threshold.num;
+
+        _threshold.num = threshold;
+        _checkThresholdInvariants();
+
+        emit ThresholdChanged(oldThreshold, threshold);
+    }
+
+    /// @notice Returns the number of Endpoints that must attest to a msgId for
+    ///         it to be considered valid and acted upon.
+    function getThreshold() public view returns (uint8) {
+        _Threshold storage _threshold = _getThresholdStorage();
+        return _threshold.num;
+    }
+
+    function setEndpoint(address endpoint) external onlyOwner {
+        _setEndpoint(endpoint);
+
+        _Threshold storage _threshold = _getThresholdStorage();
+        // We do not automatically increase the threshold here.
+        // Automatically increasing the threshold can result in a scenario
+        // where in-flight messages can't be redeemed.
+        // For example: Assume there is 1 Endpoint and the threshold is 1.
+        // If we were to add a new Endpoint, the threshold would increase to 2.
+        // However, all messages that are either in-flight or that are sent on
+        // a source chain that does not yet have 2 Endpoints will only have been
+        // sent from a single endpoint, so they would never be able to get
+        // redeemed.
+        // Instead, we leave it up to the owner to manually update the threshold
+        // after some period of time, ideally once all chains have the new Endpoint
+        // and transfers that were sent via the old configuration are all complete.
+        // However if the threshold is 0 (the initial case) we do increment to 1.
+        if (_threshold.num == 0) {
+            _threshold.num = 1;
+        }
+
+        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
+
+        emit EndpointAdded(endpoint, _enabledEndpoints.length, _threshold.num);
+    }
+
+    function removeEndpoint(address endpoint) external onlyOwner {
+        _removeEndpoint(endpoint);
+
+        _Threshold storage _threshold = _getThresholdStorage();
+        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
+
+        if (_enabledEndpoints.length < _threshold.num) {
+            _threshold.num = uint8(_enabledEndpoints.length);
+        }
+
+        emit EndpointRemoved(endpoint, _threshold.num);
+    }
+
     constructor(
         address _token,
         Mode _mode,
@@ -106,7 +183,7 @@ abstract contract Manager is
         mode = _mode;
         chainId = _chainId;
         evmChainId = block.chainid;
-        // save the deployer (check this on iniitialization)
+        // save the deployer (check this on initialization)
         deployer = msg.sender;
     }
 
@@ -115,10 +192,42 @@ abstract contract Manager is
         if (msg.sender != deployer) {
             revert UnexpectedOwner(deployer, msg.sender);
         }
-        // TODO: msg.sender may not be the right address for both
         __PausedOwnable_init(msg.sender, msg.sender);
-        // TODO: check if it's safe to not initialise reentrancy guard
         __ReentrancyGuard_init();
+    }
+
+    function _initialize() internal virtual override {
+        __Manager_init();
+        _checkThresholdInvariants();
+        _checkEndpointsInvariants();
+    }
+
+    function _migrate() internal virtual override {
+        _checkThresholdInvariants();
+        _checkEndpointsInvariants();
+    }
+
+    /// =============== ADMIN ===============================================
+    function upgrade(address newImplementation) external onlyOwner {
+        _upgrade(newImplementation);
+    }
+
+    /// @dev Transfer ownership of the Manager contract and all Endpoint contracts to a new owner.
+    function transferOwnership(address newOwner) public override onlyOwner {
+        super.transferOwnership(newOwner);
+        // loop through all the registered endpoints and set the new owner of each endpoint to the newOwner
+        address[] storage _registeredEndpoints = _getRegisteredEndpointsStorage();
+        _checkRegisteredEndpointsInvariants();
+
+        for (uint256 i = 0; i < _registeredEndpoints.length; i++) {
+            IEndpoint(_registeredEndpoints[i]).transferEndpointOwnership(newOwner);
+        }
+    }
+
+    /// @dev Override the [`renounceOwnership`] function to ensure
+    /// the manager ownership is not renounced.
+    function renounceOwnership() public view override onlyOwner {
+        revert CannotRenounceManagerOwnership(owner());
     }
 
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
@@ -126,18 +235,46 @@ abstract contract Manager is
     function quoteDeliveryPrice(
         uint16 recipientChain,
         EndpointStructs.EndpointInstruction[] memory endpointInstructions
-    ) public view virtual returns (uint256[] memory);
+    ) public view returns (uint256[] memory) {
+        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
+        mapping(address => EndpointInfo) storage endpointInfos = _getEndpointInfosStorage();
 
-    /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
+        uint256[] memory priceQuotes = new uint256[](_enabledEndpoints.length);
+        for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
+            address endpointAddr = _enabledEndpoints[i];
+            uint8 registeredEndpointIndex = endpointInfos[endpointAddr].index;
+            uint256 endpointPriceQuote = IEndpoint(_enabledEndpoints[i]).quoteDeliveryPrice(
+                recipientChain, endpointInstructions[registeredEndpointIndex]
+            );
+            priceQuotes[i] = endpointPriceQuote;
+        }
+        return priceQuotes;
+    }
+
+    /// @dev This will either cross-call or internal call, depending on
+    /// whether the contract is standalone or not.
     function _sendMessageToEndpoints(
         uint16 recipientChain,
         uint256[] memory priceQuotes,
         EndpointStructs.EndpointInstruction[] memory endpointInstructions,
         bytes memory managerMessage
-    ) internal virtual;
+    ) internal {
+        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
+        mapping(address => EndpointInfo) storage endpointInfos = _getEndpointInfosStorage();
+        // call into endpoint contracts to send the message
+        for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
+            address endpointAddr = _enabledEndpoints[i];
+            uint8 registeredEndpointIndex = endpointInfos[endpointAddr].index;
+            IEndpoint(endpointAddr).sendMessage{value: priceQuotes[i]}(
+                recipientChain, endpointInstructions[registeredEndpointIndex], managerMessage
+            );
+        }
+    }
 
-    // TODO: do we want additional information (like chain etc)
-    function isMessageApproved(bytes32 digest) public view virtual returns (bool);
+    function isMessageApproved(bytes32 digest) public view returns (bool) {
+        uint8 threshold = getThreshold();
+        return messageAttestations(digest) >= threshold && threshold > 0;
+    }
 
     function _setEndpointAttestedToMessage(bytes32 digest, uint8 index) internal {
         _getMessageAttestationsStorage()[digest].attestedEndpoints |= uint64(1 << index);
@@ -152,7 +289,7 @@ abstract contract Manager is
     /*
      * @dev pause the Endpoint.
      */
-    function pause() public virtual onlyOwnerOrPauser {
+    function pause() public onlyOwnerOrPauser {
         _pause();
     }
 
@@ -449,12 +586,11 @@ abstract contract Manager is
 
     /// @dev Called after a message has been sufficiently verified to execute the command in the message.
     ///      This function will decode the payload as an ManagerMessage to extract the sequence, msgType, and other parameters.
-    /// TODO: we could make this public. all the security checks are done here
-    function _executeMsg(
+    function executeMsg(
         uint16 sourceChainId,
         bytes32 sourceManagerAddress,
         EndpointStructs.ManagerMessage memory message
-    ) internal {
+    ) public {
         // verify chain has not forked
         checkFork(evmChainId);
 
@@ -567,7 +703,7 @@ abstract contract Manager is
         return _getSiblingsStorage()[chainId_];
     }
 
-    function setSibling(uint16 siblingChainId, bytes32 siblingContract) public virtual onlyOwner {
+    function setSibling(uint16 siblingChainId, bytes32 siblingContract) public onlyOwner {
         if (siblingChainId == 0) {
             revert InvalidSiblingChainIdZero();
         }
@@ -582,7 +718,89 @@ abstract contract Manager is
         emit SiblingUpdated(siblingChainId, oldSiblingContract, siblingContract);
     }
 
+    function endpointAttestedToMessage(bytes32 digest, uint8 index) public view returns (bool) {
+        return _getMessageAttestationsStorage()[digest].attestedEndpoints & uint64(1 << index) == 1;
+    }
+
+    function attestationReceived(
+        uint16 sourceChainId,
+        bytes32 sourceManagerAddress,
+        EndpointStructs.ManagerMessage memory payload
+    ) external onlyEndpoint {
+        _verifySibling(sourceChainId, sourceManagerAddress);
+
+        bytes32 managerMessageHash = EndpointStructs.managerMessageDigest(sourceChainId, payload);
+
+        // set the attested flag for this endpoint.
+        // NOTE: Attestation is idempotent (bitwise or 1), but we revert
+        // anyway to ensure that the client does not continue to initiate calls
+        // to receive the same message through the same endpoint.
+        if (
+            endpointAttestedToMessage(
+                managerMessageHash, _getEndpointInfosStorage()[msg.sender].index
+            )
+        ) {
+            revert EndpointAlreadyAttestedToMessage(managerMessageHash);
+        }
+        _setEndpointAttestedToMessage(managerMessageHash, msg.sender);
+
+        if (isMessageApproved(managerMessageHash)) {
+            executeMsg(sourceChainId, sourceManagerAddress, payload);
+        }
+    }
+
+    // @dev Count the number of attestations from enabled endpoints for a given message.
+    function messageAttestations(bytes32 digest) public view returns (uint8 count) {
+        return countSetBits(_getMessageAttestations(digest));
+    }
+
     function _tokenDecimals() internal view override returns (uint8) {
         return tokenDecimals;
+    }
+
+    // @dev Count the number of set bits in a uint64
+    function countSetBits(uint64 x) public pure returns (uint8 count) {
+        while (x != 0) {
+            x &= x - 1;
+            count++;
+        }
+
+        return count;
+    }
+
+    /// ============== INVARIANTS =============================================
+
+    /// @dev When we add new immutables, this function should be updated
+    function _checkImmutables() internal view override {
+        assert(this.token() == token);
+        assert(this.mode() == mode);
+        assert(this.chainId() == chainId);
+        assert(this.evmChainId() == evmChainId);
+        assert(this.rateLimitDuration() == rateLimitDuration);
+    }
+
+    function _checkRegisteredEndpointsInvariants() internal view {
+        if (_getRegisteredEndpointsStorage().length != _getNumRegisteredEndpointsStorage().num) {
+            revert RetrievedIncorrectRegisteredEndpoints(
+                _getRegisteredEndpointsStorage().length, _getNumRegisteredEndpointsStorage().num
+            );
+        }
+    }
+
+    function _checkThresholdInvariants() internal view {
+        _Threshold storage _threshold = _getThresholdStorage();
+        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
+        address[] storage _registeredEndpoints = _getRegisteredEndpointsStorage();
+
+        // invariant: threshold <= enabledEndpoints.length
+        if (_threshold.num > _enabledEndpoints.length) {
+            revert ThresholdTooHigh(_threshold.num, _enabledEndpoints.length);
+        }
+
+        if (_registeredEndpoints.length > 0) {
+            if (_threshold.num == 0) {
+                revert ZeroThreshold();
+            }
+        }
     }
 }

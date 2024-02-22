@@ -81,9 +81,6 @@ abstract contract Implementation is Initializable, ERC1967Upgrade {
         _checkDelegateCall();
         _upgradeTo(newImplementation);
 
-        // TODO: should we check anything else here? like the new impl also
-        // implements this contract
-
         _Migrating storage _migrating = _getMigratingStorage();
         assert(!_migrating.isMigrating);
         _migrating.isMigrating = true;

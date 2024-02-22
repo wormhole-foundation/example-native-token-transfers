@@ -4,9 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import "../src/ManagerStandalone.sol";
-import "../src/EndpointAndManager.sol";
-import "../src/EndpointStandalone.sol";
+import "../src/Manager.sol";
 import "../src/interfaces/IManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
 import "../src/interfaces/IManagerEvents.sol";
@@ -16,9 +14,11 @@ import "../src/libraries/external/Initializable.sol";
 import "../src/libraries/Implementation.sol";
 import {Utils} from "./libraries/Utils.sol";
 import {DummyToken, DummyTokenMintAndBurn} from "./Manager.t.sol";
-import {WormholeEndpointStandalone} from "../src/WormholeEndpointStandalone.sol";
+import {WormholeEndpoint} from "../src/WormholeEndpoint.sol";
 import {WormholeEndpoint} from "../src/WormholeEndpoint.sol";
 import "../src/libraries/EndpointStructs.sol";
+import "./mocks/MockManager.sol";
+import "./mocks/MockEndpoints.sol";
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -26,125 +26,9 @@ import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "wormhole-solidity-sdk/Utils.sol";
 
-//import "wormhole-solidity-sdk/testing/WormholeRelayerTest.sol";
-
-contract ManagerStandaloneMigrateBasic is ManagerStandalone {
-    // Call the parents constructor
-    constructor(
-        address token,
-        Mode mode,
-        uint16 chainId,
-        uint64 rateLimitDuration
-    ) ManagerStandalone(token, mode, chainId, rateLimitDuration) {}
-
-    function _migrate() internal view override {
-        _checkThresholdInvariants();
-        _checkEndpointsInvariants();
-        revert("Proper migrate called");
-    }
-}
-
-contract ManagerStandaloneImmutableCheck is ManagerStandalone {
-    // Call the parents constructor
-    constructor(
-        address token,
-        Mode mode,
-        uint16 chainId,
-        uint64 rateLimitDuration
-    ) ManagerStandalone(token, mode, chainId, rateLimitDuration) {}
-}
-
-contract ManagerStandaloneImmutableRemoveCheck is ManagerStandalone {
-    // Call the parents constructor
-    constructor(
-        address token,
-        Mode mode,
-        uint16 chainId,
-        uint64 rateLimitDuration
-    ) ManagerStandalone(token, mode, chainId, rateLimitDuration) {}
-
-    // Turns on the capability to EDIT the immutables
-    function _migrate() internal override {
-        _setMigratesImmutables(true);
-    }
-}
-
-contract ManagerStandaloneStorageLayoutChange is ManagerStandalone {
-    address a;
-    address b;
-    address c;
-
-    // Call the parents constructor
-    constructor(
-        address token,
-        Mode mode,
-        uint16 chainId,
-        uint64 rateLimitDuration
-    ) ManagerStandalone(token, mode, chainId, rateLimitDuration) {}
-
-    function setData() public {
-        a = address(0x1);
-        b = address(0x2);
-        c = address(0x3);
-    }
-}
-
-contract WormholeEndpointStandaloneMigrateBasic is WormholeEndpointStandalone {
-    constructor(
-        address manager,
-        address wormholeCoreBridge,
-        address wormholeRelayerAddr,
-        address specialRelayerAddr
-    )
-        WormholeEndpointStandalone(manager, wormholeCoreBridge, wormholeRelayerAddr, specialRelayerAddr)
-    {}
-
-    function _migrate() internal pure override {
-        revert("Proper migrate called");
-    }
-}
-
-contract WormholeEndpointStandaloneImmutableAllow is WormholeEndpointStandalone {
-    constructor(
-        address manager,
-        address wormholeCoreBridge,
-        address wormholeRelayerAddr,
-        address specialRelayerAddr
-    )
-        WormholeEndpointStandalone(manager, wormholeCoreBridge, wormholeRelayerAddr, specialRelayerAddr)
-    {}
-
-    // Allow for the immutables to be migrated
-    function _migrate() internal override {
-        _setMigratesImmutables(true);
-    }
-}
-
-contract WormholeEndpointStandaloneLayoutChange is WormholeEndpointStandalone {
-    address a;
-    address b;
-    address c;
-
-    // Call the parents constructor
-    constructor(
-        address manager,
-        address wormholeCoreBridge,
-        address wormholeRelayerAddr,
-        address specialRelayerAddr
-    )
-        WormholeEndpointStandalone(manager, wormholeCoreBridge, wormholeRelayerAddr, specialRelayerAddr)
-    {}
-
-    function setData() public {
-        a = address(0x1);
-        b = address(0x2);
-        c = address(0x3);
-    }
-}
-
 contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
-    ManagerStandalone managerChain1;
-    ManagerStandalone managerChain2;
+    Manager managerChain1;
+    Manager managerChain2;
 
     using NormalizedAmountLib for uint256;
     using NormalizedAmountLib for NormalizedAmount;
@@ -158,8 +42,8 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     WormholeSimulator guardian;
     uint256 initialBlockTimestamp;
 
-    WormholeEndpointStandalone wormholeEndpointChain1;
-    WormholeEndpointStandalone wormholeEndpointChain2;
+    WormholeEndpoint wormholeEndpointChain1;
+    WormholeEndpoint wormholeEndpointChain2;
     address userA = address(0x123);
     address userB = address(0x456);
     address userC = address(0x789);
@@ -177,16 +61,16 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
-        ManagerStandalone implementation =
-            new ManagerStandalone(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
+        Manager implementation =
+            new MockManagerContract(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
 
-        managerChain1 = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
+        managerChain1 = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         managerChain1.initialize();
 
-        WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
+        WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointContract(
             address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
-        wormholeEndpointChain1 = WormholeEndpointStandalone(
+        wormholeEndpointChain1 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain1Implementation), ""))
         );
         wormholeEndpointChain1.initialize();
@@ -198,17 +82,17 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         // Chain 2 setup
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
-        ManagerStandalone implementationChain2 =
-            new ManagerStandalone(address(t2), Manager.Mode.BURNING, chainId2, 1 days);
+        Manager implementationChain2 =
+            new MockManagerContract(address(t2), Manager.Mode.BURNING, chainId2, 1 days);
 
         managerChain2 =
-            ManagerStandalone(address(new ERC1967Proxy(address(implementationChain2), "")));
+            MockManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
         managerChain2.initialize();
 
-        WormholeEndpointStandalone wormholeEndpointChain2Implementation = new WormholeEndpointStandalone(
+        WormholeEndpoint wormholeEndpointChain2Implementation = new MockWormholeEndpointContract(
             address(managerChain2), address(wormhole), address(relayer), address(0x0)
         );
-        wormholeEndpointChain2 = WormholeEndpointStandalone(
+        wormholeEndpointChain2 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain2Implementation), ""))
         );
         wormholeEndpointChain2.initialize();
@@ -235,7 +119,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
     function test_basicUpgradeManager() public {
         // Basic call to upgrade with the same contact as ewll
-        ManagerStandalone newImplementation = new ManagerStandalone(
+        Manager newImplementation = new MockManagerContract(
             address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
         );
         managerChain1.upgrade(address(newImplementation));
@@ -246,7 +130,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     //Upgradability stuff for endpoints is real borked because of some missing implementation. Test this later once fixed.
     function test_basicUpgradeEndpoint() public {
         // Basic call to upgrade with the same contact as well
-        WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
+        WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointContract(
             address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
         wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
@@ -257,13 +141,13 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     // Confirm that we can handle multiple upgrades as a manager
     function test_doubleUpgradeManager() public {
         // Basic call to upgrade with the same contact as ewll
-        ManagerStandalone newImplementation = new ManagerStandalone(
+        Manager newImplementation = new MockManagerContract(
             address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
         );
         managerChain1.upgrade(address(newImplementation));
         basicFunctionality();
 
-        newImplementation = new ManagerStandalone(
+        newImplementation = new MockManagerContract(
             address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
         );
         managerChain1.upgrade(address(newImplementation));
@@ -274,7 +158,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     //Upgradability stuff for endpoints is real borked because of some missing implementation. Test this later once fixed.
     function test_doubleUpgradeEndpoint() public {
         // Basic call to upgrade with the same contact as well
-        WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
+        WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointContract(
             address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
         wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
@@ -289,13 +173,13 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
     function test_storageSlotManager() public {
         // Basic call to upgrade with the same contact as ewll
-        ManagerStandaloneStorageLayoutChange newImplementation = new ManagerStandaloneStorageLayoutChange(
+        Manager newImplementation = new MockManagerStorageLayoutChange(
             address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
         );
         managerChain1.upgrade(address(newImplementation));
 
         address oldOwner = managerChain1.owner();
-        ManagerStandaloneStorageLayoutChange(address(managerChain1)).setData();
+        MockManagerStorageLayoutChange(address(managerChain1)).setData();
 
         // If we overrode something important, it would probably break here
         basicFunctionality();
@@ -305,13 +189,13 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
     function test_storageSlotEndpoint() public {
         // Basic call to upgrade with the same contact as ewll
-        WormholeEndpointStandalone newImplementation = new WormholeEndpointStandaloneLayoutChange(
+        WormholeEndpoint newImplementation = new MockWormholeEndpointLayoutChange(
             address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
         wormholeEndpointChain1.upgrade(address(newImplementation));
 
         address oldOwner = managerChain1.owner();
-        WormholeEndpointStandaloneLayoutChange(address(wormholeEndpointChain1)).setData();
+        MockWormholeEndpointLayoutChange(address(wormholeEndpointChain1)).setData();
 
         // If we overrode something important, it would probably break here
         basicFunctionality();
@@ -321,7 +205,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
     function test_callMigrateManager() public {
         // Basic call to upgrade with the same contact as ewll
-        ManagerStandalone newImplementation = new ManagerStandaloneMigrateBasic(
+        Manager newImplementation = new MockManagerMigrateBasic(
             address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
         );
 
@@ -334,7 +218,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     //Upgradability stuff for endpoints is real borked because of some missing implementation. Test this later once fixed.
     function test_callMigrateEndpoint() public {
         // Basic call to upgrade with the same contact as well
-        WormholeEndpointStandaloneMigrateBasic wormholeEndpointChain1Implementation = new WormholeEndpointStandaloneMigrateBasic(
+        MockWormholeEndpointMigrateBasic wormholeEndpointChain1Implementation = new MockWormholeEndpointMigrateBasic(
             address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
 
@@ -348,9 +232,8 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         DummyToken tnew = new DummyToken();
 
         // Basic call to upgrade with the same contact as ewll
-        ManagerStandalone newImplementation = new ManagerStandaloneImmutableCheck(
-            address(tnew), Manager.Mode.LOCKING, chainId1, 1 days
-        );
+        Manager newImplementation =
+            new MockManagerImmutableCheck(address(tnew), Manager.Mode.LOCKING, chainId1, 1 days);
 
         vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
         managerChain1.upgrade(address(newImplementation));
@@ -364,7 +247,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         // Don't allow upgrade to work with a change immutable
 
         address oldManager = wormholeEndpointChain1.manager();
-        WormholeEndpointStandaloneMigrateBasic wormholeEndpointChain1Implementation = new WormholeEndpointStandaloneMigrateBasic(
+        WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointMigrateBasic(
             address(managerChain2), address(wormhole), address(relayer), address(0x0)
         );
 
@@ -380,7 +263,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         DummyToken tnew = new DummyToken();
 
         // Basic call to upgrade with the same contact as ewll
-        ManagerStandalone newImplementation = new ManagerStandaloneImmutableRemoveCheck(
+        Manager newImplementation = new MockManagerImmutableRemoveCheck(
             address(tnew), Manager.Mode.LOCKING, chainId1, 1 days
         );
 
@@ -392,7 +275,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function test_immutableBlockUpdateSuccessEndpoint() public {
-        WormholeEndpointStandaloneImmutableAllow wormholeEndpointChain1Implementation = new WormholeEndpointStandaloneImmutableAllow(
+        WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointImmutableAllow(
             address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
 
@@ -414,7 +297,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         managerChain1.upgrade(address(0x1));
 
         // Basic call to upgrade so that we can get the real implementation.
-        ManagerStandalone newImplementation = new ManagerStandalone(
+        Manager newImplementation = new MockManagerContract(
             address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
         );
         managerChain1.upgrade(address(newImplementation));
@@ -454,7 +337,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         wormholeEndpointChain1.upgrade(address(0x01));
 
         // Basic call so that we can easily see what the new endpoint is.
-        WormholeEndpointStandalone wormholeEndpointChain1Implementation = new WormholeEndpointStandalone(
+        WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointContract(
             address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
         wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
@@ -636,8 +519,8 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 contract TestInitialize is Test {
     function setUp() public {}
 
-    ManagerStandalone managerChain1;
-    ManagerStandalone managerChain2;
+    Manager managerChain1;
+    Manager managerChain2;
 
     using NormalizedAmountLib for uint256;
     using NormalizedAmountLib for NormalizedAmount;
@@ -647,7 +530,7 @@ contract TestInitialize is Test {
     uint256 constant DEVNET_GUARDIAN_PK =
         0xcfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0;
 
-    WormholeEndpointStandalone wormholeEndpointChain1;
+    WormholeEndpoint wormholeEndpointChain1;
     address userA = address(0x123);
 
     address relayer = address(0x28D8F1Be96f97C1387e94A53e00eCcFb4E75175a);
@@ -659,10 +542,10 @@ contract TestInitialize is Test {
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
-        ManagerStandalone implementation =
-            new ManagerStandalone(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
+        Manager implementation =
+            new MockManagerContract(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
 
-        managerChain1 = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
+        managerChain1 = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
 
         // Initialize once
         managerChain1.initialize();
@@ -678,10 +561,10 @@ contract TestInitialize is Test {
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
-        ManagerStandalone implementation =
-            new ManagerStandalone(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
+        Manager implementation =
+            new MockManagerContract(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
 
-        managerChain1 = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
+        managerChain1 = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
 
         // Attempt to initialize the contract from a non-deployer account.
         vm.prank(userA);

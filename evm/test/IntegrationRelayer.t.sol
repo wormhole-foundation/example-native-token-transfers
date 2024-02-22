@@ -4,9 +4,8 @@ pragma solidity 0.8.19;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import "../src/ManagerStandalone.sol";
-import "../src/EndpointAndManager.sol";
-import "../src/EndpointStandalone.sol";
+import "../src/Manager.sol";
+import "../src/Endpoint.sol";
 import "../src/interfaces/IManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
 import "../src/interfaces/IManagerEvents.sol";
@@ -14,9 +13,10 @@ import "../src/interfaces/IRateLimiterEvents.sol";
 import "../src/interfaces/IWormholeEndpoint.sol";
 import {Utils} from "./libraries/Utils.sol";
 import {DummyToken, DummyTokenMintAndBurn} from "./mocks/DummyToken.sol";
-import {WormholeEndpointStandalone} from "../src/WormholeEndpointStandalone.sol";
 import {WormholeEndpoint} from "../src/WormholeEndpoint.sol";
 import "../src/libraries/EndpointStructs.sol";
+import "./mocks/MockManager.sol";
+import "./mocks/MockEndpoints.sol";
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -26,8 +26,8 @@ import "wormhole-solidity-sdk/Utils.sol";
 import {WormholeRelayerBasicTest} from "wormhole-solidity-sdk/testing/WormholeRelayerTest.sol";
 
 contract TestEndToEndRelayerBase is Test {
-    WormholeEndpointStandalone wormholeEndpointChain1;
-    WormholeEndpointStandalone wormholeEndpointChain2;
+    WormholeEndpoint wormholeEndpointChain1;
+    WormholeEndpoint wormholeEndpointChain2;
 
     function buildEndpointInstruction(bool relayer_off)
         public
@@ -65,8 +65,8 @@ contract TestEndToEndRelayer is
     IRateLimiterEvents,
     WormholeRelayerBasicTest
 {
-    ManagerStandalone managerChain1;
-    ManagerStandalone managerChain2;
+    Manager managerChain1;
+    Manager managerChain2;
 
     using NormalizedAmountLib for uint256;
     using NormalizedAmountLib for NormalizedAmount;
@@ -92,20 +92,20 @@ contract TestEndToEndRelayer is
         vm.deal(userA, 1 ether);
         DummyToken t1 = new DummyToken();
 
-        ManagerStandalone implementation =
-            new ManagerStandalone(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
+        Manager implementation =
+            new MockManagerContract(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
 
-        managerChain1 = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
+        managerChain1 = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         managerChain1.initialize();
 
-        wormholeEndpointChain1 = new WormholeEndpointStandalone(
+        wormholeEndpointChain1 = new MockWormholeEndpointContract(
             address(managerChain1),
             address(chainInfosTestnet[chainId1].wormhole),
             address(relayerSource),
             address(0x0)
         );
 
-        wormholeEndpointChain1 = WormholeEndpointStandalone(
+        wormholeEndpointChain1 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain1), ""))
         );
         wormholeEndpointChain1.initialize();
@@ -122,20 +122,20 @@ contract TestEndToEndRelayer is
 
         // Chain 2 setup
         DummyToken t2 = new DummyTokenMintAndBurn();
-        ManagerStandalone implementationChain2 =
-            new ManagerStandalone(address(t2), Manager.Mode.BURNING, chainId2, 1 days);
+        Manager implementationChain2 =
+            new MockManagerContract(address(t2), Manager.Mode.BURNING, chainId2, 1 days);
 
         managerChain2 =
-            ManagerStandalone(address(new ERC1967Proxy(address(implementationChain2), "")));
+            MockManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
         managerChain2.initialize();
-        wormholeEndpointChain2 = new WormholeEndpointStandalone(
+        wormholeEndpointChain2 = new MockWormholeEndpointContract(
             address(managerChain2),
             address(chainInfosTestnet[chainId2].wormhole),
             address(relayerTarget),
             address(0x0)
         );
 
-        wormholeEndpointChain2 = WormholeEndpointStandalone(
+        wormholeEndpointChain2 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain2), ""))
         );
         wormholeEndpointChain2.initialize();
@@ -398,8 +398,8 @@ contract TestRelayerEndToEndManual is
     IManagerEvents,
     IRateLimiterEvents
 {
-    ManagerStandalone managerChain1;
-    ManagerStandalone managerChain2;
+    Manager managerChain1;
+    Manager managerChain2;
 
     using NormalizedAmountLib for uint256;
     using NormalizedAmountLib for NormalizedAmount;
@@ -429,16 +429,16 @@ contract TestRelayerEndToEndManual is
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
-        ManagerStandalone implementation =
-            new ManagerStandalone(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
+        Manager implementation =
+            new MockManagerContract(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
 
-        managerChain1 = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
+        managerChain1 = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         managerChain1.initialize();
 
-        wormholeEndpointChain1 = new WormholeEndpointStandalone(
+        wormholeEndpointChain1 = new MockWormholeEndpointContract(
             address(managerChain1), address(wormhole), address(relayer), address(0x0)
         );
-        wormholeEndpointChain1 = WormholeEndpointStandalone(
+        wormholeEndpointChain1 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain1), ""))
         );
         wormholeEndpointChain1.initialize();
@@ -450,19 +450,19 @@ contract TestRelayerEndToEndManual is
         // Chain 2 setup
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
-        ManagerStandalone implementationChain2 =
-            new ManagerStandalone(address(t2), Manager.Mode.BURNING, chainId2, 1 days);
+        Manager implementationChain2 =
+            new MockManagerContract(address(t2), Manager.Mode.BURNING, chainId2, 1 days);
 
         managerChain2 =
-            ManagerStandalone(address(new ERC1967Proxy(address(implementationChain2), "")));
+            MockManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
         managerChain2.initialize();
-        wormholeEndpointChain2 = new WormholeEndpointStandalone(
+        wormholeEndpointChain2 = new MockWormholeEndpointContract(
             address(managerChain2),
             address(wormhole),
             address(relayer), // TODO - add support for this later
             address(0x0) // TODO - add support for this later
         );
-        wormholeEndpointChain2 = WormholeEndpointStandalone(
+        wormholeEndpointChain2 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain2), ""))
         );
         wormholeEndpointChain2.initialize();

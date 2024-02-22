@@ -2,10 +2,9 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "forge-std/Test.sol";
+import "forge-std/console.sol";
 
-import "../src/ManagerStandalone.sol";
-import "../src/EndpointAndManager.sol";
-import "../src/EndpointStandalone.sol";
+import "../src/Manager.sol";
 import "../src/interfaces/IManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
 import "../src/interfaces/IManagerEvents.sol";
@@ -22,73 +21,11 @@ import "./libraries/ManagerHelpers.sol";
 import "./interfaces/IEndpointReceiver.sol";
 import "./mocks/DummyEndpoint.sol";
 import "./mocks/DummyToken.sol";
-
-// @dev A non-abstract Manager contract
-contract ManagerContract is ManagerStandalone {
-    constructor(
-        address token,
-        Mode mode,
-        uint16 chainId,
-        uint64 rateLimitDuration
-    ) ManagerStandalone(token, mode, chainId, rateLimitDuration) {}
-
-    /// We create a dummy storage variable here with standard solidity slot assignment.
-    /// Then we check that its assigned slot is 0, i.e. that the super contract doesn't
-    /// define any storage variables (and instead uses deterministic slots).
-    /// See `test_noAutomaticSlot` below.
-    uint256 my_slot;
-
-    function lastSlot() public pure returns (bytes32 result) {
-        assembly ("memory-safe") {
-            result := my_slot.slot
-        }
-    }
-}
-
-contract EndpointAndManagerContract is EndpointAndManager, IEndpointReceiver {
-    constructor(
-        address token,
-        Mode mode,
-        uint16 chainId,
-        uint64 rateLimitDuration
-    ) EndpointAndManager(token, mode, chainId, rateLimitDuration) {}
-
-    function _quoteDeliveryPrice(
-        uint16, /* recipientChain */
-        EndpointStructs.EndpointInstruction memory /* endpointInstruction */
-    ) internal pure override returns (uint256) {
-        return 0;
-    }
-
-    function _sendMessage(
-        uint16, /* recipientChain */
-        uint256, /* deliveryPayment */
-        address, /* caller */
-        EndpointStructs.EndpointInstruction memory, /* instruction */
-        bytes memory /* payload */
-    ) internal pure override {
-        // do nothing
-    }
-
-    function receiveMessage(bytes memory encodedMessage) external {
-        EndpointStructs.EndpointMessage memory parsedEndpointMessage;
-        EndpointStructs.ManagerMessage memory parsedManagerMessage;
-        (parsedEndpointMessage, parsedManagerMessage) = EndpointStructs
-            .parseEndpointAndManagerMessage(
-            EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX, encodedMessage
-        );
-        _deliverToManager(
-            EndpointHelpersLib.SENDING_CHAIN_ID,
-            parsedEndpointMessage.sourceManagerAddress,
-            parsedManagerMessage
-        );
-    }
-}
+import "./mocks/MockManager.sol";
 
 // TODO: set this up so the common functionality tests can be run against both
-// the standalone and the integrated version of the endpoint manager
 contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
-    ManagerStandalone manager;
+    Manager manager;
 
     using NormalizedAmountLib for uint256;
     using NormalizedAmountLib for NormalizedAmount;
@@ -109,10 +46,10 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         guardian = new WormholeSimulator(address(wormhole), DEVNET_GUARDIAN_PK);
 
         DummyToken t = new DummyToken();
-        ManagerStandalone implementation =
-            new ManagerStandalone(address(t), Manager.Mode.LOCKING, chainId, 1 days);
+        Manager implementation =
+            new MockManagerContract(address(t), Manager.Mode.LOCKING, chainId, 1 days);
 
-        manager = ManagerStandalone(address(new ERC1967Proxy(address(implementation), "")));
+        manager = Manager(address(new ERC1967Proxy(address(implementation), "")));
         manager.initialize();
     }
 
@@ -202,8 +139,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         // only endpoints whose manager is us can be registered? (this would be
         // a convenience check, not a security one)
         DummyToken t = new DummyToken();
-        ManagerStandalone altManager =
-            new ManagerStandalone(address(t), Manager.Mode.LOCKING, chainId, 1 days);
+        Manager altManager =
+            new MockManagerContract(address(t), Manager.Mode.LOCKING, chainId, 1 days);
         DummyEndpoint e = new DummyEndpoint(address(altManager));
         manager.setEndpoint(address(e));
     }
@@ -317,12 +254,14 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         (managerMessage, endpointMessage) = EndpointHelpersLib
             .buildEndpointMessageWithManagerPayload(0, bytes32(0), sibling, abi.encode("payload"));
 
-        e1.receiveMessage(endpointMessage);
-        e1.receiveMessage(endpointMessage);
-
         bytes32 hash = EndpointStructs.managerMessageDigest(
             EndpointHelpersLib.SENDING_CHAIN_ID, managerMessage
         );
+
+        e1.receiveMessage(endpointMessage);
+        vm.expectRevert(abi.encodeWithSignature("EndpointAlreadyAttestedToMessage(bytes32)", hash));
+        e1.receiveMessage(endpointMessage);
+
         // can't double vote
         assertEq(manager.messageAttestations(hash), 1);
     }
@@ -449,7 +388,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
     function test_noAutomaticSlot() public {
         DummyToken t = new DummyToken();
-        ManagerContract c = new ManagerContract(address(t), Manager.Mode.LOCKING, 1, 1 days);
+        MockManagerContract c = new MockManagerContract(address(t), Manager.Mode.LOCKING, 1, 1 days);
         assertEq(c.lastSlot(), 0x0);
     }
 
@@ -458,7 +397,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         vm.startStateDiffRecording();
 
-        new ManagerStandalone(address(t), Manager.Mode.LOCKING, 1, 1 days);
+        new MockManagerContract(address(t), Manager.Mode.LOCKING, 1, 1 days);
 
         Utils.assertSafeUpgradeableConstructor(vm.stopAndReturnStateDiff());
     }
@@ -504,28 +443,33 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     // === upgradeability
+    function expectRevert(
+        address contractAddress,
+        bytes memory encodedSignature,
+        bytes memory expectedRevert
+    ) internal {
+        (bool success, bytes memory result) = contractAddress.call(encodedSignature);
+        require(!success, "call did not revert");
 
-    function test_upgrade() public {
+        require(keccak256(result) == keccak256(expectedRevert), "call did not revert as expected");
+    }
+
+    function test_upgradeManager() public {
         // The testing strategy here is as follows:
-        // - Step 1: we deploy the standalone contract with two endpoints and
-        //           receive a message through it
-        // - Step 2: we upgrade it to the EndointAndManager contract and receive
-        //           a message through it
-        // - Step 3: we upgrade back to the standalone contract (with two
-        //           endpoints) and receive a message through it
-        //
-        // This ensures that the storage slots don't get clobbered through the upgrades, and also that
+        // Step 1: Deploy the manager contract with two endpoints and
+        //         receive a message through it.
+        // Step 2: Upgrade it to a new manager contract an use the same endpoints to receive
+        //         a new message through it.
+        // Step 3: Upgrade back to the standalone contract (with two
+        //           endpoints) and receive a message through it.
+        // This ensures that the storage slots don't get clobbered through the upgrades.
 
         address user_B = address(0x456);
-
         DummyToken token = DummyToken(manager.token());
-
-        // Step 1
-        // (contract is deployed by setUp())
         NormalizedAmount memory transferAmount = NormalizedAmount(50, 8);
-
         (IEndpointReceiver e1, IEndpointReceiver e2) = EndpointHelpersLib.setup_endpoints(manager);
 
+        // Step 1 (contract is deployed by setUp())
         IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
         endpoints[0] = e1;
         endpoints[1] = e2;
@@ -550,79 +494,21 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
         assertEq(token.balanceOf(address(user_B)), transferAmount.denormalize(token.decimals()));
 
-        // Step 2
-
-        EndpointAndManager endpointAndManagerImpl =
-            new EndpointAndManagerContract(manager.token(), Manager.Mode.LOCKING, chainId, 1 days);
-        manager.upgrade(address(endpointAndManagerImpl));
-
-        endpoints = new IEndpointReceiver[](1);
-        endpoints[0] = IEndpointReceiver(address(manager));
-
-        // replay protection
-        vm.recordLogs();
-        IEndpointReceiver(address(manager)).receiveMessage(encodedEm);
-        {
-            Vm.Log[] memory entries = vm.getRecordedLogs();
-            assertEq(entries.length, 1);
-            assertEq(entries[0].topics.length, 3);
-            assertEq(entries[0].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
-            assertEq(entries[0].topics[1], toWormholeFormat(address(manager)));
-            assertEq(
-                entries[0].topics[2],
-                EndpointStructs.managerMessageDigest(EndpointHelpersLib.SENDING_CHAIN_ID, m)
-            );
-        }
+        // Step 2 (upgrade to a new manager)
+        MockManagerContract newManager =
+            new MockManagerContract(manager.token(), Manager.Mode.LOCKING, chainId, 1 days);
+        manager.upgrade(address(newManager));
 
         EndpointHelpersLib.attestEndpointsHelper(
             user_B,
             1,
             chainId,
-            manager,
+            manager, // this is the proxy
             transferAmount,
             NormalizedAmount(type(uint64).max, 8),
             endpoints
         );
 
         assertEq(token.balanceOf(address(user_B)), transferAmount.denormalize(token.decimals()) * 2);
-
-        // Step 3
-
-        ManagerStandalone managerImpl =
-            new ManagerStandalone(manager.token(), Manager.Mode.LOCKING, chainId, 1 days);
-        manager.upgrade(address(managerImpl));
-
-        endpoints = new IEndpointReceiver[](2);
-        endpoints[0] = e1;
-        // attest with e1 twice (just two make sure it's still not accepted)
-        endpoints[1] = e1;
-
-        EndpointHelpersLib.attestEndpointsHelper(
-            user_B,
-            2,
-            chainId,
-            manager,
-            transferAmount,
-            NormalizedAmount(type(uint64).max, 8),
-            endpoints
-        );
-
-        // balance is the same as before
-        assertEq(token.balanceOf(address(user_B)), transferAmount.denormalize(token.decimals()) * 2);
-
-        endpoints = new IEndpointReceiver[](1);
-        endpoints[0] = e2;
-
-        EndpointHelpersLib.attestEndpointsHelper(
-            user_B,
-            2,
-            chainId,
-            manager,
-            transferAmount,
-            NormalizedAmount(type(uint64).max, 8),
-            endpoints
-        );
-
-        assertEq(token.balanceOf(address(user_B)), transferAmount.denormalize(token.decimals()) * 3);
     }
 }

@@ -30,7 +30,6 @@ abstract contract EndpointRegistry {
         uint8 num;
     }
 
-    // TODO: should we just increase this to 255?
     uint8 constant MAX_ENDPOINTS = 64;
 
     error CallerNotEndpoint(address caller);
@@ -214,7 +213,6 @@ abstract contract EndpointRegistry {
     /// Checking these invariants is somewhat costly, but we only need to do it
     /// when modifying the endpoints, which happens infrequently.
     function _checkEndpointsInvariants() internal view {
-        // TODO: add custom errors for each invariant
         _NumRegisteredEndpoints storage _numRegisteredEndpoints =
             _getNumRegisteredEndpointsStorage();
         address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();

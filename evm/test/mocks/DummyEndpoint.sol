@@ -3,14 +3,14 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "forge-std/Test.sol";
-import "../../src/EndpointStandalone.sol";
+import "../../src/Endpoint.sol";
 import "../interfaces/IEndpointReceiver.sol";
 
-contract DummyEndpoint is EndpointStandalone, IEndpointReceiver {
+contract DummyEndpoint is Endpoint, IEndpointReceiver {
     uint16 constant SENDING_CHAIN_ID = 1;
     bytes4 constant TEST_ENDPOINT_PAYLOAD_PREFIX = 0x99455454;
 
-    constructor(address manager) EndpointStandalone(manager) {}
+    constructor(address manager) Endpoint(manager) {}
 
     function _quoteDeliveryPrice(
         uint16, /* recipientChain */
