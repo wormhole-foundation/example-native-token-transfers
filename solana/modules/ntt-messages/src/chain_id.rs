@@ -6,7 +6,10 @@ use anchor_lang::prelude::*;
 use wormhole_io::{Readable, Writeable};
 
 #[derive(Clone, Debug, PartialEq, Eq, Copy)]
-#[cfg_attr(feature = "anchor", derive(AnchorSerialize, AnchorDeserialize, InitSpace))]
+#[cfg_attr(
+    feature = "anchor",
+    derive(AnchorSerialize, AnchorDeserialize, InitSpace)
+)]
 pub struct ChainId {
     pub id: u16,
 }

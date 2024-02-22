@@ -13,8 +13,8 @@ use example_native_token_transfers::{
     sequence::Sequence,
 };
 use ntt_messages::{
-    chain_id::ChainId, endpoint::EndpointMessage, manager::ManagerMessage,
-    normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer, endpoints::wormhole::WormholeEndpoint,
+    chain_id::ChainId, endpoint::EndpointMessage, endpoints::wormhole::WormholeEndpoint,
+    manager::ManagerMessage, normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer,
 };
 use solana_program_test::*;
 use solana_sdk::{
