@@ -29,6 +29,7 @@ library EndpointHelpersLib {
         uint64 sequence,
         uint16 toChain,
         Manager manager,
+        Manager recipientManager,
         NormalizedAmount memory amount,
         NormalizedAmount memory inboundLimit,
         IEndpointReceiver[] memory endpoints
@@ -40,12 +41,16 @@ library EndpointHelpersLib {
             buildManagerMessage(to, sequence, toChain, manager, amount);
         bytes memory encodedM = EndpointStructs.encodeManagerMessage(m);
 
-        prepTokenReceive(manager, amount, inboundLimit);
+        prepTokenReceive(manager, recipientManager, amount, inboundLimit);
 
         EndpointStructs.EndpointMessage memory em;
         bytes memory encodedEm;
         (em, encodedEm) = EndpointStructs.buildAndEncodeEndpointMessage(
-            TEST_ENDPOINT_PAYLOAD_PREFIX, toWormholeFormat(address(manager)), encodedM, new bytes(0)
+            TEST_ENDPOINT_PAYLOAD_PREFIX,
+            toWormholeFormat(address(manager)),
+            toWormholeFormat(address(recipientManager)),
+            encodedM,
+            new bytes(0)
         );
 
         for (uint256 i; i < endpoints.length; i++) {
@@ -81,18 +86,20 @@ library EndpointHelpersLib {
 
     function prepTokenReceive(
         Manager manager,
+        Manager recipientManager,
         NormalizedAmount memory amount,
         NormalizedAmount memory inboundLimit
     ) internal {
         DummyToken token = DummyToken(manager.token());
-        token.mintDummy(address(manager), amount.denormalize(token.decimals()));
-        ManagerHelpersLib.setConfigs(inboundLimit, manager, token.decimals());
+        token.mintDummy(address(recipientManager), amount.denormalize(token.decimals()));
+        ManagerHelpersLib.setConfigs(inboundLimit, manager, recipientManager, token.decimals());
     }
 
     function buildEndpointMessageWithManagerPayload(
         uint64 sequence,
         bytes32 sender,
         bytes32 sourceManager,
+        bytes32 recipientManager,
         bytes memory payload
     ) internal pure returns (EndpointStructs.ManagerMessage memory, bytes memory) {
         EndpointStructs.ManagerMessage memory m =
@@ -100,7 +107,11 @@ library EndpointHelpersLib {
         bytes memory managerMessage = EndpointStructs.encodeManagerMessage(m);
         bytes memory endpointMessage;
         (, endpointMessage) = EndpointStructs.buildAndEncodeEndpointMessage(
-            TEST_ENDPOINT_PAYLOAD_PREFIX, sourceManager, managerMessage, new bytes(0)
+            TEST_ENDPOINT_PAYLOAD_PREFIX,
+            sourceManager,
+            recipientManager,
+            managerMessage,
+            new bytes(0)
         );
         return (m, endpointMessage);
     }

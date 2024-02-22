@@ -23,6 +23,7 @@ contract DummyEndpoint is Endpoint, IEndpointReceiver {
         uint16, /* recipientChain */
         uint256, /* deliveryPayment */
         address, /* caller */
+        bytes32, /* recipientManagerAddress */
         EndpointStructs.EndpointInstruction memory, /* instruction */
         bytes memory /* payload */
     ) internal override {
@@ -35,7 +36,10 @@ contract DummyEndpoint is Endpoint, IEndpointReceiver {
         (parsedEndpointMessage, parsedManagerMessage) = EndpointStructs
             .parseEndpointAndManagerMessage(TEST_ENDPOINT_PAYLOAD_PREFIX, encodedMessage);
         _deliverToManager(
-            SENDING_CHAIN_ID, parsedEndpointMessage.sourceManagerAddress, parsedManagerMessage
+            SENDING_CHAIN_ID,
+            parsedEndpointMessage.sourceManagerAddress,
+            parsedEndpointMessage.recipientManagerAddress,
+            parsedManagerMessage
         );
     }
 

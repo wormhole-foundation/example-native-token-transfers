@@ -7,6 +7,9 @@ interface IEndpoint {
     error CallerNotManager(address caller);
     error CannotRenounceEndpointOwnership(address currentOwner);
     error CannotTransferEndpointOwnership(address currentOwner, address newOwner);
+    error UnexpectedRecipientManagerAddress(
+        bytes32 recipientManagerAddress, bytes32 expectedRecipientManagerAddress
+    );
 
     function quoteDeliveryPrice(
         uint16 recipientChain,
@@ -16,7 +19,8 @@ interface IEndpoint {
     function sendMessage(
         uint16 recipientChain,
         EndpointStructs.EndpointInstruction memory instruction,
-        bytes memory managerMessage
+        bytes memory managerMessage,
+        bytes32 recipientManagerAddress
     ) external payable;
 
     function upgrade(address newImplementation) external;

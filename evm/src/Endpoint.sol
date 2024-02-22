@@ -7,6 +7,7 @@ import "./interfaces/IManager.sol";
 import "./interfaces/IEndpoint.sol";
 import "./libraries/external/ReentrancyGuardUpgradeable.sol";
 import "./libraries/Implementation.sol";
+import "wormhole-solidity-sdk/Utils.sol";
 
 abstract contract Endpoint is
     IEndpoint,
@@ -86,31 +87,44 @@ abstract contract Endpoint is
     function sendMessage(
         uint16 recipientChain,
         EndpointStructs.EndpointInstruction memory instruction,
-        bytes memory managerMessage
+        bytes memory managerMessage,
+        bytes32 recipientManagerAddress
     ) external payable nonReentrant onlyManager {
-        _sendMessage(recipientChain, msg.value, msg.sender, instruction, managerMessage);
+        _sendMessage(
+            recipientChain,
+            msg.value,
+            msg.sender,
+            recipientManagerAddress,
+            instruction,
+            managerMessage
+        );
     }
 
     function _sendMessage(
         uint16 recipientChain,
         uint256 deliveryPayment,
         address caller,
+        bytes32 recipientManagerAddress,
         EndpointStructs.EndpointInstruction memory endpointInstruction,
         bytes memory managerMessage
     ) internal virtual;
 
-    /**
-     * @dev      This method is called by the BridgeManager contract to send a cross-chain message.
-     *           Forwards the VAA payload to the endpoint manager contract.
-     * @param    sourceChainId The chain id of the sender.
-     * @param    sourceManagerAddress The address of the sender's manager contract.
-     * @param    payload The VAA payload.
-     */
+    // @dev      This method is called by the BridgeManager contract to send a cross-chain message.
+    //           Forwards the VAA payload to the endpoint manager contract.
+    // @param    sourceChainId The chain id of the sender.
+    // @param    sourceManagerAddress The address of the sender's manager contract.
+    // @param    payload The VAA payload.
     function _deliverToManager(
         uint16 sourceChainId,
         bytes32 sourceManagerAddress,
+        bytes32 recipientManagerAddress,
         EndpointStructs.ManagerMessage memory payload
     ) internal virtual {
+        if (recipientManagerAddress != toWormholeFormat(manager)) {
+            revert UnexpectedRecipientManagerAddress(
+                toWormholeFormat(manager), recipientManagerAddress
+            );
+        }
         IManager(manager).attestationReceived(sourceChainId, sourceManagerAddress, payload);
     }
 
