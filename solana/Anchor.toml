@@ -7,8 +7,8 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-example_native_token_transfers = "F2DDaJgSfJTVYVjVkxmsFYy771QgXfqCjanF7nRQt4HV"
-wormhole_governance = "7kK9JyavhgE5G8oErMziHeBzZiAu3J64oLMbNf8FpG4S"
+example_native_token_transfers = "nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS"
+wormhole_governance = "wgvEiKVzX9yyEoh41jZAdC6JqGUTS4CFXbFGBV5TKdZ"
 
 [registry]
 url = "https://api.apr.dev"

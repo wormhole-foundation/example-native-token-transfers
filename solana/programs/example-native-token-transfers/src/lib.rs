@@ -18,7 +18,7 @@ use endpoints::wormhole::instructions::*;
 
 use instructions::*;
 
-declare_id!("F2DDaJgSfJTVYVjVkxmsFYy771QgXfqCjanF7nRQt4HV");
+declare_id!("nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS");
 
 const TOKEN_AUTHORITY_SEED: &[u8] = b"token_authority";
 

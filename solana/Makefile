@@ -10,7 +10,7 @@ target/idl/example_native_token_transfers.json:
 
 .PHONY: anchor-build
 _anchor-build:
-	@anchor build
+	@anchor build --arch sbf
 
 anchor-test: node_modules build target/idl/example_native_token_transfers.json
 	anchor test --skip-build
