@@ -4,7 +4,6 @@ use anchor_spl::token_interface;
 use crate::{
     bitmap::Bitmap,
     chain_id::ChainId,
-    clock::current_timestamp,
     config::*,
     error::NTTError,
     normalized_amount::NormalizedAmount,
@@ -216,11 +215,11 @@ fn insert_into_outbox(
 ) -> Result<()> {
     // consume the rate limit, or delay the transfer if it's outside the limit
     let release_timestamp = match common.outbox_rate_limit.rate_limit.consume_or_delay(amount) {
-        RateLimitResult::Consumed => {
+        RateLimitResult::Consumed(now) => {
             // When sending a transfer, we refill the inbound rate limit for
             // that chain the same amount (we call this "backflow")
-            inbox_rate_limit.rate_limit.refill(amount);
-            current_timestamp()
+            inbox_rate_limit.rate_limit.refill(now, amount);
+            now
         }
         RateLimitResult::Delayed(release_timestamp) => {
             if !should_queue {

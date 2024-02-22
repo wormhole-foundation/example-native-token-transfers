@@ -3,7 +3,6 @@ use anchor_spl::token_interface;
 
 use crate::{
     bitmap::Bitmap,
-    clock::current_timestamp,
     config::*,
     error::NTTError,
     messages::{ManagerMessage, NativeTokenTransfer, ValidatedEndpointMessage},
@@ -123,11 +122,11 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     }
 
     let release_timestamp = match accs.inbox_rate_limit.rate_limit.consume_or_delay(amount) {
-        RateLimitResult::Consumed => {
+        RateLimitResult::Consumed(now) => {
             // When receiving a transfer, we refill the outbound rate limit with
             // the same amount (we call this "backflow")
-            accs.outbox_rate_limit.rate_limit.refill(amount);
-            current_timestamp()
+            accs.outbox_rate_limit.rate_limit.refill(now, amount);
+            now
         }
         RateLimitResult::Delayed(release_timestamp) => release_timestamp,
     };
