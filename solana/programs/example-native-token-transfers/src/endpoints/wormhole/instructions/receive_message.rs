@@ -28,6 +28,9 @@ pub struct ReceiveMessage<'info> {
     )]
     pub sibling: Account<'info, EndpointSibling>,
 
+    // TODO: Consider using VaaAccount from wormhole-solana-vaa crate. Using a zero-copy reader
+    // will allow this instruction to be generic (instead of strictly specifying NativeTokenTransfer
+    // as the message type).
     #[account(
         // check that the messages is targeted to this chain
         constraint = vaa.message().manager_payload.payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
