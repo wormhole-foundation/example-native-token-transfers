@@ -113,7 +113,6 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     // idempotent
     accs.inbox_item.votes.set(accs.endpoint.id, true);
 
-    // TODO: if endpoints can be disabled, this should only cound enabled endpoints
     if accs
         .inbox_item
         .votes
