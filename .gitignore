@@ -1,6 +1,7 @@
 # Compiler files
 cache/
 out/
+target/
 
 # Ignores development broadcast logs
 !/broadcast
@@ -15,3 +16,9 @@ docs/
 
 # macOS stuff
 .DS_Store
+
+# VSCode
+.vscode
+
+# Misc
+.private
