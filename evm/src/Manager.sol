@@ -586,11 +586,11 @@ contract Manager is
 
     /// @dev Called after a message has been sufficiently verified to execute the command in the message.
     ///      This function will decode the payload as an ManagerMessage to extract the sequence, msgType, and other parameters.
-    function _executeMsg(
+    function executeMsg(
         uint16 sourceChainId,
         bytes32 sourceManagerAddress,
         EndpointStructs.ManagerMessage memory message
-    ) internal {
+    ) public {
         // verify chain has not forked
         checkFork(evmChainId);
 
@@ -745,7 +745,7 @@ contract Manager is
         _setEndpointAttestedToMessage(managerMessageHash, msg.sender);
 
         if (isMessageApproved(managerMessageHash)) {
-            _executeMsg(sourceChainId, sourceManagerAddress, payload);
+            executeMsg(sourceChainId, sourceManagerAddress, payload);
         }
     }
 
