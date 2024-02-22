@@ -12,5 +12,13 @@ target/idl/example_native_token_transfers.json:
 _anchor-build:
 	@anchor build
 
-anchor-test: build target/idl/example_native_token_transfers.json
+anchor-test: node_modules build target/idl/example_native_token_transfers.json
 	anchor test --skip-build
+
+node_modules:
+	npm ci
+
+.PHONY: clean
+clean:
+	anchor clean
+	rm -rf .anchor node_modules
