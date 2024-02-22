@@ -22,8 +22,7 @@ import "./NttNormalizer.sol";
 import "./libraries/PausableOwnable.sol";
 import "./libraries/Implementation.sol";
 
-// TODO: rename this (it's really the business logic)
-abstract contract Manager is
+contract Manager is
     IManager,
     IManagerEvents,
     EndpointRegistry,
