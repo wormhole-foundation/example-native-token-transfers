@@ -355,6 +355,10 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         return toBool(_getWormholeEvmChainIdsStorage()[chainId]);
     }
 
+    function setIsWormholeEvmChain(uint16 chainId) external onlyOwner {
+        _setIsWormholeEvmChain(chainId);
+    }
+
     function _setIsWormholeEvmChain(uint16 chainId) internal {
         if (chainId == 0) {
             revert InvalidWormholeChainIdZero();
