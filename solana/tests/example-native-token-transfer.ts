@@ -14,15 +14,16 @@ export const GUARDIAN_KEY = 'cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff
 
 describe('example-native-token-transfers', () => {
   // Configure the client to use the local cluster.
-  anchor.setProvider(anchor.AnchorProvider.env())
+  //anchor.setProvider(anchor.AnchorProvider.env())
 
   const payerSecretKey = Uint8Array.from(JSON.parse(fs.readFileSync(`${__dirname}/../keys/test.json`, { encoding: "utf-8" })));
   const payer = anchor.web3.Keypair.fromSecretKey(payerSecretKey);
 
-  const program = anchor.workspace.ExampleNativeTokenTransfers as Program<ExampleNativeTokenTransfers>
+  //const program = anchor.workspace.ExampleNativeTokenTransfers as Program<ExampleNativeTokenTransfers>
   const owner = anchor.web3.Keypair.generate()
-  const ntt = new NTT({
-    program,
+  const connection = new anchor.web3.Connection('http://localhost:8899', 'confirmed');
+  const ntt = new NTT(connection, {
+    nttId: 'nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS',
     wormholeId: 'worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth'
   })
   const user = anchor.web3.Keypair.generate()
@@ -34,21 +35,21 @@ describe('example-native-token-transfers', () => {
   before(async () => {
     // airdrop some tokens to payer
     mint = await spl.createMint(
-      program.provider.connection,
+      connection,
       payer,
       owner.publicKey,
       null,
       9
     )
 
-    tokenAccount = await spl.createAssociatedTokenAccount(program.provider.connection, payer, mint, user.publicKey)
-    await spl.mintTo(program.provider.connection, payer, mint, tokenAccount, owner, BigInt(10000000))
+    tokenAccount = await spl.createAssociatedTokenAccount(connection, payer, mint, user.publicKey)
+    await spl.mintTo(connection, payer, mint, tokenAccount, owner, BigInt(10000000))
   });
 
   describe('Locking', () => {
     before(async () => {
       await spl.setAuthority(
-        program.provider.connection,
+        connection,
         payer,
         mint,
         owner,
@@ -107,7 +108,7 @@ describe('example-native-token-transfers', () => {
 
       const wormholeMessage = ntt.wormholeMessageAccountAddress(outboxItem)
 
-      const wormholeMessageAccount = await program.provider.connection.getAccountInfo(wormholeMessage)
+      const wormholeMessageAccount = await connection.getAccountInfo(wormholeMessage)
       if (wormholeMessageAccount === null) {
         throw new Error('wormhole message account not found')
       }
@@ -121,11 +122,11 @@ describe('example-native-token-transfers', () => {
       // assert theat amount is what we expect
       expect(endpointMessage.managerPayload.payload.normalizedAmount).to.deep.equal(new NormalizedAmount(BigInt(10000), 8))
       // get from balance
-      const balance = await program.provider.connection.getTokenAccountBalance(tokenAccount)
+      const balance = await connection.getTokenAccountBalance(tokenAccount)
       expect(balance.value.amount).to.equal('9900000')
 
       // grab logs
-      // await program.provider.connection.confirmTransaction(redeemTx, 'confirmed');
+      // await connection.confirmTransaction(redeemTx, 'confirmed');
       // const tx = await anchor.getProvider().connection.getParsedTransaction(redeemTx, {
       //   commitment: "confirmed",
       // });
@@ -174,7 +175,7 @@ describe('example-native-token-transfers', () => {
 
       const vaaBuf = guardians.addSignatures(published, [0])
 
-      await postVaa(program.provider.connection, payer, vaaBuf, ntt.wormholeId)
+      await postVaa(connection, payer, vaaBuf, ntt.wormholeId)
 
       const released = await ntt.redeem({
         payer,

@@ -1,6 +1,6 @@
 import { type ChainName, toChainId, coalesceChainId, type ChainId, SignedVaa, parseVaa } from '@certusone/wormhole-sdk'
 import { derivePostedVaaKey, getWormholeDerivedAccounts } from '@certusone/wormhole-sdk/lib/cjs/solana/wormhole'
-import { BN, translateError, type IdlAccounts, type Program } from '@coral-xyz/anchor'
+import { BN, translateError, type IdlAccounts, Program } from '@coral-xyz/anchor'
 import { associatedAddress } from '@coral-xyz/anchor/dist/cjs/utils/token'
 import { getAssociatedTokenAddressSync } from '@solana/spl-token'
 import {
@@ -9,15 +9,17 @@ import {
   type TransactionInstruction,
   Transaction,
   sendAndConfirmTransaction,
-  type TransactionSignature
+  type TransactionSignature,
+  Connection
 } from '@solana/web3.js'
 import { Keccak } from 'sha3'
-import { type ExampleNativeTokenTransfers as Idl } from '../../target/types/example_native_token_transfers'
+import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from '../../target/types/example_native_token_transfers'
 import { ManagerMessage } from './payloads/common'
 import { NativeTokenTransfer } from './payloads/transfers'
 import { WormholeEndpointMessage } from './payloads/wormhole'
 import { BPF_LOADER_UPGRADEABLE_PROGRAM_ID, programDataAddress } from './utils'
 import * as splToken from '@solana/spl-token';
+import IDL from '../../target/idl/example_native_token_transfers.json';
 
 export { NormalizedAmount } from './normalized_amount'
 export { EndpointMessage, ManagerMessage } from './payloads/common'
@@ -36,10 +38,23 @@ type OmitGenerics<T> = {
   : T[P];
 };
 
-export type ExampleNativeTokenTransfers = OmitGenerics<Idl>
+export type ExampleNativeTokenTransfers = OmitGenerics<RawExampleNativeTokenTransfers>
 
 export type Config = IdlAccounts<ExampleNativeTokenTransfers>['config']
 export type InboxItem = IdlAccounts<ExampleNativeTokenTransfers>['inboxItem']
+
+
+export const NTT_PROGRAM_IDS = [
+  "nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS",
+] as const;
+
+export const WORMHOLE_PROGRAM_IDS = [
+  "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth", // mainnet
+  "3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5", // testnet
+] as const;
+
+export type NttProgramId = (typeof NTT_PROGRAM_IDS)[number];
+export type WormholeProgramId = (typeof WORMHOLE_PROGRAM_IDS)[number];
 
 export class NTT {
   readonly program: Program<ExampleNativeTokenTransfers>
@@ -47,9 +62,9 @@ export class NTT {
   // mapping from error code to error message. Used for prettifying error messages
   private readonly errors: Map<number, string>
 
-  constructor(args: { program: Program<ExampleNativeTokenTransfers>, wormholeId: PublicKeyInitData }) {
+  constructor(connection: Connection, args: { nttId: NttProgramId, wormholeId: WormholeProgramId }) {
     // TODO: initialise a new Program here with a passed in Connection
-    this.program = args.program
+    this.program = new Program(IDL as any, new PublicKey(args.nttId), { connection });
     this.wormholeId = new PublicKey(args.wormholeId)
     this.errors = this.processErrors()
   }
@@ -149,7 +164,7 @@ export class NTT {
     mint: PublicKey
     outboundLimit: BN
     mode: 'burning' | 'locking'
-  }): Promise<void> {
+  }) {
     const mode =
       args.mode === 'burning'
         ? { burning: {} }
@@ -160,7 +175,7 @@ export class NTT {
       throw new Error("Couldn't determine token program. Mint account is null.")
     }
     const tokenProgram = mintInfo.owner
-    await this.program.methods
+    const ix = await this.program.methods
       .initialize({ chainId, limit: args.outboundLimit, mode })
       .accounts({
         payer: args.payer.publicKey,
@@ -174,9 +189,8 @@ export class NTT {
         tokenAuthority: this.tokenAuthorityAddress(),
         custody: await this.custodyAccountAddress(args.mint),
         bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
-      })
-      .signers([args.payer, args.owner])
-      .rpc()
+      }).instruction();
+    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner]);
   }
 
   async transfer(args: {
@@ -375,7 +389,7 @@ export class NTT {
     outboxItem: PublicKey
     revertOnDelay: boolean
     config?: Config
-  }): Promise<void> {
+  }) {
     if (await this.isPaused()) {
       throw new Error('Contract is paused')
     }
@@ -389,7 +403,7 @@ export class NTT {
     tx.add(await this.createReleaseOutboundInstruction(txArgs))
 
     const signers = [args.payer]
-    await sendAndConfirmTransaction(this.program.provider.connection, tx, signers)
+    return await sendAndConfirmTransaction(this.program.provider.connection, tx, signers)
   }
 
   // TODO: document that if recipient is provided, then the instruction can be
@@ -520,8 +534,8 @@ export class NTT {
     address: ArrayLike<number>
     limit: BN
     config?: Config
-  }): Promise<void> {
-    await this.program.methods.setSibling({
+  }) {
+    const ix = await this.program.methods.setSibling({
       chainId: { id: toChainId(args.chain) },
       address: Array.from(args.address),
       limit: args.limit
@@ -532,9 +546,8 @@ export class NTT {
         config: this.configAccountAddress(),
         sibling: this.siblingAccountAddress(args.chain),
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.chain),
-      })
-      .signers([args.payer, args.owner])
-      .rpc()
+      }).instruction();
+    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner]);
 
   }
 
@@ -545,7 +558,7 @@ export class NTT {
     address: ArrayLike<number>
     config?: Config
   }) {
-    await this.program.methods.setWormholeSibling({
+    const ix = await this.program.methods.setWormholeSibling({
       chainId: { id: toChainId(args.chain) },
       address: Array.from(args.address)
     })
@@ -554,26 +567,24 @@ export class NTT {
         owner: args.owner.publicKey,
         config: this.configAccountAddress(),
         sibling: this.endpointSiblingAccountAddress(args.chain),
-      })
-      .signers([args.payer, args.owner])
-      .rpc()
+      }).instruction();
+    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner]);
   }
 
   async registerEndpoint(args: {
     payer: Keypair
     owner: Keypair
     endpoint: PublicKey
-  }): Promise<void> {
-    await this.program.methods.registerEndpoint()
+  }) {
+    const ix = await this.program.methods.registerEndpoint()
       .accounts({
         payer: args.payer.publicKey,
         owner: args.owner.publicKey,
         config: this.configAccountAddress(),
         endpoint: args.endpoint,
         registeredEndpoint: this.registeredEndpointAddress(args.endpoint),
-      })
-      .signers([args.payer, args.owner])
-      .rpc()
+      }).instruction();
+    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner]);
   }
 
   async createReceiveWormholeMessageInstruction(args: {
