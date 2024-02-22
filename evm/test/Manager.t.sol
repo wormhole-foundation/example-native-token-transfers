@@ -389,11 +389,11 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             assertEq(entries.length, 2);
             assertEq(entries[1].topics.length, 3);
             assertEq(entries[1].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
-            // assertEq(entries[1].topics[1], toWormholeFormat(address(managerOther)));
-            // assertEq(
-            //     entries[1].topics[2],
-            //     EndpointStructs.managerMessageDigest(EndpointHelpersLib.SENDING_CHAIN_ID, m)
-            // );
+            assertEq(entries[1].topics[1], toWormholeFormat(address(manager)));
+            assertEq(
+                entries[1].topics[2],
+                EndpointStructs.managerMessageDigest(EndpointHelpersLib.SENDING_CHAIN_ID, m)
+            );
         }
     }
 
