@@ -722,9 +722,6 @@ contract Manager is
         return _getMessageAttestationsStorage()[digest].attestedEndpoints & uint64(1 << index) == 1;
     }
 
-    /// @dev Called by an Endpoint contract to deliver a verified attestation.
-    ///      This function enforces attestation threshold and replay logic for messages.
-    ///      Once all validations are complete, this function calls _executeMsg to execute the command specified by the message.
     function attestationReceived(
         uint16 sourceChainId,
         bytes32 sourceManagerAddress,
