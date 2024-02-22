@@ -185,7 +185,7 @@ impl NTT {
     }
 
     pub fn upgrade_lock(&self) -> Pubkey {
-        let (addr, _) = Pubkey::find_program_address(&[b"upgrade-lock"], &self.program);
+        let (addr, _) = Pubkey::find_program_address(&[b"upgrade_lock"], &self.program);
         addr
     }
 }

@@ -15,6 +15,13 @@ use crate::{
 
 // * Transfer ownership
 
+/// Transferring the ownership is a 2-step process. The first step is to set the
+/// new owner, and the second step is for the new owner to claim the ownership.
+/// This is to prevent a situation where the ownership is transferred to an
+/// address that is not able to claim the ownership (by mistake).
+///
+/// The transfer can be cancelled by the existing owner invoking the [`claim_ownership`]
+/// instruction.
 #[derive(Accounts)]
 pub struct TransferOwnership<'info> {
     #[account(
@@ -28,9 +35,8 @@ pub struct TransferOwnership<'info> {
     /// CHECK: This account will be the signer in the [claim_ownership] instruction.
     new_owner: AccountInfo<'info>,
 
-    /// CHECK: Seeds must be \["upgrade-lock"\].
     #[account(
-        seeds = [b"upgrade-lock"],
+        seeds = [b"upgrade_lock"],
         bump,
     )]
     upgrade_lock: AccountInfo<'info>,
@@ -49,6 +55,7 @@ pub struct TransferOwnership<'info> {
 pub fn transfer_ownership(ctx: Context<TransferOwnership>) -> Result<()> {
     ctx.accounts.config.pending_owner = Some(ctx.accounts.new_owner.key());
 
+    // TODO: only transfer authority when the authority is not already the upgrade lock
     bpf_loader_upgradeable::set_upgrade_authority_checked(
         CpiContext::new_with_signer(
             ctx.accounts
@@ -59,7 +66,7 @@ pub fn transfer_ownership(ctx: Context<TransferOwnership>) -> Result<()> {
                 current_authority: ctx.accounts.owner.to_account_info(),
                 new_authority: ctx.accounts.upgrade_lock.to_account_info(),
             },
-            &[&[b"upgrade-lock", &[ctx.bumps.upgrade_lock]]],
+            &[&[b"upgrade_lock", &[ctx.bumps.upgrade_lock]]],
         ),
         &crate::ID,
     )
@@ -71,13 +78,15 @@ pub fn transfer_ownership(ctx: Context<TransferOwnership>) -> Result<()> {
 pub struct ClaimOwnership<'info> {
     #[account(
         mut,
-        constraint = config.pending_owner == Some(new_owner.key()) @ NTTError::InvalidPendingOwner
+        constraint = (
+            config.pending_owner == Some(new_owner.key())
+            || config.owner == new_owner.key()
+        ) @ NTTError::InvalidPendingOwner
     )]
     pub config: Account<'info, Config>,
 
-    /// CHECK: Seeds must be \["upgrade-lock"\].
     #[account(
-        seeds = [b"upgrade-lock"],
+        seeds = [b"upgrade_lock"],
         bump,
     )]
     upgrade_lock: AccountInfo<'info>,
@@ -109,7 +118,7 @@ pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
                 current_authority: ctx.accounts.upgrade_lock.to_account_info(),
                 new_authority: ctx.accounts.new_owner.to_account_info(),
             },
-            &[&[b"upgrade-lock", &[ctx.bumps.upgrade_lock]]],
+            &[&[b"upgrade_lock", &[ctx.bumps.upgrade_lock]]],
         ),
         &crate::ID,
     )
