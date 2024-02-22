@@ -33,7 +33,13 @@ interface IManager {
 
     /// @notice Sibling cannot be the zero address.
     error InvalidSiblingZeroAddress();
+
+    /// @notice The number of thresholds should not be zero.
     error ZeroThreshold();
+
+    /// @notice The threshold for endpoint attestations is too high.
+    /// @param threshold The threshold.
+    /// @param endpoints The number of endpoints.
     error ThresholdTooHigh(uint256 threshold, uint256 endpoints);
     error RetrievedIncorrectRegisteredEndpoints(uint256 retrieved, uint256 registered);
 
