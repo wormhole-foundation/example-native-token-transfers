@@ -707,7 +707,8 @@ contract Manager is
         return _getSiblingsStorage()[chainId_];
     }
 
-    /// @notice this
+    /// @notice this sets the corresponding sibling.
+    /// @dev The manager that executes the message sets the source manager as the sibling.
     function setSibling(uint16 siblingChainId, bytes32 siblingContract) public onlyOwner {
         if (siblingChainId == 0) {
             revert InvalidSiblingChainIdZero();
