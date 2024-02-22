@@ -118,7 +118,7 @@ abstract contract Endpoint is
     function quoteDeliveryPrice(
         uint16 targetChain,
         EndpointStructs.EndpointInstruction memory instruction
-    ) external view override returns (uint256) {
+    ) external view returns (uint256) {
         return _quoteDeliveryPrice(targetChain, instruction);
     }
 
