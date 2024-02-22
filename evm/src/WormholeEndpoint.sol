@@ -162,6 +162,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         uint16 recipientChain,
         uint256 deliveryPayment,
         address caller,
+        bytes32 recipientManagerAddress,
         EndpointStructs.EndpointInstruction memory instruction,
         bytes memory managerMessage
     ) internal override {
@@ -169,7 +170,11 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
             EndpointStructs.EndpointMessage memory endpointMessage,
             bytes memory encodedEndpointPayload
         ) = EndpointStructs.buildAndEncodeEndpointMessage(
-            WH_ENDPOINT_PAYLOAD_PREFIX, toWormholeFormat(caller), managerMessage, new bytes(0)
+            WH_ENDPOINT_PAYLOAD_PREFIX,
+            toWormholeFormat(caller),
+            recipientManagerAddress,
+            managerMessage,
+            new bytes(0)
         );
 
         WormholeEndpointInstruction memory weIns =
@@ -229,7 +234,10 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
             EndpointStructs.parseEndpointAndManagerMessage(WH_ENDPOINT_PAYLOAD_PREFIX, payload);
 
         _deliverToManager(
-            sourceChain, parsedEndpointMessage.sourceManagerAddress, parsedManagerMessage
+            sourceChain,
+            parsedEndpointMessage.sourceManagerAddress,
+            parsedEndpointMessage.recipientManagerAddress,
+            parsedManagerMessage
         );
     }
 
@@ -247,7 +255,10 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
             EndpointStructs.parseEndpointAndManagerMessage(WH_ENDPOINT_PAYLOAD_PREFIX, payload);
 
         _deliverToManager(
-            sourceChainId, parsedEndpointMessage.sourceManagerAddress, parsedManagerMessage
+            sourceChainId,
+            parsedEndpointMessage.sourceManagerAddress,
+            parsedEndpointMessage.recipientManagerAddress,
+            parsedManagerMessage
         );
     }
 

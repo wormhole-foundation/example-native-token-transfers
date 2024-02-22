@@ -137,6 +137,7 @@ library EndpointStructs {
     ///      The wire format is as follows:
     ///      - prefix - 4 bytes
     ///      - sourceManagerAddress - 32 bytes
+    ///      - recipientManagerAddress - 32 bytes
     ///      - managerPayloadLength - 2 bytes
     ///      - managerPayload - `managerPayloadLength` bytes
     ///      - endpointPayloadLength - 2 bytes
@@ -144,6 +145,8 @@ library EndpointStructs {
     struct EndpointMessage {
         /// @notice Address of the Manager contract that emitted this message.
         bytes32 sourceManagerAddress;
+        /// @notice Address of the Manager contract that receives this message.
+        bytes32 recipientManagerAddress;
         /// @notice Payload provided to the Endpoint contract by the Manager contract.
         bytes managerPayload;
         /// @notice Optional payload that the endpoint can encode and use for its own message passing purposes.
@@ -174,6 +177,7 @@ library EndpointStructs {
         return abi.encodePacked(
             prefix,
             m.sourceManagerAddress,
+            m.recipientManagerAddress,
             managerPayloadLength,
             m.managerPayload,
             endpointPayloadLength,
@@ -184,11 +188,13 @@ library EndpointStructs {
     function buildAndEncodeEndpointMessage(
         bytes4 prefix,
         bytes32 sourceManagerAddress,
+        bytes32 recipientManagerAddress,
         bytes memory managerMessage,
         bytes memory endpointPayload
     ) public pure returns (EndpointMessage memory, bytes memory) {
         EndpointMessage memory endpointMessage = EndpointMessage({
             sourceManagerAddress: sourceManagerAddress,
+            recipientManagerAddress: recipientManagerAddress,
             managerPayload: managerMessage,
             endpointPayload: endpointPayload
         });
@@ -217,6 +223,7 @@ library EndpointStructs {
         }
 
         (endpointMessage.sourceManagerAddress, offset) = encoded.asBytes32Unchecked(offset);
+        (endpointMessage.recipientManagerAddress, offset) = encoded.asBytes32Unchecked(offset);
         uint16 managerPayloadLength;
         (managerPayloadLength, offset) = encoded.asUint16Unchecked(offset);
         (endpointMessage.managerPayload, offset) =

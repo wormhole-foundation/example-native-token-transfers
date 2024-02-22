@@ -13,9 +13,10 @@ library ManagerHelpersLib {
     function setConfigs(
         NormalizedAmount memory inboundLimit,
         Manager manager,
+        Manager recipientManager,
         uint8 decimals
     ) internal {
-        manager.setSibling(SENDING_CHAIN_ID, toWormholeFormat(address(manager)));
-        manager.setInboundLimit(inboundLimit.denormalize(decimals), SENDING_CHAIN_ID);
+        recipientManager.setSibling(SENDING_CHAIN_ID, toWormholeFormat(address(manager)));
+        recipientManager.setInboundLimit(inboundLimit.denormalize(decimals), SENDING_CHAIN_ID);
     }
 }

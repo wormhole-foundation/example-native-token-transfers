@@ -432,7 +432,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         NormalizedAmount memory transferAmount = NormalizedAmount(50, 8);
         NormalizedAmount memory limitAmount = NormalizedAmount(100, 8);
         EndpointHelpersLib.attestEndpointsHelper(
-            user_B, 0, chainId, manager, transferAmount, limitAmount, endpoints
+            user_B, 0, chainId, manager, manager, transferAmount, limitAmount, endpoints
         );
 
         // assert that the user received tokens
@@ -474,6 +474,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
                 user_B,
                 0,
                 chainId,
+                manager,
                 manager,
                 NormalizedAmount(50, 8),
                 uint256(5).normalize(token.decimals()),
@@ -604,7 +605,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         endpoints[1] = e2;
 
         EndpointHelpersLib.attestEndpointsHelper(
-            user_A, 0, chainId, manager, transferAmount, mintAmount, endpoints
+            user_A, 0, chainId, manager, manager, transferAmount, mintAmount, endpoints
         );
 
         // assert that user_A has original amount

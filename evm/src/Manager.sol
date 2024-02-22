@@ -16,7 +16,7 @@ import "./libraries/RateLimiter.sol";
 import "./interfaces/IManager.sol";
 import "./interfaces/IManagerEvents.sol";
 import "./interfaces/INTTToken.sol";
-import "./Endpoint.sol";
+import "./interfaces/IEndpoint.sol";
 import "./EndpointRegistry.sol";
 import "./NttNormalizer.sol";
 import "./libraries/PausableOwnable.sol";
@@ -265,8 +265,12 @@ contract Manager is
         for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
             address endpointAddr = _enabledEndpoints[i];
             uint8 registeredEndpointIndex = endpointInfos[endpointAddr].index;
+            // send it to the recipient manager based on the chain
             IEndpoint(endpointAddr).sendMessage{value: priceQuotes[i]}(
-                recipientChain, endpointInstructions[registeredEndpointIndex], managerMessage
+                recipientChain,
+                endpointInstructions[registeredEndpointIndex],
+                managerMessage,
+                getSibling(recipientChain)
             );
         }
     }
@@ -703,6 +707,7 @@ contract Manager is
         return _getSiblingsStorage()[chainId_];
     }
 
+    /// @notice this
     function setSibling(uint16 siblingChainId, bytes32 siblingContract) public onlyOwner {
         if (siblingChainId == 0) {
             revert InvalidSiblingChainIdZero();
