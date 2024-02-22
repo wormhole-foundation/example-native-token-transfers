@@ -95,6 +95,12 @@ pub struct TransferBurn<'info> {
 
 // TODO: fees for relaying?
 pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<()> {
+    require_eq!(
+        ctx.accounts.common.config.mode,
+        Mode::Burning,
+        NTTError::InvalidMode
+    );
+
     let accs = ctx.accounts;
     let TransferArgs {
         amount,
@@ -106,24 +112,21 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
     // TODO: should we revert if we have dust?
     let amount = NormalizedAmount::remove_dust(amount, accs.common.mint.decimals);
 
-    match accs.common.config.mode {
-        Mode::Burning => token_interface::burn(
-            CpiContext::new_with_signer(
-                accs.common.token_program.to_account_info(),
-                token_interface::Burn {
-                    mint: accs.common.mint.to_account_info(),
-                    from: accs.common.from.to_account_info(),
-                    authority: accs.common.token_authority.to_account_info(),
-                },
-                &[&[
-                    crate::TOKEN_AUTHORITY_SEED,
-                    &[ctx.bumps.common.token_authority],
-                ]],
-            ),
-            amount,
-        )?,
-        Mode::Locking => return Err(NTTError::InvalidMode.into()),
-    }
+    token_interface::burn(
+        CpiContext::new_with_signer(
+            accs.common.token_program.to_account_info(),
+            token_interface::Burn {
+                mint: accs.common.mint.to_account_info(),
+                from: accs.common.from.to_account_info(),
+                authority: accs.common.token_authority.to_account_info(),
+            },
+            &[&[
+                crate::TOKEN_AUTHORITY_SEED,
+                &[ctx.bumps.common.token_authority],
+            ]],
+        ),
+        amount,
+    )?;
 
     insert_into_outbox(
         &mut accs.common,
@@ -162,6 +165,12 @@ pub struct TransferLock<'info> {
 // TODO: fees for relaying?
 // TODO: factor out common bits
 pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<()> {
+    require_eq!(
+        ctx.accounts.common.config.mode,
+        Mode::Locking,
+        NTTError::InvalidMode
+    );
+
     let accs = ctx.accounts;
     let TransferArgs {
         amount,
@@ -173,26 +182,23 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
     // TODO: should we revert if we have dust?
     let amount = NormalizedAmount::remove_dust(amount, accs.common.mint.decimals);
 
-    match accs.common.config.mode {
-        Mode::Burning => return Err(NTTError::InvalidMode.into()),
-        Mode::Locking => token_interface::transfer_checked(
-            CpiContext::new_with_signer(
-                accs.common.token_program.to_account_info(),
-                token_interface::TransferChecked {
-                    from: accs.common.from.to_account_info(),
-                    to: accs.custody.to_account_info(),
-                    authority: accs.common.token_authority.to_account_info(),
-                    mint: accs.common.mint.to_account_info(),
-                },
-                &[&[
-                    crate::TOKEN_AUTHORITY_SEED,
-                    &[ctx.bumps.common.token_authority],
-                ]],
-            ),
-            amount,
-            accs.common.mint.decimals,
-        )?,
-    }
+    token_interface::transfer_checked(
+        CpiContext::new_with_signer(
+            accs.common.token_program.to_account_info(),
+            token_interface::TransferChecked {
+                from: accs.common.from.to_account_info(),
+                to: accs.custody.to_account_info(),
+                authority: accs.common.token_authority.to_account_info(),
+                mint: accs.common.mint.to_account_info(),
+            },
+            &[&[
+                crate::TOKEN_AUTHORITY_SEED,
+                &[ctx.bumps.common.token_authority],
+            ]],
+        ),
+        amount,
+        accs.common.mint.decimals,
+    )?;
 
     insert_into_outbox(
         &mut accs.common,

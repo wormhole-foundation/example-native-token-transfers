@@ -94,13 +94,14 @@ impl RateLimitState {
     /// Refills the capacity by the given amount.
     /// This is used to replenish the capacity via backflows.
     pub fn refill(&mut self, now: UnixTimestamp, amount: u64) {
-        self.capacity_at_last_tx = self.capacity().saturating_add(amount).min(self.limit);
+        self.capacity_at_last_tx = self.capacity_at(now).saturating_add(amount).min(self.limit);
         self.last_tx_timestamp = now;
     }
 
     pub fn set_limit(&mut self, limit: u64) {
         let old_limit = self.limit;
-        let current_capacity = self.capacity();
+        let now = current_timestamp();
+        let current_capacity = self.capacity_at(now);
 
         self.limit = limit;
 
@@ -115,7 +116,7 @@ impl RateLimitState {
         };
 
         self.capacity_at_last_tx = new_capacity.min(limit);
-        self.last_tx_timestamp = current_timestamp();
+        self.last_tx_timestamp = now;
     }
 }
 
