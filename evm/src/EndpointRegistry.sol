@@ -26,8 +26,9 @@ abstract contract EndpointRegistry {
     /// invariant: numRegisteredEndpoints <= MAX_ENDPOINTS
     /// invariant: forall (i: uint8),
     ///   i < numRegisteredEndpoints <=> exists (a: address), endpointInfos[a].index == i
-    struct _NumRegisteredEndpoints {
-        uint8 num;
+    struct _NumEndpoints {
+        uint8 registered;
+        uint8 enabled;
     }
 
     uint8 constant MAX_ENDPOINTS = 64;
@@ -98,11 +99,7 @@ abstract contract EndpointRegistry {
         }
     }
 
-    function _getNumRegisteredEndpointsStorage()
-        internal
-        pure
-        returns (_NumRegisteredEndpoints storage $)
-    {
+    function _getNumEndpointsStorage() internal pure returns (_NumEndpoints storage $) {
         uint256 slot = uint256(NUM_REGISTERED_ENDPOINTS_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
@@ -116,14 +113,13 @@ abstract contract EndpointRegistry {
         _EnabledEndpointBitmap storage _enabledEndpointBitmap = _getEndpointBitmapStorage();
         address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
 
-        _NumRegisteredEndpoints storage _numRegisteredEndpoints =
-            _getNumRegisteredEndpointsStorage();
+        _NumEndpoints storage _numEndpoints = _getNumEndpointsStorage();
 
         if (endpoint == address(0)) {
             revert InvalidEndpointZeroAddress();
         }
 
-        if (_numRegisteredEndpoints.num >= MAX_ENDPOINTS) {
+        if (_numEndpoints.registered >= MAX_ENDPOINTS) {
             revert TooManyEndpoints();
         }
 
@@ -131,12 +127,13 @@ abstract contract EndpointRegistry {
             endpointInfos[endpoint].enabled = true;
         } else {
             endpointInfos[endpoint] =
-                EndpointInfo({registered: true, enabled: true, index: _numRegisteredEndpoints.num});
-            _numRegisteredEndpoints.num++;
+                EndpointInfo({registered: true, enabled: true, index: _numEndpoints.registered});
+            _numEndpoints.registered++;
             _getRegisteredEndpointsStorage().push(endpoint);
         }
 
         _enabledEndpoints.push(endpoint);
+        _numEndpoints.enabled++;
 
         uint64 updatedEnabledEndpointBitmap =
             _enabledEndpointBitmap.bitmap | uint64(1 << endpointInfos[endpoint].index);
@@ -171,6 +168,7 @@ abstract contract EndpointRegistry {
         }
 
         endpointInfos[endpoint].enabled = false;
+        _getNumEndpointsStorage().enabled--;
 
         uint64 updatedEnabledEndpointBitmap =
             _enabledEndpointBitmap.bitmap & uint64(~(1 << endpointInfos[endpoint].index));
@@ -180,9 +178,10 @@ abstract contract EndpointRegistry {
 
         bool removed = false;
 
-        for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
+        uint256 numEnabledEndpoints = _enabledEndpoints.length;
+        for (uint256 i = 0; i < numEnabledEndpoints; i++) {
             if (_enabledEndpoints[i] == endpoint) {
-                _enabledEndpoints[i] = _enabledEndpoints[_enabledEndpoints.length - 1];
+                _enabledEndpoints[i] = _enabledEndpoints[numEnabledEndpoints - 1];
                 _enabledEndpoints.pop();
                 removed = true;
                 break;
@@ -213,31 +212,32 @@ abstract contract EndpointRegistry {
     /// Checking these invariants is somewhat costly, but we only need to do it
     /// when modifying the endpoints, which happens infrequently.
     function _checkEndpointsInvariants() internal view {
-        _NumRegisteredEndpoints storage _numRegisteredEndpoints =
-            _getNumRegisteredEndpointsStorage();
+        _NumEndpoints storage _numEndpoints = _getNumEndpointsStorage();
         address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
 
-        for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
+        uint256 numEndpointsEnabled = _numEndpoints.enabled;
+        assert(numEndpointsEnabled == _enabledEndpoints.length);
+
+        for (uint256 i = 0; i < numEndpointsEnabled; i++) {
             _checkEndpointInvariants(_enabledEndpoints[i]);
         }
 
         // invariant: each endpoint is only enabled once
-        for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
-            for (uint256 j = i + 1; j < _enabledEndpoints.length; j++) {
+        for (uint256 i = 0; i < numEndpointsEnabled; i++) {
+            for (uint256 j = i + 1; j < numEndpointsEnabled; j++) {
                 assert(_enabledEndpoints[i] != _enabledEndpoints[j]);
             }
         }
 
         // invariant: numRegisteredEndpoints <= MAX_ENDPOINTS
-        assert(_numRegisteredEndpoints.num <= MAX_ENDPOINTS);
+        assert(_numEndpoints.registered <= MAX_ENDPOINTS);
     }
 
     // @dev Check that the endpoint is in a valid state.
     function _checkEndpointInvariants(address endpoint) private view {
         mapping(address => EndpointInfo) storage endpointInfos = _getEndpointInfosStorage();
         _EnabledEndpointBitmap storage _enabledEndpointBitmap = _getEndpointBitmapStorage();
-        _NumRegisteredEndpoints storage _numRegisteredEndpoints =
-            _getNumRegisteredEndpointsStorage();
+        _NumEndpoints storage _numEndpoints = _getNumEndpointsStorage();
         address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
 
         EndpointInfo memory endpointInfo = endpointInfos[endpoint];
@@ -251,7 +251,7 @@ abstract contract EndpointRegistry {
 
         bool endpointInEnabledEndpoints = false;
 
-        for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
+        for (uint256 i = 0; i < _numEndpoints.enabled; i++) {
             if (_enabledEndpoints[i] == endpoint) {
                 endpointInEnabledEndpoints = true;
                 break;
@@ -265,6 +265,6 @@ abstract contract EndpointRegistry {
         // invariant: endpointInfos[endpoint].enabled <=> endpoint in _enabledEndpoints
         assert(endpointInEnabledEndpoints == endpointEnabled);
 
-        assert(endpointInfo.index < _numRegisteredEndpoints.num);
+        assert(endpointInfo.index < _numEndpoints.registered);
     }
 }

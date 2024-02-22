@@ -19,6 +19,7 @@ interface IManager {
     error MessageNotApproved(bytes32 msgHash);
     error InvalidTargetChain(uint16 targetChain, uint16 thisChain);
     error ZeroAmount();
+    error InvalidRecipient();
     error BurnAmountDifferentThanBalanceDiff(uint256 burnAmount, uint256 balanceDiff);
 
     /// @notice The mode is invalid. It is neither in LOCKING or BURNING mode.
@@ -101,11 +102,14 @@ interface IManager {
     // @param recipientChain           The chain to transfer to.
     // @param endpointInstructions     An additional instruction the endpoint can forward to
     //                                 the recipient chain.
-    // @return                         The delivery prices associated with each endpoint.
+    // @param enabledEndpoints         The endpoints that are enabled for the transfer.
+    // @return                         The delivery prices associated with each endpoint, and the sum
+    //                                 of these prices.
     function quoteDeliveryPrice(
         uint16 recipientChain,
-        EndpointStructs.EndpointInstruction[] memory endpointInstructions
-    ) external view returns (uint256[] memory);
+        EndpointStructs.EndpointInstruction[] memory endpointInstructions,
+        address[] memory enabledEndpoints
+    ) external view returns (uint256[] memory, uint256);
 
     function nextMessageSequence() external view returns (uint64);
 

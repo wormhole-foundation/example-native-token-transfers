@@ -130,8 +130,7 @@ contract Manager is
     /// @notice Returns the number of Endpoints that must attest to a msgId for
     ///         it to be considered valid and acted upon.
     function getThreshold() public view returns (uint8) {
-        _Threshold storage _threshold = _getThresholdStorage();
-        return _threshold.num;
+        return _getThresholdStorage().num;
     }
 
     function setEndpoint(address endpoint) external onlyOwner {
@@ -155,19 +154,17 @@ contract Manager is
             _threshold.num = 1;
         }
 
-        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
-
-        emit EndpointAdded(endpoint, _enabledEndpoints.length, _threshold.num);
+        emit EndpointAdded(endpoint, _getNumEndpointsStorage().enabled, _threshold.num);
     }
 
     function removeEndpoint(address endpoint) external onlyOwner {
         _removeEndpoint(endpoint);
 
         _Threshold storage _threshold = _getThresholdStorage();
-        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
+        uint8 numEnabledEndpoints = _getNumEndpointsStorage().enabled;
 
-        if (_enabledEndpoints.length < _threshold.num) {
-            _threshold.num = uint8(_enabledEndpoints.length);
+        if (numEnabledEndpoints < _threshold.num) {
+            _threshold.num = numEnabledEndpoints;
         }
 
         emit EndpointRemoved(endpoint, _threshold.num);
@@ -234,21 +231,24 @@ contract Manager is
     ///      This method should return an array of delivery prices corresponding to each endpoint.
     function quoteDeliveryPrice(
         uint16 recipientChain,
-        EndpointStructs.EndpointInstruction[] memory endpointInstructions
-    ) public view returns (uint256[] memory) {
-        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
+        EndpointStructs.EndpointInstruction[] memory endpointInstructions,
+        address[] memory enabledEndpoints
+    ) public view returns (uint256[] memory, uint256) {
+        uint256 numEnabledEndpoints = enabledEndpoints.length;
         mapping(address => EndpointInfo) storage endpointInfos = _getEndpointInfosStorage();
 
-        uint256[] memory priceQuotes = new uint256[](_enabledEndpoints.length);
-        for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
-            address endpointAddr = _enabledEndpoints[i];
+        uint256[] memory priceQuotes = new uint256[](numEnabledEndpoints);
+        uint256 totalPriceQuote = 0;
+        for (uint256 i = 0; i < numEnabledEndpoints; i++) {
+            address endpointAddr = enabledEndpoints[i];
             uint8 registeredEndpointIndex = endpointInfos[endpointAddr].index;
-            uint256 endpointPriceQuote = IEndpoint(_enabledEndpoints[i]).quoteDeliveryPrice(
+            uint256 endpointPriceQuote = IEndpoint(endpointAddr).quoteDeliveryPrice(
                 recipientChain, endpointInstructions[registeredEndpointIndex]
             );
             priceQuotes[i] = endpointPriceQuote;
+            totalPriceQuote += endpointPriceQuote;
         }
-        return priceQuotes;
+        return (priceQuotes, totalPriceQuote);
     }
 
     /// @dev This will either cross-call or internal call, depending on
@@ -257,13 +257,14 @@ contract Manager is
         uint16 recipientChain,
         uint256[] memory priceQuotes,
         EndpointStructs.EndpointInstruction[] memory endpointInstructions,
+        address[] memory enabledEndpoints,
         bytes memory managerMessage
     ) internal {
-        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
+        uint256 numEnabledEndpoints = enabledEndpoints.length;
         mapping(address => EndpointInfo) storage endpointInfos = _getEndpointInfosStorage();
         // call into endpoint contracts to send the message
-        for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
-            address endpointAddr = _enabledEndpoints[i];
+        for (uint256 i = 0; i < numEnabledEndpoints; i++) {
+            address endpointAddr = enabledEndpoints[i];
             uint8 registeredEndpointIndex = endpointInfos[endpointAddr].index;
             // send it to the recipient manager based on the chain
             IEndpoint(endpointAddr).sendMessage{value: priceQuotes[i]}(
@@ -415,9 +416,14 @@ contract Manager is
             revert ZeroAmount();
         }
 
+        if (recipient == bytes32(0)) {
+            revert InvalidRecipient();
+        }
+
         // parse the instructions up front to ensure they:
         // - are encoded correctly
         // - follow payload length restrictions
+
         EndpointStructs.parseEndpointInstructions(endpointInstructions);
 
         {
@@ -528,10 +534,13 @@ contract Manager is
         EndpointStructs.EndpointInstruction[] memory sortedInstructions = EndpointStructs
             .sortEndpointInstructions(EndpointStructs.parseEndpointInstructions(endpointInstructions));
 
-        uint256[] memory priceQuotes = quoteDeliveryPrice(recipientChain, sortedInstructions);
+        // cache enabled endpoints to avoid multiple storage reads
+        address[] memory enabledEndpoints = _getEnabledEndpointsStorage();
+
+        (uint256[] memory priceQuotes, uint256 totalPriceQuote) =
+            quoteDeliveryPrice(recipientChain, sortedInstructions, enabledEndpoints);
         {
             // check up front that msg.value will cover the delivery price
-            uint256 totalPriceQuote = arraySum(priceQuotes);
             if (msg.value < totalPriceQuote) {
                 revert DeliveryPaymentTooLow(totalPriceQuote, msg.value);
             }
@@ -543,22 +552,22 @@ contract Manager is
             }
         }
 
-        bytes memory encodedTransferPayload = EndpointStructs.encodeNativeTokenTransfer(
-            EndpointStructs.NativeTokenTransfer(
-                amount, toWormholeFormat(token), recipient, recipientChain
-            )
-        );
-
         // construct the ManagerMessage payload
         bytes memory encodedManagerPayload = EndpointStructs.encodeManagerMessage(
             EndpointStructs.ManagerMessage(
-                sequence, toWormholeFormat(sender), encodedTransferPayload
+                sequence,
+                toWormholeFormat(sender),
+                EndpointStructs.encodeNativeTokenTransfer(
+                    EndpointStructs.NativeTokenTransfer(
+                        amount, toWormholeFormat(token), recipient, recipientChain
+                    )
+                )
             )
         );
 
         // send the message
         _sendMessageToEndpoints(
-            recipientChain, priceQuotes, sortedInstructions, encodedManagerPayload
+            recipientChain, priceQuotes, sortedInstructions, enabledEndpoints, encodedManagerPayload
         );
 
         emit TransferSent(recipient, nttDenormalize(amount), recipientChain, sequence);
@@ -786,25 +795,24 @@ contract Manager is
     }
 
     function _checkRegisteredEndpointsInvariants() internal view {
-        if (_getRegisteredEndpointsStorage().length != _getNumRegisteredEndpointsStorage().num) {
+        if (_getRegisteredEndpointsStorage().length != _getNumEndpointsStorage().registered) {
             revert RetrievedIncorrectRegisteredEndpoints(
-                _getRegisteredEndpointsStorage().length, _getNumRegisteredEndpointsStorage().num
+                _getRegisteredEndpointsStorage().length, _getNumEndpointsStorage().registered
             );
         }
     }
 
     function _checkThresholdInvariants() internal view {
-        _Threshold storage _threshold = _getThresholdStorage();
-        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
-        address[] storage _registeredEndpoints = _getRegisteredEndpointsStorage();
+        uint8 threshold = _getThresholdStorage().num;
+        _NumEndpoints memory numEndpoints = _getNumEndpointsStorage();
 
         // invariant: threshold <= enabledEndpoints.length
-        if (_threshold.num > _enabledEndpoints.length) {
-            revert ThresholdTooHigh(_threshold.num, _enabledEndpoints.length);
+        if (threshold > numEndpoints.enabled) {
+            revert ThresholdTooHigh(threshold, numEndpoints.enabled);
         }
 
-        if (_registeredEndpoints.length > 0) {
-            if (_threshold.num == 0) {
+        if (numEndpoints.registered > 0) {
+            if (threshold == 0) {
                 revert ZeroThreshold();
             }
         }
