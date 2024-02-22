@@ -10,7 +10,7 @@ import "./interfaces/IWormholeEndpoint.sol";
 import "./interfaces/ISpecialRelayer.sol";
 import "./Endpoint.sol";
 
-abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
+contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
     using BytesParsing for bytes;
 
     uint256 public constant GAS_LIMIT = 500000;
