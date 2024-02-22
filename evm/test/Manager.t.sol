@@ -254,12 +254,14 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         (managerMessage, endpointMessage) = EndpointHelpersLib
             .buildEndpointMessageWithManagerPayload(0, bytes32(0), sibling, abi.encode("payload"));
 
-        e1.receiveMessage(endpointMessage);
-        e1.receiveMessage(endpointMessage);
-
         bytes32 hash = EndpointStructs.managerMessageDigest(
             EndpointHelpersLib.SENDING_CHAIN_ID, managerMessage
         );
+
+        e1.receiveMessage(endpointMessage);
+        vm.expectRevert(abi.encodeWithSignature("EndpointAlreadyAttestedToMessage(bytes32)", hash));
+        e1.receiveMessage(endpointMessage);
+
         // can't double vote
         assertEq(manager.messageAttestations(hash), 1);
     }

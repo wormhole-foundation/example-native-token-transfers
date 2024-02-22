@@ -13,7 +13,6 @@ import "./Endpoint.sol";
 abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
     using BytesParsing for bytes;
 
-    // TODO -- fix this after some testing
     uint256 public constant GAS_LIMIT = 500000;
     uint8 public constant CONSISTENCY_LEVEL = 1;
 

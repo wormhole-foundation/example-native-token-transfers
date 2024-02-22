@@ -38,6 +38,7 @@ contract Manager is
     error RefundFailed(uint256 refundAmount);
     error CannotRenounceManagerOwnership(address owner);
     error UnexpectedOwner(address expectedOwner, address owner);
+    error EndpointAlreadyAttestedToMessage(bytes32 managerMessageHash);
 
     address public immutable token;
     address public immutable deployer;
@@ -191,9 +192,7 @@ contract Manager is
         if (msg.sender != deployer) {
             revert UnexpectedOwner(deployer, msg.sender);
         }
-        // TODO: msg.sender may not be the right address for both
         __PausedOwnable_init(msg.sender, msg.sender);
-        // TODO: check if it's safe to not initialise reentrancy guard
         __ReentrancyGuard_init();
     }
 
@@ -204,7 +203,6 @@ contract Manager is
     }
 
     function _migrate() internal virtual override {
-        // TODO: document (migration code)
         _checkThresholdInvariants();
         _checkEndpointsInvariants();
     }
@@ -273,7 +271,6 @@ contract Manager is
         }
     }
 
-    // TODO: do we want additional information (like chain etc)
     function isMessageApproved(bytes32 digest) public view returns (bool) {
         uint8 threshold = getThreshold();
         return messageAttestations(digest) >= threshold && threshold > 0;
@@ -589,7 +586,6 @@ contract Manager is
 
     /// @dev Called after a message has been sufficiently verified to execute the command in the message.
     ///      This function will decode the payload as an ManagerMessage to extract the sequence, msgType, and other parameters.
-    /// TODO: we could make this public. all the security checks are done here
     function _executeMsg(
         uint16 sourceChainId,
         bytes32 sourceManagerAddress,
@@ -722,6 +718,10 @@ contract Manager is
         emit SiblingUpdated(siblingChainId, oldSiblingContract, siblingContract);
     }
 
+    function endpointAttestedToMessage(bytes32 digest, uint8 index) public view returns (bool) {
+        return _getMessageAttestationsStorage()[digest].attestedEndpoints & uint64(1 << index) == 1;
+    }
+
     /// @dev Called by an Endpoint contract to deliver a verified attestation.
     ///      This function enforces attestation threshold and replay logic for messages.
     ///      Once all validations are complete, this function calls _executeMsg to execute the command specified by the message.
@@ -735,9 +735,16 @@ contract Manager is
         bytes32 managerMessageHash = EndpointStructs.managerMessageDigest(sourceChainId, payload);
 
         // set the attested flag for this endpoint.
-        // TODO: this allows an endpoint to attest to a message multiple times.
-        // This is fine, because attestation is idempotent (bitwise or 1), but
-        // maybe we want to revert anyway?
+        // NOTE: Attestation is idempotent (bitwise or 1), but we revert
+        // anyway to ensure that the client does not continue to initiate calls
+        // to receive the same message through the same endpoint.
+        if (
+            endpointAttestedToMessage(
+                managerMessageHash, _getEndpointInfosStorage()[msg.sender].index
+            )
+        ) {
+            revert EndpointAlreadyAttestedToMessage(managerMessageHash);
+        }
         _setEndpointAttestedToMessage(managerMessageHash, msg.sender);
 
         if (isMessageApproved(managerMessageHash)) {

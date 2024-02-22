@@ -186,7 +186,6 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
             newCurrentCapacity = currentCapacity.add(difference);
         }
 
-        // TODO: change this to min
         if (newCurrentCapacity.gt(newLimit)) {
             revert CapacityCannotExceedLimit(newCurrentCapacity, newLimit);
         }
