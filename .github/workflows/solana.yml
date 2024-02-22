@@ -125,5 +125,5 @@ jobs:
           run: yarn
           working-directory: ./solana
         - name: anchor test --arch sbf
-          run: anchor test --arch sbf
+          run: make test-anchor
           working-directory: ./solana
