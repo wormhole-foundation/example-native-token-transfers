@@ -7,9 +7,9 @@ use example_native_token_transfers::{
     bitmap::Bitmap,
     chain_id::ChainId,
     config::Mode,
-    endpoints::wormhole::messages::WormholeEndpoint,
+    endpoints::wormhole::{messages::WormholeEndpoint, ReleaseOutboundArgs},
     error::NTTError,
-    instructions::{ReleaseOutboundArgs, TransferArgs},
+    instructions::TransferArgs,
     messages::{EndpointMessage, ManagerMessage, NativeTokenTransfer},
     normalized_amount::NormalizedAmount,
     queue::outbox::{OutboxItem, OutboxRateLimit},
@@ -24,17 +24,17 @@ use wormhole_anchor_sdk::wormhole::PostedVaa;
 
 use crate::{
     common::submit::Submittable,
-    sdk::instructions::{
-        admin::{set_paused, SetPaused},
-        transfer::{approve_token_authority, transfer},
+    sdk::{
+        endpoints::wormhole::instructions::release_outbound::{release_outbound, ReleaseOutbound},
+        instructions::{
+            admin::{set_paused, SetPaused},
+            transfer::{approve_token_authority, transfer},
+        },
     },
 };
 use crate::{
     common::{query::GetAccountDataAnchor, setup::OUTBOUND_LIMIT},
-    sdk::instructions::{
-        release_outbound::{release_outbound, ReleaseOutbound},
-        transfer::Transfer,
-    },
+    sdk::instructions::transfer::Transfer,
 };
 
 pub mod common;

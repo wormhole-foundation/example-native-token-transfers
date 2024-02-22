@@ -39,13 +39,6 @@ pub mod example_native_token_transfers {
         instructions::transfer_lock(ctx, args)
     }
 
-    pub fn release_outbound(
-        ctx: Context<ReleaseOutbound>,
-        args: ReleaseOutboundArgs,
-    ) -> Result<()> {
-        instructions::release_outbound(ctx, args)
-    }
-
     pub fn redeem(ctx: Context<Redeem>, args: RedeemArgs) -> Result<()> {
         instructions::redeem(ctx, args)
     }
@@ -109,5 +102,12 @@ pub mod example_native_token_transfers {
 
     pub fn receive_wormhole_message(ctx: Context<ReceiveMessage>) -> Result<()> {
         endpoints::wormhole::instructions::receive_message(ctx)
+    }
+
+    pub fn release_wormhole_outbound(
+        ctx: Context<ReleaseOutbound>,
+        args: ReleaseOutboundArgs,
+    ) -> Result<()> {
+        endpoints::wormhole::instructions::release_outbound(ctx, args)
     }
 }

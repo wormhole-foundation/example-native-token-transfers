@@ -1,6 +1,6 @@
 use anchor_lang::{prelude::*, InstructionData};
 use example_native_token_transfers::{
-    accounts::NotPausedConfig, instructions::ReleaseOutboundArgs,
+    accounts::NotPausedConfig, endpoints::wormhole::ReleaseOutboundArgs,
 };
 use solana_sdk::{instruction::Instruction, sysvar::SysvarId};
 
@@ -16,7 +16,7 @@ pub fn release_outbound(
     release_outbound: ReleaseOutbound,
     args: ReleaseOutboundArgs,
 ) -> Instruction {
-    let data = example_native_token_transfers::instruction::ReleaseOutbound { args };
+    let data = example_native_token_transfers::instruction::ReleaseWormholeOutbound { args };
     let accounts = example_native_token_transfers::accounts::ReleaseOutbound {
         payer: release_outbound.payer,
         config: NotPausedConfig {

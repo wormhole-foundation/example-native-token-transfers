@@ -352,7 +352,7 @@ export class NTT {
     const whAccs = getWormholeDerivedAccounts(this.program.programId, this.wormholeId)
 
     return await this.program.methods
-      .releaseOutbound({
+      .releaseWormholeOutbound({
         revertOnDelay: args.revertOnDelay
       })
       .accounts({
