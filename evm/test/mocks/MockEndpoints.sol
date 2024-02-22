@@ -9,8 +9,17 @@ contract MockWormholeEndpointContract is WormholeEndpoint {
         address manager,
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
-        address specialRelayerAddr
-    ) WormholeEndpoint(manager, wormholeCoreBridge, wormholeRelayerAddr, specialRelayerAddr) {}
+        address specialRelayerAddr,
+        uint8 _consistencyLevel
+    )
+        WormholeEndpoint(
+            manager,
+            wormholeCoreBridge,
+            wormholeRelayerAddr,
+            specialRelayerAddr,
+            _consistencyLevel
+        )
+    {}
 
     /// @dev Override the [`transferOwnership`] method from OwnableUpgradeable
     /// to ensure owner of this contract is in sync with the onwer of the Manager contract.
@@ -30,8 +39,17 @@ contract MockWormholeEndpointMigrateBasic is WormholeEndpoint {
         address manager,
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
-        address specialRelayerAddr
-    ) WormholeEndpoint(manager, wormholeCoreBridge, wormholeRelayerAddr, specialRelayerAddr) {}
+        address specialRelayerAddr,
+        uint8 _consistencyLevel
+    )
+        WormholeEndpoint(
+            manager,
+            wormholeCoreBridge,
+            wormholeRelayerAddr,
+            specialRelayerAddr,
+            _consistencyLevel
+        )
+    {}
 
     function _migrate() internal pure override {
         revert("Proper migrate called");
@@ -43,8 +61,17 @@ contract MockWormholeEndpointImmutableAllow is WormholeEndpoint {
         address manager,
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
-        address specialRelayerAddr
-    ) WormholeEndpoint(manager, wormholeCoreBridge, wormholeRelayerAddr, specialRelayerAddr) {}
+        address specialRelayerAddr,
+        uint8 _consistencyLevel
+    )
+        WormholeEndpoint(
+            manager,
+            wormholeCoreBridge,
+            wormholeRelayerAddr,
+            specialRelayerAddr,
+            _consistencyLevel
+        )
+    {}
 
     // Allow for the immutables to be migrated
     function _migrate() internal override {
@@ -62,8 +89,17 @@ contract MockWormholeEndpointLayoutChange is WormholeEndpoint {
         address manager,
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
-        address specialRelayerAddr
-    ) WormholeEndpoint(manager, wormholeCoreBridge, wormholeRelayerAddr, specialRelayerAddr) {}
+        address specialRelayerAddr,
+        uint8 _consistencyLevel
+    )
+        WormholeEndpoint(
+            manager,
+            wormholeCoreBridge,
+            wormholeRelayerAddr,
+            specialRelayerAddr,
+            _consistencyLevel
+        )
+    {}
 
     function setData() public {
         a = address(0x1);

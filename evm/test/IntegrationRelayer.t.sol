@@ -73,6 +73,7 @@ contract TestEndToEndRelayer is
 
     uint16 constant chainId1 = 4;
     uint16 constant chainId2 = 5;
+    uint8 constant FAST_CONSISTENCY_LEVEL = 200;
 
     WormholeSimulator guardian;
     uint256 initialBlockTimestamp;
@@ -102,7 +103,8 @@ contract TestEndToEndRelayer is
             address(managerChain1),
             address(chainInfosTestnet[chainId1].wormhole),
             address(relayerSource),
-            address(0x0)
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL
         );
 
         wormholeEndpointChain1 = MockWormholeEndpointContract(
@@ -132,7 +134,8 @@ contract TestEndToEndRelayer is
             address(managerChain2),
             address(chainInfosTestnet[chainId2].wormhole),
             address(relayerTarget),
-            address(0x0)
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL
         );
 
         wormholeEndpointChain2 = MockWormholeEndpointContract(
@@ -406,6 +409,7 @@ contract TestRelayerEndToEndManual is
 
     uint16 constant chainId1 = 4;
     uint16 constant chainId2 = 5;
+    uint8 constant FAST_CONSISTENCY_LEVEL = 200;
 
     uint256 constant DEVNET_GUARDIAN_PK =
         0xcfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0;
@@ -436,7 +440,11 @@ contract TestRelayerEndToEndManual is
         managerChain1.initialize();
 
         wormholeEndpointChain1 = new MockWormholeEndpointContract(
-            address(managerChain1), address(wormhole), address(relayer), address(0x0)
+            address(managerChain1),
+            address(wormhole),
+            address(relayer),
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL
         );
         wormholeEndpointChain1 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain1), ""))
@@ -460,7 +468,8 @@ contract TestRelayerEndToEndManual is
             address(managerChain2),
             address(wormhole),
             address(relayer), // TODO - add support for this later
-            address(0x0) // TODO - add support for this later
+            address(0x0), // TODO - add support for this later
+            FAST_CONSISTENCY_LEVEL
         );
         wormholeEndpointChain2 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain2), ""))

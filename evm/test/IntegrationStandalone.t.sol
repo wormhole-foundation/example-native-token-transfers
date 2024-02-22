@@ -34,6 +34,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
 
     uint16 constant chainId1 = 7;
     uint16 constant chainId2 = 100;
+    uint8 constant FAST_CONSISTENCY_LEVEL = 200;
 
     uint16 constant SENDING_CHAIN_ID = 1;
     uint256 constant DEVNET_GUARDIAN_PK =
@@ -67,7 +68,11 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         managerChain1.initialize();
 
         WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointContract(
-            address(managerChain1), address(wormhole), address(relayer), address(0x0)
+            address(managerChain1),
+            address(wormhole),
+            address(relayer),
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL
         );
         wormholeEndpointChain1 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain1Implementation), ""))
@@ -89,7 +94,11 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         managerChain2.initialize();
 
         WormholeEndpoint wormholeEndpointChain2Implementation = new MockWormholeEndpointContract(
-            address(managerChain2), address(wormhole), address(relayer), address(0x0)
+            address(managerChain2),
+            address(wormhole),
+            address(relayer),
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL
         );
         wormholeEndpointChain2 = MockWormholeEndpointContract(
             address(new ERC1967Proxy(address(wormholeEndpointChain2Implementation), ""))
@@ -406,7 +415,11 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
 
         // Dual endpoint setup
         WormholeEndpoint wormholeEndpointChain1_2 = new MockWormholeEndpointContract(
-            address(managerChain1), address(wormhole), address(relayer), address(0x0)
+            address(managerChain1),
+            address(wormhole),
+            address(relayer),
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL
         );
 
         wormholeEndpointChain1_2 = MockWormholeEndpointContract(
@@ -419,7 +432,11 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
 
         // Dual endpoint setup
         WormholeEndpoint wormholeEndpointChain2_2 = new MockWormholeEndpointContract(
-            address(managerChain2), address(wormhole), address(relayer), address(0x0)
+            address(managerChain2),
+            address(wormhole),
+            address(relayer),
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL
         );
 
         wormholeEndpointChain2_2 = MockWormholeEndpointContract(

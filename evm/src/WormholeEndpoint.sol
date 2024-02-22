@@ -14,7 +14,7 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
     using BytesParsing for bytes;
 
     uint256 public constant GAS_LIMIT = 500000;
-    uint8 public constant CONSISTENCY_LEVEL = 1;
+    uint8 public immutable consistencyLevel;
 
     /// @dev Prefix for all EndpointMessage payloads
     ///      This is 0x99'E''W''H'
@@ -116,12 +116,14 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
         address manager,
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
-        address specialRelayerAddr
+        address specialRelayerAddr,
+        uint8 _consistencyLevel
     ) Endpoint(manager) {
         wormhole = IWormhole(wormholeCoreBridge);
         wormholeRelayer = IWormholeRelayer(wormholeRelayerAddr);
         specialRelayer = ISpecialRelayer(specialRelayerAddr);
         wormholeEndpoint_evmChainId = block.chainid;
+        consistencyLevel = _consistencyLevel;
     }
 
     function _checkInvalidRelayingConfig(uint16 chainId) internal view returns (bool) {
@@ -189,12 +191,12 @@ abstract contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeRece
                 GAS_LIMIT
             );
         } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
-            uint64 sequence = wormhole.publishMessage(0, encodedEndpointPayload, CONSISTENCY_LEVEL);
+            uint64 sequence = wormhole.publishMessage(0, encodedEndpointPayload, consistencyLevel);
             specialRelayer.requestDelivery{value: deliveryPayment}(
                 getManagerToken(), recipientChain, 0, sequence
             );
         } else {
-            wormhole.publishMessage(0, encodedEndpointPayload, CONSISTENCY_LEVEL);
+            wormhole.publishMessage(0, encodedEndpointPayload, consistencyLevel);
         }
 
         emit SendEndpointMessage(recipientChain, endpointMessage);
