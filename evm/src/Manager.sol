@@ -196,21 +196,14 @@ contract Manager is
         __ReentrancyGuard_init();
     }
 
-<<<<<<< HEAD
+
     function _initialize() internal virtual override {
-=======
-    function _initialize() internal override {
->>>>>>> 897006f (fix: separate Endpoint and Manager)
         __Manager_init();
         _checkThresholdInvariants();
         _checkEndpointsInvariants();
     }
 
     function _migrate() internal virtual override {
-<<<<<<< HEAD
-=======
-        // TODO: document (migration code)
->>>>>>> 897006f (fix: separate Endpoint and Manager)
         _checkThresholdInvariants();
         _checkEndpointsInvariants();
     }
@@ -243,11 +236,7 @@ contract Manager is
     function quoteDeliveryPrice(
         uint16 recipientChain,
         EndpointStructs.EndpointInstruction[] memory endpointInstructions
-<<<<<<< HEAD
     ) public view returns (uint256[] memory) {
-=======
-    ) public view virtual returns (uint256[] memory) {
->>>>>>> 897006f (fix: separate Endpoint and Manager)
         address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
         mapping(address => EndpointInfo) storage endpointInfos = _getEndpointInfosStorage();
 
@@ -270,11 +259,7 @@ contract Manager is
         uint256[] memory priceQuotes,
         EndpointStructs.EndpointInstruction[] memory endpointInstructions,
         bytes memory managerMessage
-<<<<<<< HEAD
     ) internal {
-=======
-    ) internal virtual {
->>>>>>> 897006f (fix: separate Endpoint and Manager)
         address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
         mapping(address => EndpointInfo) storage endpointInfos = _getEndpointInfosStorage();
         // call into endpoint contracts to send the message
@@ -287,12 +272,7 @@ contract Manager is
         }
     }
 
-<<<<<<< HEAD
     function isMessageApproved(bytes32 digest) public view returns (bool) {
-=======
-    // TODO: do we want additional information (like chain etc)
-    function isMessageApproved(bytes32 digest) public view virtual returns (bool) {
->>>>>>> 897006f (fix: separate Endpoint and Manager)
         uint8 threshold = getThreshold();
         return messageAttestations(digest) >= threshold && threshold > 0;
     }
@@ -739,16 +719,10 @@ contract Manager is
         emit SiblingUpdated(siblingChainId, oldSiblingContract, siblingContract);
     }
 
-<<<<<<< HEAD
     function endpointAttestedToMessage(bytes32 digest, uint8 index) public view returns (bool) {
         return _getMessageAttestationsStorage()[digest].attestedEndpoints & uint64(1 << index) == 1;
     }
 
-=======
-    /// @dev Called by an Endpoint contract to deliver a verified attestation.
-    ///      This function enforces attestation threshold and replay logic for messages.
-    ///      Once all validations are complete, this function calls _executeMsg to execute the command specified by the message.
->>>>>>> 897006f (fix: separate Endpoint and Manager)
     function attestationReceived(
         uint16 sourceChainId,
         bytes32 sourceManagerAddress,
@@ -759,7 +733,6 @@ contract Manager is
         bytes32 managerMessageHash = EndpointStructs.managerMessageDigest(sourceChainId, payload);
 
         // set the attested flag for this endpoint.
-<<<<<<< HEAD
         // NOTE: Attestation is idempotent (bitwise or 1), but we revert
         // anyway to ensure that the client does not continue to initiate calls
         // to receive the same message through the same endpoint.
@@ -774,15 +747,6 @@ contract Manager is
 
         if (isMessageApproved(managerMessageHash)) {
             executeMsg(sourceChainId, sourceManagerAddress, payload);
-=======
-        // TODO: this allows an endpoint to attest to a message multiple times.
-        // This is fine, because attestation is idempotent (bitwise or 1), but
-        // maybe we want to revert anyway?
-        _setEndpointAttestedToMessage(managerMessageHash, msg.sender);
-
-        if (isMessageApproved(managerMessageHash)) {
-            _executeMsg(sourceChainId, sourceManagerAddress, payload);
->>>>>>> 897006f (fix: separate Endpoint and Manager)
         }
     }
 
