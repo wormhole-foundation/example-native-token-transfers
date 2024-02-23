@@ -56,7 +56,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         manager = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         manager.initialize();
 
-        managerOther = MockManagerContract(address(new ERC1967Proxy(address(otherImplementation), "")));
+        managerOther =
+            MockManagerContract(address(new ERC1967Proxy(address(otherImplementation), "")));
         managerOther.initialize();
     }
 
