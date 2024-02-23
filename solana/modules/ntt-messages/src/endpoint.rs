@@ -19,6 +19,7 @@ pub trait Endpoint {
 )]
 pub struct EndpointMessageData<A: MaybeSpace> {
     pub source_manager: [u8; 32],
+    pub recipient_manager: [u8; 32],
     pub manager_payload: ManagerMessage<A>,
 }
 
@@ -70,6 +71,7 @@ where
 {
     pub fn new(
         source_manager: [u8; 32],
+        recipient_manager: [u8; 32],
         manager_payload: ManagerMessage<A>,
         endpoint_payload: Vec<u8>,
     ) -> Self {
@@ -77,6 +79,7 @@ where
             _phantom: PhantomData,
             message_data: EndpointMessageData {
                 source_manager,
+                recipient_manager,
                 manager_payload,
             },
             endpoint_payload,
@@ -112,6 +115,7 @@ where
         }
 
         let source_manager = Readable::read(reader)?;
+        let recipient_manager = Readable::read(reader)?;
         // TODO: we need a way to easily check that decoding the payload
         // consumes the expected amount of bytes
         let _manager_payload_len: u16 = Readable::read(reader)?;
@@ -122,6 +126,7 @@ where
 
         Ok(EndpointMessage::new(
             source_manager,
+            recipient_manager,
             manager_payload,
             endpoint_payload,
         ))
@@ -148,6 +153,7 @@ where
             message_data:
                 EndpointMessageData {
                     source_manager,
+                    recipient_manager,
                     manager_payload,
                 },
             endpoint_payload,
@@ -155,6 +161,7 @@ where
 
         E::PREFIX.write(writer)?;
         source_manager.write(writer)?;
+        recipient_manager.write(writer)?;
         let len: u16 = u16::try_from(manager_payload.written_size()).expect("u16 overflow");
         len.write(writer)?;
         // TODO: review this in wormhole-io. The written_size logic is error prone. Instead,
@@ -180,7 +187,7 @@ mod test {
     //
     #[test]
     fn test_deserialize_endpoint_message() {
-        let data = hex::decode("9945ff10042942fafabe00000000000000000000000000000000000000000000000000000079000000367999a1014667921341234300000000000000000000000000000000000000000000000000004f994e545407000000000012d687beefface00000000000000000000000000000000000000000000000000000000feebcafe0000000000000000000000000000000000000000000000000000000000110000").unwrap();
+        let data = hex::decode("9945ff10042942fafabe0000000000000000000000000000000000000000000000000000042942fababe00000000000000000000000000000000000000000000000000000079000000367999a1014667921341234300000000000000000000000000000000000000000000000000004f994e545407000000000012d687beefface00000000000000000000000000000000000000000000000000000000feebcafe0000000000000000000000000000000000000000000000000000000000110000").unwrap();
         let mut vec = &data[..];
         let message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
             TypePrefixedPayload::read_payload(&mut vec).unwrap();
@@ -190,6 +197,10 @@ mod test {
             message_data: EndpointMessageData {
                 source_manager: [
                     0x04, 0x29, 0x42, 0xFA, 0xFA, 0xBE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                ],
+                recipient_manager: [
+                    0x04, 0x29, 0x42, 0xFA, 0xBA, 0xBE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 ],
                 manager_payload: ManagerMessage {

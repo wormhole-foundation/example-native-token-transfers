@@ -90,6 +90,7 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, args: ReleaseOutboundArgs
     let message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> = EndpointMessage::new(
         // TODO: should we just put the ntt id here statically?
         accs.outbox_item.to_account_info().owner.to_bytes(),
+        accs.outbox_item.recipient_manager,
         ManagerMessage {
             sequence: accs.outbox_item.sequence,
             sender: accs.outbox_item.sender.to_bytes(),

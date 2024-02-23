@@ -32,8 +32,10 @@ pub struct Redeem<'info> {
     pub sibling: Account<'info, ManagerSibling>,
 
     #[account(
-        // check that the messages is targeted to this chain
+        // check that the message is targeted to this chain
         constraint = endpoint_message.message.manager_payload.payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
+        // check that we're the intended recipient
+        constraint = endpoint_message.message.recipient_manager == crate::ID.to_bytes() @ NTTError::InvalidRecipientManager,
         // NOTE: we don't replay protect VAAs. Instead, we replay protect
         // executing the messages themselves with the [`released`] flag.
         owner = endpoint.endpoint_address,

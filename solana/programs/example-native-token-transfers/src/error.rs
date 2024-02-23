@@ -15,6 +15,8 @@ pub enum NTTError {
     InvalidEndpointSibling,
     #[msg("InvalidManagerSibling")]
     InvalidManagerSibling,
+    #[msg("InvalidRecipientManager")]
+    InvalidRecipientManager,
     #[msg("TransferAlreadyRedeemed")]
     TransferAlreadyRedeemed,
     #[msg("TransferNotApproved")]

@@ -5,6 +5,7 @@ use anchor_lang::prelude::*;
 use common::setup::{TestData, OTHER_CHAIN, OTHER_ENDPOINT, OTHER_MANAGER, THIS_CHAIN};
 use example_native_token_transfers::{
     config::Mode,
+    error::NTTError,
     instructions::{RedeemArgs, TransferArgs},
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit},
 };
@@ -13,8 +14,9 @@ use ntt_messages::{
     manager::ManagerMessage, normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer,
 };
 use sdk::endpoints::wormhole::instructions::receive_message::ReceiveMessage;
+use solana_program::instruction::InstructionError;
 use solana_program_test::*;
-use solana_sdk::{signature::Keypair, signer::Signer};
+use solana_sdk::{signature::Keypair, signer::Signer, transaction::TransactionError};
 use wormhole_sdk::{Address, Vaa};
 
 use crate::{
@@ -45,6 +47,7 @@ fn init_transfer_accs_args(
 ) -> (Transfer, TransferArgs) {
     let accs = Transfer {
         payer: ctx.payer.pubkey(),
+        sibling: test_data.ntt.sibling(OTHER_CHAIN),
         mint: test_data.mint,
         from: test_data.user_token_account,
         from_authority: test_data.user.pubkey(),
@@ -101,6 +104,10 @@ async fn post_transfer_vaa(
     test_data: &TestData,
     sequence: u64,
     amount: u64,
+    // TODO: this is used for a negative testing of the recipient manager
+    // address. this should not be done in the cancel flow tests, but instead a
+    // dedicated receive transfer test suite
+    recipient_manager: Option<&Pubkey>,
     recipient: &Keypair,
 ) -> (Pubkey, ManagerMessage<NativeTokenTransfer>) {
     let manager_message = ManagerMessage {
@@ -116,8 +123,16 @@ async fn post_transfer_vaa(
             to: recipient.pubkey().to_bytes(),
         },
     };
+
     let endpoint_message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
-        EndpointMessage::new(OTHER_MANAGER, manager_message.clone(), vec![]);
+        EndpointMessage::new(
+            OTHER_MANAGER,
+            recipient_manager
+                .map(|k| k.to_bytes())
+                .unwrap_or_else(|| test_data.ntt.program.to_bytes()),
+            manager_message.clone(),
+            vec![],
+        );
 
     let vaa = Vaa {
         version: 1,
@@ -160,8 +175,8 @@ async fn test_cancel() {
     let recipient = Keypair::new();
     let (mut ctx, test_data) = setup(Mode::Locking).await;
 
-    let (vaa0, msg0) = post_transfer_vaa(&mut ctx, &test_data, 0, 1000, &recipient).await;
-    let (vaa1, msg1) = post_transfer_vaa(&mut ctx, &test_data, 1, 2000, &recipient).await;
+    let (vaa0, msg0) = post_transfer_vaa(&mut ctx, &test_data, 0, 1000, None, &recipient).await;
+    let (vaa1, msg1) = post_transfer_vaa(&mut ctx, &test_data, 1, 2000, None, &recipient).await;
 
     let inbound_limit_before = inbound_capacity(&mut ctx, &test_data).await;
     let outbound_limit_before = outbound_capacity(&mut ctx, &test_data).await;
@@ -248,5 +263,47 @@ async fn test_cancel() {
     assert_eq!(
         inbound_limit_before - 2000,
         inbound_capacity(&mut ctx, &test_data).await
+    );
+}
+
+// TODO: this should not live in this file, move to a dedicated receive test suite
+#[tokio::test]
+async fn test_wrong_recipient_manager() {
+    let recipient = Keypair::new();
+    let (mut ctx, test_data) = setup(Mode::Locking).await;
+
+    let (vaa0, msg0) = post_transfer_vaa(
+        &mut ctx,
+        &test_data,
+        0,
+        1000,
+        Some(&Pubkey::default()),
+        &recipient,
+    )
+    .await;
+
+    receive_message(
+        &test_data.ntt,
+        init_receive_message_accs(&mut ctx, &test_data, vaa0, OTHER_CHAIN, 0),
+    )
+    .submit(&mut ctx)
+    .await
+    .unwrap();
+
+    let err = redeem(
+        &test_data.ntt,
+        init_redeem_accs(&mut ctx, &test_data, OTHER_CHAIN, msg0),
+        RedeemArgs {},
+    )
+    .submit(&mut ctx)
+    .await
+    .unwrap_err();
+
+    assert_eq!(
+        err.unwrap(),
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(NTTError::InvalidRecipientManager.into())
+        )
     );
 }
