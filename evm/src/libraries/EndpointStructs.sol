@@ -33,12 +33,12 @@ library EndpointStructs {
     function managerMessageDigest(
         uint16 sourceChainId,
         ManagerMessage memory m
-    ) public pure returns (bytes32) {
+    ) internal pure returns (bytes32) {
         return keccak256(abi.encodePacked(sourceChainId, encodeManagerMessage(m)));
     }
 
     function encodeManagerMessage(ManagerMessage memory m)
-        public
+        internal
         pure
         returns (bytes memory encoded)
     {
@@ -55,7 +55,7 @@ library EndpointStructs {
      * @params encoded The byte array corresponding to the encoded message
      */
     function parseManagerMessage(bytes memory encoded)
-        public
+        internal
         pure
         returns (ManagerMessage memory managerMessage)
     {
@@ -88,7 +88,7 @@ library EndpointStructs {
     }
 
     function encodeNativeTokenTransfer(NativeTokenTransfer memory m)
-        public
+        internal
         pure
         returns (bytes memory encoded)
     {
@@ -109,7 +109,7 @@ library EndpointStructs {
      * @params encoded The byte array corresponding to the encoded message
      */
     function parseNativeTokenTransfer(bytes memory encoded)
-        public
+        internal
         pure
         returns (NativeTokenTransfer memory nativeTokenTransfer)
     {
@@ -163,7 +163,7 @@ library EndpointStructs {
     function encodeEndpointMessage(
         bytes4 prefix,
         EndpointMessage memory m
-    ) public pure returns (bytes memory encoded) {
+    ) internal pure returns (bytes memory encoded) {
         if (m.managerPayload.length > type(uint16).max) {
             revert PayloadTooLong(m.managerPayload.length);
         }
@@ -191,7 +191,7 @@ library EndpointStructs {
         bytes32 recipientManagerAddress,
         bytes memory managerMessage,
         bytes memory endpointPayload
-    ) public pure returns (EndpointMessage memory, bytes memory) {
+    ) internal pure returns (EndpointMessage memory, bytes memory) {
         EndpointMessage memory endpointMessage = EndpointMessage({
             sourceManagerAddress: sourceManagerAddress,
             recipientManagerAddress: recipientManagerAddress,
@@ -241,7 +241,7 @@ library EndpointStructs {
     function parseEndpointAndManagerMessage(
         bytes4 expectedPrefix,
         bytes memory payload
-    ) public pure returns (EndpointMessage memory, ManagerMessage memory) {
+    ) internal pure returns (EndpointMessage memory, ManagerMessage memory) {
         // parse the encoded message payload from the Endpoint
         EndpointMessage memory parsedEndpointMessage = parseEndpointMessage(expectedPrefix, payload);
 
@@ -264,7 +264,7 @@ library EndpointStructs {
     }
 
     function encodeEndpointInstruction(EndpointInstruction memory instruction)
-        public
+        internal
         pure
         returns (bytes memory)
     {
@@ -278,7 +278,7 @@ library EndpointStructs {
     function parseEndpointInstructionUnchecked(
         bytes memory encoded,
         uint256 offset
-    ) public pure returns (EndpointInstruction memory instruction, uint256 nextOffset) {
+    ) internal pure returns (EndpointInstruction memory instruction, uint256 nextOffset) {
         (instruction.index, nextOffset) = encoded.asUint8Unchecked(offset);
         uint8 instructionLength;
         (instructionLength, nextOffset) = encoded.asUint8Unchecked(nextOffset);
@@ -286,7 +286,7 @@ library EndpointStructs {
     }
 
     function parseEndpointInstructionChecked(bytes memory encoded)
-        public
+        internal
         pure
         returns (EndpointInstruction memory instruction)
     {
@@ -300,7 +300,7 @@ library EndpointStructs {
     ///      - instructionsLength - 1 byte
     ///      - `instructionsLength` number of serialized `EndpointInstruction` types.
     function encodeEndpointInstructions(EndpointInstruction[] memory instructions)
-        public
+        internal
         pure
         returns (bytes memory)
     {
@@ -318,7 +318,7 @@ library EndpointStructs {
     }
 
     function parseEndpointInstructions(bytes memory encoded)
-        public
+        internal
         pure
         returns (EndpointInstruction[] memory)
     {
@@ -343,7 +343,7 @@ library EndpointStructs {
     *      inserting each instruction into the expanded list based on `instruction.index`.
     */
     function sortEndpointInstructions(EndpointInstruction[] memory instructions)
-        public
+        internal
         pure
         returns (EndpointInstruction[] memory)
     {

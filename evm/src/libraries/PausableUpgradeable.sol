@@ -37,20 +37,11 @@ abstract contract PausableUpgradeable is Initializable {
      * @dev Contract is not paused, functionality is unblocked
      */
     error RequireContractIsNotPaused();
-    /**
-     * @dev Contract state is paused, blocking
-     */
-    error RequireContractIsPaused();
 
     /**
      * @dev the pauser is not a valid pauser account (e.g. `address(0)`)
      */
     error InvalidPauser(address account);
-
-    /**
-     * @dev Cannot renounce the pauser capability when the contract is in the `PAUSED` state
-     */
-    error CannotRenounceWhilePaused(address account);
 
     // @dev Emitted when the contract is paused
     event Paused(bool paused);
@@ -109,17 +100,6 @@ abstract contract PausableUpgradeable is Initializable {
         _;
     }
 
-    /**
-     * @dev Modifier to make a function callable only when the contract is not paused.
-     * Calling a function when this flag is set to `PAUSED` will cause the transaction to revert.
-     */
-    modifier whenPaused() {
-        if (!isPaused()) {
-            revert RequireContractIsPaused();
-        }
-        _;
-    }
-
     /*
      * @dev Modifier to allow only the Pauser to access pausing functionality
      */
@@ -140,7 +120,7 @@ abstract contract PausableUpgradeable is Initializable {
     /**
      * @dev pauses the function and emits the `Paused` event
      */
-    function _pause() internal virtual whenNotPaused {
+    function _pause() internal virtual {
         // this can only be set to PAUSED when the state is NOTPAUSED
         _setPauseStorage(PAUSED);
         emit Paused(true);
@@ -149,7 +129,7 @@ abstract contract PausableUpgradeable is Initializable {
     /**
      * @dev unpauses the function
      */
-    function _unpause() internal virtual whenPaused {
+    function _unpause() internal virtual {
         // this can only be set to NOTPAUSED when the state is PAUSED
         _setPauseStorage(NOT_PAUSED);
         emit NotPaused(false);

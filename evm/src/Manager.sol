@@ -224,12 +224,6 @@ contract Manager is
         }
     }
 
-    /// @dev Override the [`renounceOwnership`] function to ensure
-    /// the manager ownership is not renounced.
-    function renounceOwnership() public view override onlyOwner {
-        revert CannotRenounceManagerOwnership(owner());
-    }
-
     /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
     ///      This method should return an array of delivery prices corresponding to each endpoint.
     function quoteDeliveryPrice(
@@ -574,20 +568,6 @@ contract Manager is
         }
     }
 
-    // @dev Mark a message as executed.
-    // This function will retuns `true` if the message has already been executed.
-    function _replayProtect(bytes32 digest) internal returns (bool) {
-        // check if this message has already been executed
-        if (isMessageExecuted(digest)) {
-            return true;
-        }
-
-        // mark this message as executed
-        _getMessageAttestationsStorage()[digest].executed = true;
-
-        return false;
-    }
-
     /// @dev Called after a message has been sufficiently verified to execute the command in the message.
     ///      This function will decode the payload as an ManagerMessage to extract the sequence, msgType, and other parameters.
     function executeMsg(
@@ -604,14 +584,16 @@ contract Manager is
             revert MessageNotApproved(digest);
         }
 
-        bool msgAlreadyExecuted = _replayProtect(digest);
-        if (msgAlreadyExecuted) {
+        if (isMessageExecuted(digest)) {
             // end execution early to mitigate the possibility of race conditions from endpoints
             // attempting to deliver the same message when (threshold < number of endpoint messages)
             // notify client (off-chain process) so they don't attempt redundant msg delivery
             emit MessageAlreadyExecuted(sourceManagerAddress, digest);
             return;
         }
+
+        // mark this message as executed
+        _getMessageAttestationsStorage()[digest].executed = true;
 
         EndpointStructs.NativeTokenTransfer memory nativeTokenTransfer =
             EndpointStructs.parseNativeTokenTransfer(message.payload);
@@ -762,16 +744,6 @@ contract Manager is
 
     function _tokenDecimals() internal view override returns (uint8) {
         return tokenDecimals;
-    }
-
-    // @dev Count the number of set bits in a uint64
-    function countSetBits(uint64 x) public pure returns (uint8 count) {
-        while (x != 0) {
-            x &= x - 1;
-            count++;
-        }
-
-        return count;
     }
 
     /// ============== INVARIANTS =============================================

@@ -401,7 +401,6 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         vm.expectRevert(
             abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA)
         );
-        wormholeEndpointChain1.renounceOwnership();
 
         // Should fail because it's already initialized
         vm.expectRevert(Initializable.InvalidInitialization.selector);

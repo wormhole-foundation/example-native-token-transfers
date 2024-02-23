@@ -63,11 +63,11 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     // === pure unit tests
 
     function test_countSetBits() public {
-        assertEq(manager.countSetBits(5), 2);
-        assertEq(manager.countSetBits(0), 0);
-        assertEq(manager.countSetBits(15), 4);
-        assertEq(manager.countSetBits(16), 1);
-        assertEq(manager.countSetBits(65535), 16);
+        assertEq(countSetBits(5), 2);
+        assertEq(countSetBits(0), 0);
+        assertEq(countSetBits(15), 4);
+        assertEq(countSetBits(16), 1);
+        assertEq(countSetBits(65535), 16);
     }
 
     // === ownership

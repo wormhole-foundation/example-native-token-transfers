@@ -116,7 +116,7 @@ library NormalizedAmountLib {
     function min(
         NormalizedAmount memory a,
         NormalizedAmount memory b
-    ) public pure returns (NormalizedAmount memory) {
+    ) internal pure returns (NormalizedAmount memory) {
         // on initialization
         if (isZero(a) && !isZero(b)) {
             return a;

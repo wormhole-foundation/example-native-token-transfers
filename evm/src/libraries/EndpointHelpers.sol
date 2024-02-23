@@ -43,3 +43,13 @@ function arraySum(uint256[] memory arr) pure returns (uint256) {
     }
     return sum;
 }
+
+// @dev Count the number of set bits in a uint64
+function countSetBits(uint64 x) pure returns (uint8 count) {
+    while (x != 0) {
+        x &= x - 1;
+        count++;
+    }
+
+    return count;
+}
