@@ -69,15 +69,15 @@ contract Manager is
 
     /// =============== STORAGE ===============================================
 
-    bytes32 public constant MESSAGE_ATTESTATIONS_SLOT =
+    bytes32 private constant MESSAGE_ATTESTATIONS_SLOT =
         bytes32(uint256(keccak256("ntt.messageAttestations")) - 1);
 
-    bytes32 public constant MESSAGE_SEQUENCE_SLOT =
+    bytes32 private constant MESSAGE_SEQUENCE_SLOT =
         bytes32(uint256(keccak256("ntt.messageSequence")) - 1);
 
-    bytes32 public constant SIBLINGS_SLOT = bytes32(uint256(keccak256("ntt.siblings")) - 1);
+    bytes32 private constant SIBLINGS_SLOT = bytes32(uint256(keccak256("ntt.siblings")) - 1);
 
-    bytes32 public constant THRESHOLD_SLOT = bytes32(uint256(keccak256("ntt.threshold")) - 1);
+    bytes32 private constant THRESHOLD_SLOT = bytes32(uint256(keccak256("ntt.threshold")) - 1);
 
     /// =============== GETTERS/SETTERS ========================================
 

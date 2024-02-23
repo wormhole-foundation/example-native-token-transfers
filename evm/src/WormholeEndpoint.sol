@@ -33,19 +33,19 @@ contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
 
     /// =============== STORAGE ===============================================
 
-    bytes32 public constant WORMHOLE_CONSUMED_VAAS_SLOT =
+    bytes32 private constant WORMHOLE_CONSUMED_VAAS_SLOT =
         bytes32(uint256(keccak256("whEndpoint.consumedVAAs")) - 1);
 
-    bytes32 public constant WORMHOLE_SIBLINGS_SLOT =
+    bytes32 private constant WORMHOLE_SIBLINGS_SLOT =
         bytes32(uint256(keccak256("whEndpoint.siblings")) - 1);
 
-    bytes32 public constant WORMHOLE_RELAYING_ENABLED_CHAINS_SLOT =
+    bytes32 private constant WORMHOLE_RELAYING_ENABLED_CHAINS_SLOT =
         bytes32(uint256(keccak256("whEndpoint.relayingEnabledChains")) - 1);
 
-    bytes32 public constant SPECIAL_RELAYING_ENABLED_CHAINS_SLOT =
+    bytes32 private constant SPECIAL_RELAYING_ENABLED_CHAINS_SLOT =
         bytes32(uint256(keccak256("whEndpoint.specialRelayingEnabledChains")) - 1);
 
-    bytes32 public constant WORMHOLE_EVM_CHAIN_IDS =
+    bytes32 private constant WORMHOLE_EVM_CHAIN_IDS =
         bytes32(uint256(keccak256("whEndpoint.evmChainIds")) - 1);
 
     /// =============== GETTERS/SETTERS ========================================
