@@ -1,3 +1,6 @@
+SOLANA_CLI="v1.17.2"
+ANCHOR_CLI="v0.29.0"
+
 .PHONY: build
 build: _anchor-build target/idl/example_native_token_transfers.json
 
@@ -22,3 +25,14 @@ node_modules: package-lock.json
 clean:
 	anchor clean
 	rm -rf .anchor node_modules
+
+docker:
+	docker build -t solana-validator-docker \
+		-f Dockerfile \
+		--build-arg SOLANA_CLI=$(SOLANA_CLI) \
+		--build-arg ANCHOR_CLI=$(ANCHOR_CLI) \
+		.
+	#DOCKER_BUILDKIT=1 docker build -f Dockerfile.ci \
+	#		--build-arg SOLANA_CLI=$(SOLANA_CLI) \
+	#		--build-arg ANCHOR_CLI=$(ANCHOR_CLI) \
+	#		.
