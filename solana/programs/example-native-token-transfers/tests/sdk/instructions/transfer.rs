@@ -13,6 +13,7 @@ pub struct Transfer {
     pub mint: Pubkey,
     pub from: Pubkey,
     pub from_authority: Pubkey,
+    pub sibling: Pubkey,
     pub outbox_item: Pubkey,
 }
 
@@ -30,6 +31,7 @@ pub fn transfer_burn(ntt: &NTT, transfer: Transfer, args: TransferArgs) -> Instr
     let accounts = example_native_token_transfers::accounts::TransferBurn {
         common: common(ntt, &transfer),
         inbox_rate_limit: ntt.inbox_rate_limit(chain_id),
+        sibling: transfer.sibling,
     };
 
     Instruction {
@@ -46,6 +48,7 @@ pub fn transfer_lock(ntt: &NTT, transfer: Transfer, args: TransferArgs) -> Instr
     let accounts = example_native_token_transfers::accounts::TransferLock {
         common: common(ntt, &transfer),
         inbox_rate_limit: ntt.inbox_rate_limit(chain_id),
+        sibling: transfer.sibling,
         custody: ntt.custody(&transfer.mint),
     };
     Instruction {

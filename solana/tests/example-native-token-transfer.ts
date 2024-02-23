@@ -152,6 +152,7 @@ describe('example-native-token-transfers', () => {
 
       const sendingEndpointMessage: EndpointMessage<NativeTokenTransfer> = {
         sourceManager: Buffer.from('manager'.padStart(32, '\0')),
+        recipientManager: ntt.program.programId.toBuffer(),
         managerPayload: new ManagerMessage(
           BigInt(0),
           Buffer.from('FACE'.padStart(64, '0'), 'hex'),

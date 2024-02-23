@@ -4,11 +4,13 @@ import { assert } from 'chai'
 export class EndpointMessage<A> {
   static prefix: Buffer
   sourceManager: Buffer
+  recipientManager: Buffer
   managerPayload: ManagerMessage<A>
   endpointPayload: Buffer
 
-  constructor(sourceManager: Buffer, managerPayload: ManagerMessage<A>, endpointPayload: Buffer) {
+  constructor(sourceManager: Buffer, recipientManager: Buffer, managerPayload: ManagerMessage<A>, endpointPayload: Buffer) {
     this.sourceManager = sourceManager
+    this.recipientManager = recipientManager
     this.managerPayload = managerPayload
     this.endpointPayload = endpointPayload
   }
@@ -22,19 +24,29 @@ export class EndpointMessage<A> {
       throw new Error('Invalid prefix')
     }
     const sourceManager = data.subarray(4, 36)
-    const managerPayloadLen = data.readUInt16BE(36)
-    const managerPayload = deserializer(data.subarray(38, 38 + managerPayloadLen))
-    const endpointPayloadLen = data.readUInt16BE(38 + managerPayloadLen)
-    const endpointPayload = data.subarray(40 + managerPayloadLen, 40 + managerPayloadLen + endpointPayloadLen)
-    return new EndpointMessage(sourceManager, managerPayload, endpointPayload)
+    const recipientManager = data.subarray(36, 68)
+    const managerPayloadLen = data.readUInt16BE(68)
+    const managerPayload = deserializer(data.subarray(70, 70 + managerPayloadLen))
+    const endpointPayloadLen = data.readUInt16BE(70 + managerPayloadLen)
+    const endpointPayload = data.subarray(72 + managerPayloadLen, 72 + managerPayloadLen + endpointPayloadLen)
+    return new EndpointMessage(sourceManager, recipientManager, managerPayload, endpointPayload)
   }
 
   static serialize<A>(msg: EndpointMessage<A>, serializer: (payload: ManagerMessage<A>) => Buffer): Buffer {
     const payload = serializer(msg.managerPayload)
     assert(msg.sourceManager.length == 32, 'sourceManager must be 32 bytes')
+    assert(msg.recipientManager.length == 32, 'recipientManager must be 32 bytes')
     const payloadLen = new BN(payload.length).toBuffer('be', 2)
     const endpointPayloadLen = new BN(msg.endpointPayload.length).toBuffer('be', 2)
-    const buffer = Buffer.concat([this.prefix, msg.sourceManager, payloadLen, payload, endpointPayloadLen, msg.endpointPayload])
+    const buffer = Buffer.concat([
+      this.prefix,
+      msg.sourceManager,
+      msg.recipientManager,
+      payloadLen,
+      payload,
+      endpointPayloadLen,
+      msg.endpointPayload
+    ])
     return buffer
   }
 }

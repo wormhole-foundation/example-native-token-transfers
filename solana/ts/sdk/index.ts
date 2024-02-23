@@ -300,6 +300,7 @@ export class NTT {
           outboxRateLimit: this.outboxRateLimitAccountAddress(),
           tokenAuthority: this.tokenAuthorityAddress(),
         },
+        sibling: this.siblingAccountAddress(args.recipientChain),
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain)
       })
       .instruction()
@@ -349,6 +350,7 @@ export class NTT {
           outboxRateLimit: this.outboxRateLimitAccountAddress(),
           tokenAuthority: this.tokenAuthorityAddress(),
         },
+        sibling: this.siblingAccountAddress(args.recipientChain),
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain),
         custody: await this.custodyAccountAddress(config)
       })

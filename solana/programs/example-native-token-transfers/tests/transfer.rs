@@ -3,7 +3,7 @@
 
 use anchor_lang::prelude::{Clock, Pubkey};
 use anchor_spl::token::{Mint, TokenAccount};
-use common::setup::TestData;
+use common::setup::{TestData, OTHER_CHAIN};
 use example_native_token_transfers::{
     bitmap::Bitmap,
     config::Mode,
@@ -25,7 +25,11 @@ use solana_sdk::{
 use wormhole_anchor_sdk::wormhole::PostedVaa;
 
 use crate::{
-    common::submit::Submittable,
+    common::{query::GetAccountDataAnchor, setup::OUTBOUND_LIMIT},
+    sdk::instructions::transfer::Transfer,
+};
+use crate::{
+    common::{setup::OTHER_MANAGER, submit::Submittable},
     sdk::{
         endpoints::wormhole::instructions::release_outbound::{release_outbound, ReleaseOutbound},
         instructions::{
@@ -33,10 +37,6 @@ use crate::{
             transfer::{approve_token_authority, transfer},
         },
     },
-};
-use crate::{
-    common::{query::GetAccountDataAnchor, setup::OUTBOUND_LIMIT},
-    sdk::instructions::transfer::Transfer,
 };
 
 pub mod common;
@@ -46,6 +46,7 @@ use crate::common::setup::setup;
 
 // TODO: some more tests
 // - unregistered sibling can't transfer
+// - can't transfer to unregistered sibling
 // - can't transfer more than balance
 // - wrong inbox accounts
 // - paused contracts
@@ -65,12 +66,13 @@ fn init_accs_args(
         mint: test_data.mint,
         from: test_data.user_token_account,
         from_authority: test_data.user.pubkey(),
+        sibling: test_data.ntt.sibling(OTHER_CHAIN),
         outbox_item,
     };
 
     let args = TransferArgs {
         amount,
-        recipient_chain: ChainId { id: 2 },
+        recipient_chain: ChainId { id: OTHER_CHAIN },
         recipient_address: [1u8; 32],
         should_queue,
     };
@@ -127,6 +129,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
             },
             sender: test_data.user.pubkey(),
             recipient_chain: ChainId { id: 2 },
+            recipient_manager: OTHER_MANAGER,
             recipient_address: [1u8; 32],
             release_timestamp: clock.unix_timestamp,
             released: Bitmap::new(),
@@ -175,6 +178,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
         endpoint_message,
         &EndpointMessage::new(
             example_native_token_transfers::ID.to_bytes(),
+            OTHER_MANAGER,
             ManagerMessage {
                 sequence: sequence.sequence,
                 sender: test_data.user.pubkey().to_bytes(),
