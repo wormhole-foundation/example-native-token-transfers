@@ -64,13 +64,6 @@ interface IManager {
 
     function setSibling(uint16 siblingChainId, bytes32 siblingContract) external;
 
-    /// @notice Check if a message has been approved. The message should have at least
-    /// the minimum threshold of attestations fron distinct endpoints.
-    ///
-    /// @param digest The digest of the message.
-    /// @return Whether the message has been approved.
-    function isMessageApproved(bytes32 digest) external view returns (bool);
-
     function isMessageExecuted(bytes32 digest) external view returns (bool);
 
     /// @notice Complete an outbound trasnfer that's been queued.

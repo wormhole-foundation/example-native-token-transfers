@@ -27,13 +27,14 @@ contract Manager is
     IManagerEvents,
     EndpointRegistry,
     RateLimiter,
-    NttNormalizer,
     ReentrancyGuardUpgradeable,
     PausableOwnable,
     Implementation
 {
     using BytesParsing for bytes;
     using SafeERC20 for IERC20;
+    using NormalizedAmountLib for uint256;
+    using NormalizedAmountLib for NormalizedAmount;
 
     error RefundFailed(uint256 refundAmount);
     error CannotRenounceManagerOwnership(address owner);
@@ -41,10 +42,11 @@ contract Manager is
     error EndpointAlreadyAttestedToMessage(bytes32 managerMessageHash);
 
     address public immutable token;
-    address public immutable deployer;
+    address immutable deployer;
     Mode public immutable mode;
     uint16 public immutable chainId;
-    uint256 public immutable evmChainId;
+    uint256 immutable evmChainId;
+    uint8 immutable tokenDecimals;
 
     enum Mode {
         LOCKING,
@@ -178,13 +180,19 @@ contract Manager is
         Mode _mode,
         uint16 _chainId,
         uint64 _rateLimitDuration
-    ) RateLimiter(_rateLimitDuration) NttNormalizer(_token) {
+    ) RateLimiter(_rateLimitDuration) {
         token = _token;
         mode = _mode;
         chainId = _chainId;
         evmChainId = block.chainid;
         // save the deployer (check this on initialization)
         deployer = msg.sender;
+        tokenDecimals = _tokenDecimals(_token);
+    }
+
+    function _tokenDecimals(address _token) internal view returns (uint8) {
+        (, bytes memory queriedDecimals) = _token.staticcall(abi.encodeWithSignature("decimals()"));
+        return abi.decode(queriedDecimals, (uint8));
     }
 
     function __Manager_init() internal onlyInitializing {
@@ -269,7 +277,7 @@ contract Manager is
         }
     }
 
-    function isMessageApproved(bytes32 digest) public view returns (bool) {
+    function isMessageApproved(bytes32 digest) internal view returns (bool) {
         uint8 threshold = getThreshold();
         return messageAttestations(digest) >= threshold && threshold > 0;
     }
@@ -293,8 +301,7 @@ contract Manager is
 
     /// @dev Returns the bitmap of attestations from enabled endpoints for a given message.
     function _getMessageAttestations(bytes32 digest) internal view returns (uint64) {
-        uint64 enabledEndpointBitmap = _getEnabledEndpointsBitmap();
-        return _getMessageAttestationsStorage()[digest].attestedEndpoints & enabledEndpointBitmap;
+        return _getMessageAttestationsStorage()[digest].attestedEndpoints & _getEnabledEndpointsBitmap();
     }
 
     function _getEnabledEndpointAttestedToMessage(
@@ -305,11 +312,11 @@ contract Manager is
     }
 
     function setOutboundLimit(uint256 limit) external onlyOwner {
-        _setOutboundLimit(nttNormalize(limit));
+        _setOutboundLimit(limit.normalize(tokenDecimals));
     }
 
     function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
-        _setInboundLimit(nttNormalize(limit), chainId_);
+        _setInboundLimit(limit.normalize(tokenDecimals), chainId_);
     }
 
     function completeOutboundQueuedTransfer(uint64 messageSequence)
@@ -363,9 +370,9 @@ contract Manager is
     {
         NormalizedAmount memory normalizedAmount;
         {
-            normalizedAmount = nttNormalize(amount);
+            normalizedAmount = amount.normalize(tokenDecimals);
             // don't deposit dust that can not be bridged due to the decimal shift
-            uint256 newAmount = nttDenormalize(normalizedAmount);
+            uint256 newAmount = normalizedAmount.denormalize(tokenDecimals);
             if (amount != newAmount) {
                 revert TransferAmountHasDust(amount, amount - newAmount);
             }
@@ -466,8 +473,9 @@ contract Manager is
         // normalize amount after burning to ensure transfer amount matches (amount - fee)
         NormalizedAmount memory normalizedAmount = normalizeTransferAmount(amount);
 
-        // get the sequence for this transfer
-        uint64 sequence = _useMessageSequence();
+        // get the sequence for this transfer and increment after
+        uint64 sequence = _getMessageSequenceStorage().num;
+        _getMessageSequenceStorage().num++;
 
         {
             // now check rate limits
@@ -555,7 +563,7 @@ contract Manager is
             recipientChain, priceQuotes, sortedInstructions, encodedManagerPayload
         );
 
-        emit TransferSent(recipient, nttDenormalize(amount), recipientChain, sequence);
+        emit TransferSent(recipient, amount.denormalize(tokenDecimals), recipientChain, sequence);
 
         // return the sequence number
         return sequence;
@@ -603,7 +611,7 @@ contract Manager is
             revert InvalidTargetChain(nativeTokenTransfer.toChain, chainId);
         }
 
-        NormalizedAmount memory nativeTransferAmount = nttFixDecimals(nativeTokenTransfer.amount);
+        NormalizedAmount memory nativeTransferAmount = (nativeTokenTransfer.amount.denormalize(tokenDecimals)).normalize(tokenDecimals);
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
@@ -650,7 +658,7 @@ contract Manager is
     function _mintOrUnlockToRecipient(address recipient, NormalizedAmount memory amount) internal {
         // calculate proper amount of tokens to unlock/mint to recipient
         // denormalize the amount
-        uint256 denormalizedAmount = nttDenormalize(amount);
+        uint256 denormalizedAmount = amount.denormalize(tokenDecimals);
 
         if (mode == Mode.LOCKING) {
             // unlock tokens to the specified recipient
@@ -665,11 +673,6 @@ contract Manager is
 
     function nextMessageSequence() external view returns (uint64) {
         return _getMessageSequenceStorage().num;
-    }
-
-    function _useMessageSequence() internal returns (uint64 currentSequence) {
-        currentSequence = _getMessageSequenceStorage().num;
-        _getMessageSequenceStorage().num++;
     }
 
     function getTokenBalanceOf(
@@ -699,11 +702,9 @@ contract Manager is
             revert InvalidSiblingZeroAddress();
         }
 
-        bytes32 oldSiblingContract = _getSiblingsStorage()[siblingChainId];
-
         _getSiblingsStorage()[siblingChainId] = siblingContract;
 
-        emit SiblingUpdated(siblingChainId, oldSiblingContract, siblingContract);
+        emit SiblingUpdated(siblingChainId, _getSiblingsStorage()[siblingChainId], siblingContract);
     }
 
     function endpointAttestedToMessage(bytes32 digest, uint8 index) public view returns (bool) {
@@ -753,7 +754,6 @@ contract Manager is
         assert(this.token() == token);
         assert(this.mode() == mode);
         assert(this.chainId() == chainId);
-        assert(this.evmChainId() == evmChainId);
         assert(this.rateLimitDuration() == rateLimitDuration);
     }
 
