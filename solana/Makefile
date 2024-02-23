@@ -27,7 +27,7 @@ clean:
 	rm -rf .anchor node_modules
 
 docker:
-	docker build -t solana-validator-docker \
+	docker build -t solana-ntt-tests \
 		-f Dockerfile \
 		--build-arg SOLANA_CLI=$(SOLANA_CLI) \
 		--build-arg ANCHOR_CLI=$(ANCHOR_CLI) \
