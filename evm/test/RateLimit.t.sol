@@ -14,7 +14,7 @@ import "./libraries/ManagerHelpers.sol";
 pragma solidity >=0.8.8 <0.9.0;
 
 contract TestRateLimit is Test, IRateLimiterEvents {
-    Manager manager;
+    MockManagerContract manager;
 
     using NormalizedAmountLib for uint256;
     using NormalizedAmountLib for NormalizedAmount;

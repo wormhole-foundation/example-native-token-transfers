@@ -90,12 +90,12 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         _setLimit(limit, _getOutboundLimitParamsStorage());
     }
 
-    function getOutboundLimitParams() public pure returns (RateLimitParams memory) {
+    function _getOutboundLimitParams() internal pure returns (RateLimitParams memory) {
         return _getOutboundLimitParamsStorage();
     }
 
     function getCurrentOutboundCapacity() public view returns (uint256) {
-        NormalizedAmount memory normalizedCapacity = _getCurrentCapacity(getOutboundLimitParams());
+        NormalizedAmount memory normalizedCapacity = _getCurrentCapacity(_getOutboundLimitParams());
         uint8 decimals = _tokenDecimals();
         return normalizedCapacity.denormalize(decimals);
     }
@@ -112,13 +112,13 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         _setLimit(limit, _getInboundLimitParamsStorage()[chainId_]);
     }
 
-    function getInboundLimitParams(uint16 chainId_) public view returns (RateLimitParams memory) {
+    function _getInboundLimitParams(uint16 chainId_) internal view returns (RateLimitParams memory) {
         return _getInboundLimitParamsStorage()[chainId_];
     }
 
     function getCurrentInboundCapacity(uint16 chainId_) public view returns (uint256) {
         NormalizedAmount memory normalizedCapacity =
-            _getCurrentCapacity(getInboundLimitParams(chainId_));
+            _getCurrentCapacity(_getInboundLimitParams(chainId_));
         uint8 decimals = _tokenDecimals();
         return normalizedCapacity.denormalize(decimals);
     }
@@ -193,20 +193,20 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
 
     function _consumeOutboundAmount(NormalizedAmount memory amount) internal {
         _consumeRateLimitAmount(
-            amount, _getCurrentCapacity(getOutboundLimitParams()), _getOutboundLimitParamsStorage()
+            amount, _getCurrentCapacity(_getOutboundLimitParams()), _getOutboundLimitParamsStorage()
         );
     }
 
     function _backfillOutboundAmount(NormalizedAmount memory amount) internal {
         _backfillRateLimitAmount(
-            amount, _getCurrentCapacity(getOutboundLimitParams()), _getOutboundLimitParamsStorage()
+            amount, _getCurrentCapacity(_getOutboundLimitParams()), _getOutboundLimitParamsStorage()
         );
     }
 
     function _consumeInboundAmount(NormalizedAmount memory amount, uint16 chainId_) internal {
         _consumeRateLimitAmount(
             amount,
-            _getCurrentCapacity(getInboundLimitParams(chainId_)),
+            _getCurrentCapacity(_getInboundLimitParams(chainId_)),
             _getInboundLimitParamsStorage()[chainId_]
         );
     }
@@ -214,7 +214,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     function _backfillInboundAmount(NormalizedAmount memory amount, uint16 chainId_) internal {
         _backfillRateLimitAmount(
             amount,
-            _getCurrentCapacity(getInboundLimitParams(chainId_)),
+            _getCurrentCapacity(_getInboundLimitParams(chainId_)),
             _getInboundLimitParamsStorage()[chainId_]
         );
     }
@@ -244,14 +244,14 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         view
         returns (bool)
     {
-        return _isAmountRateLimited(_getCurrentCapacity(getOutboundLimitParams()), amount);
+        return _isAmountRateLimited(_getCurrentCapacity(_getOutboundLimitParams()), amount);
     }
 
     function _isInboundAmountRateLimited(
         NormalizedAmount memory amount,
         uint16 chainId_
     ) internal view returns (bool) {
-        return _isAmountRateLimited(_getCurrentCapacity(getInboundLimitParams(chainId_)), amount);
+        return _isAmountRateLimited(_getCurrentCapacity(_getInboundLimitParams(chainId_)), amount);
     }
 
     function _isAmountRateLimited(

@@ -23,6 +23,18 @@ contract MockManagerContract is Manager {
             result := my_slot.slot
         }
     }
+
+    function messageAttestations(bytes32 digest) public view returns (uint8 count) {
+        return _messageAttestations(digest);
+    }
+
+    function getOutboundLimitParams() public pure returns (RateLimitParams memory) {
+        return _getOutboundLimitParams();
+    }
+
+    function getInboundLimitParams(uint16 chainId_) public view returns (RateLimitParams memory) {
+        return _getInboundLimitParams(chainId_);
+    }
 }
 
 contract MockManagerMigrateBasic is Manager {
