@@ -221,12 +221,6 @@ contract Manager is
         }
     }
 
-    /// @dev Override the [`renounceOwnership`] function to ensure
-    /// the manager ownership is not renounced.
-    function renounceOwnership() public view override onlyOwner {
-        revert CannotRenounceManagerOwnership(owner());
-    }
-
     /// @dev This method should return an array of delivery prices corresponding to each endpoint.
     function quoteDeliveryPrice(
         uint16 recipientChain,

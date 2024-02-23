@@ -37,16 +37,4 @@ abstract contract PausableOwnable is PausableUpgradeable, OwnableUpgradeable {
         $._pauser = newPauser;
         emit PauserTransferred(oldPauser, newPauser);
     }
-
-    /**
-     * @dev Leaves the contract without a Pauser
-     */
-    function renouncePauser() public virtual onlyOwnerOrPauser {
-        // NOTE: Cannot renounce the pauser capability when the contract is in the `PAUSED` state
-        // the contract can never be `UNPAUSED`
-        if (isPaused()) {
-            revert CannotRenounceWhilePaused(pauser());
-        }
-        transferPauserCapability(address(0));
-    }
 }
