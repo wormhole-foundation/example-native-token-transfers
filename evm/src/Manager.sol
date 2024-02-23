@@ -41,10 +41,10 @@ contract Manager is
     error EndpointAlreadyAttestedToMessage(bytes32 managerMessageHash);
 
     address public immutable token;
-    address public immutable deployer;
+    address immutable deployer;
     Mode public immutable mode;
     uint16 public immutable chainId;
-    uint256 public immutable evmChainId;
+    uint256 immutable evmChainId;
 
     enum Mode {
         LOCKING,
@@ -262,14 +262,14 @@ contract Manager is
                 recipientChain,
                 endpointInstructions[registeredEndpointIndex],
                 managerMessage,
-                getSibling(recipientChain)
+                _getSibling(recipientChain)
             );
         }
     }
 
     function isMessageApproved(bytes32 digest) public view returns (bool) {
         uint8 threshold = getThreshold();
-        return messageAttestations(digest) >= threshold && threshold > 0;
+        return _messageAttestations(digest) >= threshold && threshold > 0;
     }
 
     function _setEndpointAttestedToMessage(bytes32 digest, uint8 index) internal {
@@ -303,11 +303,11 @@ contract Manager is
     }
 
     function setOutboundLimit(uint256 limit) external onlyOwner {
-        _setOutboundLimit(nttNormalize(limit));
+        _setOutboundLimit(_nttNormalize(limit));
     }
 
     function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
-        _setInboundLimit(nttNormalize(limit), chainId_);
+        _setInboundLimit(_nttNormalize(limit), chainId_);
     }
 
     function completeOutboundQueuedTransfer(uint64 messageSequence)
@@ -361,9 +361,9 @@ contract Manager is
     {
         NormalizedAmount memory normalizedAmount;
         {
-            normalizedAmount = nttNormalize(amount);
+            normalizedAmount = _nttNormalize(amount);
             // don't deposit dust that can not be bridged due to the decimal shift
-            uint256 newAmount = nttDenormalize(normalizedAmount);
+            uint256 newAmount = _nttDenormalize(normalizedAmount);
             if (amount != newAmount) {
                 revert TransferAmountHasDust(amount, amount - newAmount);
             }
@@ -554,7 +554,7 @@ contract Manager is
             recipientChain, priceQuotes, instructions, enabledEndpoints, encodedManagerPayload
         );
 
-        emit TransferSent(recipient, nttDenormalize(amount), recipientChain, sequence);
+        emit TransferSent(recipient, _nttDenormalize(amount), recipientChain, sequence);
 
         // return the sequence number
         return sequence;
@@ -562,7 +562,7 @@ contract Manager is
 
     /// @dev Verify that the sibling address saved for `sourceChainId` matches the `siblingAddress`.
     function _verifySibling(uint16 sourceChainId, bytes32 siblingAddress) internal view {
-        if (getSibling(sourceChainId) != siblingAddress) {
+        if (_getSibling(sourceChainId) != siblingAddress) {
             revert InvalidSibling(sourceChainId, siblingAddress);
         }
     }
@@ -614,7 +614,7 @@ contract Manager is
             revert InvalidTargetChain(nativeTokenTransfer.toChain, chainId);
         }
 
-        NormalizedAmount memory nativeTransferAmount = nttFixDecimals(nativeTokenTransfer.amount);
+        NormalizedAmount memory nativeTransferAmount = _nttFixDecimals(nativeTokenTransfer.amount);
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
@@ -665,7 +665,7 @@ contract Manager is
     ) internal {
         // calculate proper amount of tokens to unlock/mint to recipient
         // denormalize the amount
-        uint256 denormalizedAmount = nttDenormalize(amount);
+        uint256 denormalizedAmount = _nttDenormalize(amount);
 
         emit TransferRedeemed(digest);
 
@@ -702,7 +702,7 @@ contract Manager is
         return _getMessageAttestationsStorage()[digest].executed;
     }
 
-    function getSibling(uint16 chainId_) public view returns (bytes32) {
+    function _getSibling(uint16 chainId_) internal view returns (bytes32) {
         return _getSiblingsStorage()[chainId_];
     }
 
@@ -755,22 +755,12 @@ contract Manager is
     }
 
     // @dev Count the number of attestations from enabled endpoints for a given message.
-    function messageAttestations(bytes32 digest) public view returns (uint8 count) {
+    function _messageAttestations(bytes32 digest) internal view returns (uint8 count) {
         return countSetBits(_getMessageAttestations(digest));
     }
 
     function _tokenDecimals() internal view override returns (uint8) {
         return tokenDecimals;
-    }
-
-    // @dev Count the number of set bits in a uint64
-    function countSetBits(uint64 x) public pure returns (uint8 count) {
-        while (x != 0) {
-            x &= x - 1;
-            count++;
-        }
-
-        return count;
     }
 
     /// ============== INVARIANTS =============================================
@@ -780,7 +770,6 @@ contract Manager is
         assert(this.token() == token);
         assert(this.mode() == mode);
         assert(this.chainId() == chainId);
-        assert(this.evmChainId() == evmChainId);
         assert(this.rateLimitDuration() == rateLimitDuration);
     }
 

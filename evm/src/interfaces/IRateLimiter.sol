@@ -33,16 +33,12 @@ interface IRateLimiter {
         address recipient;
     }
 
-    function getOutboundLimitParams() external view returns (RateLimitParams memory);
-
     function getCurrentOutboundCapacity() external view returns (uint256);
 
     function getOutboundQueuedTransfer(uint64 queueSequence)
         external
         view
         returns (OutboundQueuedTransfer memory);
-
-    function getInboundLimitParams(uint16 chainId) external view returns (RateLimitParams memory);
 
     function getCurrentInboundCapacity(uint16 chainId) external view returns (uint256);
 
