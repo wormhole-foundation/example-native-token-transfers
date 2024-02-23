@@ -26,12 +26,6 @@ contract MockWormholeEndpointContract is WormholeEndpoint {
     function transferOwnership(address newOwner) public view override onlyOwner {
         revert CannotTransferEndpointOwnership(owner(), newOwner);
     }
-
-    /// @dev Override the [`renounceOwnership`] function to ensure
-    /// the endpoint ownership is not renounced.
-    function renounceOwnership() public view override onlyOwner {
-        revert CannotRenounceEndpointOwnership(owner());
-    }
 }
 
 contract MockWormholeEndpointMigrateBasic is WormholeEndpoint {

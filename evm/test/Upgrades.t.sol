@@ -396,13 +396,6 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         );
         wormholeEndpointChain1.transferOwnership(address(0x1));
 
-        // Force remove user from ownership
-        vm.prank(userA);
-        vm.expectRevert(
-            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA)
-        );
-        wormholeEndpointChain1.renounceOwnership();
-
         // Should fail because it's already initialized
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         wormholeEndpointChain1.initialize();
