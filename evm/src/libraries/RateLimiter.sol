@@ -17,16 +17,16 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
 
     /// =============== STORAGE ===============================================
 
-    bytes32 public constant OUTBOUND_LIMIT_PARAMS_SLOT =
+    bytes32 private constant OUTBOUND_LIMIT_PARAMS_SLOT =
         bytes32(uint256(keccak256("ntt.outboundLimitParams")) - 1);
 
-    bytes32 public constant OUTBOUND_QUEUE_SLOT =
+    bytes32 private constant OUTBOUND_QUEUE_SLOT =
         bytes32(uint256(keccak256("ntt.outboundQueue")) - 1);
 
-    bytes32 public constant INBOUND_LIMIT_PARAMS_SLOT =
+    bytes32 private constant INBOUND_LIMIT_PARAMS_SLOT =
         bytes32(uint256(keccak256("ntt.inboundLimitParams")) - 1);
 
-    bytes32 public constant INBOUND_QUEUE_SLOT = bytes32(uint256(keccak256("ntt.inboundQueue")) - 1);
+    bytes32 private constant INBOUND_QUEUE_SLOT = bytes32(uint256(keccak256("ntt.inboundQueue")) - 1);
 
     function _getOutboundLimitParamsStorage() internal pure returns (RateLimitParams storage $) {
         uint256 slot = uint256(OUTBOUND_LIMIT_PARAMS_SLOT);

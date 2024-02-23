@@ -56,8 +56,8 @@ abstract contract PausableUpgradeable is Initializable {
     event Paused(bool paused);
     event NotPaused(bool notPaused);
 
-    bytes32 public constant PAUSE_SLOT = bytes32(uint256(keccak256("Pause.pauseFlag")) - 1);
-    bytes32 public constant PAUSER_ROLE_SLOT = bytes32(uint256(keccak256("Pause.pauseRole")) - 1);
+    bytes32 private constant PAUSE_SLOT = bytes32(uint256(keccak256("Pause.pauseFlag")) - 1);
+    bytes32 private constant PAUSER_ROLE_SLOT = bytes32(uint256(keccak256("Pause.pauseRole")) - 1);
 
     function _getPauserStorage() internal pure returns (PauserStorage storage $) {
         uint256 slot = uint256(PAUSER_ROLE_SLOT);

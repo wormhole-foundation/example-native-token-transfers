@@ -33,9 +33,9 @@ abstract contract Implementation is Initializable, ERC1967Upgrade {
         bool value;
     }
 
-    bytes32 public constant MIGRATING_SLOT = bytes32(uint256(keccak256("ntt.migrating")) - 1);
+    bytes32 private constant MIGRATING_SLOT = bytes32(uint256(keccak256("ntt.migrating")) - 1);
 
-    bytes32 public constant MIGRATES_IMMUTABLES_SLOT =
+    bytes32 private constant MIGRATES_IMMUTABLES_SLOT =
         bytes32(uint256(keccak256("ntt.migratesImmutables")) - 1);
 
     function _getMigratingStorage() private pure returns (_Migrating storage $) {
