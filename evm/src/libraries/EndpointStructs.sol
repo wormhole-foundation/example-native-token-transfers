@@ -10,6 +10,7 @@ library EndpointStructs {
 
     error PayloadTooLong(uint256 size);
     error IncorrectPrefix(bytes4 prefix);
+    error UnorderedInstructions();
 
     /// @dev Prefix for all NativeTokenTransfer payloads
     ///      This is 0x99'N''T''T'
@@ -307,50 +308,48 @@ library EndpointStructs {
         if (instructions.length > type(uint8).max) {
             revert PayloadTooLong(instructions.length);
         }
-        uint8 instructionsLength = uint8(instructions.length);
+        uint256 instructionsLength = instructions.length;
 
         bytes memory encoded;
-        for (uint8 i = 0; i < instructionsLength; i++) {
+        for (uint256 i = 0; i < instructionsLength; i++) {
             bytes memory innerEncoded = encodeEndpointInstruction(instructions[i]);
             encoded = bytes.concat(encoded, innerEncoded);
         }
-        return abi.encodePacked(instructionsLength, encoded);
+        return abi.encodePacked(uint8(instructionsLength), encoded);
     }
 
-    function parseEndpointInstructions(bytes memory encoded)
+    function parseEndpointInstructions(bytes memory encoded, uint256 numEnabledEndpoints)
         public
         pure
         returns (EndpointInstruction[] memory)
     {
         uint256 offset = 0;
-        uint8 instructionsLength;
+        uint256 instructionsLength;
         (instructionsLength, offset) = encoded.asUint8Unchecked(offset);
-        EndpointInstruction[] memory instructions = new EndpointInstruction[](instructionsLength);
+        
+        // We allocate an array with the length of the number of enabled endpoints
+        // This gives us the flexibility to not have to pass instructions for endpoints that
+        // don't need them
+        EndpointInstruction[] memory instructions = new EndpointInstruction[](numEnabledEndpoints);
 
-        for (uint8 i = 0; i < instructionsLength; i++) {
+        uint256 lastIndex = 0;
+        for (uint256 i = 0; i < instructionsLength; i++) {
             EndpointInstruction memory instruction;
             (instruction, offset) = parseEndpointInstructionUnchecked(encoded, offset);
-            instructions[i] = instruction;
+            
+            uint8 instructionIndex = instruction.index;
+
+            // The instructions passed in have to be strictly increasing in terms of endpoint index
+            if (i != 0 && instructionIndex <= lastIndex) {
+                revert UnorderedInstructions();
+            }
+            lastIndex = instructionIndex;
+            
+            instructions[instructionIndex] = instruction;
         }
 
         encoded.checkLength(offset);
 
         return instructions;
-    }
-
-    /*
-    * @dev This function takes a list of EndpointInstructions and expands them to a 256-length list,
-    *      inserting each instruction into the expanded list based on `instruction.index`.
-    */
-    function sortEndpointInstructions(EndpointInstruction[] memory instructions)
-        public
-        pure
-        returns (EndpointInstruction[] memory)
-    {
-        EndpointInstruction[] memory sortedInstructions = new EndpointInstruction[](type(uint8).max);
-        for (uint8 i = 0; i < instructions.length; i++) {
-            sortedInstructions[instructions[i].index] = instructions[i];
-        }
-        return sortedInstructions;
     }
 }
