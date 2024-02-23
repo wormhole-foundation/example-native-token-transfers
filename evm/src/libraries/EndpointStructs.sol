@@ -318,15 +318,14 @@ library EndpointStructs {
         return abi.encodePacked(uint8(instructionsLength), encoded);
     }
 
-    function parseEndpointInstructions(bytes memory encoded, uint256 numEnabledEndpoints)
-        public
-        pure
-        returns (EndpointInstruction[] memory)
-    {
+    function parseEndpointInstructions(
+        bytes memory encoded,
+        uint256 numEnabledEndpoints
+    ) public pure returns (EndpointInstruction[] memory) {
         uint256 offset = 0;
         uint256 instructionsLength;
         (instructionsLength, offset) = encoded.asUint8Unchecked(offset);
-        
+
         // We allocate an array with the length of the number of enabled endpoints
         // This gives us the flexibility to not have to pass instructions for endpoints that
         // don't need them
@@ -336,7 +335,7 @@ library EndpointStructs {
         for (uint256 i = 0; i < instructionsLength; i++) {
             EndpointInstruction memory instruction;
             (instruction, offset) = parseEndpointInstructionUnchecked(encoded, offset);
-            
+
             uint8 instructionIndex = instruction.index;
 
             // The instructions passed in have to be strictly increasing in terms of endpoint index
@@ -344,7 +343,7 @@ library EndpointStructs {
                 revert UnorderedInstructions();
             }
             lastIndex = instructionIndex;
-            
+
             instructions[instructionIndex] = instruction;
         }
 

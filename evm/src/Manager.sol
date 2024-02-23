@@ -524,7 +524,8 @@ contract Manager is
         // cache enabled endpoints to avoid multiple storage reads
         address[] memory enabledEndpoints = _getEnabledEndpointsStorage();
 
-        EndpointStructs.EndpointInstruction[] memory instructions = EndpointStructs.parseEndpointInstructions(endpointInstructions, enabledEndpoints.length);
+        EndpointStructs.EndpointInstruction[] memory instructions =
+            EndpointStructs.parseEndpointInstructions(endpointInstructions, enabledEndpoints.length);
 
         (uint256[] memory priceQuotes, uint256 totalPriceQuote) =
             quoteDeliveryPrice(recipientChain, instructions, enabledEndpoints);
