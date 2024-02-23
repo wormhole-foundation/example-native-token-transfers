@@ -18,20 +18,20 @@ abstract contract NttNormalizer {
         return abi.decode(queriedDecimals, (uint8));
     }
 
-    function nttNormalize(uint256 amount) public view returns (NormalizedAmount memory) {
+    function _nttNormalize(uint256 amount) internal view returns (NormalizedAmount memory) {
         return amount.normalize(tokenDecimals);
     }
 
-    function nttDenormalize(NormalizedAmount memory amount) public view returns (uint256) {
+    function _nttDenormalize(NormalizedAmount memory amount) internal view returns (uint256) {
         return amount.denormalize(tokenDecimals);
     }
 
     /// @dev Shift decimals of `amount` to match the token decimals
-    function nttFixDecimals(NormalizedAmount memory amount)
-        public
+    function _nttFixDecimals(NormalizedAmount memory amount)
+        internal
         view
         returns (NormalizedAmount memory)
     {
-        return nttNormalize(nttDenormalize(amount));
+        return _nttNormalize(_nttDenormalize(amount));
     }
 }

@@ -25,8 +25,8 @@ import "./mocks/MockManager.sol";
 
 // TODO: set this up so the common functionality tests can be run against both
 contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
-    Manager manager;
-    Manager managerOther;
+    MockManagerContract manager;
+    MockManagerContract managerOther;
 
     using NormalizedAmountLib for uint256;
     using NormalizedAmountLib for NormalizedAmount;
@@ -53,21 +53,21 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         Manager otherImplementation =
             new MockManagerContract(address(t), Manager.Mode.LOCKING, chainId, 1 days);
 
-        manager = Manager(address(new ERC1967Proxy(address(implementation), "")));
+        manager = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         manager.initialize();
 
-        managerOther = Manager(address(new ERC1967Proxy(address(otherImplementation), "")));
+        managerOther = MockManagerContract(address(new ERC1967Proxy(address(otherImplementation), "")));
         managerOther.initialize();
     }
 
     // === pure unit tests
 
     function test_countSetBits() public {
-        assertEq(manager.countSetBits(5), 2);
-        assertEq(manager.countSetBits(0), 0);
-        assertEq(manager.countSetBits(15), 4);
-        assertEq(manager.countSetBits(16), 1);
-        assertEq(manager.countSetBits(65535), 16);
+        assertEq(countSetBits(5), 2);
+        assertEq(countSetBits(0), 0);
+        assertEq(countSetBits(15), 4);
+        assertEq(countSetBits(16), 1);
+        assertEq(countSetBits(65535), 16);
     }
 
     // === ownership
