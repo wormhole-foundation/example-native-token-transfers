@@ -18,6 +18,8 @@ idl-build = [
   "anchor-lang/idl-build",
   "anchor-spl/idl-build"
 ]
+# cargo-test-sbf will pass this along
+test-sbf = []
 
 [dependencies]
 ahash = "=0.8.5"

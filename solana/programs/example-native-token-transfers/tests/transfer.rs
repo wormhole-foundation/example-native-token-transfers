@@ -1,3 +1,4 @@
+#![cfg(feature = "test-sbf")]
 #![feature(type_changing_struct_update)]
 
 use anchor_lang::prelude::{Clock, Pubkey};
