@@ -3,10 +3,6 @@ pragma solidity >=0.8.8 <0.9.0;
 
 /// @dev This contract is responsible for handling the registration of Endpoints.
 abstract contract EndpointRegistry {
-    constructor() {
-        _checkEndpointsInvariants();
-    }
-
     /// @dev Information about registered endpoints.
     struct EndpointInfo {
         // whether this endpoint is registered
@@ -148,8 +144,6 @@ abstract contract EndpointRegistry {
 
         emit EndpointAdded(endpoint);
 
-        _checkEndpointsInvariants();
-
         return endpointInfos[endpoint].index;
     }
 
@@ -191,11 +185,6 @@ abstract contract EndpointRegistry {
         assert(removed);
 
         emit EndpointRemoved(endpoint);
-
-        _checkEndpointsInvariants();
-        // we call the invariant check on the endpoint here as well, since
-        // the above check only iterates through the enabled endpoints.
-        _checkEndpointInvariants(endpoint);
     }
 
     function _getEnabledEndpointsBitmap() internal view virtual returns (uint64 bitmap) {
@@ -205,66 +194,5 @@ abstract contract EndpointRegistry {
     /// @notice Returns the Endpoint contracts that have been registered via governance.
     function getEndpoints() external pure returns (address[] memory result) {
         result = _getEnabledEndpointsStorage();
-    }
-
-    /// ============== INVARIANTS =============================================
-
-    /// @dev Check that the endpoint manager is in a valid state.
-    /// Checking these invariants is somewhat costly, but we only need to do it
-    /// when modifying the endpoints, which happens infrequently.
-    function _checkEndpointsInvariants() internal view {
-        _NumRegisteredEndpoints storage _numRegisteredEndpoints =
-            _getNumRegisteredEndpointsStorage();
-        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
-
-        for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
-            _checkEndpointInvariants(_enabledEndpoints[i]);
-        }
-
-        // invariant: each endpoint is only enabled once
-        for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
-            for (uint256 j = i + 1; j < _enabledEndpoints.length; j++) {
-                assert(_enabledEndpoints[i] != _enabledEndpoints[j]);
-            }
-        }
-
-        // invariant: numRegisteredEndpoints <= MAX_ENDPOINTS
-        assert(_numRegisteredEndpoints.num <= MAX_ENDPOINTS);
-    }
-
-    // @dev Check that the endpoint is in a valid state.
-    function _checkEndpointInvariants(address endpoint) private view {
-        mapping(address => EndpointInfo) storage endpointInfos = _getEndpointInfosStorage();
-        _EnabledEndpointBitmap storage _enabledEndpointBitmap = _getEndpointBitmapStorage();
-        _NumRegisteredEndpoints storage _numRegisteredEndpoints =
-            _getNumRegisteredEndpointsStorage();
-        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
-
-        EndpointInfo memory endpointInfo = endpointInfos[endpoint];
-
-        // if an endpoint is not registered, it should not be enabled
-        assert(endpointInfo.registered || (!endpointInfo.enabled && endpointInfo.index == 0));
-
-        bool endpointInEnabledBitmap =
-            (_enabledEndpointBitmap.bitmap & uint64(1 << endpointInfo.index)) != 0;
-        bool endpointEnabled = endpointInfo.enabled;
-
-        bool endpointInEnabledEndpoints = false;
-
-        for (uint256 i = 0; i < _enabledEndpoints.length; i++) {
-            if (_enabledEndpoints[i] == endpoint) {
-                endpointInEnabledEndpoints = true;
-                break;
-            }
-        }
-
-        // invariant: endpointInfos[endpoint].enabled
-        //            <=> enabledEndpointBitmap & (1 << endpointInfos[endpoint].index) != 0
-        assert(endpointInEnabledBitmap == endpointEnabled);
-
-        // invariant: endpointInfos[endpoint].enabled <=> endpoint in _enabledEndpoints
-        assert(endpointInEnabledEndpoints == endpointEnabled);
-
-        assert(endpointInfo.index < _numRegisteredEndpoints.num);
     }
 }

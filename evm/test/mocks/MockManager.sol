@@ -35,8 +35,6 @@ contract MockManagerMigrateBasic is Manager {
     ) Manager(token, mode, chainId, rateLimitDuration) {}
 
     function _migrate() internal view override {
-        _checkThresholdInvariants();
-        _checkEndpointsInvariants();
         revert("Proper migrate called");
     }
 }

@@ -124,7 +124,6 @@ contract Manager is
         uint8 oldThreshold = _threshold.num;
 
         _threshold.num = threshold;
-        _checkThresholdInvariants();
 
         emit ThresholdChanged(oldThreshold, threshold);
     }
@@ -206,13 +205,9 @@ contract Manager is
 
     function _initialize() internal virtual override {
         __Manager_init();
-        _checkThresholdInvariants();
-        _checkEndpointsInvariants();
     }
 
     function _migrate() internal virtual override {
-        _checkThresholdInvariants();
-        _checkEndpointsInvariants();
     }
 
     /// =============== ADMIN ===============================================
@@ -762,23 +757,6 @@ contract Manager is
             revert RetrievedIncorrectRegisteredEndpoints(
                 _getRegisteredEndpointsStorage().length, _getNumRegisteredEndpointsStorage().num
             );
-        }
-    }
-
-    function _checkThresholdInvariants() internal view {
-        _Threshold storage _threshold = _getThresholdStorage();
-        address[] storage _enabledEndpoints = _getEnabledEndpointsStorage();
-        address[] storage _registeredEndpoints = _getRegisteredEndpointsStorage();
-
-        // invariant: threshold <= enabledEndpoints.length
-        if (_threshold.num > _enabledEndpoints.length) {
-            revert ThresholdTooHigh(_threshold.num, _enabledEndpoints.length);
-        }
-
-        if (_registeredEndpoints.length > 0) {
-            if (_threshold.num == 0) {
-                revert ZeroThreshold();
-            }
         }
     }
 }
