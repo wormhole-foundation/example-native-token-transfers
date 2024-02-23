@@ -41,7 +41,6 @@ contract Manager is
     error EndpointAlreadyAttestedToMessage(bytes32 managerMessageHash);
 
     address public immutable token;
-    address immutable deployer;
     Mode public immutable mode;
     uint16 public immutable chainId;
     uint256 immutable evmChainId;
@@ -183,8 +182,6 @@ contract Manager is
         mode = _mode;
         chainId = _chainId;
         evmChainId = block.chainid;
-        // save the deployer (check this on initialization)
-        deployer = msg.sender;
         tokenDecimals = _tokenDecimals(_token);
     }
 
@@ -194,10 +191,6 @@ contract Manager is
     }
 
     function __Manager_init() internal onlyInitializing {
-        // check if the owner is the deployer of this contract
-        if (msg.sender != deployer) {
-            revert UnexpectedOwner(deployer, msg.sender);
-        }
         __PausedOwnable_init(msg.sender, msg.sender);
         __ReentrancyGuard_init();
     }
