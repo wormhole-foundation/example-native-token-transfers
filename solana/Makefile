@@ -32,7 +32,3 @@ docker:
 		--build-arg SOLANA_CLI=$(SOLANA_CLI) \
 		--build-arg ANCHOR_CLI=$(ANCHOR_CLI) \
 		.
-	#DOCKER_BUILDKIT=1 docker build -f Dockerfile.ci \
-	#		--build-arg SOLANA_CLI=$(SOLANA_CLI) \
-	#		--build-arg ANCHOR_CLI=$(ANCHOR_CLI) \
-	#		.
