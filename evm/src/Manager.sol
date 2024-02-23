@@ -18,7 +18,6 @@ import "./interfaces/IManagerEvents.sol";
 import "./interfaces/INTTToken.sol";
 import "./interfaces/IEndpoint.sol";
 import "./EndpointRegistry.sol";
-import "./NttNormalizer.sol";
 import "./libraries/PausableOwnable.sol";
 import "./libraries/Implementation.sol";
 
@@ -357,25 +356,6 @@ contract Manager is
         }
     }
 
-    /// @dev Returns normalized amount and checks for dust
-    function normalizeTransferAmount(uint256 amount)
-        internal
-        view
-        returns (NormalizedAmount memory)
-    {
-        NormalizedAmount memory normalizedAmount;
-        {
-            normalizedAmount = amount.normalize(tokenDecimals);
-            // don't deposit dust that can not be bridged due to the decimal shift
-            uint256 newAmount = normalizedAmount.denormalize(tokenDecimals);
-            if (amount != newAmount) {
-                revert TransferAmountHasDust(amount, amount - newAmount);
-            }
-        }
-
-        return normalizedAmount;
-    }
-
     /// @dev Simple quality of life transfer method that doesn't deal with queuing or passing endpoint instructions.
     function transfer(
         uint256 amount,
@@ -466,7 +446,12 @@ contract Manager is
         }
 
         // normalize amount after burning to ensure transfer amount matches (amount - fee)
-        NormalizedAmount memory normalizedAmount = normalizeTransferAmount(amount);
+        NormalizedAmount memory normalizedAmount = amount.normalize(tokenDecimals);
+       
+        uint256 newAmount = normalizedAmount.denormalize(tokenDecimals);
+        if (amount != newAmount) {
+            revert TransferAmountHasDust(amount, amount - newAmount);
+        }
 
         // get the sequence for this transfer and increment after
         uint64 sequence = _getMessageSequenceStorage().num;
@@ -564,13 +549,6 @@ contract Manager is
         return sequence;
     }
 
-    /// @dev Verify that the sibling address saved for `sourceChainId` matches the `siblingAddress`.
-    function _verifySibling(uint16 sourceChainId, bytes32 siblingAddress) internal view {
-        if (getSibling(sourceChainId) != siblingAddress) {
-            revert InvalidSibling(sourceChainId, siblingAddress);
-        }
-    }
-
     /// @dev Called after a message has been sufficiently verified to execute the command in the message.
     ///      This function will decode the payload as an ManagerMessage to extract the sequence, msgType, and other parameters.
     function executeMsg(
@@ -666,10 +644,6 @@ contract Manager is
         }
     }
 
-    function nextMessageSequence() external view returns (uint64) {
-        return _getMessageSequenceStorage().num;
-    }
-
     function getTokenBalanceOf(
         address tokenAddr,
         address accountAddr
@@ -711,7 +685,10 @@ contract Manager is
         bytes32 sourceManagerAddress,
         EndpointStructs.ManagerMessage memory payload
     ) external onlyEndpoint {
-        _verifySibling(sourceChainId, sourceManagerAddress);
+        // Check the sibling is valid
+        if (getSibling(sourceChainId) != sourceManagerAddress) {
+            revert InvalidSibling(sourceChainId, sourceManagerAddress);
+        }
 
         bytes32 managerMessageHash = EndpointStructs.managerMessageDigest(sourceChainId, payload);
 

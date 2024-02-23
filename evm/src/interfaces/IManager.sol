@@ -100,8 +100,6 @@ interface IManager {
         EndpointStructs.EndpointInstruction[] memory endpointInstructions
     ) external view returns (uint256[] memory);
 
-    function nextMessageSequence() external view returns (uint64);
-
     function token() external view returns (address);
 
     /// @notice Called by an Endpoint contract to deliver a verified attestation.
