@@ -219,7 +219,6 @@ contract Manager is
         super.transferOwnership(newOwner);
         // loop through all the registered endpoints and set the new owner of each endpoint to the newOwner
         address[] storage _registeredEndpoints = _getRegisteredEndpointsStorage();
-        _checkRegisteredEndpointsInvariants();
 
         for (uint256 i = 0; i < _registeredEndpoints.length; i++) {
             IEndpoint(_registeredEndpoints[i]).transferEndpointOwnership(newOwner);
@@ -727,13 +726,5 @@ contract Manager is
         assert(this.mode() == mode);
         assert(this.chainId() == chainId);
         assert(this.rateLimitDuration() == rateLimitDuration);
-    }
-
-    function _checkRegisteredEndpointsInvariants() internal view {
-        if (_getRegisteredEndpointsStorage().length != _getNumRegisteredEndpointsStorage().num) {
-            revert RetrievedIncorrectRegisteredEndpoints(
-                _getRegisteredEndpointsStorage().length, _getNumRegisteredEndpointsStorage().num
-            );
-        }
     }
 }
