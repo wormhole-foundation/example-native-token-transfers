@@ -52,19 +52,19 @@ abstract contract EndpointRegistry {
 
     /// =============== STORAGE ===============================================
 
-    bytes32 public constant ENDPOINT_INFOS_SLOT =
+    bytes32 private constant ENDPOINT_INFOS_SLOT =
         bytes32(uint256(keccak256("ntt.endpointInfos")) - 1);
 
-    bytes32 public constant ENDPOINT_BITMAP_SLOT =
+    bytes32 private constant ENDPOINT_BITMAP_SLOT =
         bytes32(uint256(keccak256("ntt.endpointBitmap")) - 1);
 
-    bytes32 public constant ENABLED_ENDPOINTS_SLOT =
+    bytes32 private constant ENABLED_ENDPOINTS_SLOT =
         bytes32(uint256(keccak256("ntt.enabledEndpoints")) - 1);
 
-    bytes32 public constant REGISTERED_ENDPOINTS_SLOT =
+    bytes32 private constant REGISTERED_ENDPOINTS_SLOT =
         bytes32(uint256(keccak256("ntt.registeredEndpoints")) - 1);
 
-    bytes32 public constant NUM_REGISTERED_ENDPOINTS_SLOT =
+    bytes32 private constant NUM_REGISTERED_ENDPOINTS_SLOT =
         bytes32(uint256(keccak256("ntt.numRegisteredEndpoints")) - 1);
 
     function _getEndpointInfosStorage()
