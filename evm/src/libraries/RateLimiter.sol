@@ -26,7 +26,8 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     bytes32 private constant INBOUND_LIMIT_PARAMS_SLOT =
         bytes32(uint256(keccak256("ntt.inboundLimitParams")) - 1);
 
-    bytes32 private constant INBOUND_QUEUE_SLOT = bytes32(uint256(keccak256("ntt.inboundQueue")) - 1);
+    bytes32 private constant INBOUND_QUEUE_SLOT =
+        bytes32(uint256(keccak256("ntt.inboundQueue")) - 1);
 
     function _getOutboundLimitParamsStorage() internal pure returns (RateLimitParams storage $) {
         uint256 slot = uint256(OUTBOUND_LIMIT_PARAMS_SLOT);
@@ -112,7 +113,11 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         _setLimit(limit, _getInboundLimitParamsStorage()[chainId_]);
     }
 
-    function _getInboundLimitParams(uint16 chainId_) internal view returns (RateLimitParams memory) {
+    function _getInboundLimitParams(uint16 chainId_)
+        internal
+        view
+        returns (RateLimitParams memory)
+    {
         return _getInboundLimitParamsStorage()[chainId_];
     }
 
