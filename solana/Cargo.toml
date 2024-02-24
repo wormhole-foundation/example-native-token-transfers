@@ -13,7 +13,7 @@ anchor-lang = "0.29.0"
 anchor-spl = "0.29.0"
 solana-program = "=1.17.2"
 
-wormhole-anchor-sdk = "0.29.0-alpha.1"
+wormhole-anchor-sdk = { version = "0.29.0-alpha.1", default-features = false }
 wormhole-sdk = { git = "https://github.com/wormhole-foundation/wormhole", rev = "eee4641" }
 serde_wormhole = { git = "https://github.com/wormhole-foundation/wormhole", rev = "eee4641" }
 

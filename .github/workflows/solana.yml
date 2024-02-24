@@ -101,8 +101,8 @@ jobs:
 
           mkdir -p "${BPF_OUT_DIR}"
 
-          cargo build-sbf
-          cargo test-sbf
+          cargo build-sbf --features "mainnet"
+          cargo test-sbf --features "mainnet"
           cargo test
   anchor-test:
     name: Anchor Test
