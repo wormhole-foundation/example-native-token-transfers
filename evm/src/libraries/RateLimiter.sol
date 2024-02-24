@@ -97,7 +97,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
 
     function getCurrentOutboundCapacity() public view returns (uint256) {
         NormalizedAmount memory normalizedCapacity = _getCurrentCapacity(_getOutboundLimitParams());
-        uint8 decimals = _tokenDecimals();
+        uint8 decimals = tokenDecimals();
         return normalizedCapacity.denormalize(decimals);
     }
 
@@ -124,7 +124,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     function getCurrentInboundCapacity(uint16 chainId_) public view returns (uint256) {
         NormalizedAmount memory normalizedCapacity =
             _getCurrentCapacity(_getInboundLimitParams(chainId_));
-        uint8 decimals = _tokenDecimals();
+        uint8 decimals = tokenDecimals();
         return normalizedCapacity.denormalize(decimals);
     }
 
@@ -300,5 +300,5 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         emit InboundTransferQueued(digest);
     }
 
-    function _tokenDecimals() internal view virtual returns (uint8);
+    function tokenDecimals() public view virtual returns (uint8);
 }

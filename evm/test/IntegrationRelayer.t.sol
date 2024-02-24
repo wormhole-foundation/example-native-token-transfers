@@ -483,16 +483,17 @@ contract TestRelayerEndToEndManual is
         // Register sibling contracts for the manager and endpoint. Endpoints and manager each have the concept of siblings here.
         managerChain1.setSibling(chainId2, bytes32(uint256(uint160(address(managerChain2)))));
         managerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(managerChain1)))));
+    }
 
+    function test_relayerEndpointAuth() public {
+        // Set up sensible WH endpoint siblings
         wormholeEndpointChain1.setWormholeSibling(
             chainId2, bytes32(uint256(uint160((address(wormholeEndpointChain2)))))
         );
         wormholeEndpointChain2.setWormholeSibling(
             chainId1, bytes32(uint256(uint160(address(wormholeEndpointChain1))))
         );
-    }
 
-    function test_relayerEndpointAuth() public {
         vm.recordLogs();
         vm.chainId(chainId1);
 
@@ -534,30 +535,8 @@ contract TestRelayerEndToEndManual is
         vm.stopPrank();
         vm.chainId(chainId2);
 
-        // Caller is not proper who to receive messages from
         bytes[] memory a;
-        wormholeEndpointChain2.setWormholeSibling(chainId1, bytes32(uint256(uint160(address(0x1)))));
-        vm.startPrank(relayer);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IWormholeEndpoint.InvalidWormholeSibling.selector,
-                chainId1,
-                address(wormholeEndpointChain1)
-            )
-        );
-        wormholeEndpointChain2.receiveWormholeMessages(
-            vaa.payload,
-            a,
-            bytes32(uint256(uint160(address(wormholeEndpointChain1)))),
-            vaa.emitterChainId,
-            vaa.hash
-        );
-        vm.stopPrank();
 
-        // Bad manager sibling calling
-        wormholeEndpointChain2.setWormholeSibling(
-            chainId1, bytes32(uint256(uint160(address(wormholeEndpointChain1))))
-        );
         managerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(0x1)))));
         vm.startPrank(relayer);
         vm.expectRevert(); // bad manager sibling
@@ -623,5 +602,73 @@ contract TestRelayerEndToEndManual is
             vaa.emitterChainId, // ChainID from the call
             vaa.hash // Hash of the VAA being used
         );
+    }
+
+    function test_relayerWithInvalidWHEndpoint() public {
+        // Set up dodgy wormhole endpoint siblings
+        wormholeEndpointChain2.setWormholeSibling(chainId1, bytes32(uint256(uint160(address(0x1)))));
+        wormholeEndpointChain1.setWormholeSibling(
+            chainId2, bytes32(uint256(uint160(address(wormholeEndpointChain2))))
+        );
+
+        vm.recordLogs();
+        vm.chainId(chainId1);
+
+        // Setting up the transfer
+        DummyToken token1 = DummyToken(managerChain1.token());
+
+        uint8 decimals = token1.decimals();
+        uint256 sendingAmount = 5 * 10 ** decimals;
+        token1.mintDummy(address(userA), 5 * 10 ** decimals);
+        vm.startPrank(userA);
+        token1.approve(address(managerChain1), sendingAmount);
+
+        // Send token through the relayer
+        {
+            vm.deal(userA, 1 ether);
+            managerChain1.transfer{
+                value: wormholeEndpointChain1.quoteDeliveryPrice(
+                    chainId2, buildEndpointInstruction(false)
+                    )
+            }(
+                sendingAmount,
+                chainId2,
+                bytes32(uint256(uint160(userB))),
+                false,
+                encodeEndpointInstruction(false)
+            );
+        }
+
+        // Get the messages from the logs for the sender
+        vm.chainId(chainId2);
+        Vm.Log[] memory entries = guardian.fetchWormholeMessageFromLog(vm.getRecordedLogs());
+        bytes[] memory encodedVMs = new bytes[](entries.length);
+        for (uint256 i = 0; i < encodedVMs.length; i++) {
+            encodedVMs[i] = guardian.fetchSignedMessageFromLogs(entries[i], chainId1);
+        }
+
+        IWormhole.VM memory vaa = wormhole.parseVM(encodedVMs[0]);
+
+        vm.stopPrank();
+        vm.chainId(chainId2);
+
+        // Caller is not proper who to receive messages from
+        bytes[] memory a;
+        vm.startPrank(relayer);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IWormholeEndpoint.InvalidWormholeSibling.selector,
+                chainId1,
+                address(wormholeEndpointChain1)
+            )
+        );
+        wormholeEndpointChain2.receiveWormholeMessages(
+            vaa.payload,
+            a,
+            bytes32(uint256(uint160(address(wormholeEndpointChain1)))),
+            vaa.emitterChainId,
+            vaa.hash
+        );
+        vm.stopPrank();
     }
 }
