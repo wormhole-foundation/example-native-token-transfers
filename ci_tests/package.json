@@ -1,0 +1,15 @@
+{
+  "name": "ci_tests",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "go" : "ts-node src/index.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@typechain/ethers-v6": "^0.5.1",
+    "ethers": "^6.11.1"
+  }
+}
