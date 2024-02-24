@@ -4,7 +4,6 @@ pragma solidity >=0.8.8 <0.9.0;
 import "../libraries/NormalizedAmount.sol";
 
 interface IRateLimiterEvents {
-
     /// @notice Emitted when an inbound transfer is queued
     /// @dev Topic0
     ///      0x7f63c9251d82a933210c2b6d0b0f116252c3c116788120e64e8e8215df6f3162.

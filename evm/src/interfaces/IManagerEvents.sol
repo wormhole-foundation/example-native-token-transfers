@@ -4,7 +4,6 @@ pragma solidity >=0.8.8 <0.9.0;
 import "../libraries/NormalizedAmount.sol";
 
 interface IManagerEvents {
-
     /// @notice Emitted when a message is sent from the manager.
     /// @dev Topic0
     ///      0x71ec1d4b53baa86365b6523ea136c9fe0f72c36c721e7e28e9efac2c23b39d98.

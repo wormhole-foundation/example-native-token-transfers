@@ -158,7 +158,6 @@ library EndpointStructs {
         bytes endpointPayload;
     }
 
-
     // @notice Encodes an Endpoint message for communication between the
     //         Manager and the Endpoint.
     // @param m The EndpointMessage struct containing the message details.
@@ -206,7 +205,6 @@ library EndpointStructs {
         bytes memory encoded = encodeEndpointMessage(prefix, endpointMessage);
         return (endpointMessage, encoded);
     }
-
 
     /// @dev Parses an encoded message and extracts information into an EndpointMessage struct.
     /// @param encoded The encoded bytes containing information about the EndpointMessage.
