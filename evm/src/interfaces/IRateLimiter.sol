@@ -39,12 +39,26 @@ interface IRateLimiter {
     /// @param newLimit The new limit.
     error CapacityCannotExceedLimit(NormalizedAmount newCurrentCapacity, NormalizedAmount newLimit);
 
+    /// @notice Parameters used in determining rate limits and queuing.
+    /// @dev
+    ///    - limit: current rate limit value.
+    ///    - currentCapacity: the current capacity left.
+    ///    - lastTxTimestamp: the timestamp of when the
+    ///                       capacity was previously consumption.
     struct RateLimitParams {
         NormalizedAmount limit;
         NormalizedAmount currentCapacity;
         uint64 lastTxTimestamp;
     }
 
+    /// @notice Parameters for an outbound queued transfer.
+    /// @dev
+    ///    - recipient: the recipient of the transfer.
+    ///    - amount: the amount of the transfer, normalized.
+    ///    - txTimestamp: the timestamp of the transfer.
+    ///    - recipientChain: the chain of the recipient.
+    ///    - sender: the sender of the transfer.
+    ///    - endpointInstructions: additional instructions to be forwarded to the recipient chain.
     struct OutboundQueuedTransfer {
         bytes32 recipient;
         NormalizedAmount amount;
@@ -54,6 +68,11 @@ interface IRateLimiter {
         bytes endpointInstructions;
     }
 
+    /// @notice Parameters for an inbound queued transfer.
+    /// @dev
+    ///   - amount: the amount of the transfer, normalized.
+    ///   - txTimestamp: the timestamp of the transfer.
+    ///   - recipient: the recipient of the transfer.
     struct InboundQueuedTransfer {
         NormalizedAmount amount;
         uint64 txTimestamp;
