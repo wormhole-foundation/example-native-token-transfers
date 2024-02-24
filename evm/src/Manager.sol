@@ -227,8 +227,7 @@ contract Manager is
         revert CannotRenounceManagerOwnership(owner());
     }
 
-    /// @dev This will either cross-call or internal call, depending on whether the contract is standalone or not.
-    ///      This method should return an array of delivery prices corresponding to each endpoint.
+    /// @dev This method should return an array of delivery prices corresponding to each endpoint.
     function quoteDeliveryPrice(
         uint16 recipientChain,
         EndpointStructs.EndpointInstruction[] memory endpointInstructions,
@@ -251,8 +250,6 @@ contract Manager is
         return (priceQuotes, totalPriceQuote);
     }
 
-    /// @dev This will either cross-call or internal call, depending on
-    /// whether the contract is standalone or not.
     function _sendMessageToEndpoints(
         uint16 recipientChain,
         uint256[] memory priceQuotes,
@@ -420,12 +417,6 @@ contract Manager is
             revert InvalidRecipient();
         }
 
-        // parse the instructions up front to ensure they:
-        // - are encoded correctly
-        // - follow payload length restrictions
-
-        EndpointStructs.parseEndpointInstructions(endpointInstructions);
-
         {
             // Lock/burn tokens before checking rate limits
             if (mode == Mode.LOCKING) {
@@ -530,15 +521,14 @@ contract Manager is
         address sender,
         bytes memory endpointInstructions
     ) internal returns (uint64 msgSequence) {
-        // parse and reorganize the endpoint instructions based on index
-        EndpointStructs.EndpointInstruction[] memory sortedInstructions = EndpointStructs
-            .sortEndpointInstructions(EndpointStructs.parseEndpointInstructions(endpointInstructions));
-
         // cache enabled endpoints to avoid multiple storage reads
         address[] memory enabledEndpoints = _getEnabledEndpointsStorage();
 
+        EndpointStructs.EndpointInstruction[] memory instructions =
+            EndpointStructs.parseEndpointInstructions(endpointInstructions, enabledEndpoints.length);
+
         (uint256[] memory priceQuotes, uint256 totalPriceQuote) =
-            quoteDeliveryPrice(recipientChain, sortedInstructions, enabledEndpoints);
+            quoteDeliveryPrice(recipientChain, instructions, enabledEndpoints);
         {
             // check up front that msg.value will cover the delivery price
             if (msg.value < totalPriceQuote) {
@@ -567,7 +557,7 @@ contract Manager is
 
         // send the message
         _sendMessageToEndpoints(
-            recipientChain, priceQuotes, sortedInstructions, enabledEndpoints, encodedManagerPayload
+            recipientChain, priceQuotes, instructions, enabledEndpoints, encodedManagerPayload
         );
 
         emit TransferSent(recipient, nttDenormalize(amount), recipientChain, sequence);
