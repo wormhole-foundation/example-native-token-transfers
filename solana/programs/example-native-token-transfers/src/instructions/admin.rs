@@ -8,9 +8,9 @@ use crate::messages::Hack;
 use crate::{
     config::Config,
     error::NTTError,
+    peer::NttManagerPeer,
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit, rate_limit::RateLimitState},
     registered_transceiver::RegisteredTransceiver,
-    sibling::NttManagerSibling,
 };
 
 // * Transfer ownership
@@ -124,13 +124,13 @@ pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
     )
 }
 
-// * Set siblings
-// TODO: update siblings? should that be a separate instruction? take timestamp
+// * Set peers
+// TODO: update peers? should that be a separate instruction? take timestamp
 // for modification? (for total ordering)
 
 #[derive(Accounts)]
-#[instruction(args: SetSiblingArgs)]
-pub struct SetSibling<'info> {
+#[instruction(args: SetPeerArgs)]
+pub struct SetPeer<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
@@ -143,12 +143,12 @@ pub struct SetSibling<'info> {
 
     #[account(
         init,
-        space = 8 + NttManagerSibling::INIT_SPACE,
+        space = 8 + NttManagerPeer::INIT_SPACE,
         payer = payer,
-        seeds = [NttManagerSibling::SEED_PREFIX, args.chain_id.id.to_be_bytes().as_ref()],
+        seeds = [NttManagerPeer::SEED_PREFIX, args.chain_id.id.to_be_bytes().as_ref()],
         bump
     )]
-    pub sibling: Account<'info, NttManagerSibling>,
+    pub peer: Account<'info, NttManagerPeer>,
 
     #[account(
         init,
@@ -166,15 +166,15 @@ pub struct SetSibling<'info> {
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct SetSiblingArgs {
+pub struct SetPeerArgs {
     pub chain_id: ChainId,
     pub address: [u8; 32],
     pub limit: u64,
 }
 
-pub fn set_sibling(ctx: Context<SetSibling>, args: SetSiblingArgs) -> Result<()> {
-    ctx.accounts.sibling.set_inner(NttManagerSibling {
-        bump: ctx.bumps.sibling,
+pub fn set_peer(ctx: Context<SetPeer>, args: SetPeerArgs) -> Result<()> {
+    ctx.accounts.peer.set_inner(NttManagerPeer {
+        bump: ctx.bumps.peer,
         address: args.address,
     });
 

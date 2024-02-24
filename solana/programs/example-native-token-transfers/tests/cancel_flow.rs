@@ -48,7 +48,7 @@ fn init_transfer_accs_args(
 ) -> (Transfer, TransferArgs) {
     let accs = Transfer {
         payer: ctx.payer.pubkey(),
-        sibling: test_data.ntt.sibling(OTHER_CHAIN),
+        peer: test_data.ntt.peer(OTHER_CHAIN),
         mint: test_data.mint,
         from: test_data.user_token_account,
         from_authority: test_data.user.pubkey(),
@@ -73,7 +73,7 @@ fn init_redeem_accs(
 ) -> Redeem {
     Redeem {
         payer: ctx.payer.pubkey(),
-        sibling: test_data.ntt.sibling(chain_id),
+        peer: test_data.ntt.peer(chain_id),
         transceiver: test_data.ntt.program,
         transceiver_message: test_data
             .ntt
@@ -93,7 +93,7 @@ fn init_receive_message_accs(
 ) -> ReceiveMessage {
     ReceiveMessage {
         payer: ctx.payer.pubkey(),
-        sibling: test_data.ntt.transceiver_sibling(chain_id),
+        peer: test_data.ntt.transceiver_peer(chain_id),
         vaa,
         chain_id,
         sequence,

@@ -7,7 +7,7 @@ use crate::sdk::accounts::NTT;
 #[derive(Debug, Clone)]
 pub struct Redeem {
     pub payer: Pubkey,
-    pub sibling: Pubkey,
+    pub peer: Pubkey,
     pub transceiver_message: Pubkey,
     pub transceiver: Pubkey,
     pub mint: Pubkey,
@@ -21,7 +21,7 @@ pub fn redeem(ntt: &NTT, accs: Redeem, args: RedeemArgs) -> Instruction {
     let accounts = example_native_token_transfers::accounts::Redeem {
         payer: accs.payer,
         config: ntt.config(),
-        sibling: accs.sibling,
+        peer: accs.peer,
         transceiver_message: accs.transceiver_message,
         transceiver: ntt.registered_transceiver(&accs.transceiver),
         mint: accs.mint,

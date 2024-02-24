@@ -6,10 +6,10 @@ pub mod config;
 pub mod error;
 pub mod instructions;
 pub mod messages;
+pub mod peer;
 pub mod queue;
 pub mod registered_transceiver;
 pub mod sequence;
-pub mod sibling;
 pub mod transceivers;
 
 use transceivers::wormhole::instructions::*;
@@ -67,8 +67,8 @@ pub mod example_native_token_transfers {
         instructions::set_paused(ctx, pause)
     }
 
-    pub fn set_sibling(ctx: Context<SetSibling>, args: SetSiblingArgs) -> Result<()> {
-        instructions::set_sibling(ctx, args)
+    pub fn set_peer(ctx: Context<SetPeer>, args: SetPeerArgs) -> Result<()> {
+        instructions::set_peer(ctx, args)
     }
 
     pub fn register_transceiver(ctx: Context<RegisterTransceiver>) -> Result<()> {
@@ -91,11 +91,11 @@ pub mod example_native_token_transfers {
 
     // standalone transceiver stuff
 
-    pub fn set_wormhole_sibling(
-        ctx: Context<SetTransceiverSibling>,
-        args: SetTransceiverSiblingArgs,
+    pub fn set_wormhole_peer(
+        ctx: Context<SetTransceiverPeer>,
+        args: SetTransceiverPeerArgs,
     ) -> Result<()> {
-        transceivers::wormhole::instructions::set_transceiver_sibling(ctx, args)
+        transceivers::wormhole::instructions::set_transceiver_peer(ctx, args)
     }
 
     pub fn receive_wormhole_message(ctx: Context<ReceiveMessage>) -> Result<()> {

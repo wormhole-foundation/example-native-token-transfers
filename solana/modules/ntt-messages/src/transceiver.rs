@@ -26,7 +26,7 @@ pub struct TransceiverMessageData<A: MaybeSpace> {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct TransceiverMessage<E: Transceiver, A: MaybeSpace> {
     _phantom: PhantomData<E>,
-    // TODO: check sibling registration at the ntt_manager level
+    // TODO: check peer registration at the ntt_manager level
     pub message_data: TransceiverMessageData<A>,
     pub transceiver_payload: Vec<u8>,
 }

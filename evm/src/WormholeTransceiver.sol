@@ -28,9 +28,9 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
     ///      This is bytes4(keccak256("WormholeTransceiverInit"))
     bytes4 constant WH_TRANSCEIVER_INIT_PREFIX = 0xc83e3d2e;
 
-    /// @dev Prefix for all Wormhole sibling registration payloads
-    ///      This is bytes4(keccak256("WormholeSiblingRegistration"))
-    bytes4 constant WH_SIBLING_REGISTRATION_PREFIX = 0xd0d292f1;
+    /// @dev Prefix for all Wormhole peer registration payloads
+    ///      This is bytes4(keccak256("WormholePeerRegistration"))
+    bytes4 constant WH_PEER_REGISTRATION_PREFIX = 0xd0d292f1;
 
     IWormhole public immutable wormhole;
     IWormholeRelayer public immutable wormholeRelayer;
@@ -46,8 +46,8 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
     bytes32 private constant WORMHOLE_CONSUMED_VAAS_SLOT =
         bytes32(uint256(keccak256("whTransceiver.consumedVAAs")) - 1);
 
-    bytes32 private constant WORMHOLE_SIBLINGS_SLOT =
-        bytes32(uint256(keccak256("whTransceiver.siblings")) - 1);
+    bytes32 private constant WORMHOLE_PEERS_SLOT =
+        bytes32(uint256(keccak256("whTransceiver.peers")) - 1);
 
     bytes32 private constant WORMHOLE_RELAYING_ENABLED_CHAINS_SLOT =
         bytes32(uint256(keccak256("whTransceiver.relayingEnabledChains")) - 1);
@@ -71,12 +71,12 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
         }
     }
 
-    function _getWormholeSiblingsStorage()
+    function _getWormholePeersStorage()
         internal
         pure
         returns (mapping(uint16 => bytes32) storage $)
     {
-        uint256 slot = uint256(WORMHOLE_SIBLINGS_SLOT);
+        uint256 slot = uint256(WORMHOLE_PEERS_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
         }
@@ -211,7 +211,7 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
         if (!weIns.shouldSkipRelayerSend && _shouldRelayViaStandardRelaying(recipientChain)) {
             wormholeRelayer.sendPayloadToEvm{value: deliveryPayment}(
                 recipientChain,
-                fromWormholeFormat(getWormholeSibling(recipientChain)),
+                fromWormholeFormat(getWormholePeer(recipientChain)),
                 encodedTransceiverPayload,
                 0,
                 GAS_LIMIT
@@ -236,8 +236,8 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
         uint16 sourceChain,
         bytes32 deliveryHash
     ) external payable onlyRelayer {
-        if (getWormholeSibling(sourceChain) != sourceAddress) {
-            revert InvalidWormholeSibling(sourceChain, sourceAddress);
+        if (getWormholePeer(sourceChain) != sourceAddress) {
+            revert InvalidWormholePeer(sourceChain, sourceAddress);
         }
 
         // VAA replay protection
@@ -301,9 +301,9 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
             revert InvalidVaa(reason);
         }
 
-        // ensure that the message came from a registered sibling contract
+        // ensure that the message came from a registered peer contract
         if (!_verifyBridgeVM(vm)) {
-            revert InvalidWormholeSibling(vm.emitterChainId, vm.emitterAddress);
+            revert InvalidWormholePeer(vm.emitterChainId, vm.emitterAddress);
         }
 
         // save the VAA hash in storage to protect against replay attacks.
@@ -320,7 +320,7 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
 
     function _verifyBridgeVM(IWormhole.VM memory vm) internal view returns (bool) {
         checkFork(wormholeTransceiver_evmChainId);
-        return getWormholeSibling(vm.emitterChainId) == vm.emitterAddress;
+        return getWormholePeer(vm.emitterChainId) == vm.emitterAddress;
     }
 
     function isVAAConsumed(bytes32 hash) public view returns (bool) {
@@ -333,49 +333,46 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
 
     /// @notice Get the corresponding Transceiver contract on other chains that have been registered via governance.
     ///         This design should be extendable to other chains, so each Transceiver would be potentially concerned with Transceivers on multiple other chains
-    ///         Note that siblings are registered under wormhole chainID values
-    function getWormholeSibling(uint16 chainId) public view returns (bytes32) {
-        return _getWormholeSiblingsStorage()[chainId];
+    ///         Note that peers are registered under wormhole chainID values
+    function getWormholePeer(uint16 chainId) public view returns (bytes32) {
+        return _getWormholePeersStorage()[chainId];
     }
 
-    function setWormholeSibling(
-        uint16 siblingChainId,
-        bytes32 siblingContract
-    ) external onlyOwner {
-        _setWormholeSibling(siblingChainId, siblingContract);
+    function setWormholePeer(uint16 peerChainId, bytes32 peerContract) external onlyOwner {
+        _setWormholePeer(peerChainId, peerContract);
     }
 
-    function _setWormholeSibling(uint16 chainId, bytes32 siblingContract) internal {
+    function _setWormholePeer(uint16 chainId, bytes32 peerContract) internal {
         if (chainId == 0) {
             revert InvalidWormholeChainIdZero();
         }
-        if (siblingContract == bytes32(0)) {
-            revert InvalidWormholeSiblingZeroAddress();
+        if (peerContract == bytes32(0)) {
+            revert InvalidWormholePeerZeroAddress();
         }
 
-        bytes32 oldSiblingContract = _getWormholeSiblingsStorage()[chainId];
+        bytes32 oldPeerContract = _getWormholePeersStorage()[chainId];
 
-        // We don't want to allow updating a sibling since this adds complexity in the accountant
-        // If the owner makes a mistake with sibling registration they should deploy a new Wormhole
+        // We don't want to allow updating a peer since this adds complexity in the accountant
+        // If the owner makes a mistake with peer registration they should deploy a new Wormhole
         // transceiver and register this new transceiver with the NttManager
-        if (oldSiblingContract != bytes32(0)) {
-            revert SiblingAlreadySet(chainId, oldSiblingContract);
+        if (oldPeerContract != bytes32(0)) {
+            revert PeerAlreadySet(chainId, oldPeerContract);
         }
 
-        _getWormholeSiblingsStorage()[chainId] = siblingContract;
+        _getWormholePeersStorage()[chainId] = peerContract;
 
         // Publish a message for this transceiver registration
         TransceiverStructs.TransceiverRegistration memory registration = TransceiverStructs
             .TransceiverRegistration({
-            transceiverIdentifier: WH_SIBLING_REGISTRATION_PREFIX,
+            transceiverIdentifier: WH_PEER_REGISTRATION_PREFIX,
             transceiverChainId: chainId,
-            transceiverAddress: siblingContract
+            transceiverAddress: peerContract
         });
         wormhole.publishMessage(
             0, TransceiverStructs.encodeTransceiverRegistration(registration), consistencyLevel
         );
 
-        emit SetWormholeSibling(chainId, siblingContract);
+        emit SetWormholePeer(chainId, peerContract);
     }
 
     function isWormholeRelayingEnabled(uint16 chainId) public view returns (bool) {

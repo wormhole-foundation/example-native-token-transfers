@@ -131,14 +131,14 @@ export class NTT {
     return this.derive_pda([Buffer.from('message'), outboxItem.toBuffer()])
   }
 
-  siblingAccountAddress(chain: ChainName | ChainId): PublicKey {
+  peerAccountAddress(chain: ChainName | ChainId): PublicKey {
     const chainId = coalesceChainId(chain)
-    return this.derive_pda([Buffer.from('sibling'), new BN(chainId).toBuffer('be', 2)])
+    return this.derive_pda([Buffer.from('peer'), new BN(chainId).toBuffer('be', 2)])
   }
 
-  transceiverSiblingAccountAddress(chain: ChainName | ChainId): PublicKey {
+  transceiverPeerAccountAddress(chain: ChainName | ChainId): PublicKey {
     const chainId = coalesceChainId(chain)
-    return this.derive_pda([Buffer.from('transceiver_sibling'), new BN(chainId).toBuffer('be', 2)])
+    return this.derive_pda([Buffer.from('transceiver_peer'), new BN(chainId).toBuffer('be', 2)])
   }
 
   transceiverMessageAccountAddress(chain: ChainName | ChainId, sequence: BN): PublicKey {
@@ -300,7 +300,7 @@ export class NTT {
           outboxRateLimit: this.outboxRateLimitAccountAddress(),
           tokenAuthority: this.tokenAuthorityAddress(),
         },
-        sibling: this.siblingAccountAddress(args.recipientChain),
+        peer: this.peerAccountAddress(args.recipientChain),
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain)
       })
       .instruction()
@@ -350,7 +350,7 @@ export class NTT {
           outboxRateLimit: this.outboxRateLimitAccountAddress(),
           tokenAuthority: this.tokenAuthorityAddress(),
         },
-        sibling: this.siblingAccountAddress(args.recipientChain),
+        peer: this.peerAccountAddress(args.recipientChain),
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain),
         custody: await this.custodyAccountAddress(config)
       })
@@ -529,7 +529,7 @@ export class NTT {
     await this.sendAndConfirmTransaction(tx, signers)
   }
 
-  async setSibling(args: {
+  async setPeer(args: {
     payer: Keypair
     owner: Keypair
     chain: ChainName
@@ -537,7 +537,7 @@ export class NTT {
     limit: BN
     config?: Config
   }) {
-    const ix = await this.program.methods.setSibling({
+    const ix = await this.program.methods.setPeer({
       chainId: { id: toChainId(args.chain) },
       address: Array.from(args.address),
       limit: args.limit
@@ -546,21 +546,21 @@ export class NTT {
         payer: args.payer.publicKey,
         owner: args.owner.publicKey,
         config: this.configAccountAddress(),
-        sibling: this.siblingAccountAddress(args.chain),
+        peer: this.peerAccountAddress(args.chain),
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.chain),
       }).instruction();
     return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner]);
 
   }
 
-  async setWormholeTransceiverSibling(args: {
+  async setWormholeTransceiverPeer(args: {
     payer: Keypair
     owner: Keypair
     chain: ChainName
     address: ArrayLike<number>
     config?: Config
   }) {
-    const ix = await this.program.methods.setWormholeSibling({
+    const ix = await this.program.methods.setWormholePeer({
       chainId: { id: toChainId(args.chain) },
       address: Array.from(args.address)
     })
@@ -568,7 +568,7 @@ export class NTT {
         payer: args.payer.publicKey,
         owner: args.owner.publicKey,
         config: this.configAccountAddress(),
-        sibling: this.transceiverSiblingAccountAddress(args.chain),
+        peer: this.transceiverPeerAccountAddress(args.chain),
       }).instruction();
     return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner]);
   }
@@ -609,12 +609,12 @@ export class NTT {
     // TODO: explain why this is fine here
     const chainId = parsedVaa.emitterChain as ChainId
 
-    const transceiverSibling = this.transceiverSiblingAccountAddress(chainId)
+    const transceiverPeer = this.transceiverPeerAccountAddress(chainId)
 
     return await this.program.methods.receiveWormholeMessage().accounts({
       payer: args.payer,
       config: this.configAccountAddress(),
-      sibling: transceiverSibling,
+      peer: transceiverPeer,
       vaa: derivePostedVaaKey(this.wormholeId, parseVaa(args.vaa).hash),
       transceiverMessage: this.transceiverMessageAccountAddress(
         chainId,
@@ -647,7 +647,7 @@ export class NTT {
     // TODO: explain why this is fine here
     const chainId = parsedVaa.emitterChain as ChainId
 
-    const ntt_managerSibling = this.siblingAccountAddress(chainId)
+    const ntt_managerPeer = this.peerAccountAddress(chainId)
     const inboxRateLimit = this.inboxRateLimitAccountAddress(chainId)
 
     return await this.program.methods
@@ -655,7 +655,7 @@ export class NTT {
       .accounts({
         payer: args.payer,
         config: this.configAccountAddress(),
-        sibling: ntt_managerSibling,
+        peer: ntt_managerPeer,
         transceiverMessage: this.transceiverMessageAccountAddress(chainId, new BN(ntt_managerMessage.sequence.toString())),
         transceiver: this.registeredTransceiverAddress(this.program.programId),
         mint: await this.mintAccountAddress(config),

@@ -16,7 +16,7 @@ library NttManagerHelpersLib {
         NttManager recipientNttManager,
         uint8 decimals
     ) internal {
-        recipientNttManager.setSibling(SENDING_CHAIN_ID, toWormholeFormat(address(nttManager)));
+        recipientNttManager.setPeer(SENDING_CHAIN_ID, toWormholeFormat(address(nttManager)));
         recipientNttManager.setInboundLimit(inboundLimit.denormalize(decimals), SENDING_CHAIN_ID);
     }
 }

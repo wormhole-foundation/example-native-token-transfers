@@ -10,7 +10,7 @@ use wormhole_anchor_sdk::wormhole::PostedVaa;
 
 use crate::{
     config::*, error::NTTError, messages::ValidatedTransceiverMessage,
-    transceivers::accounts::sibling::TransceiverSibling,
+    transceivers::accounts::peer::TransceiverPeer,
 };
 
 #[derive(Accounts)]
@@ -22,11 +22,11 @@ pub struct ReceiveMessage<'info> {
     pub config: Account<'info, Config>,
 
     #[account(
-        seeds = [TransceiverSibling::SEED_PREFIX, vaa.emitter_chain().to_be_bytes().as_ref()],
-        constraint = sibling.address == *vaa.emitter_address() @ NTTError::InvalidTransceiverSibling,
-        bump = sibling.bump,
+        seeds = [TransceiverPeer::SEED_PREFIX, vaa.emitter_chain().to_be_bytes().as_ref()],
+        constraint = peer.address == *vaa.emitter_address() @ NTTError::InvalidTransceiverPeer,
+        bump = peer.bump,
     )]
-    pub sibling: Account<'info, TransceiverSibling>,
+    pub peer: Account<'info, TransceiverPeer>,
 
     // TODO: Consider using VaaAccount from wormhole-solana-vaa crate. Using a zero-copy reader
     // will allow this instruction to be generic (instead of strictly specifying NativeTokenTransfer

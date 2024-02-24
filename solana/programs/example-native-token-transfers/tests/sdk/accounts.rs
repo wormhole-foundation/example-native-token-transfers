@@ -138,20 +138,18 @@ impl NTT {
         wormhole_message
     }
 
-    pub fn sibling(&self, chain: u16) -> Pubkey {
-        let (sibling, _) = Pubkey::find_program_address(
-            &[b"sibling".as_ref(), &chain.to_be_bytes()],
-            &self.program,
-        );
-        sibling
+    pub fn peer(&self, chain: u16) -> Pubkey {
+        let (peer, _) =
+            Pubkey::find_program_address(&[b"peer".as_ref(), &chain.to_be_bytes()], &self.program);
+        peer
     }
 
-    pub fn transceiver_sibling(&self, chain: u16) -> Pubkey {
-        let (sibling, _) = Pubkey::find_program_address(
-            &[b"transceiver_sibling".as_ref(), &chain.to_be_bytes()],
+    pub fn transceiver_peer(&self, chain: u16) -> Pubkey {
+        let (peer, _) = Pubkey::find_program_address(
+            &[b"transceiver_peer".as_ref(), &chain.to_be_bytes()],
             &self.program,
         );
-        sibling
+        peer
     }
 
     pub fn transceiver_message(&self, chain: u16, sequence: u64) -> Pubkey {

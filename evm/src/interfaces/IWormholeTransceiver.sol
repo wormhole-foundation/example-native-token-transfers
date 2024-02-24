@@ -12,7 +12,7 @@ interface IWormholeTransceiver {
     event SendTransceiverMessage(
         uint16 recipientChain, TransceiverStructs.TransceiverMessage message
     );
-    event SetWormholeSibling(uint16 chainId, bytes32 siblingContract);
+    event SetWormholePeer(uint16 chainId, bytes32 peerContract);
     event SetIsWormholeRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
     event SetIsSpecialRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
     event SetIsWormholeEvmChain(uint16 chainId);
@@ -21,15 +21,15 @@ interface IWormholeTransceiver {
     error CallerNotRelayer(address caller);
     error UnexpectedAdditionalMessages();
     error InvalidVaa(string reason);
-    error InvalidWormholeSibling(uint16 chainId, bytes32 siblingAddress);
-    error SiblingAlreadySet(uint16 chainId, bytes32 siblingAddress);
+    error InvalidWormholePeer(uint16 chainId, bytes32 peerAddress);
+    error PeerAlreadySet(uint16 chainId, bytes32 peerAddress);
     error TransferAlreadyCompleted(bytes32 vaaHash);
-    error InvalidWormholeSiblingZeroAddress();
+    error InvalidWormholePeerZeroAddress();
     error InvalidWormholeChainIdZero();
 
     function receiveMessage(bytes memory encodedMessage) external;
     function isVAAConsumed(bytes32 hash) external view returns (bool);
-    function getWormholeSibling(uint16 chainId) external view returns (bytes32);
+    function getWormholePeer(uint16 chainId) external view returns (bytes32);
     function isWormholeRelayingEnabled(uint16 chainId) external view returns (bool);
     function isSpecialRelayingEnabled(uint16 chainId) external view returns (bool);
     function isWormholeEvmChain(uint16 chainId) external view returns (bool);

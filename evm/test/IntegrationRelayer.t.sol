@@ -160,21 +160,21 @@ contract TestEndToEndRelayer is
 
         // Setup the information for interacting with the chains
         vm.selectFork(targetFork);
-        wormholeTransceiverChain2.setWormholeSibling(
+        wormholeTransceiverChain2.setWormholePeer(
             chainId1, bytes32(uint256(uint160(address(wormholeTransceiverChain1))))
         );
-        nttManagerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
+        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
         DummyToken token2 = DummyTokenMintAndBurn(nttManagerChain2.token());
         wormholeTransceiverChain2.setIsWormholeRelayingEnabled(chainId1, true);
         wormholeTransceiverChain2.setIsWormholeEvmChain(chainId1);
 
-        // Register sibling contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of siblings here.
+        // Register peer contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of peers here.
         vm.selectFork(sourceFork);
         DummyToken token1 = DummyToken(nttManagerChain1.token());
-        wormholeTransceiverChain1.setWormholeSibling(
+        wormholeTransceiverChain1.setWormholePeer(
             chainId2, bytes32(uint256(uint160((address(wormholeTransceiverChain2)))))
         );
-        nttManagerChain1.setSibling(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))));
+        nttManagerChain1.setPeer(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))));
 
         // Enable general relaying on the chain to transfer for the funds.
         wormholeTransceiverChain1.setIsWormholeRelayingEnabled(chainId2, true);
@@ -258,18 +258,18 @@ contract TestEndToEndRelayer is
 
         // Setup the information for interacting with the chains
         vm.selectFork(targetFork);
-        wormholeTransceiverChain2.setWormholeSibling(
+        wormholeTransceiverChain2.setWormholePeer(
             chainId1, bytes32(uint256(uint160(address(wormholeTransceiverChain1))))
         );
-        nttManagerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
+        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
         DummyToken token2 = DummyTokenMintAndBurn(nttManagerChain2.token());
         wormholeTransceiverChain2.setIsWormholeRelayingEnabled(chainId1, true);
         wormholeTransceiverChain2.setIsWormholeEvmChain(chainId1);
 
-        // Register sibling contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of siblings here.
+        // Register peer contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of peers here.
         vm.selectFork(sourceFork);
-        nttManagerChain1.setSibling(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))));
-        wormholeTransceiverChain1.setWormholeSibling(
+        nttManagerChain1.setPeer(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))));
+        wormholeTransceiverChain1.setWormholePeer(
             chainId2, bytes32(uint256(uint160((address(wormholeTransceiverChain2)))))
         );
         DummyToken token1 = DummyToken(nttManagerChain1.token());
@@ -487,17 +487,17 @@ contract TestRelayerEndToEndManual is
         nttManagerChain2.setOutboundLimit(type(uint64).max);
         nttManagerChain2.setInboundLimit(type(uint64).max, chainId1);
 
-        // Register sibling contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of siblings here.
-        nttManagerChain1.setSibling(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))));
-        nttManagerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
+        // Register peer contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of peers here.
+        nttManagerChain1.setPeer(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))));
+        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
     }
 
     function test_relayerTransceiverAuth() public {
-        // Set up sensible WH transceiver siblings
-        wormholeTransceiverChain1.setWormholeSibling(
+        // Set up sensible WH transceiver peers
+        wormholeTransceiverChain1.setWormholePeer(
             chainId2, bytes32(uint256(uint160((address(wormholeTransceiverChain2)))))
         );
-        wormholeTransceiverChain2.setWormholeSibling(
+        wormholeTransceiverChain2.setWormholePeer(
             chainId1, bytes32(uint256(uint160(address(wormholeTransceiverChain1))))
         );
 
@@ -544,9 +544,9 @@ contract TestRelayerEndToEndManual is
 
         bytes[] memory a;
 
-        nttManagerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(0x1)))));
+        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(0x1)))));
         vm.startPrank(relayer);
-        vm.expectRevert(); // bad nttManager sibling
+        vm.expectRevert(); // bad nttManager peer
         wormholeTransceiverChain2.receiveWormholeMessages(
             vaa.payload,
             a,
@@ -557,7 +557,7 @@ contract TestRelayerEndToEndManual is
         vm.stopPrank();
 
         // Wrong caller - aka not relayer contract
-        nttManagerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
+        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
         vm.prank(userD);
         vm.expectRevert(
             abi.encodeWithSelector(IWormholeTransceiver.CallerNotRelayer.selector, userD)
@@ -575,7 +575,7 @@ contract TestRelayerEndToEndManual is
         // Bad chain ID for a given transceiver
         vm.expectRevert(
             abi.encodeWithSelector(
-                IWormholeTransceiver.InvalidWormholeSibling.selector,
+                IWormholeTransceiver.InvalidWormholePeer.selector,
                 0xFF,
                 address(wormholeTransceiverChain1)
             )
@@ -597,7 +597,7 @@ contract TestRelayerEndToEndManual is
         wormholeTransceiverChain2.receiveWormholeMessages(
             vaa.payload, // Verified
             a, // Should be zero
-            bytes32(uint256(uint160(address(wormholeTransceiverChain1)))), // Must be a wormhole siblings
+            bytes32(uint256(uint160(address(wormholeTransceiverChain1)))), // Must be a wormhole peers
             vaa.emitterChainId, // ChainID from the call
             vaa.hash // Hash of the VAA being used
         );
@@ -607,18 +607,16 @@ contract TestRelayerEndToEndManual is
         wormholeTransceiverChain2.receiveWormholeMessages(
             vaa.payload, // Verified
             a, // Should be zero
-            bytes32(uint256(uint160(address(wormholeTransceiverChain1)))), // Must be a wormhole siblings
+            bytes32(uint256(uint160(address(wormholeTransceiverChain1)))), // Must be a wormhole peers
             vaa.emitterChainId, // ChainID from the call
             vaa.hash // Hash of the VAA being used
         );
     }
 
     function test_relayerWithInvalidWHTransceiver() public {
-        // Set up dodgy wormhole transceiver siblings
-        wormholeTransceiverChain2.setWormholeSibling(
-            chainId1, bytes32(uint256(uint160(address(0x1))))
-        );
-        wormholeTransceiverChain1.setWormholeSibling(
+        // Set up dodgy wormhole transceiver peers
+        wormholeTransceiverChain2.setWormholePeer(chainId1, bytes32(uint256(uint160(address(0x1)))));
+        wormholeTransceiverChain1.setWormholePeer(
             chainId2, bytes32(uint256(uint160(address(wormholeTransceiverChain2))))
         );
 
@@ -668,7 +666,7 @@ contract TestRelayerEndToEndManual is
         vm.startPrank(relayer);
         vm.expectRevert(
             abi.encodeWithSelector(
-                IWormholeTransceiver.InvalidWormholeSibling.selector,
+                IWormholeTransceiver.InvalidWormholePeer.selector,
                 chainId1,
                 address(wormholeTransceiverChain1)
             )

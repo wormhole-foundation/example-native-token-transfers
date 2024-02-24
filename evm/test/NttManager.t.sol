@@ -199,42 +199,34 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
     function test_onlyEnabledTransceiversCanAttest() public {
         (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(nttManagerOther);
         nttManagerOther.removeTransceiver(address(e1));
-        bytes32 sibling = toWormholeFormat(address(nttManager));
-        nttManagerOther.setSibling(TransceiverHelpersLib.SENDING_CHAIN_ID, sibling);
+        bytes32 peer = toWormholeFormat(address(nttManager));
+        nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer);
 
         bytes memory transceiverMessage;
         (, transceiverMessage) = TransceiverHelpersLib.buildTransceiverMessageWithNttManagerPayload(
-            0,
-            bytes32(0),
-            sibling,
-            toWormholeFormat(address(nttManagerOther)),
-            abi.encode("payload")
+            0, bytes32(0), peer, toWormholeFormat(address(nttManagerOther)), abi.encode("payload")
         );
 
         vm.expectRevert(abi.encodeWithSignature("CallerNotTransceiver(address)", address(e1)));
         e1.receiveMessage(transceiverMessage);
     }
 
-    function test_onlySiblingNttManagerCanAttest() public {
+    function test_onlyPeerNttManagerCanAttest() public {
         (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(nttManagerOther);
         nttManagerOther.setThreshold(2);
 
-        bytes32 sibling = toWormholeFormat(address(nttManager));
+        bytes32 peer = toWormholeFormat(address(nttManager));
 
         TransceiverStructs.NttManagerMessage memory nttManagerMessage;
         bytes memory transceiverMessage;
         (nttManagerMessage, transceiverMessage) = TransceiverHelpersLib
             .buildTransceiverMessageWithNttManagerPayload(
-            0,
-            bytes32(0),
-            sibling,
-            toWormholeFormat(address(nttManagerOther)),
-            abi.encode("payload")
+            0, bytes32(0), peer, toWormholeFormat(address(nttManagerOther)), abi.encode("payload")
         );
 
         vm.expectRevert(
             abi.encodeWithSignature(
-                "InvalidSibling(uint16,bytes32)", TransceiverHelpersLib.SENDING_CHAIN_ID, sibling
+                "InvalidPeer(uint16,bytes32)", TransceiverHelpersLib.SENDING_CHAIN_ID, peer
             )
         );
         e1.receiveMessage(transceiverMessage);
@@ -244,19 +236,15 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(nttManagerOther);
         nttManagerOther.setThreshold(2);
 
-        // register nttManager sibling
-        bytes32 sibling = toWormholeFormat(address(nttManager));
-        nttManagerOther.setSibling(TransceiverHelpersLib.SENDING_CHAIN_ID, sibling);
+        // register nttManager peer
+        bytes32 peer = toWormholeFormat(address(nttManager));
+        nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer);
 
         TransceiverStructs.NttManagerMessage memory nttManagerMessage;
         bytes memory transceiverMessage;
         (nttManagerMessage, transceiverMessage) = TransceiverHelpersLib
             .buildTransceiverMessageWithNttManagerPayload(
-            0,
-            bytes32(0),
-            sibling,
-            toWormholeFormat(address(nttManagerOther)),
-            abi.encode("payload")
+            0, bytes32(0), peer, toWormholeFormat(address(nttManagerOther)), abi.encode("payload")
         );
 
         e1.receiveMessage(transceiverMessage);
@@ -271,19 +259,15 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(nttManagerOther);
         nttManagerOther.setThreshold(2);
 
-        // register nttManager sibling
-        bytes32 sibling = toWormholeFormat(address(nttManager));
-        nttManagerOther.setSibling(TransceiverHelpersLib.SENDING_CHAIN_ID, sibling);
+        // register nttManager peer
+        bytes32 peer = toWormholeFormat(address(nttManager));
+        nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer);
 
         TransceiverStructs.NttManagerMessage memory nttManagerMessage;
         bytes memory transceiverMessage;
         (nttManagerMessage, transceiverMessage) = TransceiverHelpersLib
             .buildTransceiverMessageWithNttManagerPayload(
-            0,
-            bytes32(0),
-            sibling,
-            toWormholeFormat(address(nttManagerOther)),
-            abi.encode("payload")
+            0, bytes32(0), peer, toWormholeFormat(address(nttManagerOther)), abi.encode("payload")
         );
 
         bytes32 hash = TransceiverStructs.nttManagerMessageDigest(
@@ -304,8 +288,8 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(nttManagerOther);
         nttManagerOther.setThreshold(2);
 
-        bytes32 sibling = toWormholeFormat(address(nttManager));
-        nttManagerOther.setSibling(TransceiverHelpersLib.SENDING_CHAIN_ID, sibling);
+        bytes32 peer = toWormholeFormat(address(nttManager));
+        nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer);
 
         ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](1);
         transceivers[0] = e1;

@@ -48,8 +48,8 @@ pub mod sdk;
 use crate::common::setup::setup;
 
 // TODO: some more tests
-// - unregistered sibling can't transfer
-// - can't transfer to unregistered sibling
+// - unregistered peer can't transfer
+// - can't transfer to unregistered peer
 // - can't transfer more than balance
 // - wrong inbox accounts
 // - paused contracts
@@ -69,7 +69,7 @@ fn init_accs_args(
         mint: test_data.mint,
         from: test_data.user_token_account,
         from_authority: test_data.user.pubkey(),
-        sibling: test_data.ntt.sibling(OTHER_CHAIN),
+        peer: test_data.ntt.peer(OTHER_CHAIN),
         outbox_item,
     };
 

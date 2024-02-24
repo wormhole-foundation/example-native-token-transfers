@@ -75,7 +75,7 @@ contract NttManager is
     bytes32 private constant MESSAGE_SEQUENCE_SLOT =
         bytes32(uint256(keccak256("ntt.messageSequence")) - 1);
 
-    bytes32 private constant SIBLINGS_SLOT = bytes32(uint256(keccak256("ntt.siblings")) - 1);
+    bytes32 private constant PEERS_SLOT = bytes32(uint256(keccak256("ntt.peers")) - 1);
 
     bytes32 private constant THRESHOLD_SLOT = bytes32(uint256(keccak256("ntt.threshold")) - 1);
 
@@ -106,8 +106,8 @@ contract NttManager is
         }
     }
 
-    function _getSiblingsStorage() internal pure returns (mapping(uint16 => bytes32) storage $) {
-        uint256 slot = uint256(SIBLINGS_SLOT);
+    function _getPeersStorage() internal pure returns (mapping(uint16 => bytes32) storage $) {
+        uint256 slot = uint256(PEERS_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
         }
@@ -265,7 +265,7 @@ contract NttManager is
                 recipientChain,
                 transceiverInstructions[transceiverInfos[transceiverAddr].index],
                 nttManagerMessage,
-                getSibling(recipientChain)
+                getPeer(recipientChain)
             );
         }
     }
@@ -572,10 +572,10 @@ contract NttManager is
         return sequence;
     }
 
-    /// @dev Verify that the sibling address saved for `sourceChainId` matches the `siblingAddress`.
-    function _verifySibling(uint16 sourceChainId, bytes32 siblingAddress) internal view {
-        if (getSibling(sourceChainId) != siblingAddress) {
-            revert InvalidSibling(sourceChainId, siblingAddress);
+    /// @dev Verify that the peer address saved for `sourceChainId` matches the `peerAddress`.
+    function _verifyPeer(uint16 sourceChainId, bytes32 peerAddress) internal view {
+        if (getPeer(sourceChainId) != peerAddress) {
+            revert InvalidPeer(sourceChainId, peerAddress);
         }
     }
 
@@ -714,25 +714,25 @@ contract NttManager is
         return _getMessageAttestationsStorage()[digest].executed;
     }
 
-    function getSibling(uint16 chainId_) public view returns (bytes32) {
-        return _getSiblingsStorage()[chainId_];
+    function getPeer(uint16 chainId_) public view returns (bytes32) {
+        return _getPeersStorage()[chainId_];
     }
 
-    /// @notice this sets the corresponding sibling.
-    /// @dev The nttManager that executes the message sets the source nttManager as the sibling.
-    function setSibling(uint16 siblingChainId, bytes32 siblingContract) public onlyOwner {
-        if (siblingChainId == 0) {
-            revert InvalidSiblingChainIdZero();
+    /// @notice this sets the corresponding peer.
+    /// @dev The nttManager that executes the message sets the source nttManager as the peer.
+    function setPeer(uint16 peerChainId, bytes32 peerContract) public onlyOwner {
+        if (peerChainId == 0) {
+            revert InvalidPeerChainIdZero();
         }
-        if (siblingContract == bytes32(0)) {
-            revert InvalidSiblingZeroAddress();
+        if (peerContract == bytes32(0)) {
+            revert InvalidPeerZeroAddress();
         }
 
-        bytes32 oldSiblingContract = _getSiblingsStorage()[siblingChainId];
+        bytes32 oldPeerContract = _getPeersStorage()[peerChainId];
 
-        _getSiblingsStorage()[siblingChainId] = siblingContract;
+        _getPeersStorage()[peerChainId] = peerContract;
 
-        emit SiblingUpdated(siblingChainId, oldSiblingContract, siblingContract);
+        emit PeerUpdated(peerChainId, oldPeerContract, peerContract);
     }
 
     function transceiverAttestedToMessage(bytes32 digest, uint8 index) public view returns (bool) {
@@ -745,7 +745,7 @@ contract NttManager is
         bytes32 sourceNttManagerAddress,
         TransceiverStructs.NttManagerMessage memory payload
     ) external onlyTransceiver {
-        _verifySibling(sourceChainId, sourceNttManagerAddress);
+        _verifyPeer(sourceChainId, sourceNttManagerAddress);
 
         bytes32 nttManagerMessageHash =
             TransceiverStructs.nttManagerMessageDigest(sourceChainId, payload);

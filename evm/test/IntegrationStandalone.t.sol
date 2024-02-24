@@ -110,15 +110,15 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
         nttManagerChain2.setOutboundLimit(type(uint64).max);
         nttManagerChain2.setInboundLimit(type(uint64).max, chainId1);
 
-        // Register sibling contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of siblings here.
-        nttManagerChain1.setSibling(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))));
-        nttManagerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
+        // Register peer contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of peers here.
+        nttManagerChain1.setPeer(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))));
+        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
 
-        // Set siblings for the transceivers
-        wormholeTransceiverChain1.setWormholeSibling(
+        // Set peers for the transceivers
+        wormholeTransceiverChain1.setWormholePeer(
             chainId2, bytes32(uint256(uint160(address(wormholeTransceiverChain2))))
         );
-        wormholeTransceiverChain2.setWormholeSibling(
+        wormholeTransceiverChain2.setWormholePeer(
             chainId1, bytes32(uint256(uint160(address(wormholeTransceiverChain1))))
         );
 
@@ -297,7 +297,7 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                IWormholeTransceiver.InvalidWormholeSibling.selector,
+                IWormholeTransceiver.InvalidWormholePeer.selector,
                 chainId1,
                 wormholeTransceiverChain1
             )
@@ -446,10 +446,10 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
         wormholeTransceiverChain2_2.initialize();
 
         // Setup the new entrypoint hook ups to allow the transfers to occur
-        wormholeTransceiverChain1_2.setWormholeSibling(
+        wormholeTransceiverChain1_2.setWormholePeer(
             chainId2, bytes32(uint256(uint160((address(wormholeTransceiverChain2_2)))))
         );
-        wormholeTransceiverChain2_2.setWormholeSibling(
+        wormholeTransceiverChain2_2.setWormholePeer(
             chainId1, bytes32(uint256(uint160((address(wormholeTransceiverChain1_2)))))
         );
         nttManagerChain2.setTransceiver(address(wormholeTransceiverChain2_2));
@@ -498,7 +498,7 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
             uint256 supplyBefore = token2.totalSupply();
             wormholeTransceiverChain2_1.receiveMessage(encodedVMs[0]);
 
-            vm.expectRevert(); // Invalid wormhole sibling
+            vm.expectRevert(); // Invalid wormhole peer
             wormholeTransceiverChain2_2.receiveMessage(encodedVMs[0]);
 
             // Threshold check

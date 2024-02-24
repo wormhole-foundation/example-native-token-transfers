@@ -7,13 +7,13 @@ use crate::{
     config::*,
     error::NTTError,
     messages::ValidatedTransceiverMessage,
+    peer::NttManagerPeer,
     queue::{
         inbox::{InboxItem, InboxRateLimit, ReleaseStatus},
         outbox::OutboxRateLimit,
         rate_limit::RateLimitResult,
     },
     registered_transceiver::*,
-    sibling::NttManagerSibling,
 };
 
 #[derive(Accounts)]
@@ -25,11 +25,11 @@ pub struct Redeem<'info> {
     pub config: Account<'info, Config>,
 
     #[account(
-        seeds = [NttManagerSibling::SEED_PREFIX, transceiver_message.from_chain.id.to_be_bytes().as_ref()],
-        constraint = sibling.address == transceiver_message.message.source_ntt_manager @ NTTError::InvalidNttManagerSibling,
-        bump = sibling.bump,
+        seeds = [NttManagerPeer::SEED_PREFIX, transceiver_message.from_chain.id.to_be_bytes().as_ref()],
+        constraint = peer.address == transceiver_message.message.source_ntt_manager @ NTTError::InvalidNttManagerPeer,
+        bump = peer.bump,
     )]
-    pub sibling: Account<'info, NttManagerSibling>,
+    pub peer: Account<'info, NttManagerPeer>,
 
     #[account(
         // check that the message is targeted to this chain

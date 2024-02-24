@@ -11,10 +11,10 @@ pub enum NTTError {
     InvalidChainId,
     #[msg("InvalidRecipientAddress")]
     InvalidRecipientAddress,
-    #[msg("InvalidTransceiverSibling")]
-    InvalidTransceiverSibling,
-    #[msg("InvalidNttManagerSibling")]
-    InvalidNttManagerSibling,
+    #[msg("InvalidTransceiverPeer")]
+    InvalidTransceiverPeer,
+    #[msg("InvalidNttManagerPeer")]
+    InvalidNttManagerPeer,
     #[msg("InvalidRecipientNttManager")]
     InvalidRecipientNttManager,
     #[msg("TransferAlreadyRedeemed")]

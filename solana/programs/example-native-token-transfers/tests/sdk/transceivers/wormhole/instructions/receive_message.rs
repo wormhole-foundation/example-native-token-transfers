@@ -6,7 +6,7 @@ use crate::sdk::accounts::NTT;
 #[derive(Debug, Clone)]
 pub struct ReceiveMessage {
     pub payer: Pubkey,
-    pub sibling: Pubkey,
+    pub peer: Pubkey,
     pub vaa: Pubkey,
     pub chain_id: u16,
     pub sequence: u64,
@@ -18,7 +18,7 @@ pub fn receive_message(ntt: &NTT, accs: ReceiveMessage) -> Instruction {
     let accounts = example_native_token_transfers::accounts::ReceiveMessage {
         payer: accs.payer,
         config: ntt.config(),
-        sibling: accs.sibling,
+        peer: accs.peer,
         vaa: accs.vaa,
         transceiver_message: ntt.transceiver_message(accs.chain_id, accs.sequence),
         system_program: System::id(),

@@ -15,15 +15,13 @@ interface INttManagerEvents {
         bytes32 recipient, uint256 amount, uint16 recipientChain, uint64 msgSequence
     );
 
-    /// @notice Emitted when the sibling contract is updated.
+    /// @notice Emitted when the peer contract is updated.
     /// @dev Topic0
     ///      0x51b8437a7e22240c473f4cbdb4ed3a4f4bf5a9e7b3c511d7cfe0197325735700.
-    /// @param chainId_ The chain ID of the sibling contract.
-    /// @param oldSiblingContract The old sibling contract address.
-    /// @param siblingContract The new sibling contract address.
-    event SiblingUpdated(
-        uint16 indexed chainId_, bytes32 oldSiblingContract, bytes32 siblingContract
-    );
+    /// @param chainId_ The chain ID of the peer contract.
+    /// @param oldPeerContract The old peer contract address.
+    /// @param peerContract The new peer contract address.
+    event PeerUpdated(uint16 indexed chainId_, bytes32 oldPeerContract, bytes32 peerContract);
 
     /// @notice Emitted when a message has been attested to.
     /// @dev Topic0

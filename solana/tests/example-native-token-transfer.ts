@@ -72,14 +72,14 @@ describe('example-native-token-transfers', () => {
         transceiver: ntt.program.programId
       })
 
-      await ntt.setWormholeTransceiverSibling({
+      await ntt.setWormholeTransceiverPeer({
         payer,
         owner: payer,
         chain: 'ethereum',
         address: Buffer.from('transceiver'.padStart(32, '\0')),
       })
 
-      await ntt.setSibling({
+      await ntt.setPeer({
         payer,
         owner: payer,
         chain: 'ethereum',

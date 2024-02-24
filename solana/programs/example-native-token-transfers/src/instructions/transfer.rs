@@ -6,12 +6,12 @@ use crate::{
     bitmap::Bitmap,
     config::*,
     error::NTTError,
+    peer::NttManagerPeer,
     queue::{
         inbox::InboxRateLimit,
         outbox::{OutboxItem, OutboxRateLimit},
         rate_limit::RateLimitResult,
     },
-    sibling::NttManagerSibling,
 };
 
 // this will burn the funds and create an account that either allows sending the
@@ -94,10 +94,10 @@ pub struct TransferBurn<'info> {
     pub inbox_rate_limit: Account<'info, InboxRateLimit>,
 
     #[account(
-        seeds = [NttManagerSibling::SEED_PREFIX, args.recipient_chain.id.to_be_bytes().as_ref()],
-        bump = sibling.bump,
+        seeds = [NttManagerPeer::SEED_PREFIX, args.recipient_chain.id.to_be_bytes().as_ref()],
+        bump = peer.bump,
     )]
-    pub sibling: Account<'info, NttManagerSibling>,
+    pub peer: Account<'info, NttManagerPeer>,
 }
 
 // TODO: fees for relaying?
@@ -135,7 +135,7 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
         amount,
     )?;
 
-    let recipient_ntt_manager = accs.sibling.address;
+    let recipient_ntt_manager = accs.peer.address;
 
     insert_into_outbox(
         &mut accs.common,
@@ -165,10 +165,10 @@ pub struct TransferLock<'info> {
     pub inbox_rate_limit: Account<'info, InboxRateLimit>,
 
     #[account(
-        seeds = [NttManagerSibling::SEED_PREFIX, args.recipient_chain.id.to_be_bytes().as_ref()],
-        bump = sibling.bump,
+        seeds = [NttManagerPeer::SEED_PREFIX, args.recipient_chain.id.to_be_bytes().as_ref()],
+        bump = peer.bump,
     )]
-    pub sibling: Account<'info, NttManagerSibling>,
+    pub peer: Account<'info, NttManagerPeer>,
 
     #[account(
         mut,
@@ -216,7 +216,7 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
         accs.common.mint.decimals,
     )?;
 
-    let recipient_ntt_manager = accs.sibling.address;
+    let recipient_ntt_manager = accs.peer.address;
 
     insert_into_outbox(
         &mut accs.common,

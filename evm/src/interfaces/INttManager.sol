@@ -26,14 +26,14 @@ interface INttManager {
     /// @param mode The mode.
     error InvalidMode(uint8 mode);
 
-    /// @notice the sibling for the chain does not match the configuration.
+    /// @notice the peer for the chain does not match the configuration.
     /// @param chainId ChainId of the source chain.
-    /// @param siblingAddress Address of the sibling nttManager contract.
-    error InvalidSibling(uint16 chainId, bytes32 siblingAddress);
-    error InvalidSiblingChainIdZero();
+    /// @param peerAddress Address of the peer nttManager contract.
+    error InvalidPeer(uint16 chainId, bytes32 peerAddress);
+    error InvalidPeerChainIdZero();
 
-    /// @notice Sibling cannot be the zero address.
-    error InvalidSiblingZeroAddress();
+    /// @notice Peer cannot be the zero address.
+    error InvalidPeerZeroAddress();
 
     /// @notice The number of thresholds should not be zero.
     error ZeroThreshold();
@@ -61,9 +61,9 @@ interface INttManager {
         bytes memory encodedInstructions
     ) external payable returns (uint64 msgId);
 
-    function getSibling(uint16 chainId_) external view returns (bytes32);
+    function getPeer(uint16 chainId_) external view returns (bytes32);
 
-    function setSibling(uint16 siblingChainId, bytes32 siblingContract) external;
+    function setPeer(uint16 peerChainId, bytes32 peerContract) external;
 
     /// @notice Check if a message has been approved. The message should have at least
     /// the minimum threshold of attestations fron distinct transceivers.

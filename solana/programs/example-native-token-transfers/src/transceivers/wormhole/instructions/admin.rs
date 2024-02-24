@@ -1,11 +1,11 @@
 use anchor_lang::prelude::*;
 use ntt_messages::chain_id::ChainId;
 
-use crate::{config::Config, transceivers::accounts::sibling::TransceiverSibling};
+use crate::{config::Config, transceivers::accounts::peer::TransceiverPeer};
 
 #[derive(Accounts)]
-#[instruction(args: SetTransceiverSiblingArgs)]
-pub struct SetTransceiverSibling<'info> {
+#[instruction(args: SetTransceiverPeerArgs)]
+pub struct SetTransceiverPeer<'info> {
     #[account(
         has_one = owner,
     )]
@@ -18,28 +18,28 @@ pub struct SetTransceiverSibling<'info> {
 
     #[account(
         init,
-        space = 8 + TransceiverSibling::INIT_SPACE,
+        space = 8 + TransceiverPeer::INIT_SPACE,
         payer = payer,
-        seeds = [TransceiverSibling::SEED_PREFIX, args.chain_id.id.to_be_bytes().as_ref()],
+        seeds = [TransceiverPeer::SEED_PREFIX, args.chain_id.id.to_be_bytes().as_ref()],
         bump
     )]
-    pub sibling: Account<'info, TransceiverSibling>,
+    pub peer: Account<'info, TransceiverPeer>,
 
     pub system_program: Program<'info, System>,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct SetTransceiverSiblingArgs {
+pub struct SetTransceiverPeerArgs {
     pub chain_id: ChainId,
     pub address: [u8; 32],
 }
 
-pub fn set_transceiver_sibling(
-    ctx: Context<SetTransceiverSibling>,
-    args: SetTransceiverSiblingArgs,
+pub fn set_transceiver_peer(
+    ctx: Context<SetTransceiverPeer>,
+    args: SetTransceiverPeerArgs,
 ) -> Result<()> {
-    ctx.accounts.sibling.set_inner(TransceiverSibling {
-        bump: ctx.bumps.sibling,
+    ctx.accounts.peer.set_inner(TransceiverPeer {
+        bump: ctx.bumps.peer,
         address: args.address,
     });
 
