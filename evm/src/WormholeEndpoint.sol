@@ -429,6 +429,12 @@ contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
         pure
         returns (WormholeEndpointInstruction memory instruction)
     {
+        // If the user doesn't pass in any endpoint instructions then the default is false
+        if (encoded.length == 0) {
+            instruction.shouldSkipRelayerSend = false;
+            return instruction;
+        }
+
         uint256 offset = 0;
         (instruction.shouldSkipRelayerSend, offset) = encoded.asBoolUnchecked(offset);
         encoded.checkLength(offset);

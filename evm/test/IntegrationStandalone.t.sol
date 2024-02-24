@@ -147,13 +147,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         {
             uint256 managerBalanceBefore = token1.balanceOf(address(managerChain1));
             uint256 userBalanceBefore = token1.balanceOf(address(userA));
-            managerChain1.transfer(
-                sendingAmount,
-                chainId2,
-                bytes32(uint256(uint160(userB))),
-                false,
-                encodeEndpointInstruction(true)
-            );
+            managerChain1.transfer(sendingAmount, chainId2, bytes32(uint256(uint160(userB))));
 
             // Balance check on funds going in and out working as expected
             uint256 managerBalanceAfter = token1.balanceOf(address(managerChain1));
