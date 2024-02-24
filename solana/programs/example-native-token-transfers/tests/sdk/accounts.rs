@@ -5,7 +5,7 @@ use example_native_token_transfers::{
         inbox::{InboxItem, InboxRateLimit},
         outbox::OutboxRateLimit,
     },
-    registered_endpoint::RegisteredEndpoint,
+    registered_transceiver::RegisteredTransceiver,
     sequence::Sequence,
 };
 use ntt_messages::{manager::ManagerMessage, ntt::NativeTokenTransfer};
@@ -117,12 +117,12 @@ impl NTT {
         token_authority
     }
 
-    pub fn registered_endpoint(&self, endpoint: &Pubkey) -> Pubkey {
-        let (registered_endpoint, _) = Pubkey::find_program_address(
-            &[RegisteredEndpoint::SEED_PREFIX, endpoint.as_ref()],
+    pub fn registered_transceiver(&self, transceiver: &Pubkey) -> Pubkey {
+        let (registered_transceiver, _) = Pubkey::find_program_address(
+            &[RegisteredTransceiver::SEED_PREFIX, transceiver.as_ref()],
             &self.program,
         );
-        registered_endpoint
+        registered_transceiver
     }
 
     pub fn emitter(&self) -> Pubkey {
@@ -146,24 +146,24 @@ impl NTT {
         sibling
     }
 
-    pub fn endpoint_sibling(&self, chain: u16) -> Pubkey {
+    pub fn transceiver_sibling(&self, chain: u16) -> Pubkey {
         let (sibling, _) = Pubkey::find_program_address(
-            &[b"endpoint_sibling".as_ref(), &chain.to_be_bytes()],
+            &[b"transceiver_sibling".as_ref(), &chain.to_be_bytes()],
             &self.program,
         );
         sibling
     }
 
-    pub fn endpoint_message(&self, chain: u16, sequence: u64) -> Pubkey {
-        let (endpoint_message, _) = Pubkey::find_program_address(
+    pub fn transceiver_message(&self, chain: u16, sequence: u64) -> Pubkey {
+        let (transceiver_message, _) = Pubkey::find_program_address(
             &[
-                b"endpoint_message".as_ref(),
+                b"transceiver_message".as_ref(),
                 &chain.to_be_bytes(),
                 &sequence.to_be_bytes(),
             ],
             &self.program,
         );
-        endpoint_message
+        transceiver_message
     }
 
     pub fn custody(&self, mint: &Pubkey) -> Pubkey {

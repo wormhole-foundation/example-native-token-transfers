@@ -5,28 +5,28 @@ import "wormhole-solidity-sdk/WormholeRelayerSDK.sol";
 import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 
-import "./libraries/EndpointHelpers.sol";
-import "./libraries/EndpointStructs.sol";
-import "./interfaces/IWormholeEndpoint.sol";
+import "./libraries/TransceiverHelpers.sol";
+import "./libraries/TransceiverStructs.sol";
+import "./interfaces/IWormholeTransceiver.sol";
 import "./interfaces/ISpecialRelayer.sol";
 import "./interfaces/IManager.sol";
-import "./Endpoint.sol";
+import "./Transceiver.sol";
 
-contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
+contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeReceiver {
     using BytesParsing for bytes;
 
     uint256 public constant GAS_LIMIT = 500000;
     uint8 public immutable consistencyLevel;
 
-    /// @dev Prefix for all EndpointMessage payloads
+    /// @dev Prefix for all TransceiverMessage payloads
     ///      This is 0x99'E''W''H'
-    /// @notice Magic string (constant value set by messaging provider) that idenfies the payload as an endpoint-emitted payload.
-    ///         Note that this is not a security critical field. It's meant to be used by messaging providers to identify which messages are Endpoint-related.
-    bytes4 constant WH_ENDPOINT_PAYLOAD_PREFIX = 0x9945FF10;
+    /// @notice Magic string (constant value set by messaging provider) that idenfies the payload as an transceiver-emitted payload.
+    ///         Note that this is not a security critical field. It's meant to be used by messaging providers to identify which messages are Transceiver-related.
+    bytes4 constant WH_TRANSCEIVER_PAYLOAD_PREFIX = 0x9945FF10;
 
-    /// @dev Prefix for all Wormhole endpoint initialisation payloads
-    ///      This is bytes4(keccak256("WormholeEndpointInit"))
-    bytes4 constant WH_ENDPOINT_INIT_PREFIX = 0xc83e3d2e;
+    /// @dev Prefix for all Wormhole transceiver initialisation payloads
+    ///      This is bytes4(keccak256("WormholeTransceiverInit"))
+    bytes4 constant WH_TRANSCEIVER_INIT_PREFIX = 0xc83e3d2e;
 
     /// @dev Prefix for all Wormhole sibling registration payloads
     ///      This is bytes4(keccak256("WormholeSiblingRegistration"))
@@ -35,28 +35,28 @@ contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
     IWormhole public immutable wormhole;
     IWormholeRelayer public immutable wormholeRelayer;
     ISpecialRelayer public immutable specialRelayer;
-    uint256 public immutable wormholeEndpoint_evmChainId;
+    uint256 public immutable wormholeTransceiver_evmChainId;
 
-    struct WormholeEndpointInstruction {
+    struct WormholeTransceiverInstruction {
         bool shouldSkipRelayerSend;
     }
 
     /// =============== STORAGE ===============================================
 
     bytes32 private constant WORMHOLE_CONSUMED_VAAS_SLOT =
-        bytes32(uint256(keccak256("whEndpoint.consumedVAAs")) - 1);
+        bytes32(uint256(keccak256("whTransceiver.consumedVAAs")) - 1);
 
     bytes32 private constant WORMHOLE_SIBLINGS_SLOT =
-        bytes32(uint256(keccak256("whEndpoint.siblings")) - 1);
+        bytes32(uint256(keccak256("whTransceiver.siblings")) - 1);
 
     bytes32 private constant WORMHOLE_RELAYING_ENABLED_CHAINS_SLOT =
-        bytes32(uint256(keccak256("whEndpoint.relayingEnabledChains")) - 1);
+        bytes32(uint256(keccak256("whTransceiver.relayingEnabledChains")) - 1);
 
     bytes32 private constant SPECIAL_RELAYING_ENABLED_CHAINS_SLOT =
-        bytes32(uint256(keccak256("whEndpoint.specialRelayingEnabledChains")) - 1);
+        bytes32(uint256(keccak256("whTransceiver.specialRelayingEnabledChains")) - 1);
 
     bytes32 private constant WORMHOLE_EVM_CHAIN_IDS =
-        bytes32(uint256(keccak256("whEndpoint.evmChainIds")) - 1);
+        bytes32(uint256(keccak256("whTransceiver.evmChainIds")) - 1);
 
     /// =============== GETTERS/SETTERS ========================================
 
@@ -128,28 +128,28 @@ contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
         address wormholeRelayerAddr,
         address specialRelayerAddr,
         uint8 _consistencyLevel
-    ) Endpoint(manager) {
+    ) Transceiver(manager) {
         wormhole = IWormhole(wormholeCoreBridge);
         wormholeRelayer = IWormholeRelayer(wormholeRelayerAddr);
         specialRelayer = ISpecialRelayer(specialRelayerAddr);
-        wormholeEndpoint_evmChainId = block.chainid;
+        wormholeTransceiver_evmChainId = block.chainid;
         consistencyLevel = _consistencyLevel;
     }
 
     function _initialize() internal override {
         super._initialize();
-        _initializeEndpoint();
+        _initializeTransceiver();
     }
 
-    function _initializeEndpoint() internal {
-        EndpointStructs.EndpointInit memory init = EndpointStructs.EndpointInit({
-            endpointIdentifier: WH_ENDPOINT_INIT_PREFIX,
+    function _initializeTransceiver() internal {
+        TransceiverStructs.TransceiverInit memory init = TransceiverStructs.TransceiverInit({
+            transceiverIdentifier: WH_TRANSCEIVER_INIT_PREFIX,
             managerAddress: toWormholeFormat(manager),
             managerMode: IManager(manager).getMode(),
             tokenAddress: toWormholeFormat(managerToken),
             tokenDecimals: IManager(manager).tokenDecimals()
         });
-        wormhole.publishMessage(0, EndpointStructs.encodeEndpointInit(init), consistencyLevel);
+        wormhole.publishMessage(0, TransceiverStructs.encodeTransceiverInit(init), consistencyLevel);
     }
 
     function _checkInvalidRelayingConfig(uint16 chainId) internal view returns (bool) {
@@ -162,11 +162,11 @@ contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
 
     function _quoteDeliveryPrice(
         uint16 targetChain,
-        EndpointStructs.EndpointInstruction memory instruction
+        TransceiverStructs.TransceiverInstruction memory instruction
     ) internal view override returns (uint256 nativePriceQuote) {
         // Check the special instruction up front to see if we should skip sending via a relayer
-        WormholeEndpointInstruction memory weIns =
-            parseWormholeEndpointInstruction(instruction.payload);
+        WormholeTransceiverInstruction memory weIns =
+            parseWormholeTransceiverInstruction(instruction.payload);
         if (weIns.shouldSkipRelayerSend) {
             return 0;
         }
@@ -191,41 +191,42 @@ contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
         uint256 deliveryPayment,
         address caller,
         bytes32 recipientManagerAddress,
-        EndpointStructs.EndpointInstruction memory instruction,
+        TransceiverStructs.TransceiverInstruction memory instruction,
         bytes memory managerMessage
     ) internal override {
         (
-            EndpointStructs.EndpointMessage memory endpointMessage,
-            bytes memory encodedEndpointPayload
-        ) = EndpointStructs.buildAndEncodeEndpointMessage(
-            WH_ENDPOINT_PAYLOAD_PREFIX,
+            TransceiverStructs.TransceiverMessage memory transceiverMessage,
+            bytes memory encodedTransceiverPayload
+        ) = TransceiverStructs.buildAndEncodeTransceiverMessage(
+            WH_TRANSCEIVER_PAYLOAD_PREFIX,
             toWormholeFormat(caller),
             recipientManagerAddress,
             managerMessage,
             new bytes(0)
         );
 
-        WormholeEndpointInstruction memory weIns =
-            parseWormholeEndpointInstruction(instruction.payload);
+        WormholeTransceiverInstruction memory weIns =
+            parseWormholeTransceiverInstruction(instruction.payload);
 
         if (!weIns.shouldSkipRelayerSend && _shouldRelayViaStandardRelaying(recipientChain)) {
             wormholeRelayer.sendPayloadToEvm{value: deliveryPayment}(
                 recipientChain,
                 fromWormholeFormat(getWormholeSibling(recipientChain)),
-                encodedEndpointPayload,
+                encodedTransceiverPayload,
                 0,
                 GAS_LIMIT
             );
         } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
-            uint64 sequence = wormhole.publishMessage(0, encodedEndpointPayload, consistencyLevel);
+            uint64 sequence =
+                wormhole.publishMessage(0, encodedTransceiverPayload, consistencyLevel);
             specialRelayer.requestDelivery{value: deliveryPayment}(
                 getManagerToken(), recipientChain, 0, sequence
             );
         } else {
-            wormhole.publishMessage(0, encodedEndpointPayload, consistencyLevel);
+            wormhole.publishMessage(0, encodedTransceiverPayload, consistencyLevel);
         }
 
-        emit SendEndpointMessage(recipientChain, endpointMessage);
+        emit SendTransceiverMessage(recipientChain, transceiverMessage);
     }
 
     function receiveWormholeMessages(
@@ -240,7 +241,7 @@ contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
         }
 
         // VAA replay protection
-        // Note that this VAA is for the AR delivery, not for the raw message emitted by the source chain Endpoint contract.
+        // Note that this VAA is for the AR delivery, not for the raw message emitted by the source chain Transceiver contract.
         // The VAAs received by this entrypoint are different than the VAA received by the receiveMessage entrypoint.
         if (isVAAConsumed(deliveryHash)) {
             revert TransferAlreadyCompleted(deliveryHash);
@@ -255,37 +256,37 @@ contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
         // emit `ReceivedRelayedMessage` event
         emit ReceivedRelayedMessage(deliveryHash, sourceChain, sourceAddress);
 
-        // parse the encoded Endpoint payload
-        EndpointStructs.EndpointMessage memory parsedEndpointMessage;
-        EndpointStructs.ManagerMessage memory parsedManagerMessage;
-        (parsedEndpointMessage, parsedManagerMessage) =
-            EndpointStructs.parseEndpointAndManagerMessage(WH_ENDPOINT_PAYLOAD_PREFIX, payload);
+        // parse the encoded Transceiver payload
+        TransceiverStructs.TransceiverMessage memory parsedTransceiverMessage;
+        TransceiverStructs.ManagerMessage memory parsedManagerMessage;
+        (parsedTransceiverMessage, parsedManagerMessage) = TransceiverStructs
+            .parseTransceiverAndManagerMessage(WH_TRANSCEIVER_PAYLOAD_PREFIX, payload);
 
         _deliverToManager(
             sourceChain,
-            parsedEndpointMessage.sourceManagerAddress,
-            parsedEndpointMessage.recipientManagerAddress,
+            parsedTransceiverMessage.sourceManagerAddress,
+            parsedTransceiverMessage.recipientManagerAddress,
             parsedManagerMessage
         );
     }
 
     /// @notice Receive an attested message from the verification layer
-    ///         This function should verify the encodedVm and then deliver the attestation to the endpoint manager contract.
+    ///         This function should verify the encodedVm and then deliver the attestation to the transceiver manager contract.
     function receiveMessage(bytes memory encodedMessage) external {
         uint16 sourceChainId;
         bytes memory payload;
         (sourceChainId, payload) = _verifyMessage(encodedMessage);
 
-        // parse the encoded Endpoint payload
-        EndpointStructs.EndpointMessage memory parsedEndpointMessage;
-        EndpointStructs.ManagerMessage memory parsedManagerMessage;
-        (parsedEndpointMessage, parsedManagerMessage) =
-            EndpointStructs.parseEndpointAndManagerMessage(WH_ENDPOINT_PAYLOAD_PREFIX, payload);
+        // parse the encoded Transceiver payload
+        TransceiverStructs.TransceiverMessage memory parsedTransceiverMessage;
+        TransceiverStructs.ManagerMessage memory parsedManagerMessage;
+        (parsedTransceiverMessage, parsedManagerMessage) = TransceiverStructs
+            .parseTransceiverAndManagerMessage(WH_TRANSCEIVER_PAYLOAD_PREFIX, payload);
 
         _deliverToManager(
             sourceChainId,
-            parsedEndpointMessage.sourceManagerAddress,
-            parsedEndpointMessage.recipientManagerAddress,
+            parsedTransceiverMessage.sourceManagerAddress,
+            parsedTransceiverMessage.recipientManagerAddress,
             parsedManagerMessage
         );
     }
@@ -318,7 +319,7 @@ contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
     }
 
     function _verifyBridgeVM(IWormhole.VM memory vm) internal view returns (bool) {
-        checkFork(wormholeEndpoint_evmChainId);
+        checkFork(wormholeTransceiver_evmChainId);
         return getWormholeSibling(vm.emitterChainId) == vm.emitterAddress;
     }
 
@@ -330,8 +331,8 @@ contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
         _getWormholeConsumedVAAsStorage()[hash] = true;
     }
 
-    /// @notice Get the corresponding Endpoint contract on other chains that have been registered via governance.
-    ///         This design should be extendable to other chains, so each Endpoint would be potentially concerned with Endpoints on multiple other chains
+    /// @notice Get the corresponding Transceiver contract on other chains that have been registered via governance.
+    ///         This design should be extendable to other chains, so each Transceiver would be potentially concerned with Transceivers on multiple other chains
     ///         Note that siblings are registered under wormhole chainID values
     function getWormholeSibling(uint16 chainId) public view returns (bytes32) {
         return _getWormholeSiblingsStorage()[chainId];
@@ -356,22 +357,22 @@ contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
 
         // We don't want to allow updating a sibling since this adds complexity in the accountant
         // If the owner makes a mistake with sibling registration they should deploy a new Wormhole
-        // endpoint and register this new endpoint with the Manager
+        // transceiver and register this new transceiver with the Manager
         if (oldSiblingContract != bytes32(0)) {
             revert SiblingAlreadySet(chainId, oldSiblingContract);
         }
 
         _getWormholeSiblingsStorage()[chainId] = siblingContract;
 
-        // Publish a message for this endpoint registration
-        EndpointStructs.EndpointRegistration memory registration = EndpointStructs
-            .EndpointRegistration({
-            endpointIdentifier: WH_SIBLING_REGISTRATION_PREFIX,
-            endpointChainId: chainId,
-            endpointAddress: siblingContract
+        // Publish a message for this transceiver registration
+        TransceiverStructs.TransceiverRegistration memory registration = TransceiverStructs
+            .TransceiverRegistration({
+            transceiverIdentifier: WH_SIBLING_REGISTRATION_PREFIX,
+            transceiverChainId: chainId,
+            transceiverAddress: siblingContract
         });
         wormhole.publishMessage(
-            0, EndpointStructs.encodeEndpointRegistration(registration), consistencyLevel
+            0, TransceiverStructs.encodeTransceiverRegistration(registration), consistencyLevel
         );
 
         emit SetWormholeSibling(chainId, siblingContract);
@@ -424,12 +425,12 @@ contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
         emit SetIsWormholeEvmChain(chainId);
     }
 
-    function parseWormholeEndpointInstruction(bytes memory encoded)
+    function parseWormholeTransceiverInstruction(bytes memory encoded)
         public
         pure
-        returns (WormholeEndpointInstruction memory instruction)
+        returns (WormholeTransceiverInstruction memory instruction)
     {
-        // If the user doesn't pass in any endpoint instructions then the default is false
+        // If the user doesn't pass in any transceiver instructions then the default is false
         if (encoded.length == 0) {
             instruction.shouldSkipRelayerSend = false;
             return instruction;
@@ -440,7 +441,7 @@ contract WormholeEndpoint is Endpoint, IWormholeEndpoint, IWormholeReceiver {
         encoded.checkLength(offset);
     }
 
-    function encodeWormholeEndpointInstruction(WormholeEndpointInstruction memory instruction)
+    function encodeWormholeTransceiverInstruction(WormholeTransceiverInstruction memory instruction)
         public
         pure
         returns (bytes memory)

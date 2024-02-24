@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.8 <0.9.0;
 
-import "./libraries/EndpointStructs.sol";
+import "./libraries/TransceiverStructs.sol";
 import "./libraries/PausableOwnable.sol";
 import "./interfaces/IManager.sol";
-import "./interfaces/IEndpoint.sol";
+import "./interfaces/ITransceiver.sol";
 import "./libraries/external/ReentrancyGuardUpgradeable.sol";
 import "./libraries/Implementation.sol";
 import "wormhole-solidity-sdk/Utils.sol";
 
-abstract contract Endpoint is
-    IEndpoint,
+abstract contract Transceiver is
+    ITransceiver,
     PausableOwnable,
     ReentrancyGuardUpgradeable,
     Implementation
 {
-    /// @dev updating bridgeManager requires a new Endpoint deployment.
-    /// Projects should implement their own governance to remove the old Endpoint contract address and then add the new one.
+    /// @dev updating bridgeManager requires a new Transceiver deployment.
+    /// Projects should implement their own governance to remove the old Transceiver contract address and then add the new one.
     address public immutable manager;
     address public immutable managerToken;
 
@@ -38,18 +38,18 @@ abstract contract Endpoint is
 
     function _initialize() internal virtual override {
         __ReentrancyGuard_init();
-        // owner of the endpoint is set to the owner of the manager
+        // owner of the transceiver is set to the owner of the manager
         __PausedOwnable_init(msg.sender, getManagerOwner());
     }
 
-    /// @dev transfer the ownership of the endpoint to a new address
-    /// the manager should be able to update endpoint ownership.
-    function transferEndpointOwnership(address newOwner) external onlyManager {
+    /// @dev transfer the ownership of the transceiver to a new address
+    /// the manager should be able to update transceiver ownership.
+    function transferTransceiverOwnership(address newOwner) external onlyManager {
         _transferOwnership(newOwner);
     }
 
-    /// @dev pause the endpoint.
-    function _pauseEndpoint() internal {
+    /// @dev pause the transceiver.
+    function _pauseTransceiver() internal {
         _pause();
     }
 
@@ -80,13 +80,13 @@ abstract contract Endpoint is
     /**
      *   @dev send a message to another chain.
      *   @param recipientChain The chain id of the recipient.
-     *   @param instruction An additional Instruction provided by the Endpoint to be
+     *   @param instruction An additional Instruction provided by the Transceiver to be
      *          executed on the recipient chain.
      *   @param managerMessage A message to be sent to the manager on the recipient chain.
      */
     function sendMessage(
         uint16 recipientChain,
-        EndpointStructs.EndpointInstruction memory instruction,
+        TransceiverStructs.TransceiverInstruction memory instruction,
         bytes memory managerMessage,
         bytes32 recipientManagerAddress
     ) external payable nonReentrant onlyManager {
@@ -105,12 +105,12 @@ abstract contract Endpoint is
         uint256 deliveryPayment,
         address caller,
         bytes32 recipientManagerAddress,
-        EndpointStructs.EndpointInstruction memory endpointInstruction,
+        TransceiverStructs.TransceiverInstruction memory transceiverInstruction,
         bytes memory managerMessage
     ) internal virtual;
 
     // @dev      This method is called by the BridgeManager contract to send a cross-chain message.
-    //           Forwards the VAA payload to the endpoint manager contract.
+    //           Forwards the VAA payload to the transceiver manager contract.
     // @param    sourceChainId The chain id of the sender.
     // @param    sourceManagerAddress The address of the sender's manager contract.
     // @param    payload The VAA payload.
@@ -118,7 +118,7 @@ abstract contract Endpoint is
         uint16 sourceChainId,
         bytes32 sourceManagerAddress,
         bytes32 recipientManagerAddress,
-        EndpointStructs.ManagerMessage memory payload
+        TransceiverStructs.ManagerMessage memory payload
     ) internal virtual {
         if (recipientManagerAddress != toWormholeFormat(manager)) {
             revert UnexpectedRecipientManagerAddress(
@@ -130,13 +130,13 @@ abstract contract Endpoint is
 
     function quoteDeliveryPrice(
         uint16 targetChain,
-        EndpointStructs.EndpointInstruction memory instruction
+        TransceiverStructs.TransceiverInstruction memory instruction
     ) external view returns (uint256) {
         return _quoteDeliveryPrice(targetChain, instruction);
     }
 
     function _quoteDeliveryPrice(
         uint16 targetChain,
-        EndpointStructs.EndpointInstruction memory endpointInstruction
+        TransceiverStructs.TransceiverInstruction memory transceiverInstruction
     ) internal view virtual returns (uint256);
 }

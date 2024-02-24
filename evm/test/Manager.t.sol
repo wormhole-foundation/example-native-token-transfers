@@ -16,10 +16,10 @@ import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "wormhole-solidity-sdk/Utils.sol";
-import "./libraries/EndpointHelpers.sol";
+import "./libraries/TransceiverHelpers.sol";
 import "./libraries/ManagerHelpers.sol";
-import "./interfaces/IEndpointReceiver.sol";
-import "./mocks/DummyEndpoint.sol";
+import "./interfaces/ITransceiverReceiver.sol";
+import "./mocks/DummyTransceiver.sol";
 import "./mocks/DummyToken.sol";
 import "./mocks/MockManager.sol";
 
@@ -92,86 +92,86 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         manager.transferOwnership(address(0x456));
     }
 
-    // === endpoint registration
+    // === transceiver registration
 
-    function test_registerEndpoint() public {
-        DummyEndpoint e = new DummyEndpoint(address(manager));
-        manager.setEndpoint(address(e));
+    function test_registerTransceiver() public {
+        DummyTransceiver e = new DummyTransceiver(address(manager));
+        manager.setTransceiver(address(e));
     }
 
-    function test_onlyOwnerCanModifyEndpoints() public {
-        DummyEndpoint e = new DummyEndpoint(address(manager));
-        manager.setEndpoint(address(e));
+    function test_onlyOwnerCanModifyTransceivers() public {
+        DummyTransceiver e = new DummyTransceiver(address(manager));
+        manager.setTransceiver(address(e));
 
         address notOwner = address(0x123);
         vm.startPrank(notOwner);
 
         vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", notOwner));
-        manager.setEndpoint(address(e));
+        manager.setTransceiver(address(e));
 
         vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", notOwner));
-        manager.removeEndpoint(address(e));
+        manager.removeTransceiver(address(e));
     }
 
-    function test_cantEnableEndpointTwice() public {
-        DummyEndpoint e = new DummyEndpoint(address(manager));
-        manager.setEndpoint(address(e));
+    function test_cantEnableTransceiverTwice() public {
+        DummyTransceiver e = new DummyTransceiver(address(manager));
+        manager.setTransceiver(address(e));
 
-        vm.expectRevert(abi.encodeWithSignature("EndpointAlreadyEnabled(address)", address(e)));
-        manager.setEndpoint(address(e));
+        vm.expectRevert(abi.encodeWithSignature("TransceiverAlreadyEnabled(address)", address(e)));
+        manager.setTransceiver(address(e));
     }
 
-    function test_disableReenableEndpoint() public {
-        DummyEndpoint e = new DummyEndpoint(address(manager));
-        manager.setEndpoint(address(e));
-        manager.removeEndpoint(address(e));
-        manager.setEndpoint(address(e));
+    function test_disableReenableTransceiver() public {
+        DummyTransceiver e = new DummyTransceiver(address(manager));
+        manager.setTransceiver(address(e));
+        manager.removeTransceiver(address(e));
+        manager.setTransceiver(address(e));
     }
 
-    function test_multipleEndpoints() public {
-        DummyEndpoint e1 = new DummyEndpoint(address(manager));
-        DummyEndpoint e2 = new DummyEndpoint(address(manager));
+    function test_multipleTransceivers() public {
+        DummyTransceiver e1 = new DummyTransceiver(address(manager));
+        DummyTransceiver e2 = new DummyTransceiver(address(manager));
 
-        manager.setEndpoint(address(e1));
-        manager.setEndpoint(address(e2));
+        manager.setTransceiver(address(e1));
+        manager.setTransceiver(address(e2));
     }
 
-    function test_endpointIncompatibleManager() public {
-        // Endpoint instantiation reverts if the manager doesn't have the proper token method
+    function test_transceiverIncompatibleManager() public {
+        // Transceiver instantiation reverts if the manager doesn't have the proper token method
         vm.expectRevert(bytes(""));
-        new DummyEndpoint(address(0xBEEF));
+        new DummyTransceiver(address(0xBEEF));
     }
 
-    function test_endpointWrongManager() public {
+    function test_transceiverWrongManager() public {
         // TODO: this is accepted currently. should we include a check to ensure
-        // only endpoints whose manager is us can be registered? (this would be
+        // only transceivers whose manager is us can be registered? (this would be
         // a convenience check, not a security one)
         DummyToken t = new DummyToken();
         Manager altManager =
             new MockManagerContract(address(t), Manager.Mode.LOCKING, chainId, 1 days);
-        DummyEndpoint e = new DummyEndpoint(address(altManager));
-        manager.setEndpoint(address(e));
+        DummyTransceiver e = new DummyTransceiver(address(altManager));
+        manager.setTransceiver(address(e));
     }
 
-    function test_notEndpoint() public {
+    function test_notTransceiver() public {
         // TODO: this is accepted currently. should we include a check to ensure
-        // only endpoints can be registered? (this would be a convenience check, not a security one)
-        manager.setEndpoint(address(0x123));
+        // only transceivers can be registered? (this would be a convenience check, not a security one)
+        manager.setTransceiver(address(0x123));
     }
 
     // == threshold
 
     function test_cantSetThresholdTooHigh() public {
-        // no endpoints set, so can't set threshold to 1
+        // no transceivers set, so can't set threshold to 1
         vm.expectRevert(abi.encodeWithSignature("ThresholdTooHigh(uint256,uint256)", 1, 0));
         manager.setThreshold(1);
     }
 
     function test_canSetThreshold() public {
-        DummyEndpoint e1 = new DummyEndpoint(address(manager));
-        DummyEndpoint e2 = new DummyEndpoint(address(manager));
-        manager.setEndpoint(address(e1));
-        manager.setEndpoint(address(e2));
+        DummyTransceiver e1 = new DummyTransceiver(address(manager));
+        DummyTransceiver e2 = new DummyTransceiver(address(manager));
+        manager.setTransceiver(address(e1));
+        manager.setTransceiver(address(e2));
 
         manager.setThreshold(1);
         manager.setThreshold(2);
@@ -179,8 +179,8 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     }
 
     function test_cantSetThresholdToZero() public {
-        DummyEndpoint e = new DummyEndpoint(address(manager));
-        manager.setEndpoint(address(e));
+        DummyTransceiver e = new DummyTransceiver(address(manager));
+        manager.setTransceiver(address(e));
 
         vm.expectRevert(abi.encodeWithSignature("ZeroThreshold()"));
         manager.setThreshold(0);
@@ -196,104 +196,106 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
     // === attestation
 
-    function test_onlyEnabledEndpointsCanAttest() public {
-        (DummyEndpoint e1,) = EndpointHelpersLib.setup_endpoints(managerOther);
-        managerOther.removeEndpoint(address(e1));
+    function test_onlyEnabledTransceiversCanAttest() public {
+        (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(managerOther);
+        managerOther.removeTransceiver(address(e1));
         bytes32 sibling = toWormholeFormat(address(manager));
-        managerOther.setSibling(EndpointHelpersLib.SENDING_CHAIN_ID, sibling);
+        managerOther.setSibling(TransceiverHelpersLib.SENDING_CHAIN_ID, sibling);
 
-        bytes memory endpointMessage;
-        (, endpointMessage) = EndpointHelpersLib.buildEndpointMessageWithManagerPayload(
+        bytes memory transceiverMessage;
+        (, transceiverMessage) = TransceiverHelpersLib.buildTransceiverMessageWithManagerPayload(
             0, bytes32(0), sibling, toWormholeFormat(address(managerOther)), abi.encode("payload")
         );
 
-        vm.expectRevert(abi.encodeWithSignature("CallerNotEndpoint(address)", address(e1)));
-        e1.receiveMessage(endpointMessage);
+        vm.expectRevert(abi.encodeWithSignature("CallerNotTransceiver(address)", address(e1)));
+        e1.receiveMessage(transceiverMessage);
     }
 
     function test_onlySiblingManagerCanAttest() public {
-        (DummyEndpoint e1,) = EndpointHelpersLib.setup_endpoints(managerOther);
+        (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(managerOther);
         managerOther.setThreshold(2);
 
         bytes32 sibling = toWormholeFormat(address(manager));
 
-        EndpointStructs.ManagerMessage memory managerMessage;
-        bytes memory endpointMessage;
-        (managerMessage, endpointMessage) = EndpointHelpersLib
-            .buildEndpointMessageWithManagerPayload(
+        TransceiverStructs.ManagerMessage memory managerMessage;
+        bytes memory transceiverMessage;
+        (managerMessage, transceiverMessage) = TransceiverHelpersLib
+            .buildTransceiverMessageWithManagerPayload(
             0, bytes32(0), sibling, toWormholeFormat(address(managerOther)), abi.encode("payload")
         );
 
         vm.expectRevert(
             abi.encodeWithSignature(
-                "InvalidSibling(uint16,bytes32)", EndpointHelpersLib.SENDING_CHAIN_ID, sibling
+                "InvalidSibling(uint16,bytes32)", TransceiverHelpersLib.SENDING_CHAIN_ID, sibling
             )
         );
-        e1.receiveMessage(endpointMessage);
+        e1.receiveMessage(transceiverMessage);
     }
 
     function test_attestSimple() public {
-        (DummyEndpoint e1,) = EndpointHelpersLib.setup_endpoints(managerOther);
+        (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(managerOther);
         managerOther.setThreshold(2);
 
         // register manager sibling
         bytes32 sibling = toWormholeFormat(address(manager));
-        managerOther.setSibling(EndpointHelpersLib.SENDING_CHAIN_ID, sibling);
+        managerOther.setSibling(TransceiverHelpersLib.SENDING_CHAIN_ID, sibling);
 
-        EndpointStructs.ManagerMessage memory managerMessage;
-        bytes memory endpointMessage;
-        (managerMessage, endpointMessage) = EndpointHelpersLib
-            .buildEndpointMessageWithManagerPayload(
+        TransceiverStructs.ManagerMessage memory managerMessage;
+        bytes memory transceiverMessage;
+        (managerMessage, transceiverMessage) = TransceiverHelpersLib
+            .buildTransceiverMessageWithManagerPayload(
             0, bytes32(0), sibling, toWormholeFormat(address(managerOther)), abi.encode("payload")
         );
 
-        e1.receiveMessage(endpointMessage);
+        e1.receiveMessage(transceiverMessage);
 
-        bytes32 hash = EndpointStructs.managerMessageDigest(
-            EndpointHelpersLib.SENDING_CHAIN_ID, managerMessage
+        bytes32 hash = TransceiverStructs.managerMessageDigest(
+            TransceiverHelpersLib.SENDING_CHAIN_ID, managerMessage
         );
         assertEq(managerOther.messageAttestations(hash), 1);
     }
 
     function test_attestTwice() public {
-        (DummyEndpoint e1,) = EndpointHelpersLib.setup_endpoints(managerOther);
+        (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(managerOther);
         managerOther.setThreshold(2);
 
         // register manager sibling
         bytes32 sibling = toWormholeFormat(address(manager));
-        managerOther.setSibling(EndpointHelpersLib.SENDING_CHAIN_ID, sibling);
+        managerOther.setSibling(TransceiverHelpersLib.SENDING_CHAIN_ID, sibling);
 
-        EndpointStructs.ManagerMessage memory managerMessage;
-        bytes memory endpointMessage;
-        (managerMessage, endpointMessage) = EndpointHelpersLib
-            .buildEndpointMessageWithManagerPayload(
+        TransceiverStructs.ManagerMessage memory managerMessage;
+        bytes memory transceiverMessage;
+        (managerMessage, transceiverMessage) = TransceiverHelpersLib
+            .buildTransceiverMessageWithManagerPayload(
             0, bytes32(0), sibling, toWormholeFormat(address(managerOther)), abi.encode("payload")
         );
 
-        bytes32 hash = EndpointStructs.managerMessageDigest(
-            EndpointHelpersLib.SENDING_CHAIN_ID, managerMessage
+        bytes32 hash = TransceiverStructs.managerMessageDigest(
+            TransceiverHelpersLib.SENDING_CHAIN_ID, managerMessage
         );
 
-        e1.receiveMessage(endpointMessage);
-        vm.expectRevert(abi.encodeWithSignature("EndpointAlreadyAttestedToMessage(bytes32)", hash));
-        e1.receiveMessage(endpointMessage);
+        e1.receiveMessage(transceiverMessage);
+        vm.expectRevert(
+            abi.encodeWithSignature("TransceiverAlreadyAttestedToMessage(bytes32)", hash)
+        );
+        e1.receiveMessage(transceiverMessage);
 
         // can't double vote
         assertEq(managerOther.messageAttestations(hash), 1);
     }
 
     function test_attestDisabled() public {
-        (DummyEndpoint e1,) = EndpointHelpersLib.setup_endpoints(managerOther);
+        (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(managerOther);
         managerOther.setThreshold(2);
 
         bytes32 sibling = toWormholeFormat(address(manager));
-        managerOther.setSibling(EndpointHelpersLib.SENDING_CHAIN_ID, sibling);
+        managerOther.setSibling(TransceiverHelpersLib.SENDING_CHAIN_ID, sibling);
 
-        IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](1);
-        endpoints[0] = e1;
+        ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](1);
+        transceivers[0] = e1;
 
-        EndpointStructs.ManagerMessage memory m;
-        (m,) = EndpointHelpersLib.attestEndpointsHelper(
+        TransceiverStructs.ManagerMessage memory m;
+        (m,) = TransceiverHelpersLib.attestTransceiversHelper(
             address(0x456),
             0,
             chainId,
@@ -301,16 +303,17 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             managerOther,
             NormalizedAmount(50, 8),
             NormalizedAmount(type(uint64).max, 8),
-            endpoints
+            transceivers
         );
 
-        managerOther.removeEndpoint(address(e1));
+        managerOther.removeTransceiver(address(e1));
 
-        bytes32 hash = EndpointStructs.managerMessageDigest(EndpointHelpersLib.SENDING_CHAIN_ID, m);
-        // a disabled endpoint's vote no longer counts
+        bytes32 hash =
+            TransceiverStructs.managerMessageDigest(TransceiverHelpersLib.SENDING_CHAIN_ID, m);
+        // a disabled transceiver's vote no longer counts
         assertEq(managerOther.messageAttestations(hash), 0);
 
-        managerOther.setEndpoint(address(e1));
+        managerOther.setTransceiver(address(e1));
         // it counts again when reenabled
         assertEq(managerOther.messageAttestations(hash), 1);
     }
@@ -349,19 +352,20 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     function test_attestationQuorum() public {
         address user_B = address(0x456);
 
-        (DummyEndpoint e1, DummyEndpoint e2) = EndpointHelpersLib.setup_endpoints(managerOther);
+        (DummyTransceiver e1, DummyTransceiver e2) =
+            TransceiverHelpersLib.setup_transceivers(managerOther);
 
         NormalizedAmount memory transferAmount = NormalizedAmount(50, 8);
 
-        EndpointStructs.ManagerMessage memory m;
+        TransceiverStructs.ManagerMessage memory m;
         bytes memory encodedEm;
         {
-            IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
-            endpoints[0] = e1;
-            endpoints[1] = e2;
+            ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](2);
+            transceivers[0] = e1;
+            transceivers[1] = e2;
 
-            EndpointStructs.EndpointMessage memory em;
-            (m, em) = EndpointHelpersLib.attestEndpointsHelper(
+            TransceiverStructs.TransceiverMessage memory em;
+            (m, em) = TransceiverHelpersLib.attestTransceiversHelper(
                 user_B,
                 0,
                 chainId,
@@ -369,10 +373,10 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
                 managerOther,
                 transferAmount,
                 NormalizedAmount(type(uint64).max, 8),
-                endpoints
+                transceivers
             );
-            encodedEm = EndpointStructs.encodeEndpointMessage(
-                EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX, em
+            encodedEm = TransceiverStructs.encodeTransceiverMessage(
+                TransceiverHelpersLib.TEST_TRANSCEIVER_PAYLOAD_PREFIX, em
             );
         }
 
@@ -393,7 +397,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             assertEq(entries[1].topics[1], toWormholeFormat(address(manager)));
             assertEq(
                 entries[1].topics[2],
-                EndpointStructs.managerMessageDigest(EndpointHelpersLib.SENDING_CHAIN_ID, m)
+                TransceiverStructs.managerMessageDigest(TransceiverHelpersLib.SENDING_CHAIN_ID, m)
             );
         }
     }
@@ -402,7 +406,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
     // currently there is no way to test the threshold logic and the duplicate
     // protection logic without setting up the business logic as well.
     //
-    // we should separate the business logic out from the endpoint handling.
+    // we should separate the business logic out from the transceiver handling.
     // that way the functionality could be tested separately (and the contracts
     // would also be more reusable)
 
@@ -440,7 +444,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
         manager.setOutboundLimit(NormalizedAmount(type(uint64).max, 8).denormalize(decimals));
         manager.setInboundLimit(
             NormalizedAmount(type(uint64).max, 8).denormalize(decimals),
-            EndpointHelpersLib.SENDING_CHAIN_ID
+            TransceiverHelpersLib.SENDING_CHAIN_ID
         );
 
         vm.startPrank(from);
@@ -478,30 +482,30 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
 
     function test_upgradeManager() public {
         // The testing strategy here is as follows:
-        // Step 1: Deploy the manager contract with two endpoints and
+        // Step 1: Deploy the manager contract with two transceivers and
         //         receive a message through it.
-        // Step 2: Upgrade it to a new manager contract an use the same endpoints to receive
+        // Step 2: Upgrade it to a new manager contract an use the same transceivers to receive
         //         a new message through it.
         // Step 3: Upgrade back to the standalone contract (with two
-        //           endpoints) and receive a message through it.
+        //           transceivers) and receive a message through it.
         // This ensures that the storage slots don't get clobbered through the upgrades.
 
         address user_B = address(0x456);
         DummyToken token = DummyToken(manager.token());
         NormalizedAmount memory transferAmount = NormalizedAmount(50, 8);
-        (IEndpointReceiver e1, IEndpointReceiver e2) =
-            EndpointHelpersLib.setup_endpoints(managerOther);
+        (ITransceiverReceiver e1, ITransceiverReceiver e2) =
+            TransceiverHelpersLib.setup_transceivers(managerOther);
 
         // Step 1 (contract is deployed by setUp())
-        IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
-        endpoints[0] = e1;
-        endpoints[1] = e2;
+        ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](2);
+        transceivers[0] = e1;
+        transceivers[1] = e2;
 
-        EndpointStructs.ManagerMessage memory m;
+        TransceiverStructs.ManagerMessage memory m;
         bytes memory encodedEm;
         {
-            EndpointStructs.EndpointMessage memory em;
-            (m, em) = EndpointHelpersLib.attestEndpointsHelper(
+            TransceiverStructs.TransceiverMessage memory em;
+            (m, em) = TransceiverHelpersLib.attestTransceiversHelper(
                 user_B,
                 0,
                 chainId,
@@ -509,10 +513,10 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
                 managerOther,
                 transferAmount,
                 NormalizedAmount(type(uint64).max, 8),
-                endpoints
+                transceivers
             );
-            encodedEm = EndpointStructs.encodeEndpointMessage(
-                EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX, em
+            encodedEm = TransceiverStructs.encodeTransceiverMessage(
+                TransceiverHelpersLib.TEST_TRANSCEIVER_PAYLOAD_PREFIX, em
             );
         }
 
@@ -523,7 +527,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             new MockManagerContract(manager.token(), Manager.Mode.LOCKING, chainId, 1 days);
         managerOther.upgrade(address(newManager));
 
-        EndpointHelpersLib.attestEndpointsHelper(
+        TransceiverHelpersLib.attestTransceiversHelper(
             user_B,
             1,
             chainId,
@@ -531,7 +535,7 @@ contract TestManager is Test, IManagerEvents, IRateLimiterEvents {
             managerOther, // this is the proxy
             transferAmount,
             NormalizedAmount(type(uint64).max, 8),
-            endpoints
+            transceivers
         );
 
         assertEq(token.balanceOf(address(user_B)), transferAmount.denormalize(token.decimals()) * 2);

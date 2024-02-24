@@ -4,7 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 import "./NormalizedAmount.sol";
 
-library EndpointStructs {
+library TransceiverStructs {
     using BytesParsing for bytes;
     using NormalizedAmountLib for NormalizedAmount;
 
@@ -137,46 +137,46 @@ library EndpointStructs {
         encoded.checkLength(offset);
     }
 
-    /// @dev Message emitted by Endpoint implementations.
-    ///      Each message includes an Endpoint-specified 4-byte prefix.
+    /// @dev Message emitted by Transceiver implementations.
+    ///      Each message includes an Transceiver-specified 4-byte prefix.
     ///      The wire format is as follows:
     ///      - prefix - 4 bytes
     ///      - sourceManagerAddress - 32 bytes
     ///      - recipientManagerAddress - 32 bytes
     ///      - managerPayloadLength - 2 bytes
     ///      - managerPayload - `managerPayloadLength` bytes
-    ///      - endpointPayloadLength - 2 bytes
-    ///      - endpointPayload - `endpointPayloadLength` bytes
-    struct EndpointMessage {
+    ///      - transceiverPayloadLength - 2 bytes
+    ///      - transceiverPayload - `transceiverPayloadLength` bytes
+    struct TransceiverMessage {
         /// @notice Address of the Manager contract that emitted this message.
         bytes32 sourceManagerAddress;
         /// @notice Address of the Manager contract that receives this message.
         bytes32 recipientManagerAddress;
-        /// @notice Payload provided to the Endpoint contract by the Manager contract.
+        /// @notice Payload provided to the Transceiver contract by the Manager contract.
         bytes managerPayload;
-        /// @notice Optional payload that the endpoint can encode and use for its own message passing purposes.
-        bytes endpointPayload;
+        /// @notice Optional payload that the transceiver can encode and use for its own message passing purposes.
+        bytes transceiverPayload;
     }
 
-    // @notice Encodes an Endpoint message for communication between the
-    //         Manager and the Endpoint.
-    // @param m The EndpointMessage struct containing the message details.
+    // @notice Encodes an Transceiver message for communication between the
+    //         Manager and the Transceiver.
+    // @param m The TransceiverMessage struct containing the message details.
     // @return encoded The byte array corresponding to the encoded message.
-    // @custom:throw PayloadTooLong if the length of endpointId, managerPayload,
-    //         or endpointPayload exceeds the allowed maximum.
-    function encodeEndpointMessage(
+    // @custom:throw PayloadTooLong if the length of transceiverId, managerPayload,
+    //         or transceiverPayload exceeds the allowed maximum.
+    function encodeTransceiverMessage(
         bytes4 prefix,
-        EndpointMessage memory m
+        TransceiverMessage memory m
     ) public pure returns (bytes memory encoded) {
         if (m.managerPayload.length > type(uint16).max) {
             revert PayloadTooLong(m.managerPayload.length);
         }
         uint16 managerPayloadLength = uint16(m.managerPayload.length);
 
-        if (m.endpointPayload.length > type(uint16).max) {
-            revert PayloadTooLong(m.endpointPayload.length);
+        if (m.transceiverPayload.length > type(uint16).max) {
+            revert PayloadTooLong(m.transceiverPayload.length);
         }
-        uint16 endpointPayloadLength = uint16(m.endpointPayload.length);
+        uint16 transceiverPayloadLength = uint16(m.transceiverPayload.length);
 
         return abi.encodePacked(
             prefix,
@@ -184,37 +184,37 @@ library EndpointStructs {
             m.recipientManagerAddress,
             managerPayloadLength,
             m.managerPayload,
-            endpointPayloadLength,
-            m.endpointPayload
+            transceiverPayloadLength,
+            m.transceiverPayload
         );
     }
 
-    function buildAndEncodeEndpointMessage(
+    function buildAndEncodeTransceiverMessage(
         bytes4 prefix,
         bytes32 sourceManagerAddress,
         bytes32 recipientManagerAddress,
         bytes memory managerMessage,
-        bytes memory endpointPayload
-    ) public pure returns (EndpointMessage memory, bytes memory) {
-        EndpointMessage memory endpointMessage = EndpointMessage({
+        bytes memory transceiverPayload
+    ) public pure returns (TransceiverMessage memory, bytes memory) {
+        TransceiverMessage memory transceiverMessage = TransceiverMessage({
             sourceManagerAddress: sourceManagerAddress,
             recipientManagerAddress: recipientManagerAddress,
             managerPayload: managerMessage,
-            endpointPayload: endpointPayload
+            transceiverPayload: transceiverPayload
         });
-        bytes memory encoded = encodeEndpointMessage(prefix, endpointMessage);
-        return (endpointMessage, encoded);
+        bytes memory encoded = encodeTransceiverMessage(prefix, transceiverMessage);
+        return (transceiverMessage, encoded);
     }
 
-    /// @dev Parses an encoded message and extracts information into an EndpointMessage struct.
-    /// @param encoded The encoded bytes containing information about the EndpointMessage.
-    /// @return endpointMessage The parsed EndpointMessage struct.
+    /// @dev Parses an encoded message and extracts information into an TransceiverMessage struct.
+    /// @param encoded The encoded bytes containing information about the TransceiverMessage.
+    /// @return transceiverMessage The parsed TransceiverMessage struct.
     /// @custom:throw IncorrectPrefix if the prefix of the encoded message does not
     ///         match the expected prefix.
-    function parseEndpointMessage(
+    function parseTransceiverMessage(
         bytes4 expectedPrefix,
         bytes memory encoded
-    ) internal pure returns (EndpointMessage memory endpointMessage) {
+    ) internal pure returns (TransceiverMessage memory transceiverMessage) {
         uint256 offset = 0;
         bytes4 prefix;
 
@@ -224,51 +224,52 @@ library EndpointStructs {
             revert IncorrectPrefix(prefix);
         }
 
-        (endpointMessage.sourceManagerAddress, offset) = encoded.asBytes32Unchecked(offset);
-        (endpointMessage.recipientManagerAddress, offset) = encoded.asBytes32Unchecked(offset);
+        (transceiverMessage.sourceManagerAddress, offset) = encoded.asBytes32Unchecked(offset);
+        (transceiverMessage.recipientManagerAddress, offset) = encoded.asBytes32Unchecked(offset);
         uint16 managerPayloadLength;
         (managerPayloadLength, offset) = encoded.asUint16Unchecked(offset);
-        (endpointMessage.managerPayload, offset) =
+        (transceiverMessage.managerPayload, offset) =
             encoded.sliceUnchecked(offset, managerPayloadLength);
-        uint16 endpointPayloadLength;
-        (endpointPayloadLength, offset) = encoded.asUint16Unchecked(offset);
-        (endpointMessage.endpointPayload, offset) =
-            encoded.sliceUnchecked(offset, endpointPayloadLength);
+        uint16 transceiverPayloadLength;
+        (transceiverPayloadLength, offset) = encoded.asUint16Unchecked(offset);
+        (transceiverMessage.transceiverPayload, offset) =
+            encoded.sliceUnchecked(offset, transceiverPayloadLength);
 
         // Check if the entire byte array has been processed
         encoded.checkLength(offset);
     }
 
-    /// @dev Parses the payload of an Endpoint message and returns
+    /// @dev Parses the payload of an Transceiver message and returns
     ///      the parsed ManagerMessage struct.
     /// @param expectedPrefix The prefix that should be encoded in the manager message.
     /// @param payload The payload sent across the wire.
-    function parseEndpointAndManagerMessage(
+    function parseTransceiverAndManagerMessage(
         bytes4 expectedPrefix,
         bytes memory payload
-    ) public pure returns (EndpointMessage memory, ManagerMessage memory) {
-        // parse the encoded message payload from the Endpoint
-        EndpointMessage memory parsedEndpointMessage = parseEndpointMessage(expectedPrefix, payload);
+    ) public pure returns (TransceiverMessage memory, ManagerMessage memory) {
+        // parse the encoded message payload from the Transceiver
+        TransceiverMessage memory parsedTransceiverMessage =
+            parseTransceiverMessage(expectedPrefix, payload);
 
         // parse the encoded message payload from the Manager
         ManagerMessage memory parsedManagerMessage =
-            parseManagerMessage(parsedEndpointMessage.managerPayload);
+            parseManagerMessage(parsedTransceiverMessage.managerPayload);
 
-        return (parsedEndpointMessage, parsedManagerMessage);
+        return (parsedTransceiverMessage, parsedManagerMessage);
     }
 
-    /// @dev Variable-length endpoint-specific instruction that can be passed by the caller to the manager.
-    ///      The index field refers to the index of the registeredEndpoint that this instruction should be passed to.
+    /// @dev Variable-length transceiver-specific instruction that can be passed by the caller to the manager.
+    ///      The index field refers to the index of the registeredTransceiver that this instruction should be passed to.
     ///      The serialization format is:
     ///      - index - 1 byte
     ///      - payloadLength - 1 byte
     ///      - payload - `payloadLength` bytes
-    struct EndpointInstruction {
+    struct TransceiverInstruction {
         uint8 index;
         bytes payload;
     }
 
-    function encodeEndpointInstruction(EndpointInstruction memory instruction)
+    function encodeTransceiverInstruction(TransceiverInstruction memory instruction)
         public
         pure
         returns (bytes memory)
@@ -280,31 +281,31 @@ library EndpointStructs {
         return abi.encodePacked(instruction.index, payloadLength, instruction.payload);
     }
 
-    function parseEndpointInstructionUnchecked(
+    function parseTransceiverInstructionUnchecked(
         bytes memory encoded,
         uint256 offset
-    ) public pure returns (EndpointInstruction memory instruction, uint256 nextOffset) {
+    ) public pure returns (TransceiverInstruction memory instruction, uint256 nextOffset) {
         (instruction.index, nextOffset) = encoded.asUint8Unchecked(offset);
         uint8 instructionLength;
         (instructionLength, nextOffset) = encoded.asUint8Unchecked(nextOffset);
         (instruction.payload, nextOffset) = encoded.sliceUnchecked(nextOffset, instructionLength);
     }
 
-    function parseEndpointInstructionChecked(bytes memory encoded)
+    function parseTransceiverInstructionChecked(bytes memory encoded)
         public
         pure
-        returns (EndpointInstruction memory instruction)
+        returns (TransceiverInstruction memory instruction)
     {
         uint256 offset = 0;
-        (instruction, offset) = parseEndpointInstructionUnchecked(encoded, offset);
+        (instruction, offset) = parseTransceiverInstructionUnchecked(encoded, offset);
         encoded.checkLength(offset);
     }
 
-    /// @dev Encode an array of multiple variable-length endpoint-specific instructions.
+    /// @dev Encode an array of multiple variable-length transceiver-specific instructions.
     ///      The serialization format is:
     ///      - instructionsLength - 1 byte
-    ///      - `instructionsLength` number of serialized `EndpointInstruction` types.
-    function encodeEndpointInstructions(EndpointInstruction[] memory instructions)
+    ///      - `instructionsLength` number of serialized `TransceiverInstruction` types.
+    function encodeTransceiverInstructions(TransceiverInstruction[] memory instructions)
         public
         pure
         returns (bytes memory)
@@ -316,33 +317,34 @@ library EndpointStructs {
 
         bytes memory encoded;
         for (uint256 i = 0; i < instructionsLength; i++) {
-            bytes memory innerEncoded = encodeEndpointInstruction(instructions[i]);
+            bytes memory innerEncoded = encodeTransceiverInstruction(instructions[i]);
             encoded = bytes.concat(encoded, innerEncoded);
         }
         return abi.encodePacked(uint8(instructionsLength), encoded);
     }
 
-    function parseEndpointInstructions(
+    function parseTransceiverInstructions(
         bytes memory encoded,
-        uint256 numEnabledEndpoints
-    ) public pure returns (EndpointInstruction[] memory) {
+        uint256 numEnabledTransceivers
+    ) public pure returns (TransceiverInstruction[] memory) {
         uint256 offset = 0;
         uint256 instructionsLength;
         (instructionsLength, offset) = encoded.asUint8Unchecked(offset);
 
-        // We allocate an array with the length of the number of enabled endpoints
-        // This gives us the flexibility to not have to pass instructions for endpoints that
+        // We allocate an array with the length of the number of enabled transceivers
+        // This gives us the flexibility to not have to pass instructions for transceivers that
         // don't need them
-        EndpointInstruction[] memory instructions = new EndpointInstruction[](numEnabledEndpoints);
+        TransceiverInstruction[] memory instructions =
+            new TransceiverInstruction[](numEnabledTransceivers);
 
         uint256 lastIndex = 0;
         for (uint256 i = 0; i < instructionsLength; i++) {
-            EndpointInstruction memory instruction;
-            (instruction, offset) = parseEndpointInstructionUnchecked(encoded, offset);
+            TransceiverInstruction memory instruction;
+            (instruction, offset) = parseTransceiverInstructionUnchecked(encoded, offset);
 
             uint8 instructionIndex = instruction.index;
 
-            // The instructions passed in have to be strictly increasing in terms of endpoint index
+            // The instructions passed in have to be strictly increasing in terms of transceiver index
             if (i != 0 && instructionIndex <= lastIndex) {
                 revert UnorderedInstructions();
             }
@@ -356,17 +358,21 @@ library EndpointStructs {
         return instructions;
     }
 
-    struct EndpointInit {
-        bytes4 endpointIdentifier;
+    struct TransceiverInit {
+        bytes4 transceiverIdentifier;
         bytes32 managerAddress;
         uint8 managerMode;
         bytes32 tokenAddress;
         uint8 tokenDecimals;
     }
 
-    function encodeEndpointInit(EndpointInit memory init) public pure returns (bytes memory) {
+    function encodeTransceiverInit(TransceiverInit memory init)
+        public
+        pure
+        returns (bytes memory)
+    {
         return abi.encodePacked(
-            init.endpointIdentifier,
+            init.transceiverIdentifier,
             init.managerAddress,
             init.managerMode,
             init.tokenAddress,
@@ -374,13 +380,13 @@ library EndpointStructs {
         );
     }
 
-    function decodeEndpointInit(bytes memory encoded)
+    function decodeTransceiverInit(bytes memory encoded)
         public
         pure
-        returns (EndpointInit memory init)
+        returns (TransceiverInit memory init)
     {
         uint256 offset = 0;
-        (init.endpointIdentifier, offset) = encoded.asBytes4Unchecked(offset);
+        (init.transceiverIdentifier, offset) = encoded.asBytes4Unchecked(offset);
         (init.managerAddress, offset) = encoded.asBytes32Unchecked(offset);
         (init.managerMode, offset) = encoded.asUint8Unchecked(offset);
         (init.tokenAddress, offset) = encoded.asBytes32Unchecked(offset);
@@ -388,33 +394,33 @@ library EndpointStructs {
         encoded.checkLength(offset);
     }
 
-    struct EndpointRegistration {
-        bytes4 endpointIdentifier;
-        uint16 endpointChainId;
-        bytes32 endpointAddress;
+    struct TransceiverRegistration {
+        bytes4 transceiverIdentifier;
+        uint16 transceiverChainId;
+        bytes32 transceiverAddress;
     }
 
-    function encodeEndpointRegistration(EndpointRegistration memory registration)
+    function encodeTransceiverRegistration(TransceiverRegistration memory registration)
         public
         pure
         returns (bytes memory)
     {
         return abi.encodePacked(
-            registration.endpointIdentifier,
-            registration.endpointChainId,
-            registration.endpointAddress
+            registration.transceiverIdentifier,
+            registration.transceiverChainId,
+            registration.transceiverAddress
         );
     }
 
-    function decodeEndpointRegistration(bytes memory encoded)
+    function decodeTransceiverRegistration(bytes memory encoded)
         public
         pure
-        returns (EndpointRegistration memory registration)
+        returns (TransceiverRegistration memory registration)
     {
         uint256 offset = 0;
-        (registration.endpointIdentifier, offset) = encoded.asBytes4Unchecked(offset);
-        (registration.endpointChainId, offset) = encoded.asUint16Unchecked(offset);
-        (registration.endpointAddress, offset) = encoded.asBytes32Unchecked(offset);
+        (registration.transceiverIdentifier, offset) = encoded.asBytes4Unchecked(offset);
+        (registration.transceiverChainId, offset) = encoded.asUint16Unchecked(offset);
+        (registration.transceiverAddress, offset) = encoded.asBytes32Unchecked(offset);
         encoded.checkLength(offset);
     }
 }

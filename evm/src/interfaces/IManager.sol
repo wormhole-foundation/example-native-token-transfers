@@ -2,7 +2,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "../libraries/NormalizedAmount.sol";
-import "../libraries/EndpointStructs.sol";
+import "../libraries/TransceiverStructs.sol";
 
 interface IManager {
     /// @notice payment for a transfer is too low.
@@ -38,11 +38,11 @@ interface IManager {
     /// @notice The number of thresholds should not be zero.
     error ZeroThreshold();
 
-    /// @notice The threshold for endpoint attestations is too high.
+    /// @notice The threshold for transceiver attestations is too high.
     /// @param threshold The threshold.
-    /// @param endpoints The number of endpoints.
-    error ThresholdTooHigh(uint256 threshold, uint256 endpoints);
-    error RetrievedIncorrectRegisteredEndpoints(uint256 retrieved, uint256 registered);
+    /// @param transceivers The number of transceivers.
+    error ThresholdTooHigh(uint256 threshold, uint256 transceivers);
+    error RetrievedIncorrectRegisteredTransceivers(uint256 retrieved, uint256 registered);
 
     // @notice                       transfer a given amount to a recipient on a given chain.
     // @dev                          transfers are queued if the outbound limit is hit
@@ -66,7 +66,7 @@ interface IManager {
     function setSibling(uint16 siblingChainId, bytes32 siblingContract) external;
 
     /// @notice Check if a message has been approved. The message should have at least
-    /// the minimum threshold of attestations fron distinct endpoints.
+    /// the minimum threshold of attestations fron distinct transceivers.
     ///
     /// @param digest The digest of the message.
     /// @return Whether the message has been approved.
@@ -100,22 +100,22 @@ interface IManager {
 
     // @notice                         Fetch the delivery price for a given recipient chain transfer.
     // @param recipientChain           The chain to transfer to.
-    // @param endpointInstructions     An additional instruction the endpoint can forward to
+    // @param transceiverInstructions     An additional instruction the transceiver can forward to
     //                                 the recipient chain.
-    // @param enabledEndpoints         The endpoints that are enabled for the transfer.
-    // @return                         The delivery prices associated with each endpoint, and the sum
+    // @param enabledTransceivers         The transceivers that are enabled for the transfer.
+    // @return                         The delivery prices associated with each transceiver, and the sum
     //                                 of these prices.
     function quoteDeliveryPrice(
         uint16 recipientChain,
-        EndpointStructs.EndpointInstruction[] memory endpointInstructions,
-        address[] memory enabledEndpoints
+        TransceiverStructs.TransceiverInstruction[] memory transceiverInstructions,
+        address[] memory enabledTransceivers
     ) external view returns (uint256[] memory, uint256);
 
     function nextMessageSequence() external view returns (uint64);
 
     function token() external view returns (address);
 
-    /// @notice Called by an Endpoint contract to deliver a verified attestation.
+    /// @notice Called by an Transceiver contract to deliver a verified attestation.
     /// @dev    This function enforces attestation threshold and replay logic for messages.
     ///         Once all validations are complete, this function calls _executeMsg to execute
     ///         the command specified by the message.
@@ -125,7 +125,7 @@ interface IManager {
     function attestationReceived(
         uint16 sourceChainId,
         bytes32 sourceManagerAddress,
-        EndpointStructs.ManagerMessage memory payload
+        TransceiverStructs.ManagerMessage memory payload
     ) external;
 
     /// @notice upgrade to a new manager implementation.

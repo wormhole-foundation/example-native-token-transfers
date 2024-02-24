@@ -44,7 +44,7 @@ contract MockManagerMigrateBasic is Manager {
 
     function _migrate() internal view override {
         _checkThresholdInvariants();
-        _checkEndpointsInvariants();
+        _checkTransceiversInvariants();
         revert("Proper migrate called");
     }
 }

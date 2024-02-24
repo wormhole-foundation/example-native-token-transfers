@@ -20,7 +20,7 @@ pub fn receive_message(ntt: &NTT, accs: ReceiveMessage) -> Instruction {
         config: ntt.config(),
         sibling: accs.sibling,
         vaa: accs.vaa,
-        endpoint_message: ntt.endpoint_message(accs.chain_id, accs.sequence),
+        transceiver_message: ntt.transceiver_message(accs.chain_id, accs.sequence),
         system_program: System::id(),
     };
 

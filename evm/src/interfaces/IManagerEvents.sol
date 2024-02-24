@@ -29,31 +29,31 @@ interface IManagerEvents {
     /// @dev Topic0
     ///      0x35a2101eaac94b493e0dfca061f9a7f087913fde8678e7cde0aca9897edba0e5.
     /// @param digest The digest of the message.
-    /// @param endpoint The address of the endpoint.
-    /// @param index The index of the endpoint in the bitmap.
-    event MessageAttestedTo(bytes32 digest, address endpoint, uint8 index);
+    /// @param transceiver The address of the transceiver.
+    /// @param index The index of the transceiver in the bitmap.
+    event MessageAttestedTo(bytes32 digest, address transceiver, uint8 index);
 
-    /// @notice Emmitted when the threshold required endpoints is changed.
+    /// @notice Emmitted when the threshold required transceivers is changed.
     /// @dev Topic0
     ///      0x2a855b929b9a53c6fb5b5ed248b27e502b709c088e036a5aa17620c8fc5085a9.
     /// @param oldThreshold The old threshold.
     /// @param threshold The new threshold.
     event ThresholdChanged(uint8 oldThreshold, uint8 threshold);
 
-    /// @notice Emitted when an endpoint is removed from the manager.
+    /// @notice Emitted when an transceiver is removed from the manager.
     /// @dev Topic0
     ///      0xc6289e62021fd0421276d06677862d6b328d9764cdd4490ca5ac78b173f25883.
-    /// @param endpoint The address of the endpoint.
-    /// @param endpointsNum The current number of endpoints.
-    /// @param threshold The current threshold of endpoints.
-    event EndpointAdded(address endpoint, uint256 endpointsNum, uint8 threshold);
+    /// @param transceiver The address of the transceiver.
+    /// @param transceiversNum The current number of transceivers.
+    /// @param threshold The current threshold of transceivers.
+    event TransceiverAdded(address transceiver, uint256 transceiversNum, uint8 threshold);
 
-    /// @notice Emitted when an endpoint is removed from the manager.
+    /// @notice Emitted when an transceiver is removed from the manager.
     /// @dev Topic0
     ///     0x638e631f34d9501a3ff0295873b29f50d0207b5400bf0e48b9b34719e6b1a39e.
-    /// @param endpoint The address of the endpoint.
-    /// @param threshold The current threshold of endpoints.
-    event EndpointRemoved(address endpoint, uint8 threshold);
+    /// @param transceiver The address of the transceiver.
+    /// @param threshold The current threshold of transceivers.
+    event TransceiverRemoved(address transceiver, uint8 threshold);
 
     /// @notice Emitted when a message has already been executed to
     ///         notify client of against retries.

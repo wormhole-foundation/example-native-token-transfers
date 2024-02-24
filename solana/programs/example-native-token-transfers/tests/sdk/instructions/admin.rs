@@ -49,21 +49,21 @@ pub fn set_paused(ntt: &NTT, accounts: SetPaused, pause: bool) -> Instruction {
     }
 }
 
-pub struct RegisterEndpoint {
+pub struct RegisterTransceiver {
     pub payer: Pubkey,
     pub owner: Pubkey,
-    pub endpoint: Pubkey,
+    pub transceiver: Pubkey,
 }
 
-pub fn register_endpoint(ntt: &NTT, accounts: RegisterEndpoint) -> Instruction {
-    let data = example_native_token_transfers::instruction::RegisterEndpoint {};
+pub fn register_transceiver(ntt: &NTT, accounts: RegisterTransceiver) -> Instruction {
+    let data = example_native_token_transfers::instruction::RegisterTransceiver {};
 
-    let accounts = example_native_token_transfers::accounts::RegisterEndpoint {
+    let accounts = example_native_token_transfers::accounts::RegisterTransceiver {
         config: ntt.config(),
         owner: accounts.owner,
         payer: accounts.payer,
-        endpoint: accounts.endpoint,
-        registered_endpoint: ntt.registered_endpoint(&accounts.endpoint),
+        transceiver: accounts.transceiver,
+        registered_transceiver: ntt.registered_transceiver(&accounts.transceiver),
         system_program: System::id(),
     };
 

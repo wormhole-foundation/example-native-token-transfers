@@ -3,28 +3,31 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "./ManagerHelpers.sol";
-import "../mocks/DummyEndpoint.sol";
+import "../mocks/DummyTransceiver.sol";
 import "../mocks/DummyToken.sol";
 import "../../src/Manager.sol";
 import "../../src/libraries/NormalizedAmount.sol";
 
-library EndpointHelpersLib {
+library TransceiverHelpersLib {
     using NormalizedAmountLib for NormalizedAmount;
 
     // 0x99'E''T''T'
-    bytes4 constant TEST_ENDPOINT_PAYLOAD_PREFIX = 0x99455454;
+    bytes4 constant TEST_TRANSCEIVER_PAYLOAD_PREFIX = 0x99455454;
     uint16 constant SENDING_CHAIN_ID = 1;
 
-    function setup_endpoints(Manager manager) internal returns (DummyEndpoint, DummyEndpoint) {
-        DummyEndpoint e1 = new DummyEndpoint(address(manager));
-        DummyEndpoint e2 = new DummyEndpoint(address(manager));
-        manager.setEndpoint(address(e1));
-        manager.setEndpoint(address(e2));
+    function setup_transceivers(Manager manager)
+        internal
+        returns (DummyTransceiver, DummyTransceiver)
+    {
+        DummyTransceiver e1 = new DummyTransceiver(address(manager));
+        DummyTransceiver e2 = new DummyTransceiver(address(manager));
+        manager.setTransceiver(address(e1));
+        manager.setTransceiver(address(e2));
         manager.setThreshold(2);
         return (e1, e2);
     }
 
-    function attestEndpointsHelper(
+    function attestTransceiversHelper(
         address to,
         uint64 sequence,
         uint16 toChain,
@@ -32,29 +35,32 @@ library EndpointHelpersLib {
         Manager recipientManager,
         NormalizedAmount memory amount,
         NormalizedAmount memory inboundLimit,
-        IEndpointReceiver[] memory endpoints
+        ITransceiverReceiver[] memory transceivers
     )
         internal
-        returns (EndpointStructs.ManagerMessage memory, EndpointStructs.EndpointMessage memory)
+        returns (
+            TransceiverStructs.ManagerMessage memory,
+            TransceiverStructs.TransceiverMessage memory
+        )
     {
-        EndpointStructs.ManagerMessage memory m =
+        TransceiverStructs.ManagerMessage memory m =
             buildManagerMessage(to, sequence, toChain, manager, amount);
-        bytes memory encodedM = EndpointStructs.encodeManagerMessage(m);
+        bytes memory encodedM = TransceiverStructs.encodeManagerMessage(m);
 
         prepTokenReceive(manager, recipientManager, amount, inboundLimit);
 
-        EndpointStructs.EndpointMessage memory em;
+        TransceiverStructs.TransceiverMessage memory em;
         bytes memory encodedEm;
-        (em, encodedEm) = EndpointStructs.buildAndEncodeEndpointMessage(
-            TEST_ENDPOINT_PAYLOAD_PREFIX,
+        (em, encodedEm) = TransceiverStructs.buildAndEncodeTransceiverMessage(
+            TEST_TRANSCEIVER_PAYLOAD_PREFIX,
             toWormholeFormat(address(manager)),
             toWormholeFormat(address(recipientManager)),
             encodedM,
             new bytes(0)
         );
 
-        for (uint256 i; i < endpoints.length; i++) {
-            IEndpointReceiver e = endpoints[i];
+        for (uint256 i; i < transceivers.length; i++) {
+            ITransceiverReceiver e = transceivers[i];
             e.receiveMessage(encodedEm);
         }
 
@@ -67,14 +73,14 @@ library EndpointHelpersLib {
         uint16 toChain,
         Manager manager,
         NormalizedAmount memory amount
-    ) internal view returns (EndpointStructs.ManagerMessage memory) {
+    ) internal view returns (TransceiverStructs.ManagerMessage memory) {
         DummyToken token = DummyToken(manager.token());
 
-        return EndpointStructs.ManagerMessage(
+        return TransceiverStructs.ManagerMessage(
             sequence,
             bytes32(0),
-            EndpointStructs.encodeNativeTokenTransfer(
-                EndpointStructs.NativeTokenTransfer({
+            TransceiverStructs.encodeNativeTokenTransfer(
+                TransceiverStructs.NativeTokenTransfer({
                     amount: amount,
                     sourceToken: toWormholeFormat(address(token)),
                     to: toWormholeFormat(to),
@@ -95,24 +101,24 @@ library EndpointHelpersLib {
         ManagerHelpersLib.setConfigs(inboundLimit, manager, recipientManager, token.decimals());
     }
 
-    function buildEndpointMessageWithManagerPayload(
+    function buildTransceiverMessageWithManagerPayload(
         uint64 sequence,
         bytes32 sender,
         bytes32 sourceManager,
         bytes32 recipientManager,
         bytes memory payload
-    ) internal pure returns (EndpointStructs.ManagerMessage memory, bytes memory) {
-        EndpointStructs.ManagerMessage memory m =
-            EndpointStructs.ManagerMessage(sequence, sender, payload);
-        bytes memory managerMessage = EndpointStructs.encodeManagerMessage(m);
-        bytes memory endpointMessage;
-        (, endpointMessage) = EndpointStructs.buildAndEncodeEndpointMessage(
-            TEST_ENDPOINT_PAYLOAD_PREFIX,
+    ) internal pure returns (TransceiverStructs.ManagerMessage memory, bytes memory) {
+        TransceiverStructs.ManagerMessage memory m =
+            TransceiverStructs.ManagerMessage(sequence, sender, payload);
+        bytes memory managerMessage = TransceiverStructs.encodeManagerMessage(m);
+        bytes memory transceiverMessage;
+        (, transceiverMessage) = TransceiverStructs.buildAndEncodeTransceiverMessage(
+            TEST_TRANSCEIVER_PAYLOAD_PREFIX,
             sourceManager,
             recipientManager,
             managerMessage,
             new bytes(0)
         );
-        return (m, endpointMessage);
+        return (m, transceiverMessage);
     }
 }

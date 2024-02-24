@@ -25,18 +25,18 @@ impl OutboxItem {
     /// Attempt to release the transfer.
     /// Returns true if the transfer was released, false if it was not yet time to release it.
     /// TODO: this is duplicated in inbox.rs. factor out?
-    pub fn try_release(&mut self, endpoint_index: u8) -> Result<bool> {
+    pub fn try_release(&mut self, transceiver_index: u8) -> Result<bool> {
         let now = current_timestamp();
 
         if self.release_timestamp > now {
             return Ok(false);
         }
 
-        if self.released.get(endpoint_index) {
+        if self.released.get(transceiver_index) {
             return Err(NTTError::MessageAlreadySent.into());
         }
 
-        self.released.set(endpoint_index, true);
+        self.released.set(transceiver_index, true);
 
         Ok(true)
     }

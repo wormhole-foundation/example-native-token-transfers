@@ -14,11 +14,11 @@ import "../src/libraries/external/Initializable.sol";
 import "../src/libraries/Implementation.sol";
 import {Utils} from "./libraries/Utils.sol";
 import {DummyToken, DummyTokenMintAndBurn} from "./Manager.t.sol";
-import {WormholeEndpoint} from "../src/WormholeEndpoint.sol";
-import {WormholeEndpoint} from "../src/WormholeEndpoint.sol";
-import "../src/libraries/EndpointStructs.sol";
+import {WormholeTransceiver} from "../src/WormholeTransceiver.sol";
+import {WormholeTransceiver} from "../src/WormholeTransceiver.sol";
+import "../src/libraries/TransceiverStructs.sol";
 import "./mocks/MockManager.sol";
-import "./mocks/MockEndpoints.sol";
+import "./mocks/MockTransceivers.sol";
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -43,8 +43,8 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     uint256 initialBlockTimestamp;
     uint8 constant FAST_CONSISTENCY_LEVEL = 200;
 
-    WormholeEndpoint wormholeEndpointChain1;
-    WormholeEndpoint wormholeEndpointChain2;
+    WormholeTransceiver wormholeTransceiverChain1;
+    WormholeTransceiver wormholeTransceiverChain2;
     address userA = address(0x123);
     address userB = address(0x456);
     address userC = address(0x789);
@@ -68,19 +68,19 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         managerChain1 = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         managerChain1.initialize();
 
-        WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointContract(
+        WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverContract(
             address(managerChain1),
             address(wormhole),
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL
         );
-        wormholeEndpointChain1 = MockWormholeEndpointContract(
-            address(new ERC1967Proxy(address(wormholeEndpointChain1Implementation), ""))
+        wormholeTransceiverChain1 = MockWormholeTransceiverContract(
+            address(new ERC1967Proxy(address(wormholeTransceiverChain1Implementation), ""))
         );
-        wormholeEndpointChain1.initialize();
+        wormholeTransceiverChain1.initialize();
 
-        managerChain1.setEndpoint(address(wormholeEndpointChain1));
+        managerChain1.setTransceiver(address(wormholeTransceiverChain1));
         managerChain1.setOutboundLimit(type(uint64).max);
         managerChain1.setInboundLimit(type(uint64).max, chainId2);
 
@@ -94,31 +94,31 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
             MockManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
         managerChain2.initialize();
 
-        WormholeEndpoint wormholeEndpointChain2Implementation = new MockWormholeEndpointContract(
+        WormholeTransceiver wormholeTransceiverChain2Implementation = new MockWormholeTransceiverContract(
             address(managerChain2),
             address(wormhole),
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL
         );
-        wormholeEndpointChain2 = MockWormholeEndpointContract(
-            address(new ERC1967Proxy(address(wormholeEndpointChain2Implementation), ""))
+        wormholeTransceiverChain2 = MockWormholeTransceiverContract(
+            address(new ERC1967Proxy(address(wormholeTransceiverChain2Implementation), ""))
         );
-        wormholeEndpointChain2.initialize();
+        wormholeTransceiverChain2.initialize();
 
-        managerChain2.setEndpoint(address(wormholeEndpointChain2));
+        managerChain2.setTransceiver(address(wormholeTransceiverChain2));
         managerChain2.setOutboundLimit(type(uint64).max);
         managerChain2.setInboundLimit(type(uint64).max, chainId1);
 
-        // Register sibling contracts for the manager and endpoint. Endpoints and manager each have the concept of siblings here.
+        // Register sibling contracts for the manager and transceiver. Transceivers and manager each have the concept of siblings here.
         managerChain1.setSibling(chainId2, bytes32(uint256(uint160(address(managerChain2)))));
         managerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(managerChain1)))));
 
-        wormholeEndpointChain1.setWormholeSibling(
-            chainId2, bytes32(uint256(uint160((address(wormholeEndpointChain2)))))
+        wormholeTransceiverChain1.setWormholeSibling(
+            chainId2, bytes32(uint256(uint160((address(wormholeTransceiverChain2)))))
         );
-        wormholeEndpointChain2.setWormholeSibling(
-            chainId1, bytes32(uint256(uint160(address(wormholeEndpointChain1))))
+        wormholeTransceiverChain2.setWormholeSibling(
+            chainId1, bytes32(uint256(uint160(address(wormholeTransceiverChain1))))
         );
 
         managerChain1.setThreshold(1);
@@ -136,17 +136,17 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         basicFunctionality();
     }
 
-    //Upgradability stuff for endpoints is real borked because of some missing implementation. Test this later once fixed.
-    function test_basicUpgradeEndpoint() public {
+    //Upgradability stuff for transceivers is real borked because of some missing implementation. Test this later once fixed.
+    function test_basicUpgradeTransceiver() public {
         // Basic call to upgrade with the same contact as well
-        WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointContract(
+        WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverContract(
             address(managerChain1),
             address(wormhole),
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL
         );
-        wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
+        wormholeTransceiverChain1.upgrade(address(wormholeTransceiverChain1Implementation));
 
         basicFunctionality();
     }
@@ -168,22 +168,22 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         basicFunctionality();
     }
 
-    //Upgradability stuff for endpoints is real borked because of some missing implementation. Test this later once fixed.
-    function test_doubleUpgradeEndpoint() public {
+    //Upgradability stuff for transceivers is real borked because of some missing implementation. Test this later once fixed.
+    function test_doubleUpgradeTransceiver() public {
         // Basic call to upgrade with the same contact as well
-        WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointContract(
+        WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverContract(
             address(managerChain1),
             address(wormhole),
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL
         );
-        wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
+        wormholeTransceiverChain1.upgrade(address(wormholeTransceiverChain1Implementation));
 
         basicFunctionality();
 
         // Basic call to upgrade with the same contact as well
-        wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
+        wormholeTransceiverChain1.upgrade(address(wormholeTransceiverChain1Implementation));
 
         basicFunctionality();
     }
@@ -204,19 +204,19 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         require(oldOwner == managerChain1.owner(), "Owner changed in an unintended way.");
     }
 
-    function test_storageSlotEndpoint() public {
+    function test_storageSlotTransceiver() public {
         // Basic call to upgrade with the same contact as ewll
-        WormholeEndpoint newImplementation = new MockWormholeEndpointLayoutChange(
+        WormholeTransceiver newImplementation = new MockWormholeTransceiverLayoutChange(
             address(managerChain1),
             address(wormhole),
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL
         );
-        wormholeEndpointChain1.upgrade(address(newImplementation));
+        wormholeTransceiverChain1.upgrade(address(newImplementation));
 
         address oldOwner = managerChain1.owner();
-        MockWormholeEndpointLayoutChange(address(wormholeEndpointChain1)).setData();
+        MockWormholeTransceiverLayoutChange(address(wormholeTransceiverChain1)).setData();
 
         // If we overrode something important, it would probably break here
         basicFunctionality();
@@ -236,10 +236,10 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         basicFunctionality();
     }
 
-    //Upgradability stuff for endpoints is real borked because of some missing implementation. Test this later once fixed.
-    function test_callMigrateEndpoint() public {
+    //Upgradability stuff for transceivers is real borked because of some missing implementation. Test this later once fixed.
+    function test_callMigrateTransceiver() public {
         // Basic call to upgrade with the same contact as well
-        MockWormholeEndpointMigrateBasic wormholeEndpointChain1Implementation = new MockWormholeEndpointMigrateBasic(
+        MockWormholeTransceiverMigrateBasic wormholeTransceiverChain1Implementation = new MockWormholeTransceiverMigrateBasic(
             address(managerChain1),
             address(wormhole),
             address(relayer),
@@ -248,7 +248,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         );
 
         vm.expectRevert("Proper migrate called");
-        wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
+        wormholeTransceiverChain1.upgrade(address(wormholeTransceiverChain1Implementation));
 
         basicFunctionality();
     }
@@ -268,11 +268,11 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         basicFunctionality();
     }
 
-    function test_immutableBlockUpdateFailureEndpoint() public {
+    function test_immutableBlockUpdateFailureTransceiver() public {
         // Don't allow upgrade to work with a change immutable
 
-        address oldManager = wormholeEndpointChain1.manager();
-        WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointMigrateBasic(
+        address oldManager = wormholeTransceiverChain1.manager();
+        WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverMigrateBasic(
             address(managerChain2),
             address(wormhole),
             address(relayer),
@@ -281,10 +281,11 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         );
 
         vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
-        wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
+        wormholeTransceiverChain1.upgrade(address(wormholeTransceiverChain1Implementation));
 
         require(
-            wormholeEndpointChain1.manager() == oldManager, "Manager updated when it shouldn't be"
+            wormholeTransceiverChain1.manager() == oldManager,
+            "Manager updated when it shouldn't be"
         );
     }
 
@@ -303,8 +304,8 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         basicFunctionality();
     }
 
-    function test_immutableBlockUpdateSuccessEndpoint() public {
-        WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointImmutableAllow(
+    function test_immutableBlockUpdateSuccessTransceiver() public {
+        WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverImmutableAllow(
             address(managerChain1),
             address(wormhole),
             address(relayer),
@@ -313,10 +314,10 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         );
 
         //vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
-        wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
+        wormholeTransceiverChain1.upgrade(address(wormholeTransceiverChain1Implementation));
 
         require(
-            wormholeEndpointChain1.manager() == address(managerChain1),
+            wormholeTransceiverChain1.manager() == address(managerChain1),
             "Manager updated when it shouldn't be"
         );
     }
@@ -361,48 +362,48 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         newImplementation.initialize();
     }
 
-    function test_authEndpoint() public {
+    function test_authTransceiver() public {
         // User not owner so this should fail
         vm.prank(userA);
         vm.expectRevert(
             abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA)
         );
-        wormholeEndpointChain1.upgrade(address(0x01));
+        wormholeTransceiverChain1.upgrade(address(0x01));
 
-        // Basic call so that we can easily see what the new endpoint is.
-        WormholeEndpoint wormholeEndpointChain1Implementation = new MockWormholeEndpointContract(
+        // Basic call so that we can easily see what the new transceiver is.
+        WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverContract(
             address(managerChain1),
             address(wormhole),
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL
         );
-        wormholeEndpointChain1.upgrade(address(wormholeEndpointChain1Implementation));
+        wormholeTransceiverChain1.upgrade(address(wormholeTransceiverChain1Implementation));
         basicFunctionality(); // Ensure that the upgrade was proper
 
         // Test if we can 'migrate' from this point
         // Migrate without delegatecall
         vm.expectRevert(abi.encodeWithSelector(Implementation.OnlyDelegateCall.selector));
-        wormholeEndpointChain1Implementation.migrate();
+        wormholeTransceiverChain1Implementation.migrate();
 
         // Migrate - should fail since we're executing something outside of a migration
         vm.expectRevert(abi.encodeWithSelector(Implementation.NotMigrating.selector));
-        wormholeEndpointChain1.migrate();
+        wormholeTransceiverChain1.migrate();
 
         // Transfer the ownership - shouldn't have permission for that
         vm.prank(userA);
         vm.expectRevert(
             abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA)
         );
-        wormholeEndpointChain1.transferOwnership(address(0x1));
+        wormholeTransceiverChain1.transferOwnership(address(0x1));
 
         // Should fail because it's already initialized
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        wormholeEndpointChain1.initialize();
+        wormholeTransceiverChain1.initialize();
 
         // // Should fail because we're calling the implementation directly instead of the proxy.
         vm.expectRevert(Implementation.OnlyDelegateCall.selector);
-        wormholeEndpointChain1Implementation.initialize();
+        wormholeTransceiverChain1Implementation.initialize();
     }
 
     function basicFunctionality() public {
@@ -429,7 +430,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
                 chainId2,
                 bytes32(uint256(uint160(userB))),
                 false,
-                encodeEndpointInstruction(true)
+                encodeTransceiverInstruction(true)
             );
 
             // Balance check on funds going in and out working as expected
@@ -458,10 +459,10 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         vm.chainId(chainId2);
 
         vm.expectRevert(); // Wrong chain receiving the signed VAA
-        wormholeEndpointChain1.receiveMessage(encodedVMs[0]);
+        wormholeTransceiverChain1.receiveMessage(encodedVMs[0]);
         {
             uint256 supplyBefore = token2.totalSupply();
-            wormholeEndpointChain2.receiveMessage(encodedVMs[0]);
+            wormholeTransceiverChain2.receiveMessage(encodedVMs[0]);
             uint256 supplyAfter = token2.totalSupply();
 
             require(sendingAmount + supplyBefore == supplyAfter, "Supplies dont match");
@@ -471,7 +472,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
         // Can't resubmit the same message twice
         vm.expectRevert(); // TransferAlreadyCompleted error
-        wormholeEndpointChain2.receiveMessage(encodedVMs[0]);
+        wormholeTransceiverChain2.receiveMessage(encodedVMs[0]);
 
         // Go back the other way from a THIRD user
         vm.prank(userB);
@@ -490,7 +491,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
                 chainId1,
                 bytes32(uint256(uint160(userD))),
                 false,
-                encodeEndpointInstruction(true)
+                encodeTransceiverInstruction(true)
             );
 
             uint256 supplyAfter = token2.totalSupply();
@@ -517,7 +518,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         {
             uint256 supplyBefore = token1.totalSupply();
             uint256 userDBalanceBefore = token1.balanceOf(userD);
-            wormholeEndpointChain1.receiveMessage(encodedVMs[0]);
+            wormholeTransceiverChain1.receiveMessage(encodedVMs[0]);
 
             uint256 supplyAfter = token1.totalSupply();
 
@@ -532,17 +533,17 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         vm.stopPrank();
     }
 
-    function encodeEndpointInstruction(bool relayer_off) public view returns (bytes memory) {
-        WormholeEndpoint.WormholeEndpointInstruction memory instruction =
-            WormholeEndpoint.WormholeEndpointInstruction(relayer_off);
+    function encodeTransceiverInstruction(bool relayer_off) public view returns (bytes memory) {
+        WormholeTransceiver.WormholeTransceiverInstruction memory instruction =
+            WormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
         bytes memory encodedInstructionWormhole =
-            wormholeEndpointChain1.encodeWormholeEndpointInstruction(instruction);
-        EndpointStructs.EndpointInstruction memory EndpointInstruction =
-            EndpointStructs.EndpointInstruction({index: 0, payload: encodedInstructionWormhole});
-        EndpointStructs.EndpointInstruction[] memory EndpointInstructions =
-            new EndpointStructs.EndpointInstruction[](1);
-        EndpointInstructions[0] = EndpointInstruction;
-        return EndpointStructs.encodeEndpointInstructions(EndpointInstructions);
+            wormholeTransceiverChain1.encodeWormholeTransceiverInstruction(instruction);
+        TransceiverStructs.TransceiverInstruction memory TransceiverInstruction = TransceiverStructs
+            .TransceiverInstruction({index: 0, payload: encodedInstructionWormhole});
+        TransceiverStructs.TransceiverInstruction[] memory TransceiverInstructions =
+            new TransceiverStructs.TransceiverInstruction[](1);
+        TransceiverInstructions[0] = TransceiverInstruction;
+        return TransceiverStructs.encodeTransceiverInstructions(TransceiverInstructions);
     }
 }
 
@@ -560,7 +561,7 @@ contract TestInitialize is Test {
     uint256 constant DEVNET_GUARDIAN_PK =
         0xcfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0;
 
-    WormholeEndpoint wormholeEndpointChain1;
+    WormholeTransceiver wormholeTransceiverChain1;
     address userA = address(0x123);
 
     address relayer = address(0x28D8F1Be96f97C1387e94A53e00eCcFb4E75175a);

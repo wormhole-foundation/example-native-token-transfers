@@ -1,13 +1,13 @@
 use anchor_lang::prelude::*;
 
 use ntt_messages::{
-    endpoint::EndpointMessage, endpoints::wormhole::WormholeEndpoint, manager::ManagerMessage,
-    ntt::NativeTokenTransfer,
+    manager::ManagerMessage, ntt::NativeTokenTransfer, transceiver::TransceiverMessage,
+    transceivers::wormhole::WormholeTransceiver,
 };
 use wormhole_anchor_sdk::wormhole;
 use wormhole_io::TypePrefixedPayload;
 
-use crate::{config::*, error::NTTError, queue::outbox::OutboxItem, registered_endpoint::*};
+use crate::{config::*, error::NTTError, queue::outbox::OutboxItem, registered_transceiver::*};
 
 #[derive(Accounts)]
 pub struct ReleaseOutbound<'info> {
@@ -18,15 +18,15 @@ pub struct ReleaseOutbound<'info> {
 
     #[account(
         mut,
-        constraint = !outbox_item.released.get(endpoint.id) @ NTTError::MessageAlreadySent,
+        constraint = !outbox_item.released.get(transceiver.id) @ NTTError::MessageAlreadySent,
     )]
     pub outbox_item: Account<'info, OutboxItem>,
 
     #[account(
-        constraint = endpoint.endpoint_address == crate::ID,
-        constraint = config.enabled_endpoints.get(endpoint.id) @ NTTError::DisabledEndpoint
+        constraint = transceiver.transceiver_address == crate::ID,
+        constraint = config.enabled_transceivers.get(transceiver.id) @ NTTError::DisabledTransceiver
     )]
-    pub endpoint: Account<'info, RegisteredEndpoint>,
+    pub transceiver: Account<'info, RegisteredTransceiver>,
 
     #[account(
         mut,
@@ -76,7 +76,7 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, args: ReleaseOutboundArgs
     let accs = ctx.accounts;
     let batch_id = 0;
 
-    let released = accs.outbox_item.try_release(accs.endpoint.id)?;
+    let released = accs.outbox_item.try_release(accs.transceiver.id)?;
 
     if !released {
         if args.revert_on_delay {
@@ -86,23 +86,24 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, args: ReleaseOutboundArgs
         }
     }
 
-    assert!(accs.outbox_item.released.get(accs.endpoint.id));
-    let message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> = EndpointMessage::new(
-        // TODO: should we just put the ntt id here statically?
-        accs.outbox_item.to_account_info().owner.to_bytes(),
-        accs.outbox_item.recipient_manager,
-        ManagerMessage {
-            sequence: accs.outbox_item.sequence,
-            sender: accs.outbox_item.sender.to_bytes(),
-            payload: NativeTokenTransfer {
-                amount: accs.outbox_item.amount,
-                source_token: accs.config.mint.to_bytes(),
-                to: accs.outbox_item.recipient_address,
-                to_chain: accs.outbox_item.recipient_chain,
+    assert!(accs.outbox_item.released.get(accs.transceiver.id));
+    let message: TransceiverMessage<WormholeTransceiver, NativeTokenTransfer> =
+        TransceiverMessage::new(
+            // TODO: should we just put the ntt id here statically?
+            accs.outbox_item.to_account_info().owner.to_bytes(),
+            accs.outbox_item.recipient_manager,
+            ManagerMessage {
+                sequence: accs.outbox_item.sequence,
+                sender: accs.outbox_item.sender.to_bytes(),
+                payload: NativeTokenTransfer {
+                    amount: accs.outbox_item.amount,
+                    source_token: accs.config.mint.to_bytes(),
+                    to: accs.outbox_item.recipient_address,
+                    to_chain: accs.outbox_item.recipient_chain,
+                },
             },
-        },
-        vec![],
-    );
+            vec![],
+        );
 
     if accs.wormhole_bridge.fee() > 0 {
         anchor_lang::system_program::transfer(

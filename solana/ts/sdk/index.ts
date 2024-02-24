@@ -16,15 +16,15 @@ import { Keccak } from 'sha3'
 import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from '../../target/types/example_native_token_transfers'
 import { ManagerMessage } from './payloads/common'
 import { NativeTokenTransfer } from './payloads/transfers'
-import { WormholeEndpointMessage } from './payloads/wormhole'
+import { WormholeTransceiverMessage } from './payloads/wormhole'
 import { BPF_LOADER_UPGRADEABLE_PROGRAM_ID, programDataAddress } from './utils'
 import * as splToken from '@solana/spl-token';
 import IDL from '../../target/idl/example_native_token_transfers.json';
 
 export { NormalizedAmount } from './normalized_amount'
-export { EndpointMessage, ManagerMessage } from './payloads/common'
+export { TransceiverMessage, ManagerMessage } from './payloads/common'
 export { NativeTokenTransfer } from './payloads/transfers'
-export { WormholeEndpointMessage } from './payloads/wormhole'
+export { WormholeTransceiverMessage } from './payloads/wormhole'
 
 export * from './utils/wormhole'
 
@@ -136,23 +136,23 @@ export class NTT {
     return this.derive_pda([Buffer.from('sibling'), new BN(chainId).toBuffer('be', 2)])
   }
 
-  endpointSiblingAccountAddress(chain: ChainName | ChainId): PublicKey {
+  transceiverSiblingAccountAddress(chain: ChainName | ChainId): PublicKey {
     const chainId = coalesceChainId(chain)
-    return this.derive_pda([Buffer.from('endpoint_sibling'), new BN(chainId).toBuffer('be', 2)])
+    return this.derive_pda([Buffer.from('transceiver_sibling'), new BN(chainId).toBuffer('be', 2)])
   }
 
-  endpointMessageAccountAddress(chain: ChainName | ChainId, sequence: BN): PublicKey {
+  transceiverMessageAccountAddress(chain: ChainName | ChainId, sequence: BN): PublicKey {
     const chainId = coalesceChainId(chain)
     return this.derive_pda(
       [
-        Buffer.from('endpoint_message'),
+        Buffer.from('transceiver_message'),
         new BN(chainId).toBuffer('be', 2),
         sequence.toBuffer('be', 8)
       ])
   }
 
-  registeredEndpointAddress(endpoint: PublicKey): PublicKey {
-    return this.derive_pda([Buffer.from('registered_endpoint'), endpoint.toBuffer()])
+  registeredTransceiverAddress(transceiver: PublicKey): PublicKey {
+    return this.derive_pda([Buffer.from('registered_transceiver'), transceiver.toBuffer()])
   }
 
   // Instructions
@@ -377,7 +377,7 @@ export class NTT {
         outboxItem: args.outboxItem,
         wormholeMessage: this.wormholeMessageAccountAddress(args.outboxItem),
         emitter: whAccs.wormholeEmitter,
-        endpoint: this.registeredEndpointAddress(this.program.programId),
+        transceiver: this.registeredTransceiverAddress(this.program.programId),
         wormholeBridge: whAccs.wormholeBridge,
         wormholeFeeCollector: whAccs.wormholeFeeCollector,
         wormholeSequence: whAccs.wormholeSequence,
@@ -553,7 +553,7 @@ export class NTT {
 
   }
 
-  async setWormholeEndpointSibling(args: {
+  async setWormholeTransceiverSibling(args: {
     payer: Keypair
     owner: Keypair
     chain: ChainName
@@ -568,23 +568,23 @@ export class NTT {
         payer: args.payer.publicKey,
         owner: args.owner.publicKey,
         config: this.configAccountAddress(),
-        sibling: this.endpointSiblingAccountAddress(args.chain),
+        sibling: this.transceiverSiblingAccountAddress(args.chain),
       }).instruction();
     return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner]);
   }
 
-  async registerEndpoint(args: {
+  async registerTransceiver(args: {
     payer: Keypair
     owner: Keypair
-    endpoint: PublicKey
+    transceiver: PublicKey
   }) {
-    const ix = await this.program.methods.registerEndpoint()
+    const ix = await this.program.methods.registerTransceiver()
       .accounts({
         payer: args.payer.publicKey,
         owner: args.owner.publicKey,
         config: this.configAccountAddress(),
-        endpoint: args.endpoint,
-        registeredEndpoint: this.registeredEndpointAddress(args.endpoint),
+        transceiver: args.transceiver,
+        registeredTransceiver: this.registeredTransceiverAddress(args.transceiver),
       }).instruction();
     return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner]);
   }
@@ -602,21 +602,21 @@ export class NTT {
 
     const parsedVaa = parseVaa(args.vaa)
     const managerMessage =
-      WormholeEndpointMessage.deserialize(
+      WormholeTransceiverMessage.deserialize(
         parsedVaa.payload, a => ManagerMessage.deserialize(a, a => a)
       ).managerPayload
     // NOTE: we do an 'as ChainId' cast here, which is generally unsafe.
     // TODO: explain why this is fine here
     const chainId = parsedVaa.emitterChain as ChainId
 
-    const endpointSibling = this.endpointSiblingAccountAddress(chainId)
+    const transceiverSibling = this.transceiverSiblingAccountAddress(chainId)
 
     return await this.program.methods.receiveWormholeMessage().accounts({
       payer: args.payer,
       config: this.configAccountAddress(),
-      sibling: endpointSibling,
+      sibling: transceiverSibling,
       vaa: derivePostedVaaKey(this.wormholeId, parseVaa(args.vaa).hash),
-      endpointMessage: this.endpointMessageAccountAddress(
+      transceiverMessage: this.transceiverMessageAccountAddress(
         chainId,
         new BN(managerMessage.sequence.toString())
       ),
@@ -636,13 +636,13 @@ export class NTT {
     }
 
     const parsedVaa = parseVaa(args.vaa)
-    const endpointMessage =
-      WormholeEndpointMessage.deserialize(
+    const transceiverMessage =
+      WormholeTransceiverMessage.deserialize(
         parsedVaa.payload, a => ManagerMessage.deserialize(
           a, NativeTokenTransfer.deserialize
         )
       )
-    const managerMessage = endpointMessage.managerPayload
+    const managerMessage = transceiverMessage.managerPayload
     // NOTE: we do an 'as ChainId' cast here, which is generally unsafe.
     // TODO: explain why this is fine here
     const chainId = parsedVaa.emitterChain as ChainId
@@ -656,8 +656,8 @@ export class NTT {
         payer: args.payer,
         config: this.configAccountAddress(),
         sibling: managerSibling,
-        endpointMessage: this.endpointMessageAccountAddress(chainId, new BN(managerMessage.sequence.toString())),
-        endpoint: this.registeredEndpointAddress(this.program.programId),
+        transceiverMessage: this.transceiverMessageAccountAddress(chainId, new BN(managerMessage.sequence.toString())),
+        transceiver: this.registeredTransceiverAddress(this.program.programId),
         mint: await this.mintAccountAddress(config),
         inboxItem: this.inboxItemAccountAddress(chainId, managerMessage),
         inboxRateLimit,
@@ -689,7 +689,7 @@ export class NTT {
     const parsedVaa = parseVaa(args.vaa)
 
     const managerMessage =
-      WormholeEndpointMessage.deserialize(
+      WormholeTransceiverMessage.deserialize(
         parsedVaa.payload, a => ManagerMessage.deserialize(a, NativeTokenTransfer.deserialize)
       ).managerPayload
     // TODO: explain why this is fine here

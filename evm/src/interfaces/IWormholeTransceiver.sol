@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.8 <0.9.0;
 
-import "../libraries/EndpointStructs.sol";
+import "../libraries/TransceiverStructs.sol";
 
-interface IWormholeEndpoint {
+interface IWormholeTransceiver {
     event ReceivedRelayedMessage(bytes32 digest, uint16 emitterChainId, bytes32 emitterAddress);
     event ReceivedMessage(
         bytes32 digest, uint16 emitterChainId, bytes32 emitterAddress, uint64 sequence
     );
 
-    event SendEndpointMessage(uint16 recipientChain, EndpointStructs.EndpointMessage message);
+    event SendTransceiverMessage(
+        uint16 recipientChain, TransceiverStructs.TransceiverMessage message
+    );
     event SetWormholeSibling(uint16 chainId, bytes32 siblingContract);
     event SetIsWormholeRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
     event SetIsSpecialRelayingEnabled(uint16 chainId, bool isRelayingEnabled);

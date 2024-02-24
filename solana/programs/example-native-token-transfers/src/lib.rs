@@ -3,16 +3,16 @@ use anchor_lang::prelude::*;
 pub mod bitmap;
 pub mod clock;
 pub mod config;
-pub mod endpoints;
 pub mod error;
 pub mod instructions;
 pub mod messages;
 pub mod queue;
-pub mod registered_endpoint;
+pub mod registered_transceiver;
 pub mod sequence;
 pub mod sibling;
+pub mod transceivers;
 
-use endpoints::wormhole::instructions::*;
+use transceivers::wormhole::instructions::*;
 
 use instructions::*;
 
@@ -71,8 +71,8 @@ pub mod example_native_token_transfers {
         instructions::set_sibling(ctx, args)
     }
 
-    pub fn register_endpoint(ctx: Context<RegisterEndpoint>) -> Result<()> {
-        instructions::register_endpoint(ctx)
+    pub fn register_transceiver(ctx: Context<RegisterTransceiver>) -> Result<()> {
+        instructions::register_transceiver(ctx)
     }
 
     pub fn set_outbound_limit(
@@ -89,23 +89,23 @@ pub mod example_native_token_transfers {
         instructions::set_inbound_limit(ctx, args)
     }
 
-    // standalone endpoint stuff
+    // standalone transceiver stuff
 
     pub fn set_wormhole_sibling(
-        ctx: Context<SetEndpointSibling>,
-        args: SetEndpointSiblingArgs,
+        ctx: Context<SetTransceiverSibling>,
+        args: SetTransceiverSiblingArgs,
     ) -> Result<()> {
-        endpoints::wormhole::instructions::set_endpoint_sibling(ctx, args)
+        transceivers::wormhole::instructions::set_transceiver_sibling(ctx, args)
     }
 
     pub fn receive_wormhole_message(ctx: Context<ReceiveMessage>) -> Result<()> {
-        endpoints::wormhole::instructions::receive_message(ctx)
+        transceivers::wormhole::instructions::receive_message(ctx)
     }
 
     pub fn release_wormhole_outbound(
         ctx: Context<ReleaseOutbound>,
         args: ReleaseOutboundArgs,
     ) -> Result<()> {
-        endpoints::wormhole::instructions::release_outbound(ctx, args)
+        transceivers::wormhole::instructions::release_outbound(ctx, args)
     }
 }

@@ -9,7 +9,7 @@ use crate::{
     config::Config,
     error::NTTError,
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit, rate_limit::RateLimitState},
-    registered_endpoint::RegisteredEndpoint,
+    registered_transceiver::RegisteredTransceiver,
     sibling::ManagerSibling,
 };
 
@@ -185,10 +185,10 @@ pub fn set_sibling(ctx: Context<SetSibling>, args: SetSiblingArgs) -> Result<()>
     Ok(())
 }
 
-// * Register endpoints
+// * Register transceivers
 
 #[derive(Accounts)]
-pub struct RegisterEndpoint<'info> {
+pub struct RegisterTransceiver<'info> {
     #[account(
         mut,
         has_one = owner,
@@ -201,32 +201,32 @@ pub struct RegisterEndpoint<'info> {
     pub payer: Signer<'info>,
 
     #[account(executable)]
-    pub endpoint: AccountInfo<'info>,
+    pub transceiver: AccountInfo<'info>,
 
     #[account(
         init,
-        space = 8 + RegisteredEndpoint::INIT_SPACE,
+        space = 8 + RegisteredTransceiver::INIT_SPACE,
         payer = payer,
-        seeds = [RegisteredEndpoint::SEED_PREFIX, endpoint.key().as_ref()],
+        seeds = [RegisteredTransceiver::SEED_PREFIX, transceiver.key().as_ref()],
         bump
     )]
-    pub registered_endpoint: Account<'info, RegisteredEndpoint>,
+    pub registered_transceiver: Account<'info, RegisteredTransceiver>,
 
     pub system_program: Program<'info, System>,
 }
 
-pub fn register_endpoint(ctx: Context<RegisterEndpoint>) -> Result<()> {
-    let id = ctx.accounts.config.next_endpoint_id;
-    ctx.accounts.config.next_endpoint_id += 1;
+pub fn register_transceiver(ctx: Context<RegisterTransceiver>) -> Result<()> {
+    let id = ctx.accounts.config.next_transceiver_id;
+    ctx.accounts.config.next_transceiver_id += 1;
     ctx.accounts
-        .registered_endpoint
-        .set_inner(RegisteredEndpoint {
-            bump: ctx.bumps.registered_endpoint,
+        .registered_transceiver
+        .set_inner(RegisteredTransceiver {
+            bump: ctx.bumps.registered_transceiver,
             id,
-            endpoint_address: ctx.accounts.endpoint.key(),
+            transceiver_address: ctx.accounts.transceiver.key(),
         });
 
-    ctx.accounts.config.enabled_endpoints.set(id, true);
+    ctx.accounts.config.enabled_transceivers.set(id, true);
     Ok(())
 }
 

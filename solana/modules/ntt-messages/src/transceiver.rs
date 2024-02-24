@@ -8,7 +8,7 @@ use wormhole_io::{Readable, TypePrefixedPayload, Writeable};
 
 use crate::{manager::ManagerMessage, utils::maybe_space::MaybeSpace};
 
-pub trait Endpoint {
+pub trait Transceiver {
     const PREFIX: [u8; 4];
 }
 
@@ -17,36 +17,36 @@ pub trait Endpoint {
     feature = "anchor",
     derive(AnchorSerialize, AnchorDeserialize, InitSpace)
 )]
-pub struct EndpointMessageData<A: MaybeSpace> {
+pub struct TransceiverMessageData<A: MaybeSpace> {
     pub source_manager: [u8; 32],
     pub recipient_manager: [u8; 32],
     pub manager_payload: ManagerMessage<A>,
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct EndpointMessage<E: Endpoint, A: MaybeSpace> {
+pub struct TransceiverMessage<E: Transceiver, A: MaybeSpace> {
     _phantom: PhantomData<E>,
     // TODO: check sibling registration at the manager level
-    pub message_data: EndpointMessageData<A>,
-    pub endpoint_payload: Vec<u8>,
+    pub message_data: TransceiverMessageData<A>,
+    pub transceiver_payload: Vec<u8>,
 }
 
-impl<E: Endpoint, A: MaybeSpace> std::ops::Deref for EndpointMessage<E, A> {
-    type Target = EndpointMessageData<A>;
+impl<E: Transceiver, A: MaybeSpace> std::ops::Deref for TransceiverMessage<E, A> {
+    type Target = TransceiverMessageData<A>;
 
     fn deref(&self) -> &Self::Target {
         &self.message_data
     }
 }
 
-impl<E: Endpoint, A: MaybeSpace> std::ops::DerefMut for EndpointMessage<E, A> {
+impl<E: Transceiver, A: MaybeSpace> std::ops::DerefMut for TransceiverMessage<E, A> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.message_data
     }
 }
 
 #[cfg(feature = "anchor")]
-impl<E: Endpoint, A: TypePrefixedPayload> AnchorDeserialize for EndpointMessage<E, A>
+impl<E: Transceiver, A: TypePrefixedPayload> AnchorDeserialize for TransceiverMessage<E, A>
 where
     A: MaybeSpace,
 {
@@ -56,7 +56,7 @@ where
 }
 
 #[cfg(feature = "anchor")]
-impl<E: Endpoint, A: TypePrefixedPayload> AnchorSerialize for EndpointMessage<E, A>
+impl<E: Transceiver, A: TypePrefixedPayload> AnchorSerialize for TransceiverMessage<E, A>
 where
     A: MaybeSpace,
 {
@@ -65,7 +65,7 @@ where
     }
 }
 
-impl<E: Endpoint, A> EndpointMessage<E, A>
+impl<E: Transceiver, A> TransceiverMessage<E, A>
 where
     A: MaybeSpace,
 {
@@ -73,29 +73,29 @@ where
         source_manager: [u8; 32],
         recipient_manager: [u8; 32],
         manager_payload: ManagerMessage<A>,
-        endpoint_payload: Vec<u8>,
+        transceiver_payload: Vec<u8>,
     ) -> Self {
         Self {
             _phantom: PhantomData,
-            message_data: EndpointMessageData {
+            message_data: TransceiverMessageData {
                 source_manager,
                 recipient_manager,
                 manager_payload,
             },
-            endpoint_payload,
+            transceiver_payload,
         }
     }
 }
 
-impl<A: TypePrefixedPayload, E: Endpoint + Clone + fmt::Debug> TypePrefixedPayload
-    for EndpointMessage<E, A>
+impl<A: TypePrefixedPayload, E: Transceiver + Clone + fmt::Debug> TypePrefixedPayload
+    for TransceiverMessage<E, A>
 where
     A: MaybeSpace + Clone,
 {
     const TYPE: Option<u8> = None;
 }
 
-impl<E: Endpoint, A: TypePrefixedPayload> Readable for EndpointMessage<E, A>
+impl<E: Transceiver, A: TypePrefixedPayload> Readable for TransceiverMessage<E, A>
 where
     A: MaybeSpace,
 {
@@ -110,7 +110,7 @@ where
         if prefix != E::PREFIX {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Invalid prefix for EndpointMessage",
+                "Invalid prefix for TransceiverMessage",
             ));
         }
 
@@ -120,20 +120,20 @@ where
         // consumes the expected amount of bytes
         let _manager_payload_len: u16 = Readable::read(reader)?;
         let manager_payload = ManagerMessage::read(reader)?;
-        let endpoint_payload_len: u16 = Readable::read(reader)?;
-        let mut endpoint_payload = vec![0; endpoint_payload_len as usize];
-        reader.read_exact(&mut endpoint_payload)?;
+        let transceiver_payload_len: u16 = Readable::read(reader)?;
+        let mut transceiver_payload = vec![0; transceiver_payload_len as usize];
+        reader.read_exact(&mut transceiver_payload)?;
 
-        Ok(EndpointMessage::new(
+        Ok(TransceiverMessage::new(
             source_manager,
             recipient_manager,
             manager_payload,
-            endpoint_payload,
+            transceiver_payload,
         ))
     }
 }
 
-impl<E: Endpoint, A: TypePrefixedPayload> Writeable for EndpointMessage<E, A>
+impl<E: Transceiver, A: TypePrefixedPayload> Writeable for TransceiverMessage<E, A>
 where
     A: MaybeSpace,
 {
@@ -148,15 +148,15 @@ where
     where
         W: io::Write,
     {
-        let EndpointMessage {
+        let TransceiverMessage {
             _phantom,
             message_data:
-                EndpointMessageData {
+                TransceiverMessageData {
                     source_manager,
                     recipient_manager,
                     manager_payload,
                 },
-            endpoint_payload,
+            transceiver_payload,
         } = self;
 
         E::PREFIX.write(writer)?;
@@ -169,9 +169,9 @@ where
         // foo.write_with_prefix_be::<u16>(writer)
         // which writes the length as a big endian u16.
         manager_payload.write(writer)?;
-        let len: u16 = u16::try_from(endpoint_payload.len()).expect("u16 overflow");
+        let len: u16 = u16::try_from(transceiver_payload.len()).expect("u16 overflow");
         len.write(writer)?;
-        writer.write_all(endpoint_payload)?;
+        writer.write_all(transceiver_payload)?;
         Ok(())
     }
 }
@@ -179,22 +179,22 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        chain_id::ChainId, endpoints::wormhole::WormholeEndpoint,
-        normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer,
+        chain_id::ChainId, normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer,
+        transceivers::wormhole::WormholeTransceiver,
     };
 
     use super::*;
     //
     #[test]
-    fn test_deserialize_endpoint_message() {
+    fn test_deserialize_transceiver_message() {
         let data = hex::decode("9945ff10042942fafabe0000000000000000000000000000000000000000000000000000042942fababe00000000000000000000000000000000000000000000000000000079000000367999a1014667921341234300000000000000000000000000000000000000000000000000004f994e545407000000000012d687beefface00000000000000000000000000000000000000000000000000000000feebcafe0000000000000000000000000000000000000000000000000000000000110000").unwrap();
         let mut vec = &data[..];
-        let message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
+        let message: TransceiverMessage<WormholeTransceiver, NativeTokenTransfer> =
             TypePrefixedPayload::read_payload(&mut vec).unwrap();
 
-        let expected = EndpointMessage {
-            _phantom: PhantomData::<WormholeEndpoint>,
-            message_data: EndpointMessageData {
+        let expected = TransceiverMessage {
+            _phantom: PhantomData::<WormholeTransceiver>,
+            message_data: TransceiverMessageData {
                 source_manager: [
                     0x04, 0x29, 0x42, 0xFA, 0xFA, 0xBE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -226,7 +226,7 @@ mod test {
                     },
                 },
             },
-            endpoint_payload: vec![],
+            transceiver_payload: vec![],
         };
         assert_eq!(message, expected);
         assert_eq!(vec.len(), 0);

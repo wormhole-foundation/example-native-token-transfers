@@ -1,21 +1,21 @@
 import { BN } from '@coral-xyz/anchor'
 import { assert } from 'chai'
 
-export class EndpointMessage<A> {
+export class TransceiverMessage<A> {
   static prefix: Buffer
   sourceManager: Buffer
   recipientManager: Buffer
   managerPayload: ManagerMessage<A>
-  endpointPayload: Buffer
+  transceiverPayload: Buffer
 
-  constructor(sourceManager: Buffer, recipientManager: Buffer, managerPayload: ManagerMessage<A>, endpointPayload: Buffer) {
+  constructor(sourceManager: Buffer, recipientManager: Buffer, managerPayload: ManagerMessage<A>, transceiverPayload: Buffer) {
     this.sourceManager = sourceManager
     this.recipientManager = recipientManager
     this.managerPayload = managerPayload
-    this.endpointPayload = endpointPayload
+    this.transceiverPayload = transceiverPayload
   }
 
-  static deserialize<A>(data: Buffer, deserializer: (data: Buffer) => ManagerMessage<A>): EndpointMessage<A> {
+  static deserialize<A>(data: Buffer, deserializer: (data: Buffer) => ManagerMessage<A>): TransceiverMessage<A> {
     if (this.prefix == undefined) {
       throw new Error('Unknown prefix.')
     }
@@ -27,25 +27,25 @@ export class EndpointMessage<A> {
     const recipientManager = data.subarray(36, 68)
     const managerPayloadLen = data.readUInt16BE(68)
     const managerPayload = deserializer(data.subarray(70, 70 + managerPayloadLen))
-    const endpointPayloadLen = data.readUInt16BE(70 + managerPayloadLen)
-    const endpointPayload = data.subarray(72 + managerPayloadLen, 72 + managerPayloadLen + endpointPayloadLen)
-    return new EndpointMessage(sourceManager, recipientManager, managerPayload, endpointPayload)
+    const transceiverPayloadLen = data.readUInt16BE(70 + managerPayloadLen)
+    const transceiverPayload = data.subarray(72 + managerPayloadLen, 72 + managerPayloadLen + transceiverPayloadLen)
+    return new TransceiverMessage(sourceManager, recipientManager, managerPayload, transceiverPayload)
   }
 
-  static serialize<A>(msg: EndpointMessage<A>, serializer: (payload: ManagerMessage<A>) => Buffer): Buffer {
+  static serialize<A>(msg: TransceiverMessage<A>, serializer: (payload: ManagerMessage<A>) => Buffer): Buffer {
     const payload = serializer(msg.managerPayload)
     assert(msg.sourceManager.length == 32, 'sourceManager must be 32 bytes')
     assert(msg.recipientManager.length == 32, 'recipientManager must be 32 bytes')
     const payloadLen = new BN(payload.length).toBuffer('be', 2)
-    const endpointPayloadLen = new BN(msg.endpointPayload.length).toBuffer('be', 2)
+    const transceiverPayloadLen = new BN(msg.transceiverPayload.length).toBuffer('be', 2)
     const buffer = Buffer.concat([
       this.prefix,
       msg.sourceManager,
       msg.recipientManager,
       payloadLen,
       payload,
-      endpointPayloadLen,
-      msg.endpointPayload
+      transceiverPayloadLen,
+      msg.transceiverPayload
     ])
     return buffer
   }

@@ -2,9 +2,9 @@
 
 pragma solidity >=0.8.8 <0.9.0;
 
-import "../../src/WormholeEndpoint.sol";
+import "../../src/WormholeTransceiver.sol";
 
-contract MockWormholeEndpointContract is WormholeEndpoint {
+contract MockWormholeTransceiverContract is WormholeTransceiver {
     constructor(
         address manager,
         address wormholeCoreBridge,
@@ -12,7 +12,7 @@ contract MockWormholeEndpointContract is WormholeEndpoint {
         address specialRelayerAddr,
         uint8 _consistencyLevel
     )
-        WormholeEndpoint(
+        WormholeTransceiver(
             manager,
             wormholeCoreBridge,
             wormholeRelayerAddr,
@@ -24,11 +24,11 @@ contract MockWormholeEndpointContract is WormholeEndpoint {
     /// @dev Override the [`transferOwnership`] method from OwnableUpgradeable
     /// to ensure owner of this contract is in sync with the onwer of the Manager contract.
     function transferOwnership(address newOwner) public view override onlyOwner {
-        revert CannotTransferEndpointOwnership(owner(), newOwner);
+        revert CannotTransferTransceiverOwnership(owner(), newOwner);
     }
 }
 
-contract MockWormholeEndpointMigrateBasic is WormholeEndpoint {
+contract MockWormholeTransceiverMigrateBasic is WormholeTransceiver {
     constructor(
         address manager,
         address wormholeCoreBridge,
@@ -36,7 +36,7 @@ contract MockWormholeEndpointMigrateBasic is WormholeEndpoint {
         address specialRelayerAddr,
         uint8 _consistencyLevel
     )
-        WormholeEndpoint(
+        WormholeTransceiver(
             manager,
             wormholeCoreBridge,
             wormholeRelayerAddr,
@@ -50,7 +50,7 @@ contract MockWormholeEndpointMigrateBasic is WormholeEndpoint {
     }
 }
 
-contract MockWormholeEndpointImmutableAllow is WormholeEndpoint {
+contract MockWormholeTransceiverImmutableAllow is WormholeTransceiver {
     constructor(
         address manager,
         address wormholeCoreBridge,
@@ -58,7 +58,7 @@ contract MockWormholeEndpointImmutableAllow is WormholeEndpoint {
         address specialRelayerAddr,
         uint8 _consistencyLevel
     )
-        WormholeEndpoint(
+        WormholeTransceiver(
             manager,
             wormholeCoreBridge,
             wormholeRelayerAddr,
@@ -73,7 +73,7 @@ contract MockWormholeEndpointImmutableAllow is WormholeEndpoint {
     }
 }
 
-contract MockWormholeEndpointLayoutChange is WormholeEndpoint {
+contract MockWormholeTransceiverLayoutChange is WormholeTransceiver {
     address a;
     address b;
     address c;
@@ -86,7 +86,7 @@ contract MockWormholeEndpointLayoutChange is WormholeEndpoint {
         address specialRelayerAddr,
         uint8 _consistencyLevel
     )
-        WormholeEndpoint(
+        WormholeTransceiver(
             manager,
             wormholeCoreBridge,
             wormholeRelayerAddr,

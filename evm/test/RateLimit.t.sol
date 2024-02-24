@@ -3,12 +3,12 @@
 import "forge-std/Test.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
 import "../src/Manager.sol";
-import "./mocks/DummyEndpoint.sol";
+import "./mocks/DummyTransceiver.sol";
 import "./mocks/DummyToken.sol";
 import "./mocks/MockManager.sol";
 import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "./libraries/EndpointHelpers.sol";
+import "./libraries/TransceiverHelpers.sol";
 import "./libraries/ManagerHelpers.sol";
 
 pragma solidity >=0.8.8 <0.9.0;
@@ -421,18 +421,19 @@ contract TestRateLimit is Test, IRateLimiterEvents {
     function test_inboundRateLimit_simple() public {
         address user_B = address(0x456);
 
-        (DummyEndpoint e1, DummyEndpoint e2) = EndpointHelpersLib.setup_endpoints(manager);
+        (DummyTransceiver e1, DummyTransceiver e2) =
+            TransceiverHelpersLib.setup_transceivers(manager);
 
         DummyToken token = DummyToken(manager.token());
 
-        IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
-        endpoints[0] = e1;
-        endpoints[1] = e2;
+        ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](2);
+        transceivers[0] = e1;
+        transceivers[1] = e2;
 
         NormalizedAmount memory transferAmount = NormalizedAmount(50, 8);
         NormalizedAmount memory limitAmount = NormalizedAmount(100, 8);
-        EndpointHelpersLib.attestEndpointsHelper(
-            user_B, 0, chainId, manager, manager, transferAmount, limitAmount, endpoints
+        TransceiverHelpersLib.attestTransceiversHelper(
+            user_B, 0, chainId, manager, manager, transferAmount, limitAmount, transceivers
         );
 
         // assert that the user received tokens
@@ -440,7 +441,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         // assert that the inbound limits updated
         IRateLimiter.RateLimitParams memory inboundLimitParams =
-            manager.getInboundLimitParams(EndpointHelpersLib.SENDING_CHAIN_ID);
+            manager.getInboundLimitParams(TransceiverHelpersLib.SENDING_CHAIN_ID);
         assertEq(
             inboundLimitParams.currentCapacity.getAmount(),
             limitAmount.sub(transferAmount).getAmount()
@@ -459,18 +460,19 @@ contract TestRateLimit is Test, IRateLimiterEvents {
     function test_inboundRateLimit_queue() public {
         address user_B = address(0x456);
 
-        (DummyEndpoint e1, DummyEndpoint e2) = EndpointHelpersLib.setup_endpoints(manager);
+        (DummyTransceiver e1, DummyTransceiver e2) =
+            TransceiverHelpersLib.setup_transceivers(manager);
 
         DummyToken token = DummyToken(manager.token());
 
-        IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](1);
-        endpoints[0] = e1;
+        ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](1);
+        transceivers[0] = e1;
 
-        EndpointStructs.ManagerMessage memory m;
+        TransceiverStructs.ManagerMessage memory m;
         bytes memory encodedEm;
         {
-            EndpointStructs.EndpointMessage memory em;
-            (m, em) = EndpointHelpersLib.attestEndpointsHelper(
+            TransceiverStructs.TransceiverMessage memory em;
+            (m, em) = TransceiverHelpersLib.attestTransceiversHelper(
                 user_B,
                 0,
                 chainId,
@@ -478,15 +480,15 @@ contract TestRateLimit is Test, IRateLimiterEvents {
                 manager,
                 NormalizedAmount(50, 8),
                 uint256(5).normalize(token.decimals()),
-                endpoints
+                transceivers
             );
-            encodedEm = EndpointStructs.encodeEndpointMessage(
-                EndpointHelpersLib.TEST_ENDPOINT_PAYLOAD_PREFIX, em
+            encodedEm = TransceiverStructs.encodeTransceiverMessage(
+                TransceiverHelpersLib.TEST_TRANSCEIVER_PAYLOAD_PREFIX, em
             );
         }
 
         bytes32 digest =
-            EndpointStructs.managerMessageDigest(EndpointHelpersLib.SENDING_CHAIN_ID, m);
+            TransceiverStructs.managerMessageDigest(TransceiverHelpersLib.SENDING_CHAIN_ID, m);
 
         // no quorum yet
         assertEq(token.balanceOf(address(user_B)), 0);
@@ -546,7 +548,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
             assertEq(entries[1].topics[1], toWormholeFormat(address(manager)));
             assertEq(
                 entries[1].topics[2],
-                EndpointStructs.managerMessageDigest(EndpointHelpersLib.SENDING_CHAIN_ID, m)
+                TransceiverStructs.managerMessageDigest(TransceiverHelpersLib.SENDING_CHAIN_ID, m)
             );
         }
     }
@@ -598,14 +600,15 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         vm.warp(receiveTime);
 
         // now receive 10 tokens from user_B -> user_A
-        (DummyEndpoint e1, DummyEndpoint e2) = EndpointHelpersLib.setup_endpoints(manager);
+        (DummyTransceiver e1, DummyTransceiver e2) =
+            TransceiverHelpersLib.setup_transceivers(manager);
 
-        IEndpointReceiver[] memory endpoints = new IEndpointReceiver[](2);
-        endpoints[0] = e1;
-        endpoints[1] = e2;
+        ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](2);
+        transceivers[0] = e1;
+        transceivers[1] = e2;
 
-        EndpointHelpersLib.attestEndpointsHelper(
-            user_A, 0, chainId, manager, manager, transferAmount, mintAmount, endpoints
+        TransceiverHelpersLib.attestTransceiversHelper(
+            user_A, 0, chainId, manager, manager, transferAmount, mintAmount, transceivers
         );
 
         // assert that user_A has original amount
@@ -614,7 +617,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         {
             // assert that the inbound limits decreased
             IRateLimiter.RateLimitParams memory inboundLimitParams =
-                manager.getInboundLimitParams(EndpointHelpersLib.SENDING_CHAIN_ID);
+                manager.getInboundLimitParams(TransceiverHelpersLib.SENDING_CHAIN_ID);
             assertEq(
                 inboundLimitParams.currentCapacity.getAmount(),
                 inboundLimitParams.limit.sub(transferAmount).getAmount()
@@ -642,7 +645,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         manager.transfer(
             transferAmount.denormalize(decimals),
-            EndpointHelpersLib.SENDING_CHAIN_ID,
+            TransceiverHelpersLib.SENDING_CHAIN_ID,
             toWormholeFormat(user_B),
             false,
             new bytes(1)
@@ -664,7 +667,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         {
             // assert that the inbound limit is at max again (because of backflow)
             IRateLimiter.RateLimitParams memory inboundLimitParams =
-                manager.getInboundLimitParams(EndpointHelpersLib.SENDING_CHAIN_ID);
+                manager.getInboundLimitParams(TransceiverHelpersLib.SENDING_CHAIN_ID);
             assertEq(
                 inboundLimitParams.currentCapacity.getAmount(), inboundLimitParams.limit.getAmount()
             );

@@ -2,7 +2,7 @@
 #![feature(type_changing_struct_update)]
 
 use anchor_lang::prelude::*;
-use common::setup::{TestData, OTHER_CHAIN, OTHER_ENDPOINT, OTHER_MANAGER, THIS_CHAIN};
+use common::setup::{TestData, OTHER_CHAIN, OTHER_MANAGER, OTHER_TRANSCEIVER, THIS_CHAIN};
 use example_native_token_transfers::{
     config::Mode,
     error::NTTError,
@@ -10,10 +10,11 @@ use example_native_token_transfers::{
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit},
 };
 use ntt_messages::{
-    chain_id::ChainId, endpoint::EndpointMessage, endpoints::wormhole::WormholeEndpoint,
-    manager::ManagerMessage, normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer,
+    chain_id::ChainId, manager::ManagerMessage, normalized_amount::NormalizedAmount,
+    ntt::NativeTokenTransfer, transceiver::TransceiverMessage,
+    transceivers::wormhole::WormholeTransceiver,
 };
-use sdk::endpoints::wormhole::instructions::receive_message::ReceiveMessage;
+use sdk::transceivers::wormhole::instructions::receive_message::ReceiveMessage;
 use solana_program::instruction::InstructionError;
 use solana_program_test::*;
 use solana_sdk::{signature::Keypair, signer::Signer, transaction::TransactionError};
@@ -26,12 +27,12 @@ use crate::{
 use crate::{
     common::{query::GetAccountDataAnchor, setup::setup},
     sdk::{
-        endpoints::wormhole::instructions::receive_message::receive_message,
         instructions::{
             post_vaa::post_vaa,
             redeem::{redeem, Redeem},
             transfer::Transfer,
         },
+        transceivers::wormhole::instructions::receive_message::receive_message,
     },
 };
 
@@ -73,10 +74,10 @@ fn init_redeem_accs(
     Redeem {
         payer: ctx.payer.pubkey(),
         sibling: test_data.ntt.sibling(chain_id),
-        endpoint: test_data.ntt.program,
-        endpoint_message: test_data
+        transceiver: test_data.ntt.program,
+        transceiver_message: test_data
             .ntt
-            .endpoint_message(chain_id, manager_message.sequence),
+            .transceiver_message(chain_id, manager_message.sequence),
         inbox_item: test_data.ntt.inbox_item(chain_id, manager_message),
         inbox_rate_limit: test_data.ntt.inbox_rate_limit(chain_id),
         mint: test_data.mint,
@@ -92,7 +93,7 @@ fn init_receive_message_accs(
 ) -> ReceiveMessage {
     ReceiveMessage {
         payer: ctx.payer.pubkey(),
-        sibling: test_data.ntt.endpoint_sibling(chain_id),
+        sibling: test_data.ntt.transceiver_sibling(chain_id),
         vaa,
         chain_id,
         sequence,
@@ -124,8 +125,8 @@ async fn post_transfer_vaa(
         },
     };
 
-    let endpoint_message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
-        EndpointMessage::new(
+    let transceiver_message: TransceiverMessage<WormholeTransceiver, NativeTokenTransfer> =
+        TransceiverMessage::new(
             OTHER_MANAGER,
             recipient_manager
                 .map(|k| k.to_bytes())
@@ -141,10 +142,10 @@ async fn post_transfer_vaa(
         timestamp: 123232,
         nonce: 0,
         emitter_chain: OTHER_CHAIN.into(),
-        emitter_address: Address(OTHER_ENDPOINT),
+        emitter_address: Address(OTHER_TRANSCEIVER),
         sequence: 0,
         consistency_level: 0,
-        payload: endpoint_message,
+        payload: transceiver_message,
     };
 
     let posted_vaa = post_vaa(&test_data.ntt.wormhole, ctx, vaa).await;

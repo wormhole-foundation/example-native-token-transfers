@@ -4,8 +4,8 @@ use anchor_lang::prelude::{Error, Id, Pubkey};
 use anchor_spl::token::{Mint, Token};
 use example_native_token_transfers::{
     config::Mode,
-    endpoints::wormhole::SetEndpointSiblingArgs,
     instructions::{InitializeArgs, SetSiblingArgs},
+    transceivers::wormhole::SetTransceiverSiblingArgs,
 };
 use ntt_messages::chain_id::ChainId;
 use solana_program::{bpf_loader_upgradeable::UpgradeableLoaderState, rent::Rent};
@@ -24,11 +24,11 @@ use wormhole_anchor_sdk::wormhole::{BridgeData, FeeCollector};
 
 use crate::sdk::{
     accounts::{Governance, Wormhole, NTT},
-    endpoints::wormhole::instructions::admin::{set_endpoint_sibling, SetEndpointSibling},
     instructions::{
-        admin::{register_endpoint, set_sibling, RegisterEndpoint, SetSibling},
+        admin::{register_transceiver, set_sibling, RegisterTransceiver, SetSibling},
         initialize::{initialize, Initialize},
     },
+    transceivers::wormhole::instructions::admin::{set_transceiver_sibling, SetTransceiverSibling},
 };
 
 use super::{
@@ -42,7 +42,7 @@ pub const MINT_AMOUNT: u64 = 100000;
 pub const OUTBOUND_LIMIT: u64 = 10000;
 pub const INBOUND_LIMIT: u64 = 50000;
 
-pub const OTHER_ENDPOINT: [u8; 32] = [7u8; 32];
+pub const OTHER_TRANSCEIVER: [u8; 32] = [7u8; 32];
 pub const OTHER_MANAGER: [u8; 32] = [9u8; 32];
 
 pub const THIS_CHAIN: u16 = 1;
@@ -167,27 +167,27 @@ pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
     .await
     .unwrap();
 
-    register_endpoint(
+    register_transceiver(
         &test_data.ntt,
-        RegisterEndpoint {
+        RegisterTransceiver {
             payer: ctx.payer.pubkey(),
             owner: test_data.program_owner.pubkey(),
-            endpoint: example_native_token_transfers::ID, // standalone manager&endpoint
+            transceiver: example_native_token_transfers::ID, // standalone manager&transceiver
         },
     )
     .submit_with_signers(&[&test_data.program_owner], ctx)
     .await
     .unwrap();
 
-    set_endpoint_sibling(
+    set_transceiver_sibling(
         &test_data.ntt,
-        SetEndpointSibling {
+        SetTransceiverSibling {
             payer: ctx.payer.pubkey(),
             owner: test_data.program_owner.pubkey(),
         },
-        SetEndpointSiblingArgs {
+        SetTransceiverSiblingArgs {
             chain_id: ChainId { id: OTHER_CHAIN },
-            address: OTHER_ENDPOINT,
+            address: OTHER_TRANSCEIVER,
         },
     )
     .submit_with_signers(&[&test_data.program_owner], ctx)
