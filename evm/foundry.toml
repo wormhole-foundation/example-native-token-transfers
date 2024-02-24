@@ -8,6 +8,9 @@ src = "src"
 out = "out"
 libs = ["lib"]
 
+[profile.prod]
+via_ir = true
+
 [fmt]
 line_length = 100
 multiline_func_header = "params_first"
