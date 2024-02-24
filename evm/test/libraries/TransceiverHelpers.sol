@@ -2,10 +2,10 @@
 
 pragma solidity >=0.8.8 <0.9.0;
 
-import "./ManagerHelpers.sol";
+import "./NttManagerHelpers.sol";
 import "../mocks/DummyTransceiver.sol";
 import "../mocks/DummyToken.sol";
-import "../../src/Manager.sol";
+import "../../src/NttManager.sol";
 import "../../src/libraries/NormalizedAmount.sol";
 
 library TransceiverHelpersLib {
@@ -15,15 +15,15 @@ library TransceiverHelpersLib {
     bytes4 constant TEST_TRANSCEIVER_PAYLOAD_PREFIX = 0x99455454;
     uint16 constant SENDING_CHAIN_ID = 1;
 
-    function setup_transceivers(Manager manager)
+    function setup_transceivers(NttManager nttManager)
         internal
         returns (DummyTransceiver, DummyTransceiver)
     {
-        DummyTransceiver e1 = new DummyTransceiver(address(manager));
-        DummyTransceiver e2 = new DummyTransceiver(address(manager));
-        manager.setTransceiver(address(e1));
-        manager.setTransceiver(address(e2));
-        manager.setThreshold(2);
+        DummyTransceiver e1 = new DummyTransceiver(address(nttManager));
+        DummyTransceiver e2 = new DummyTransceiver(address(nttManager));
+        nttManager.setTransceiver(address(e1));
+        nttManager.setTransceiver(address(e2));
+        nttManager.setThreshold(2);
         return (e1, e2);
     }
 
@@ -31,30 +31,30 @@ library TransceiverHelpersLib {
         address to,
         uint64 sequence,
         uint16 toChain,
-        Manager manager,
-        Manager recipientManager,
+        NttManager nttManager,
+        NttManager recipientNttManager,
         NormalizedAmount memory amount,
         NormalizedAmount memory inboundLimit,
         ITransceiverReceiver[] memory transceivers
     )
         internal
         returns (
-            TransceiverStructs.ManagerMessage memory,
+            TransceiverStructs.NttManagerMessage memory,
             TransceiverStructs.TransceiverMessage memory
         )
     {
-        TransceiverStructs.ManagerMessage memory m =
-            buildManagerMessage(to, sequence, toChain, manager, amount);
-        bytes memory encodedM = TransceiverStructs.encodeManagerMessage(m);
+        TransceiverStructs.NttManagerMessage memory m =
+            buildNttManagerMessage(to, sequence, toChain, nttManager, amount);
+        bytes memory encodedM = TransceiverStructs.encodeNttManagerMessage(m);
 
-        prepTokenReceive(manager, recipientManager, amount, inboundLimit);
+        prepTokenReceive(nttManager, recipientNttManager, amount, inboundLimit);
 
         TransceiverStructs.TransceiverMessage memory em;
         bytes memory encodedEm;
         (em, encodedEm) = TransceiverStructs.buildAndEncodeTransceiverMessage(
             TEST_TRANSCEIVER_PAYLOAD_PREFIX,
-            toWormholeFormat(address(manager)),
-            toWormholeFormat(address(recipientManager)),
+            toWormholeFormat(address(nttManager)),
+            toWormholeFormat(address(recipientNttManager)),
             encodedM,
             new bytes(0)
         );
@@ -67,16 +67,16 @@ library TransceiverHelpersLib {
         return (m, em);
     }
 
-    function buildManagerMessage(
+    function buildNttManagerMessage(
         address to,
         uint64 sequence,
         uint16 toChain,
-        Manager manager,
+        NttManager nttManager,
         NormalizedAmount memory amount
-    ) internal view returns (TransceiverStructs.ManagerMessage memory) {
-        DummyToken token = DummyToken(manager.token());
+    ) internal view returns (TransceiverStructs.NttManagerMessage memory) {
+        DummyToken token = DummyToken(nttManager.token());
 
-        return TransceiverStructs.ManagerMessage(
+        return TransceiverStructs.NttManagerMessage(
             sequence,
             bytes32(0),
             TransceiverStructs.encodeNativeTokenTransfer(
@@ -91,32 +91,34 @@ library TransceiverHelpersLib {
     }
 
     function prepTokenReceive(
-        Manager manager,
-        Manager recipientManager,
+        NttManager nttManager,
+        NttManager recipientNttManager,
         NormalizedAmount memory amount,
         NormalizedAmount memory inboundLimit
     ) internal {
-        DummyToken token = DummyToken(manager.token());
-        token.mintDummy(address(recipientManager), amount.denormalize(token.decimals()));
-        ManagerHelpersLib.setConfigs(inboundLimit, manager, recipientManager, token.decimals());
+        DummyToken token = DummyToken(nttManager.token());
+        token.mintDummy(address(recipientNttManager), amount.denormalize(token.decimals()));
+        NttManagerHelpersLib.setConfigs(
+            inboundLimit, nttManager, recipientNttManager, token.decimals()
+        );
     }
 
-    function buildTransceiverMessageWithManagerPayload(
+    function buildTransceiverMessageWithNttManagerPayload(
         uint64 sequence,
         bytes32 sender,
-        bytes32 sourceManager,
-        bytes32 recipientManager,
+        bytes32 sourceNttManager,
+        bytes32 recipientNttManager,
         bytes memory payload
-    ) internal pure returns (TransceiverStructs.ManagerMessage memory, bytes memory) {
-        TransceiverStructs.ManagerMessage memory m =
-            TransceiverStructs.ManagerMessage(sequence, sender, payload);
-        bytes memory managerMessage = TransceiverStructs.encodeManagerMessage(m);
+    ) internal pure returns (TransceiverStructs.NttManagerMessage memory, bytes memory) {
+        TransceiverStructs.NttManagerMessage memory m =
+            TransceiverStructs.NttManagerMessage(sequence, sender, payload);
+        bytes memory nttManagerMessage = TransceiverStructs.encodeNttManagerMessage(m);
         bytes memory transceiverMessage;
         (, transceiverMessage) = TransceiverStructs.buildAndEncodeTransceiverMessage(
             TEST_TRANSCEIVER_PAYLOAD_PREFIX,
-            sourceManager,
-            recipientManager,
-            managerMessage,
+            sourceNttManager,
+            recipientNttManager,
+            nttManagerMessage,
             new bytes(0)
         );
         return (m, transceiverMessage);

@@ -20,7 +20,7 @@ contract TestTransceiverStructs is Test {
             toChain: 17
         });
 
-        TransceiverStructs.ManagerMessage memory mm = TransceiverStructs.ManagerMessage({
+        TransceiverStructs.NttManagerMessage memory mm = TransceiverStructs.NttManagerMessage({
             sequence: 233968345345,
             sender: hex"46679213412343",
             payload: TransceiverStructs.encodeNativeTokenTransfer(ntt)
@@ -28,9 +28,9 @@ contract TestTransceiverStructs is Test {
 
         bytes4 wh_prefix = 0x9945FF10;
         TransceiverStructs.TransceiverMessage memory em = TransceiverStructs.TransceiverMessage({
-            sourceManagerAddress: hex"042942FAFABE",
-            recipientManagerAddress: hex"042942FABABE",
-            managerPayload: TransceiverStructs.encodeManagerMessage(mm),
+            sourceNttManagerAddress: hex"042942FAFABE",
+            recipientNttManagerAddress: hex"042942FABABE",
+            nttManagerPayload: TransceiverStructs.encodeNttManagerMessage(mm),
             transceiverPayload: new bytes(0)
         });
 
@@ -45,8 +45,8 @@ contract TestTransceiverStructs is Test {
         TransceiverStructs.TransceiverMessage memory emParsed =
             TransceiverStructs.parseTransceiverMessage(wh_prefix, encodedTransceiverMessage);
 
-        TransceiverStructs.ManagerMessage memory mmParsed =
-            TransceiverStructs.parseManagerMessage(emParsed.managerPayload);
+        TransceiverStructs.NttManagerMessage memory mmParsed =
+            TransceiverStructs.parseNttManagerMessage(emParsed.nttManagerPayload);
 
         // deep equality check
         assertEq(abi.encode(mmParsed), abi.encode(mm));
@@ -58,21 +58,23 @@ contract TestTransceiverStructs is Test {
         assertEq(abi.encode(nttParsed), abi.encode(ntt));
     }
 
-    function test_SerdeRoundtrip_ManagerMessage(TransceiverStructs.ManagerMessage memory m)
+    function test_SerdeRoundtrip_NttManagerMessage(TransceiverStructs.NttManagerMessage memory m)
         public
     {
-        bytes memory message = TransceiverStructs.encodeManagerMessage(m);
+        bytes memory message = TransceiverStructs.encodeNttManagerMessage(m);
 
-        TransceiverStructs.ManagerMessage memory parsed =
-            TransceiverStructs.parseManagerMessage(message);
+        TransceiverStructs.NttManagerMessage memory parsed =
+            TransceiverStructs.parseNttManagerMessage(message);
 
         assertEq(m.sequence, parsed.sequence);
         assertEq(m.sender, parsed.sender);
         assertEq(m.payload, parsed.payload);
     }
 
-    function test_SerdeJunk_ManagerMessage(TransceiverStructs.ManagerMessage memory m) public {
-        bytes memory message = TransceiverStructs.encodeManagerMessage(m);
+    function test_SerdeJunk_NttManagerMessage(TransceiverStructs.NttManagerMessage memory m)
+        public
+    {
+        bytes memory message = TransceiverStructs.encodeNttManagerMessage(m);
 
         bytes memory junk = "junk";
 
@@ -81,7 +83,7 @@ contract TestTransceiverStructs is Test {
                 "LengthMismatch(uint256,uint256)", message.length + junk.length, message.length
             )
         );
-        TransceiverStructs.parseManagerMessage(abi.encodePacked(message, junk));
+        TransceiverStructs.parseNttManagerMessage(abi.encodePacked(message, junk));
     }
 
     function test_SerdeRoundtrip_NativeTokenTransfer(

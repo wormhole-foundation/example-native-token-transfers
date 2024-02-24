@@ -3,8 +3,8 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import "../libraries/NormalizedAmount.sol";
 
-interface IManagerEvents {
-    /// @notice Emitted when a message is sent from the manager.
+interface INttManagerEvents {
+    /// @notice Emitted when a message is sent from the nttManager.
     /// @dev Topic0
     ///      0x71ec1d4b53baa86365b6523ea136c9fe0f72c36c721e7e28e9efac2c23b39d98.
     /// @param recipient The recipient of the message.
@@ -40,7 +40,7 @@ interface IManagerEvents {
     /// @param threshold The new threshold.
     event ThresholdChanged(uint8 oldThreshold, uint8 threshold);
 
-    /// @notice Emitted when an transceiver is removed from the manager.
+    /// @notice Emitted when an transceiver is removed from the nttManager.
     /// @dev Topic0
     ///      0xc6289e62021fd0421276d06677862d6b328d9764cdd4490ca5ac78b173f25883.
     /// @param transceiver The address of the transceiver.
@@ -48,7 +48,7 @@ interface IManagerEvents {
     /// @param threshold The current threshold of transceivers.
     event TransceiverAdded(address transceiver, uint256 transceiversNum, uint8 threshold);
 
-    /// @notice Emitted when an transceiver is removed from the manager.
+    /// @notice Emitted when an transceiver is removed from the nttManager.
     /// @dev Topic0
     ///     0x638e631f34d9501a3ff0295873b29f50d0207b5400bf0e48b9b34719e6b1a39e.
     /// @param transceiver The address of the transceiver.
@@ -59,9 +59,9 @@ interface IManagerEvents {
     ///         notify client of against retries.
     /// @dev Topic0
     ///      0x4069dff8c9df7e38d2867c0910bd96fd61787695e5380281148c04932d02bef2.
-    /// @param sourceManager The address of the source manager.
+    /// @param sourceNttManager The address of the source nttManager.
     /// @param msgHash The keccak-256 hash of the message.
-    event MessageAlreadyExecuted(bytes32 indexed sourceManager, bytes32 indexed msgHash);
+    event MessageAlreadyExecuted(bytes32 indexed sourceNttManager, bytes32 indexed msgHash);
 
     /// @notice Emitted when a transfer has been redeemed
     ///         (either minted or unlocked on the recipient chain).

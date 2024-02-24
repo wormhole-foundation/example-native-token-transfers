@@ -6,14 +6,14 @@ import "../../src/WormholeTransceiver.sol";
 
 contract MockWormholeTransceiverContract is WormholeTransceiver {
     constructor(
-        address manager,
+        address nttManager,
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
         address specialRelayerAddr,
         uint8 _consistencyLevel
     )
         WormholeTransceiver(
-            manager,
+            nttManager,
             wormholeCoreBridge,
             wormholeRelayerAddr,
             specialRelayerAddr,
@@ -22,7 +22,7 @@ contract MockWormholeTransceiverContract is WormholeTransceiver {
     {}
 
     /// @dev Override the [`transferOwnership`] method from OwnableUpgradeable
-    /// to ensure owner of this contract is in sync with the onwer of the Manager contract.
+    /// to ensure owner of this contract is in sync with the onwer of the NttManager contract.
     function transferOwnership(address newOwner) public view override onlyOwner {
         revert CannotTransferTransceiverOwnership(owner(), newOwner);
     }
@@ -30,14 +30,14 @@ contract MockWormholeTransceiverContract is WormholeTransceiver {
 
 contract MockWormholeTransceiverMigrateBasic is WormholeTransceiver {
     constructor(
-        address manager,
+        address nttManager,
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
         address specialRelayerAddr,
         uint8 _consistencyLevel
     )
         WormholeTransceiver(
-            manager,
+            nttManager,
             wormholeCoreBridge,
             wormholeRelayerAddr,
             specialRelayerAddr,
@@ -52,14 +52,14 @@ contract MockWormholeTransceiverMigrateBasic is WormholeTransceiver {
 
 contract MockWormholeTransceiverImmutableAllow is WormholeTransceiver {
     constructor(
-        address manager,
+        address nttManager,
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
         address specialRelayerAddr,
         uint8 _consistencyLevel
     )
         WormholeTransceiver(
-            manager,
+            nttManager,
             wormholeCoreBridge,
             wormholeRelayerAddr,
             specialRelayerAddr,
@@ -80,14 +80,14 @@ contract MockWormholeTransceiverLayoutChange is WormholeTransceiver {
 
     // Call the parents constructor
     constructor(
-        address manager,
+        address nttManager,
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
         address specialRelayerAddr,
         uint8 _consistencyLevel
     )
         WormholeTransceiver(
-            manager,
+            nttManager,
             wormholeCoreBridge,
             wormholeRelayerAddr,
             specialRelayerAddr,

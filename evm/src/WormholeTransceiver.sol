@@ -9,7 +9,7 @@ import "./libraries/TransceiverHelpers.sol";
 import "./libraries/TransceiverStructs.sol";
 import "./interfaces/IWormholeTransceiver.sol";
 import "./interfaces/ISpecialRelayer.sol";
-import "./interfaces/IManager.sol";
+import "./interfaces/INttManager.sol";
 import "./Transceiver.sol";
 
 contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeReceiver {
@@ -123,12 +123,12 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
     }
 
     constructor(
-        address manager,
+        address nttManager,
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
         address specialRelayerAddr,
         uint8 _consistencyLevel
-    ) Transceiver(manager) {
+    ) Transceiver(nttManager) {
         wormhole = IWormhole(wormholeCoreBridge);
         wormholeRelayer = IWormholeRelayer(wormholeRelayerAddr);
         specialRelayer = ISpecialRelayer(specialRelayerAddr);
@@ -144,10 +144,10 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
     function _initializeTransceiver() internal {
         TransceiverStructs.TransceiverInit memory init = TransceiverStructs.TransceiverInit({
             transceiverIdentifier: WH_TRANSCEIVER_INIT_PREFIX,
-            managerAddress: toWormholeFormat(manager),
-            managerMode: IManager(manager).getMode(),
-            tokenAddress: toWormholeFormat(managerToken),
-            tokenDecimals: IManager(manager).tokenDecimals()
+            nttManagerAddress: toWormholeFormat(nttManager),
+            nttManagerMode: INttManager(nttManager).getMode(),
+            tokenAddress: toWormholeFormat(nttManagerToken),
+            tokenDecimals: INttManager(nttManager).tokenDecimals()
         });
         wormhole.publishMessage(0, TransceiverStructs.encodeTransceiverInit(init), consistencyLevel);
     }
@@ -179,7 +179,7 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
             (uint256 cost,) = wormholeRelayer.quoteEVMDeliveryPrice(targetChain, 0, GAS_LIMIT);
             return cost;
         } else if (isSpecialRelayingEnabled(targetChain)) {
-            uint256 cost = specialRelayer.quoteDeliveryPrice(getManagerToken(), targetChain, 0);
+            uint256 cost = specialRelayer.quoteDeliveryPrice(getNttManagerToken(), targetChain, 0);
             return cost;
         } else {
             return 0;
@@ -190,9 +190,9 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
         uint16 recipientChain,
         uint256 deliveryPayment,
         address caller,
-        bytes32 recipientManagerAddress,
+        bytes32 recipientNttManagerAddress,
         TransceiverStructs.TransceiverInstruction memory instruction,
-        bytes memory managerMessage
+        bytes memory nttManagerMessage
     ) internal override {
         (
             TransceiverStructs.TransceiverMessage memory transceiverMessage,
@@ -200,8 +200,8 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
         ) = TransceiverStructs.buildAndEncodeTransceiverMessage(
             WH_TRANSCEIVER_PAYLOAD_PREFIX,
             toWormholeFormat(caller),
-            recipientManagerAddress,
-            managerMessage,
+            recipientNttManagerAddress,
+            nttManagerMessage,
             new bytes(0)
         );
 
@@ -220,7 +220,7 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
             uint64 sequence =
                 wormhole.publishMessage(0, encodedTransceiverPayload, consistencyLevel);
             specialRelayer.requestDelivery{value: deliveryPayment}(
-                getManagerToken(), recipientChain, 0, sequence
+                getNttManagerToken(), recipientChain, 0, sequence
             );
         } else {
             wormhole.publishMessage(0, encodedTransceiverPayload, consistencyLevel);
@@ -258,20 +258,20 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
 
         // parse the encoded Transceiver payload
         TransceiverStructs.TransceiverMessage memory parsedTransceiverMessage;
-        TransceiverStructs.ManagerMessage memory parsedManagerMessage;
-        (parsedTransceiverMessage, parsedManagerMessage) = TransceiverStructs
-            .parseTransceiverAndManagerMessage(WH_TRANSCEIVER_PAYLOAD_PREFIX, payload);
+        TransceiverStructs.NttManagerMessage memory parsedNttManagerMessage;
+        (parsedTransceiverMessage, parsedNttManagerMessage) = TransceiverStructs
+            .parseTransceiverAndNttManagerMessage(WH_TRANSCEIVER_PAYLOAD_PREFIX, payload);
 
-        _deliverToManager(
+        _deliverToNttManager(
             sourceChain,
-            parsedTransceiverMessage.sourceManagerAddress,
-            parsedTransceiverMessage.recipientManagerAddress,
-            parsedManagerMessage
+            parsedTransceiverMessage.sourceNttManagerAddress,
+            parsedTransceiverMessage.recipientNttManagerAddress,
+            parsedNttManagerMessage
         );
     }
 
     /// @notice Receive an attested message from the verification layer
-    ///         This function should verify the encodedVm and then deliver the attestation to the transceiver manager contract.
+    ///         This function should verify the encodedVm and then deliver the attestation to the transceiver nttManager contract.
     function receiveMessage(bytes memory encodedMessage) external {
         uint16 sourceChainId;
         bytes memory payload;
@@ -279,15 +279,15 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
 
         // parse the encoded Transceiver payload
         TransceiverStructs.TransceiverMessage memory parsedTransceiverMessage;
-        TransceiverStructs.ManagerMessage memory parsedManagerMessage;
-        (parsedTransceiverMessage, parsedManagerMessage) = TransceiverStructs
-            .parseTransceiverAndManagerMessage(WH_TRANSCEIVER_PAYLOAD_PREFIX, payload);
+        TransceiverStructs.NttManagerMessage memory parsedNttManagerMessage;
+        (parsedTransceiverMessage, parsedNttManagerMessage) = TransceiverStructs
+            .parseTransceiverAndNttManagerMessage(WH_TRANSCEIVER_PAYLOAD_PREFIX, payload);
 
-        _deliverToManager(
+        _deliverToNttManager(
             sourceChainId,
-            parsedTransceiverMessage.sourceManagerAddress,
-            parsedTransceiverMessage.recipientManagerAddress,
-            parsedManagerMessage
+            parsedTransceiverMessage.sourceNttManagerAddress,
+            parsedTransceiverMessage.recipientNttManagerAddress,
+            parsedNttManagerMessage
         );
     }
 
@@ -357,7 +357,7 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
 
         // We don't want to allow updating a sibling since this adds complexity in the accountant
         // If the owner makes a mistake with sibling registration they should deploy a new Wormhole
-        // transceiver and register this new transceiver with the Manager
+        // transceiver and register this new transceiver with the NttManager
         if (oldSiblingContract != bytes32(0)) {
             revert SiblingAlreadySet(chainId, oldSiblingContract);
         }

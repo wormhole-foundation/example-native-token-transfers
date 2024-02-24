@@ -8,7 +8,7 @@ import { toChainId } from '@certusone/wormhole-sdk'
 import { MockEmitter, MockGuardians } from '@certusone/wormhole-sdk/lib/cjs/mock'
 import * as fs from "fs";
 
-import { type TransceiverMessage, ManagerMessage, NativeTokenTransfer, NormalizedAmount, postVaa, WormholeTransceiverMessage, NTT } from '../ts/sdk'
+import { type TransceiverMessage, NttManagerMessage, NativeTokenTransfer, NormalizedAmount, postVaa, WormholeTransceiverMessage, NTT } from '../ts/sdk'
 
 export const GUARDIAN_KEY = 'cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0'
 
@@ -83,7 +83,7 @@ describe('example-native-token-transfers', () => {
         payer,
         owner: payer,
         chain: 'ethereum',
-        address: Buffer.from('manager'.padStart(32, '\0')),
+        address: Buffer.from('ntt_manager'.padStart(32, '\0')),
         limit: new BN(1000000)
       })
 
@@ -116,11 +116,11 @@ describe('example-native-token-transfers', () => {
       const messageData = PostedMessageData.deserialize(wormholeMessageAccount.data)
       const transceiverMessage = WormholeTransceiverMessage.deserialize(
         messageData.message.payload,
-        a => ManagerMessage.deserialize(a, NativeTokenTransfer.deserialize)
+        a => NttManagerMessage.deserialize(a, NativeTokenTransfer.deserialize)
       )
 
       // assert theat amount is what we expect
-      expect(transceiverMessage.managerPayload.payload.normalizedAmount).to.deep.equal(new NormalizedAmount(BigInt(10000), 8))
+      expect(transceiverMessage.ntt_managerPayload.payload.normalizedAmount).to.deep.equal(new NormalizedAmount(BigInt(10000), 8))
       // get from balance
       const balance = await connection.getTokenAccountBalance(tokenAccount)
       expect(balance.value.amount).to.equal('9900000')
@@ -137,7 +137,7 @@ describe('example-native-token-transfers', () => {
       // console.log(message);
 
       // TODO: assert other stuff in the message
-      // console.log(managerMessage);
+      // console.log(ntt_managerMessage);
     });
 
     it('Can receive tokens', async () => {
@@ -151,9 +151,9 @@ describe('example-native-token-transfers', () => {
       const guardians = new MockGuardians(0, [GUARDIAN_KEY])
 
       const sendingTransceiverMessage: TransceiverMessage<NativeTokenTransfer> = {
-        sourceManager: Buffer.from('manager'.padStart(32, '\0')),
-        recipientManager: ntt.program.programId.toBuffer(),
-        managerPayload: new ManagerMessage(
+        sourceNttManager: Buffer.from('ntt_manager'.padStart(32, '\0')),
+        recipientNttManager: ntt.program.programId.toBuffer(),
+        ntt_managerPayload: new NttManagerMessage(
           BigInt(0),
           Buffer.from('FACE'.padStart(64, '0'), 'hex'),
           new NativeTokenTransfer(
@@ -166,7 +166,7 @@ describe('example-native-token-transfers', () => {
         transceiverPayload: Buffer.alloc(0)
       }
 
-      const serialized = WormholeTransceiverMessage.serialize(sendingTransceiverMessage, a => ManagerMessage.serialize(a, NativeTokenTransfer.serialize))
+      const serialized = WormholeTransceiverMessage.serialize(sendingTransceiverMessage, a => NttManagerMessage.serialize(a, NativeTokenTransfer.serialize))
 
       const published = emitter.publishMessage(
         0, // nonce

@@ -13,8 +13,8 @@ import "./libraries/external/ReentrancyGuardUpgradeable.sol";
 import "./libraries/TransceiverStructs.sol";
 import "./libraries/TransceiverHelpers.sol";
 import "./libraries/RateLimiter.sol";
-import "./interfaces/IManager.sol";
-import "./interfaces/IManagerEvents.sol";
+import "./interfaces/INttManager.sol";
+import "./interfaces/INttManagerEvents.sol";
 import "./interfaces/INTTToken.sol";
 import "./interfaces/ITransceiver.sol";
 import "./TransceiverRegistry.sol";
@@ -22,9 +22,9 @@ import "./NttNormalizer.sol";
 import "./libraries/PausableOwnable.sol";
 import "./libraries/Implementation.sol";
 
-contract Manager is
-    IManager,
-    IManagerEvents,
+contract NttManager is
+    INttManager,
+    INttManagerEvents,
     TransceiverRegistry,
     RateLimiter,
     NttNormalizer,
@@ -36,9 +36,9 @@ contract Manager is
     using SafeERC20 for IERC20;
 
     error RefundFailed(uint256 refundAmount);
-    error CannotRenounceManagerOwnership(address owner);
+    error CannotRenounceNttManagerOwnership(address owner);
     error UnexpectedOwner(address expectedOwner, address owner);
-    error TransceiverAlreadyAttestedToMessage(bytes32 managerMessageHash);
+    error TransceiverAlreadyAttestedToMessage(bytes32 nttManagerMessageHash);
 
     address public immutable token;
     address immutable deployer;
@@ -188,7 +188,7 @@ contract Manager is
         deployer = msg.sender;
     }
 
-    function __Manager_init() internal onlyInitializing {
+    function __NttManager_init() internal onlyInitializing {
         // check if the owner is the deployer of this contract
         if (msg.sender != deployer) {
             revert UnexpectedOwner(deployer, msg.sender);
@@ -198,7 +198,7 @@ contract Manager is
     }
 
     function _initialize() internal virtual override {
-        __Manager_init();
+        __NttManager_init();
         _checkThresholdInvariants();
         _checkTransceiversInvariants();
     }
@@ -213,7 +213,7 @@ contract Manager is
         _upgrade(newImplementation);
     }
 
-    /// @dev Transfer ownership of the Manager contract and all Transceiver contracts to a new owner.
+    /// @dev Transfer ownership of the NttManager contract and all Transceiver contracts to a new owner.
     function transferOwnership(address newOwner) public override onlyOwner {
         super.transferOwnership(newOwner);
         // loop through all the registered transceivers and set the new owner of each transceiver to the newOwner
@@ -253,18 +253,18 @@ contract Manager is
         uint256[] memory priceQuotes,
         TransceiverStructs.TransceiverInstruction[] memory transceiverInstructions,
         address[] memory enabledTransceivers,
-        bytes memory managerMessage
+        bytes memory nttManagerMessage
     ) internal {
         uint256 numEnabledTransceivers = enabledTransceivers.length;
         mapping(address => TransceiverInfo) storage transceiverInfos = _getTransceiverInfosStorage();
         // call into transceiver contracts to send the message
         for (uint256 i = 0; i < numEnabledTransceivers; i++) {
             address transceiverAddr = enabledTransceivers[i];
-            // send it to the recipient manager based on the chain
+            // send it to the recipient nttManager based on the chain
             ITransceiver(transceiverAddr).sendMessage{value: priceQuotes[i]}(
                 recipientChain,
                 transceiverInstructions[transceiverInfos[transceiverAddr].index],
-                managerMessage,
+                nttManagerMessage,
                 getSibling(recipientChain)
             );
         }
@@ -554,16 +554,16 @@ contract Manager is
             amount, toWormholeFormat(token), recipient, recipientChain
         );
 
-        // construct the ManagerMessage payload
-        bytes memory encodedManagerPayload = TransceiverStructs.encodeManagerMessage(
-            TransceiverStructs.ManagerMessage(
+        // construct the NttManagerMessage payload
+        bytes memory encodedNttManagerPayload = TransceiverStructs.encodeNttManagerMessage(
+            TransceiverStructs.NttManagerMessage(
                 seq, toWormholeFormat(sender), TransceiverStructs.encodeNativeTokenTransfer(ntt)
             )
         );
 
         // send the message
         _sendMessageToTransceivers(
-            recipientChain, priceQuotes, instructions, enabledTransceivers, encodedManagerPayload
+            recipientChain, priceQuotes, instructions, enabledTransceivers, encodedNttManagerPayload
         );
 
         emit TransferSent(recipient, _nttDenormalize(amount), recipientChain, seq);
@@ -594,16 +594,16 @@ contract Manager is
     }
 
     /// @dev Called after a message has been sufficiently verified to execute the command in the message.
-    ///      This function will decode the payload as an ManagerMessage to extract the sequence, msgType, and other parameters.
+    ///      This function will decode the payload as an NttManagerMessage to extract the sequence, msgType, and other parameters.
     function executeMsg(
         uint16 sourceChainId,
-        bytes32 sourceManagerAddress,
-        TransceiverStructs.ManagerMessage memory message
+        bytes32 sourceNttManagerAddress,
+        TransceiverStructs.NttManagerMessage memory message
     ) public {
         // verify chain has not forked
         checkFork(evmChainId);
 
-        bytes32 digest = TransceiverStructs.managerMessageDigest(sourceChainId, message);
+        bytes32 digest = TransceiverStructs.nttManagerMessageDigest(sourceChainId, message);
 
         if (!isMessageApproved(digest)) {
             revert MessageNotApproved(digest);
@@ -614,7 +614,7 @@ contract Manager is
             // end execution early to mitigate the possibility of race conditions from transceivers
             // attempting to deliver the same message when (threshold < number of transceiver messages)
             // notify client (off-chain process) so they don't attempt redundant msg delivery
-            emit MessageAlreadyExecuted(sourceManagerAddress, digest);
+            emit MessageAlreadyExecuted(sourceNttManagerAddress, digest);
             return;
         }
 
@@ -719,7 +719,7 @@ contract Manager is
     }
 
     /// @notice this sets the corresponding sibling.
-    /// @dev The manager that executes the message sets the source manager as the sibling.
+    /// @dev The nttManager that executes the message sets the source nttManager as the sibling.
     function setSibling(uint16 siblingChainId, bytes32 siblingContract) public onlyOwner {
         if (siblingChainId == 0) {
             revert InvalidSiblingChainIdZero();
@@ -742,12 +742,13 @@ contract Manager is
 
     function attestationReceived(
         uint16 sourceChainId,
-        bytes32 sourceManagerAddress,
-        TransceiverStructs.ManagerMessage memory payload
+        bytes32 sourceNttManagerAddress,
+        TransceiverStructs.NttManagerMessage memory payload
     ) external onlyTransceiver {
-        _verifySibling(sourceChainId, sourceManagerAddress);
+        _verifySibling(sourceChainId, sourceNttManagerAddress);
 
-        bytes32 managerMessageHash = TransceiverStructs.managerMessageDigest(sourceChainId, payload);
+        bytes32 nttManagerMessageHash =
+            TransceiverStructs.nttManagerMessageDigest(sourceChainId, payload);
 
         // set the attested flag for this transceiver.
         // NOTE: Attestation is idempotent (bitwise or 1), but we revert
@@ -755,15 +756,15 @@ contract Manager is
         // to receive the same message through the same transceiver.
         if (
             transceiverAttestedToMessage(
-                managerMessageHash, _getTransceiverInfosStorage()[msg.sender].index
+                nttManagerMessageHash, _getTransceiverInfosStorage()[msg.sender].index
             )
         ) {
-            revert TransceiverAlreadyAttestedToMessage(managerMessageHash);
+            revert TransceiverAlreadyAttestedToMessage(nttManagerMessageHash);
         }
-        _setTransceiverAttestedToMessage(managerMessageHash, msg.sender);
+        _setTransceiverAttestedToMessage(nttManagerMessageHash, msg.sender);
 
-        if (isMessageApproved(managerMessageHash)) {
-            executeMsg(sourceChainId, sourceManagerAddress, payload);
+        if (isMessageApproved(nttManagerMessageHash)) {
+            executeMsg(sourceChainId, sourceNttManagerAddress, payload);
         }
     }
 
@@ -772,7 +773,7 @@ contract Manager is
         return countSetBits(_getMessageAttestations(digest));
     }
 
-    function tokenDecimals() public view override(IManager, RateLimiter) returns (uint8) {
+    function tokenDecimals() public view override(INttManager, RateLimiter) returns (uint8) {
         return tokenDecimals_;
     }
 

@@ -10,7 +10,7 @@ contract DummyTransceiver is Transceiver, ITransceiverReceiver {
     uint16 constant SENDING_CHAIN_ID = 1;
     bytes4 constant TEST_TRANSCEIVER_PAYLOAD_PREFIX = 0x99455454;
 
-    constructor(address manager) Transceiver(manager) {}
+    constructor(address nttManager) Transceiver(nttManager) {}
 
     function _quoteDeliveryPrice(
         uint16, /* recipientChain */
@@ -23,7 +23,7 @@ contract DummyTransceiver is Transceiver, ITransceiverReceiver {
         uint16, /* recipientChain */
         uint256, /* deliveryPayment */
         address, /* caller */
-        bytes32, /* recipientManagerAddress */
+        bytes32, /* recipientNttManagerAddress */
         TransceiverStructs.TransceiverInstruction memory, /* instruction */
         bytes memory /* payload */
     ) internal override {
@@ -32,14 +32,14 @@ contract DummyTransceiver is Transceiver, ITransceiverReceiver {
 
     function receiveMessage(bytes memory encodedMessage) external {
         TransceiverStructs.TransceiverMessage memory parsedTransceiverMessage;
-        TransceiverStructs.ManagerMessage memory parsedManagerMessage;
-        (parsedTransceiverMessage, parsedManagerMessage) = TransceiverStructs
-            .parseTransceiverAndManagerMessage(TEST_TRANSCEIVER_PAYLOAD_PREFIX, encodedMessage);
-        _deliverToManager(
+        TransceiverStructs.NttManagerMessage memory parsedNttManagerMessage;
+        (parsedTransceiverMessage, parsedNttManagerMessage) = TransceiverStructs
+            .parseTransceiverAndNttManagerMessage(TEST_TRANSCEIVER_PAYLOAD_PREFIX, encodedMessage);
+        _deliverToNttManager(
             SENDING_CHAIN_ID,
-            parsedTransceiverMessage.sourceManagerAddress,
-            parsedTransceiverMessage.recipientManagerAddress,
-            parsedManagerMessage
+            parsedTransceiverMessage.sourceNttManagerAddress,
+            parsedTransceiverMessage.recipientNttManagerAddress,
+            parsedNttManagerMessage
         );
     }
 

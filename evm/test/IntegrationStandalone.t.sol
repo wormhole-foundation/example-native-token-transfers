@@ -4,18 +4,18 @@ pragma solidity >=0.8.8 <0.9.0;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import "../src/Manager.sol";
+import "../src/NttManager.sol";
 import "../src/Transceiver.sol";
-import "../src/interfaces/IManager.sol";
+import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
-import "../src/interfaces/IManagerEvents.sol";
+import "../src/interfaces/INttManagerEvents.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
 import {Utils} from "./libraries/Utils.sol";
-import {DummyToken, DummyTokenMintAndBurn} from "./Manager.t.sol";
+import {DummyToken, DummyTokenMintAndBurn} from "./NttManager.t.sol";
 import "../src/interfaces/IWormholeTransceiver.sol";
 import {WormholeTransceiver} from "../src/WormholeTransceiver.sol";
 import "../src/libraries/TransceiverStructs.sol";
-import "./mocks/MockManager.sol";
+import "./mocks/MockNttManager.sol";
 import "./mocks/MockTransceivers.sol";
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
@@ -25,9 +25,9 @@ import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "wormhole-solidity-sdk/Utils.sol";
 //import "wormhole-solidity-sdk/testing/WormholeRelayerTest.sol";
 
-contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
-    Manager managerChain1;
-    Manager managerChain2;
+contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
+    NttManager nttManagerChain1;
+    NttManager nttManagerChain2;
 
     using NormalizedAmountLib for uint256;
     using NormalizedAmountLib for NormalizedAmount;
@@ -61,14 +61,15 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
-        Manager implementation =
-            new MockManagerContract(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
+        NttManager implementation =
+            new MockNttManagerContract(address(t1), NttManager.Mode.LOCKING, chainId1, 1 days);
 
-        managerChain1 = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
-        managerChain1.initialize();
+        nttManagerChain1 =
+            MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
+        nttManagerChain1.initialize();
 
         WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverContract(
-            address(managerChain1),
+            address(nttManagerChain1),
             address(wormhole),
             address(relayer),
             address(0x0),
@@ -79,22 +80,22 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         );
         wormholeTransceiverChain1.initialize();
 
-        managerChain1.setTransceiver(address(wormholeTransceiverChain1));
-        managerChain1.setOutboundLimit(type(uint64).max);
-        managerChain1.setInboundLimit(type(uint64).max, chainId2);
+        nttManagerChain1.setTransceiver(address(wormholeTransceiverChain1));
+        nttManagerChain1.setOutboundLimit(type(uint64).max);
+        nttManagerChain1.setInboundLimit(type(uint64).max, chainId2);
 
         // Chain 2 setup
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
-        Manager implementationChain2 =
-            new MockManagerContract(address(t2), Manager.Mode.BURNING, chainId2, 1 days);
+        NttManager implementationChain2 =
+            new MockNttManagerContract(address(t2), NttManager.Mode.BURNING, chainId2, 1 days);
 
-        managerChain2 =
-            MockManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
-        managerChain2.initialize();
+        nttManagerChain2 =
+            MockNttManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
+        nttManagerChain2.initialize();
 
         WormholeTransceiver wormholeTransceiverChain2Implementation = new MockWormholeTransceiverContract(
-            address(managerChain2),
+            address(nttManagerChain2),
             address(wormhole),
             address(relayer),
             address(0x0),
@@ -105,13 +106,13 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         );
         wormholeTransceiverChain2.initialize();
 
-        managerChain2.setTransceiver(address(wormholeTransceiverChain2));
-        managerChain2.setOutboundLimit(type(uint64).max);
-        managerChain2.setInboundLimit(type(uint64).max, chainId1);
+        nttManagerChain2.setTransceiver(address(wormholeTransceiverChain2));
+        nttManagerChain2.setOutboundLimit(type(uint64).max);
+        nttManagerChain2.setInboundLimit(type(uint64).max, chainId1);
 
-        // Register sibling contracts for the manager and transceiver. Transceivers and manager each have the concept of siblings here.
-        managerChain1.setSibling(chainId2, bytes32(uint256(uint160(address(managerChain2)))));
-        managerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(managerChain1)))));
+        // Register sibling contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of siblings here.
+        nttManagerChain1.setSibling(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))));
+        nttManagerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
 
         // Set siblings for the transceivers
         wormholeTransceiverChain1.setWormholeSibling(
@@ -121,39 +122,39 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
             chainId1, bytes32(uint256(uint160(address(wormholeTransceiverChain1))))
         );
 
-        require(managerChain1.getThreshold() != 0, "Threshold is zero with active transceivers");
+        require(nttManagerChain1.getThreshold() != 0, "Threshold is zero with active transceivers");
 
         // Actually set it
-        managerChain1.setThreshold(1);
-        managerChain2.setThreshold(1);
+        nttManagerChain1.setThreshold(1);
+        nttManagerChain2.setThreshold(1);
     }
 
     function test_chainToChainBase() public {
         vm.chainId(chainId1);
 
         // Setting up the transfer
-        DummyToken token1 = DummyToken(managerChain1.token());
-        DummyToken token2 = DummyTokenMintAndBurn(managerChain2.token());
+        DummyToken token1 = DummyToken(nttManagerChain1.token());
+        DummyToken token2 = DummyTokenMintAndBurn(nttManagerChain2.token());
 
         uint8 decimals = token1.decimals();
         uint256 sendingAmount = 5 * 10 ** decimals;
         token1.mintDummy(address(userA), 5 * 10 ** decimals);
         vm.startPrank(userA);
-        token1.approve(address(managerChain1), sendingAmount);
+        token1.approve(address(nttManagerChain1), sendingAmount);
 
         vm.recordLogs();
 
         // Send token through standard means (not relayer)
         {
-            uint256 managerBalanceBefore = token1.balanceOf(address(managerChain1));
+            uint256 nttManagerBalanceBefore = token1.balanceOf(address(nttManagerChain1));
             uint256 userBalanceBefore = token1.balanceOf(address(userA));
-            managerChain1.transfer(sendingAmount, chainId2, bytes32(uint256(uint160(userB))));
+            nttManagerChain1.transfer(sendingAmount, chainId2, bytes32(uint256(uint160(userB))));
 
             // Balance check on funds going in and out working as expected
-            uint256 managerBalanceAfter = token1.balanceOf(address(managerChain1));
+            uint256 nttManagerBalanceAfter = token1.balanceOf(address(nttManagerChain1));
             uint256 userBalanceAfter = token1.balanceOf(address(userB));
             require(
-                managerBalanceBefore + sendingAmount == managerBalanceAfter,
+                nttManagerBalanceBefore + sendingAmount == nttManagerBalanceAfter,
                 "Should be locking the tokens"
             );
             require(
@@ -183,7 +184,9 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
 
             require(sendingAmount + supplyBefore == supplyAfter, "Supplies dont match");
             require(token2.balanceOf(userB) == sendingAmount, "User didn't receive tokens");
-            require(token2.balanceOf(address(managerChain2)) == 0, "Manager has unintended funds");
+            require(
+                token2.balanceOf(address(nttManagerChain2)) == 0, "NttManager has unintended funds"
+            );
         }
 
         // Can't resubmit the same message twice
@@ -195,13 +198,13 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         token2.transfer(userC, sendingAmount);
 
         vm.startPrank(userC);
-        token2.approve(address(managerChain2), sendingAmount);
+        token2.approve(address(nttManagerChain2), sendingAmount);
         vm.recordLogs();
 
         // Supply checks on the transfer
         {
             uint256 supplyBefore = token2.totalSupply();
-            managerChain2.transfer(
+            nttManagerChain2.transfer(
                 sendingAmount,
                 chainId1,
                 bytes32(uint256(uint160(userD))),
@@ -215,8 +218,8 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
             require(token2.balanceOf(userB) == 0, "OG user receive tokens");
             require(token2.balanceOf(userC) == 0, "Sending user didn't receive tokens");
             require(
-                token2.balanceOf(address(managerChain2)) == 0,
-                "Manager didn't receive unintended funds"
+                token2.balanceOf(address(nttManagerChain2)) == 0,
+                "NttManager didn't receive unintended funds"
             );
         }
 
@@ -247,22 +250,22 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         vm.chainId(chainId1);
 
         // Setting up the transfer
-        DummyToken token1 = DummyToken(managerChain1.token());
-        DummyToken token2 = DummyTokenMintAndBurn(managerChain2.token());
+        DummyToken token1 = DummyToken(nttManagerChain1.token());
+        DummyToken token2 = DummyTokenMintAndBurn(nttManagerChain2.token());
 
         uint8 decimals = token1.decimals();
         uint256 sendingAmount = 5 * 10 ** decimals;
         token1.mintDummy(address(userA), 5 * 10 ** decimals);
         vm.startPrank(userA);
-        token1.approve(address(managerChain1), sendingAmount);
+        token1.approve(address(nttManagerChain1), sendingAmount);
 
         vm.recordLogs();
 
         // Send token through standard means (not relayer)
         {
-            uint256 managerBalanceBefore = token1.balanceOf(address(managerChain1));
+            uint256 nttManagerBalanceBefore = token1.balanceOf(address(nttManagerChain1));
             uint256 userBalanceBefore = token1.balanceOf(address(userA));
-            managerChain1.transfer(
+            nttManagerChain1.transfer(
                 sendingAmount,
                 chainId2,
                 bytes32(uint256(uint160(userB))),
@@ -271,10 +274,10 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
             );
 
             // Balance check on funds going in and out working as expected
-            uint256 managerBalanceAfter = token1.balanceOf(address(managerChain1));
+            uint256 nttManagerBalanceAfter = token1.balanceOf(address(nttManagerChain1));
             uint256 userBalanceAfter = token1.balanceOf(address(userB));
             require(
-                managerBalanceBefore + sendingAmount == managerBalanceAfter,
+                nttManagerBalanceBefore + sendingAmount == nttManagerBalanceAfter,
                 "Should be locking the tokens"
             );
             require(
@@ -309,7 +312,9 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
 
             require(sendingAmount + supplyBefore == supplyAfter, "Supplies dont match");
             require(token2.balanceOf(userB) == sendingAmount, "User didn't receive tokens");
-            require(token2.balanceOf(address(managerChain2)) == 0, "Manager has unintended funds");
+            require(
+                token2.balanceOf(address(nttManagerChain2)) == 0, "NttManager has unintended funds"
+            );
         }
 
         // Can't resubmit the same message twice
@@ -321,7 +326,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         token2.transfer(userC, sendingAmount);
 
         vm.startPrank(userC);
-        token2.approve(address(managerChain2), sendingAmount);
+        token2.approve(address(nttManagerChain2), sendingAmount);
         vm.recordLogs();
 
         // Supply checks on the transfer
@@ -329,10 +334,10 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
             uint256 supplyBefore = token2.totalSupply();
 
             vm.stopPrank();
-            managerChain2.setOutboundLimit(0);
+            nttManagerChain2.setOutboundLimit(0);
 
             vm.startPrank(userC);
-            managerChain2.transfer(
+            nttManagerChain2.transfer(
                 sendingAmount,
                 chainId1,
                 bytes32(uint256(uint160(userD))),
@@ -342,18 +347,18 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
 
             // Test timing on the queues
             vm.expectRevert();
-            managerChain2.completeOutboundQueuedTransfer(0);
+            nttManagerChain2.completeOutboundQueuedTransfer(0);
             vm.warp(vm.getBlockTimestamp() + 1 days - 1);
             vm.expectRevert();
-            managerChain2.completeOutboundQueuedTransfer(0);
+            nttManagerChain2.completeOutboundQueuedTransfer(0);
             vm.warp(vm.getBlockTimestamp() + 1);
-            managerChain2.completeOutboundQueuedTransfer(0);
+            nttManagerChain2.completeOutboundQueuedTransfer(0);
 
             vm.expectRevert(); // Replay - should be deleted
-            managerChain2.completeOutboundQueuedTransfer(0);
+            nttManagerChain2.completeOutboundQueuedTransfer(0);
 
             vm.expectRevert(); // Non-existant
-            managerChain2.completeOutboundQueuedTransfer(1);
+            nttManagerChain2.completeOutboundQueuedTransfer(1);
 
             uint256 supplyAfter = token2.totalSupply();
 
@@ -361,8 +366,8 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
             require(token2.balanceOf(userB) == 0, "OG user receive tokens");
             require(token2.balanceOf(userC) == 0, "Sending user didn't receive tokens");
             require(
-                token2.balanceOf(address(managerChain2)) == 0,
-                "Manager didn't receive unintended funds"
+                token2.balanceOf(address(nttManagerChain2)) == 0,
+                "NttManager didn't receive unintended funds"
             );
         }
 
@@ -381,19 +386,19 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         {
             uint256 supplyBefore = token1.totalSupply();
 
-            managerChain1.setInboundLimit(0, chainId2);
+            nttManagerChain1.setInboundLimit(0, chainId2);
             wormholeTransceiverChain1.receiveMessage(encodedVMs[0]);
 
             bytes32[] memory queuedDigests =
                 Utils.fetchQueuedTransferDigestsFromLogs(vm.getRecordedLogs());
 
             vm.warp(vm.getBlockTimestamp() + 100000);
-            managerChain1.completeInboundQueuedTransfer(queuedDigests[0]);
+            nttManagerChain1.completeInboundQueuedTransfer(queuedDigests[0]);
 
             // Double redeem
             vm.warp(vm.getBlockTimestamp() + 100000);
             vm.expectRevert();
-            managerChain1.completeInboundQueuedTransfer(queuedDigests[0]);
+            nttManagerChain1.completeInboundQueuedTransfer(queuedDigests[0]);
 
             uint256 supplyAfter = token1.totalSupply();
 
@@ -411,7 +416,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
 
         // Dual transceiver setup
         WormholeTransceiver wormholeTransceiverChain1_2 = new MockWormholeTransceiverContract(
-            address(managerChain1),
+            address(nttManagerChain1),
             address(wormhole),
             address(relayer),
             address(0x0),
@@ -428,7 +433,7 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
 
         // Dual transceiver setup
         WormholeTransceiver wormholeTransceiverChain2_2 = new MockWormholeTransceiverContract(
-            address(managerChain2),
+            address(nttManagerChain2),
             address(wormhole),
             address(relayer),
             address(0x0),
@@ -447,29 +452,29 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
         wormholeTransceiverChain2_2.setWormholeSibling(
             chainId1, bytes32(uint256(uint160((address(wormholeTransceiverChain1_2)))))
         );
-        managerChain2.setTransceiver(address(wormholeTransceiverChain2_2));
-        managerChain1.setTransceiver(address(wormholeTransceiverChain1_2));
+        nttManagerChain2.setTransceiver(address(wormholeTransceiverChain2_2));
+        nttManagerChain1.setTransceiver(address(wormholeTransceiverChain1_2));
 
         // Change the threshold from the setUp functions 1 to 2.
-        managerChain1.setThreshold(2);
-        managerChain2.setThreshold(2);
+        nttManagerChain1.setThreshold(2);
+        nttManagerChain2.setThreshold(2);
 
         // Setting up the transfer
-        DummyToken token1 = DummyToken(managerChain1.token());
-        DummyToken token2 = DummyTokenMintAndBurn(managerChain2.token());
+        DummyToken token1 = DummyToken(nttManagerChain1.token());
+        DummyToken token2 = DummyTokenMintAndBurn(nttManagerChain2.token());
 
         vm.startPrank(userA);
         uint8 decimals = token1.decimals();
         uint256 sendingAmount = 5 * 10 ** decimals;
         token1.mintDummy(address(userA), sendingAmount);
         vm.startPrank(userA);
-        token1.approve(address(managerChain1), sendingAmount);
+        token1.approve(address(nttManagerChain1), sendingAmount);
 
         vm.recordLogs();
 
         // Send token through standard means (not relayer)
         {
-            managerChain1.transfer(
+            nttManagerChain1.transfer(
                 sendingAmount,
                 chainId2,
                 bytes32(uint256(uint160(userB))),
@@ -506,30 +511,32 @@ contract TestEndToEndBase is Test, IManagerEvents, IRateLimiterEvents {
 
             require(sendingAmount + supplyBefore == supplyAfter, "Supplies dont match");
             require(token2.balanceOf(userB) == sendingAmount, "User didn't receive tokens");
-            require(token2.balanceOf(address(managerChain2)) == 0, "Manager has unintended funds");
+            require(
+                token2.balanceOf(address(nttManagerChain2)) == 0, "NttManager has unintended funds"
+            );
         }
 
         // Back the other way for the burn!
         vm.startPrank(userB);
-        token2.approve(address(managerChain2), sendingAmount);
+        token2.approve(address(nttManagerChain2), sendingAmount);
 
         vm.recordLogs();
 
         // Send token through standard means (not relayer)
         {
             uint256 userBalanceBefore = token1.balanceOf(address(userB));
-            managerChain2.transfer(
+            nttManagerChain2.transfer(
                 sendingAmount,
                 chainId1,
                 bytes32(uint256(uint160(userA))),
                 false,
                 encodeTransceiverInstructions(true)
             );
-            uint256 managerBalanceAfter = token1.balanceOf(address(managerChain2));
+            uint256 nttManagerBalanceAfter = token1.balanceOf(address(nttManagerChain2));
             uint256 userBalanceAfter = token1.balanceOf(address(userB));
 
             require(userBalanceBefore - userBalanceAfter == 0, "No funds left for user");
-            require(managerBalanceAfter == 0, "Manager should burn all tranferred tokens");
+            require(nttManagerBalanceAfter == 0, "NttManager should burn all tranferred tokens");
         }
 
         // Get the VAA proof for the transfers to use

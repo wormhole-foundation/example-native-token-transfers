@@ -215,7 +215,7 @@ abstract contract TransceiverRegistry {
 
     /// ============== INVARIANTS =============================================
 
-    /// @dev Check that the transceiver manager is in a valid state.
+    /// @dev Check that the transceiver nttManager is in a valid state.
     /// Checking these invariants is somewhat costly, but we only need to do it
     /// when modifying the transceivers, which happens infrequently.
     function _checkTransceiversInvariants() internal view {

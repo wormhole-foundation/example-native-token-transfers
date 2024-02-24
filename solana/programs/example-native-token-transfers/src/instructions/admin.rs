@@ -10,7 +10,7 @@ use crate::{
     error::NTTError,
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit, rate_limit::RateLimitState},
     registered_transceiver::RegisteredTransceiver,
-    sibling::ManagerSibling,
+    sibling::NttManagerSibling,
 };
 
 // * Transfer ownership
@@ -143,12 +143,12 @@ pub struct SetSibling<'info> {
 
     #[account(
         init,
-        space = 8 + ManagerSibling::INIT_SPACE,
+        space = 8 + NttManagerSibling::INIT_SPACE,
         payer = payer,
-        seeds = [ManagerSibling::SEED_PREFIX, args.chain_id.id.to_be_bytes().as_ref()],
+        seeds = [NttManagerSibling::SEED_PREFIX, args.chain_id.id.to_be_bytes().as_ref()],
         bump
     )]
-    pub sibling: Account<'info, ManagerSibling>,
+    pub sibling: Account<'info, NttManagerSibling>,
 
     #[account(
         init,
@@ -173,7 +173,7 @@ pub struct SetSiblingArgs {
 }
 
 pub fn set_sibling(ctx: Context<SetSibling>, args: SetSiblingArgs) -> Result<()> {
-    ctx.accounts.sibling.set_inner(ManagerSibling {
+    ctx.accounts.sibling.set_inner(NttManagerSibling {
         bump: ctx.bumps.sibling,
         address: args.address,
     });

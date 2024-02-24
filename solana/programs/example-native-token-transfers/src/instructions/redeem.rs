@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
-use ntt_messages::{manager::ManagerMessage, ntt::NativeTokenTransfer};
+use ntt_messages::{ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage};
 
 use crate::{
     bitmap::Bitmap,
@@ -13,7 +13,7 @@ use crate::{
         rate_limit::RateLimitResult,
     },
     registered_transceiver::*,
-    sibling::ManagerSibling,
+    sibling::NttManagerSibling,
 };
 
 #[derive(Accounts)]
@@ -25,17 +25,17 @@ pub struct Redeem<'info> {
     pub config: Account<'info, Config>,
 
     #[account(
-        seeds = [ManagerSibling::SEED_PREFIX, transceiver_message.from_chain.id.to_be_bytes().as_ref()],
-        constraint = sibling.address == transceiver_message.message.source_manager @ NTTError::InvalidManagerSibling,
+        seeds = [NttManagerSibling::SEED_PREFIX, transceiver_message.from_chain.id.to_be_bytes().as_ref()],
+        constraint = sibling.address == transceiver_message.message.source_ntt_manager @ NTTError::InvalidNttManagerSibling,
         bump = sibling.bump,
     )]
-    pub sibling: Account<'info, ManagerSibling>,
+    pub sibling: Account<'info, NttManagerSibling>,
 
     #[account(
         // check that the message is targeted to this chain
-        constraint = transceiver_message.message.manager_payload.payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
+        constraint = transceiver_message.message.ntt_manager_payload.payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
         // check that we're the intended recipient
-        constraint = transceiver_message.message.recipient_manager == crate::ID.to_bytes() @ NTTError::InvalidRecipientManager,
+        constraint = transceiver_message.message.recipient_ntt_manager == crate::ID.to_bytes() @ NTTError::InvalidRecipientNttManager,
         // NOTE: we don't replay protect VAAs. Instead, we replay protect
         // executing the messages themselves with the [`released`] flag.
         owner = transceiver.transceiver_address,
@@ -58,7 +58,7 @@ pub struct Redeem<'info> {
         space = 8 + InboxItem::INIT_SPACE,
         seeds = [
             InboxItem::SEED_PREFIX,
-            transceiver_message.message.manager_payload.keccak256(
+            transceiver_message.message.ntt_manager_payload.keccak256(
                 transceiver_message.from_chain
             ).as_ref(),
         ],
@@ -93,8 +93,8 @@ pub struct RedeemArgs {}
 pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let accs = ctx.accounts;
 
-    let message: ManagerMessage<NativeTokenTransfer> =
-        accs.transceiver_message.message.manager_payload.clone();
+    let message: NttManagerMessage<NativeTokenTransfer> =
+        accs.transceiver_message.message.ntt_manager_payload.clone();
 
     let amount = message.payload.amount.denormalize(accs.mint.decimals);
 

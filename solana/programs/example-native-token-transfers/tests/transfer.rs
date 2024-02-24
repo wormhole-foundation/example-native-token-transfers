@@ -14,8 +14,8 @@ use example_native_token_transfers::{
     transceivers::wormhole::ReleaseOutboundArgs,
 };
 use ntt_messages::{
-    chain_id::ChainId, manager::ManagerMessage, normalized_amount::NormalizedAmount,
-    ntt::NativeTokenTransfer, transceiver::TransceiverMessage,
+    chain_id::ChainId, normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer,
+    ntt_manager::NttManagerMessage, transceiver::TransceiverMessage,
     transceivers::wormhole::WormholeTransceiver,
 };
 use solana_program_test::*;
@@ -132,7 +132,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
             },
             sender: test_data.user.pubkey(),
             recipient_chain: ChainId { id: 2 },
-            recipient_manager: OTHER_MANAGER,
+            recipient_ntt_manager: OTHER_MANAGER,
             recipient_address: [1u8; 32],
             release_timestamp: clock.unix_timestamp,
             released: Bitmap::new(),
@@ -182,7 +182,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
         &TransceiverMessage::new(
             example_native_token_transfers::ID.to_bytes(),
             OTHER_MANAGER,
-            ManagerMessage {
+            NttManagerMessage {
                 sequence: sequence.sequence,
                 sender: test_data.user.pubkey().to_bytes(),
                 payload: NativeTokenTransfer {

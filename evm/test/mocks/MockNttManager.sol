@@ -2,15 +2,15 @@
 
 pragma solidity >=0.8.8 <0.9.0;
 
-import "../../src/Manager.sol";
+import "../../src/NttManager.sol";
 
-contract MockManagerContract is Manager {
+contract MockNttManagerContract is NttManager {
     constructor(
         address token,
         Mode mode,
         uint16 chainId,
         uint64 rateLimitDuration
-    ) Manager(token, mode, chainId, rateLimitDuration) {}
+    ) NttManager(token, mode, chainId, rateLimitDuration) {}
 
     /// We create a dummy storage variable here with standard solidity slot assignment.
     /// Then we check that its assigned slot is 0, i.e. that the super contract doesn't
@@ -33,14 +33,14 @@ contract MockManagerContract is Manager {
     }
 }
 
-contract MockManagerMigrateBasic is Manager {
+contract MockNttManagerMigrateBasic is NttManager {
     // Call the parents constructor
     constructor(
         address token,
         Mode mode,
         uint16 chainId,
         uint64 rateLimitDuration
-    ) Manager(token, mode, chainId, rateLimitDuration) {}
+    ) NttManager(token, mode, chainId, rateLimitDuration) {}
 
     function _migrate() internal view override {
         _checkThresholdInvariants();
@@ -49,24 +49,24 @@ contract MockManagerMigrateBasic is Manager {
     }
 }
 
-contract MockManagerImmutableCheck is Manager {
+contract MockNttManagerImmutableCheck is NttManager {
     // Call the parents constructor
     constructor(
         address token,
         Mode mode,
         uint16 chainId,
         uint64 rateLimitDuration
-    ) Manager(token, mode, chainId, rateLimitDuration) {}
+    ) NttManager(token, mode, chainId, rateLimitDuration) {}
 }
 
-contract MockManagerImmutableRemoveCheck is Manager {
+contract MockNttManagerImmutableRemoveCheck is NttManager {
     // Call the parents constructor
     constructor(
         address token,
         Mode mode,
         uint16 chainId,
         uint64 rateLimitDuration
-    ) Manager(token, mode, chainId, rateLimitDuration) {}
+    ) NttManager(token, mode, chainId, rateLimitDuration) {}
 
     // Turns on the capability to EDIT the immutables
     function _migrate() internal override {
@@ -74,7 +74,7 @@ contract MockManagerImmutableRemoveCheck is Manager {
     }
 }
 
-contract MockManagerStorageLayoutChange is Manager {
+contract MockNttManagerStorageLayoutChange is NttManager {
     address a;
     address b;
     address c;
@@ -85,7 +85,7 @@ contract MockManagerStorageLayoutChange is Manager {
         Mode mode,
         uint16 chainId,
         uint64 rateLimitDuration
-    ) Manager(token, mode, chainId, rateLimitDuration) {}
+    ) NttManager(token, mode, chainId, rateLimitDuration) {}
 
     function setData() public {
         a = address(0x1);

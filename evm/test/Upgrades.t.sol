@@ -4,20 +4,20 @@ pragma solidity >=0.8.8 <0.9.0;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import "../src/Manager.sol";
-import "../src/interfaces/IManager.sol";
+import "../src/NttManager.sol";
+import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
-import "../src/interfaces/IManagerEvents.sol";
+import "../src/interfaces/INttManagerEvents.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
 import "../src/libraries/external/OwnableUpgradeable.sol";
 import "../src/libraries/external/Initializable.sol";
 import "../src/libraries/Implementation.sol";
 import {Utils} from "./libraries/Utils.sol";
-import {DummyToken, DummyTokenMintAndBurn} from "./Manager.t.sol";
+import {DummyToken, DummyTokenMintAndBurn} from "./NttManager.t.sol";
 import {WormholeTransceiver} from "../src/WormholeTransceiver.sol";
 import {WormholeTransceiver} from "../src/WormholeTransceiver.sol";
 import "../src/libraries/TransceiverStructs.sol";
-import "./mocks/MockManager.sol";
+import "./mocks/MockNttManager.sol";
 import "./mocks/MockTransceivers.sol";
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
@@ -26,9 +26,9 @@ import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "wormhole-solidity-sdk/Utils.sol";
 
-contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
-    Manager managerChain1;
-    Manager managerChain2;
+contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
+    NttManager nttManagerChain1;
+    NttManager nttManagerChain2;
 
     using NormalizedAmountLib for uint256;
     using NormalizedAmountLib for NormalizedAmount;
@@ -62,14 +62,15 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
-        Manager implementation =
-            new MockManagerContract(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
+        NttManager implementation =
+            new MockNttManagerContract(address(t1), NttManager.Mode.LOCKING, chainId1, 1 days);
 
-        managerChain1 = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
-        managerChain1.initialize();
+        nttManagerChain1 =
+            MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
+        nttManagerChain1.initialize();
 
         WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverContract(
-            address(managerChain1),
+            address(nttManagerChain1),
             address(wormhole),
             address(relayer),
             address(0x0),
@@ -80,22 +81,22 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         );
         wormholeTransceiverChain1.initialize();
 
-        managerChain1.setTransceiver(address(wormholeTransceiverChain1));
-        managerChain1.setOutboundLimit(type(uint64).max);
-        managerChain1.setInboundLimit(type(uint64).max, chainId2);
+        nttManagerChain1.setTransceiver(address(wormholeTransceiverChain1));
+        nttManagerChain1.setOutboundLimit(type(uint64).max);
+        nttManagerChain1.setInboundLimit(type(uint64).max, chainId2);
 
         // Chain 2 setup
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
-        Manager implementationChain2 =
-            new MockManagerContract(address(t2), Manager.Mode.BURNING, chainId2, 1 days);
+        NttManager implementationChain2 =
+            new MockNttManagerContract(address(t2), NttManager.Mode.BURNING, chainId2, 1 days);
 
-        managerChain2 =
-            MockManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
-        managerChain2.initialize();
+        nttManagerChain2 =
+            MockNttManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
+        nttManagerChain2.initialize();
 
         WormholeTransceiver wormholeTransceiverChain2Implementation = new MockWormholeTransceiverContract(
-            address(managerChain2),
+            address(nttManagerChain2),
             address(wormhole),
             address(relayer),
             address(0x0),
@@ -106,13 +107,13 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         );
         wormholeTransceiverChain2.initialize();
 
-        managerChain2.setTransceiver(address(wormholeTransceiverChain2));
-        managerChain2.setOutboundLimit(type(uint64).max);
-        managerChain2.setInboundLimit(type(uint64).max, chainId1);
+        nttManagerChain2.setTransceiver(address(wormholeTransceiverChain2));
+        nttManagerChain2.setOutboundLimit(type(uint64).max);
+        nttManagerChain2.setInboundLimit(type(uint64).max, chainId1);
 
-        // Register sibling contracts for the manager and transceiver. Transceivers and manager each have the concept of siblings here.
-        managerChain1.setSibling(chainId2, bytes32(uint256(uint160(address(managerChain2)))));
-        managerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(managerChain1)))));
+        // Register sibling contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of siblings here.
+        nttManagerChain1.setSibling(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))));
+        nttManagerChain2.setSibling(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
 
         wormholeTransceiverChain1.setWormholeSibling(
             chainId2, bytes32(uint256(uint160((address(wormholeTransceiverChain2)))))
@@ -121,17 +122,17 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
             chainId1, bytes32(uint256(uint160(address(wormholeTransceiverChain1))))
         );
 
-        managerChain1.setThreshold(1);
-        managerChain2.setThreshold(1);
+        nttManagerChain1.setThreshold(1);
+        nttManagerChain2.setThreshold(1);
         vm.chainId(chainId1);
     }
 
-    function test_basicUpgradeManager() public {
+    function test_basicUpgradeNttManager() public {
         // Basic call to upgrade with the same contact as ewll
-        Manager newImplementation = new MockManagerContract(
-            address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
+        NttManager newImplementation = new MockNttManagerContract(
+            address(nttManagerChain1.token()), NttManager.Mode.LOCKING, chainId1, 1 days
         );
-        managerChain1.upgrade(address(newImplementation));
+        nttManagerChain1.upgrade(address(newImplementation));
 
         basicFunctionality();
     }
@@ -140,7 +141,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     function test_basicUpgradeTransceiver() public {
         // Basic call to upgrade with the same contact as well
         WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverContract(
-            address(managerChain1),
+            address(nttManagerChain1),
             address(wormhole),
             address(relayer),
             address(0x0),
@@ -151,19 +152,19 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         basicFunctionality();
     }
 
-    // Confirm that we can handle multiple upgrades as a manager
-    function test_doubleUpgradeManager() public {
+    // Confirm that we can handle multiple upgrades as a nttManager
+    function test_doubleUpgradeNttManager() public {
         // Basic call to upgrade with the same contact as ewll
-        Manager newImplementation = new MockManagerContract(
-            address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
+        NttManager newImplementation = new MockNttManagerContract(
+            address(nttManagerChain1.token()), NttManager.Mode.LOCKING, chainId1, 1 days
         );
-        managerChain1.upgrade(address(newImplementation));
+        nttManagerChain1.upgrade(address(newImplementation));
         basicFunctionality();
 
-        newImplementation = new MockManagerContract(
-            address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
+        newImplementation = new MockNttManagerContract(
+            address(nttManagerChain1.token()), NttManager.Mode.LOCKING, chainId1, 1 days
         );
-        managerChain1.upgrade(address(newImplementation));
+        nttManagerChain1.upgrade(address(newImplementation));
 
         basicFunctionality();
     }
@@ -172,7 +173,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     function test_doubleUpgradeTransceiver() public {
         // Basic call to upgrade with the same contact as well
         WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverContract(
-            address(managerChain1),
+            address(nttManagerChain1),
             address(wormhole),
             address(relayer),
             address(0x0),
@@ -188,26 +189,26 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         basicFunctionality();
     }
 
-    function test_storageSlotManager() public {
+    function test_storageSlotNttManager() public {
         // Basic call to upgrade with the same contact as ewll
-        Manager newImplementation = new MockManagerStorageLayoutChange(
-            address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
+        NttManager newImplementation = new MockNttManagerStorageLayoutChange(
+            address(nttManagerChain1.token()), NttManager.Mode.LOCKING, chainId1, 1 days
         );
-        managerChain1.upgrade(address(newImplementation));
+        nttManagerChain1.upgrade(address(newImplementation));
 
-        address oldOwner = managerChain1.owner();
-        MockManagerStorageLayoutChange(address(managerChain1)).setData();
+        address oldOwner = nttManagerChain1.owner();
+        MockNttManagerStorageLayoutChange(address(nttManagerChain1)).setData();
 
         // If we overrode something important, it would probably break here
         basicFunctionality();
 
-        require(oldOwner == managerChain1.owner(), "Owner changed in an unintended way.");
+        require(oldOwner == nttManagerChain1.owner(), "Owner changed in an unintended way.");
     }
 
     function test_storageSlotTransceiver() public {
         // Basic call to upgrade with the same contact as ewll
         WormholeTransceiver newImplementation = new MockWormholeTransceiverLayoutChange(
-            address(managerChain1),
+            address(nttManagerChain1),
             address(wormhole),
             address(relayer),
             address(0x0),
@@ -215,23 +216,23 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         );
         wormholeTransceiverChain1.upgrade(address(newImplementation));
 
-        address oldOwner = managerChain1.owner();
+        address oldOwner = nttManagerChain1.owner();
         MockWormholeTransceiverLayoutChange(address(wormholeTransceiverChain1)).setData();
 
         // If we overrode something important, it would probably break here
         basicFunctionality();
 
-        require(oldOwner == managerChain1.owner(), "Owner changed in an unintended way.");
+        require(oldOwner == nttManagerChain1.owner(), "Owner changed in an unintended way.");
     }
 
-    function test_callMigrateManager() public {
+    function test_callMigrateNttManager() public {
         // Basic call to upgrade with the same contact as ewll
-        Manager newImplementation = new MockManagerMigrateBasic(
-            address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
+        NttManager newImplementation = new MockNttManagerMigrateBasic(
+            address(nttManagerChain1.token()), NttManager.Mode.LOCKING, chainId1, 1 days
         );
 
         vm.expectRevert("Proper migrate called");
-        managerChain1.upgrade(address(newImplementation));
+        nttManagerChain1.upgrade(address(newImplementation));
 
         basicFunctionality();
     }
@@ -240,7 +241,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     function test_callMigrateTransceiver() public {
         // Basic call to upgrade with the same contact as well
         MockWormholeTransceiverMigrateBasic wormholeTransceiverChain1Implementation = new MockWormholeTransceiverMigrateBasic(
-            address(managerChain1),
+            address(nttManagerChain1),
             address(wormhole),
             address(relayer),
             address(0x0),
@@ -253,17 +254,18 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         basicFunctionality();
     }
 
-    function test_immutableBlockUpdateFailureManager() public {
+    function test_immutableBlockUpdateFailureNttManager() public {
         DummyToken tnew = new DummyToken();
 
         // Basic call to upgrade with the same contact as ewll
-        Manager newImplementation =
-            new MockManagerImmutableCheck(address(tnew), Manager.Mode.LOCKING, chainId1, 1 days);
+        NttManager newImplementation = new MockNttManagerImmutableCheck(
+            address(tnew), NttManager.Mode.LOCKING, chainId1, 1 days
+        );
 
         vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
-        managerChain1.upgrade(address(newImplementation));
+        nttManagerChain1.upgrade(address(newImplementation));
 
-        require(managerChain1.token() != address(tnew), "Token updated when it shouldn't be");
+        require(nttManagerChain1.token() != address(tnew), "Token updated when it shouldn't be");
 
         basicFunctionality();
     }
@@ -271,9 +273,9 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
     function test_immutableBlockUpdateFailureTransceiver() public {
         // Don't allow upgrade to work with a change immutable
 
-        address oldManager = wormholeTransceiverChain1.manager();
+        address oldNttManager = wormholeTransceiverChain1.nttManager();
         WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverMigrateBasic(
-            address(managerChain2),
+            address(nttManagerChain2),
             address(wormhole),
             address(relayer),
             address(0x0),
@@ -284,29 +286,29 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         wormholeTransceiverChain1.upgrade(address(wormholeTransceiverChain1Implementation));
 
         require(
-            wormholeTransceiverChain1.manager() == oldManager,
-            "Manager updated when it shouldn't be"
+            wormholeTransceiverChain1.nttManager() == oldNttManager,
+            "NttManager updated when it shouldn't be"
         );
     }
 
-    function test_immutableBlockUpdateSuccessManager() public {
+    function test_immutableBlockUpdateSuccessNttManager() public {
         DummyToken tnew = new DummyToken();
 
         // Basic call to upgrade with the same contact as ewll
-        Manager newImplementation = new MockManagerImmutableRemoveCheck(
-            address(tnew), Manager.Mode.LOCKING, chainId1, 1 days
+        NttManager newImplementation = new MockNttManagerImmutableRemoveCheck(
+            address(tnew), NttManager.Mode.LOCKING, chainId1, 1 days
         );
 
         // Allow an upgrade, since we enabled the ability to edit the immutables within the code
-        managerChain1.upgrade(address(newImplementation));
-        require(managerChain1.token() == address(tnew), "Token not updated");
+        nttManagerChain1.upgrade(address(newImplementation));
+        require(nttManagerChain1.token() == address(tnew), "Token not updated");
 
         basicFunctionality();
     }
 
     function test_immutableBlockUpdateSuccessTransceiver() public {
         WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverImmutableAllow(
-            address(managerChain1),
+            address(nttManagerChain1),
             address(wormhole),
             address(relayer),
             address(0x0),
@@ -317,29 +319,29 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         wormholeTransceiverChain1.upgrade(address(wormholeTransceiverChain1Implementation));
 
         require(
-            wormholeTransceiverChain1.manager() == address(managerChain1),
-            "Manager updated when it shouldn't be"
+            wormholeTransceiverChain1.nttManager() == address(nttManagerChain1),
+            "NttManager updated when it shouldn't be"
         );
     }
 
-    function test_authManager() public {
+    function test_authNttManager() public {
         // User not owner so this should fail
         vm.prank(userA);
         vm.expectRevert(
             abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA)
         );
-        managerChain1.upgrade(address(0x1));
+        nttManagerChain1.upgrade(address(0x1));
 
         // Basic call to upgrade so that we can get the real implementation.
-        Manager newImplementation = new MockManagerContract(
-            address(managerChain1.token()), Manager.Mode.LOCKING, chainId1, 1 days
+        NttManager newImplementation = new MockNttManagerContract(
+            address(nttManagerChain1.token()), NttManager.Mode.LOCKING, chainId1, 1 days
         );
-        managerChain1.upgrade(address(newImplementation));
+        nttManagerChain1.upgrade(address(newImplementation));
 
         basicFunctionality(); // Ensure that the upgrade was proper
 
         vm.expectRevert(abi.encodeWithSelector(Implementation.NotMigrating.selector));
-        managerChain1.migrate();
+        nttManagerChain1.migrate();
 
         // Test if we can 'migrate' from this point
         // Migrate without delegatecall
@@ -351,11 +353,11 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         vm.expectRevert(
             abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, userA)
         );
-        managerChain1.transferOwnership(address(0x1));
+        nttManagerChain1.transferOwnership(address(0x1));
 
         // Should fail because it's already initialized
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        managerChain1.initialize();
+        nttManagerChain1.initialize();
 
         // Should fail because we're calling the implementation directly instead of the proxy.
         vm.expectRevert(Implementation.OnlyDelegateCall.selector);
@@ -372,7 +374,7 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
         // Basic call so that we can easily see what the new transceiver is.
         WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverContract(
-            address(managerChain1),
+            address(nttManagerChain1),
             address(wormhole),
             address(relayer),
             address(0x0),
@@ -410,22 +412,22 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
         vm.chainId(chainId1);
 
         // Setting up the transfer
-        DummyToken token1 = DummyToken(managerChain1.token());
-        DummyToken token2 = DummyTokenMintAndBurn(managerChain2.token());
+        DummyToken token1 = DummyToken(nttManagerChain1.token());
+        DummyToken token2 = DummyTokenMintAndBurn(nttManagerChain2.token());
 
         uint8 decimals = token1.decimals();
         uint256 sendingAmount = 5 * 10 ** decimals;
         token1.mintDummy(address(userA), 5 * 10 ** decimals);
         vm.startPrank(userA);
-        token1.approve(address(managerChain1), sendingAmount);
+        token1.approve(address(nttManagerChain1), sendingAmount);
 
         vm.recordLogs();
 
         // Send token through standard means (not relayer)
         {
-            uint256 managerBalanceBefore = token1.balanceOf(address(managerChain1));
+            uint256 nttManagerBalanceBefore = token1.balanceOf(address(nttManagerChain1));
             uint256 userBalanceBefore = token1.balanceOf(address(userA));
-            managerChain1.transfer(
+            nttManagerChain1.transfer(
                 sendingAmount,
                 chainId2,
                 bytes32(uint256(uint160(userB))),
@@ -434,10 +436,10 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
             );
 
             // Balance check on funds going in and out working as expected
-            uint256 managerBalanceAfter = token1.balanceOf(address(managerChain1));
+            uint256 nttManagerBalanceAfter = token1.balanceOf(address(nttManagerChain1));
             uint256 userBalanceAfter = token1.balanceOf(address(userB));
             require(
-                managerBalanceBefore + sendingAmount == managerBalanceAfter,
+                nttManagerBalanceBefore + sendingAmount == nttManagerBalanceAfter,
                 "Should be locking the tokens"
             );
             require(
@@ -467,7 +469,9 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
             require(sendingAmount + supplyBefore == supplyAfter, "Supplies dont match");
             require(token2.balanceOf(userB) == sendingAmount, "User didn't receive tokens");
-            require(token2.balanceOf(address(managerChain2)) == 0, "Manager has unintended funds");
+            require(
+                token2.balanceOf(address(nttManagerChain2)) == 0, "NttManager has unintended funds"
+            );
         }
 
         // Can't resubmit the same message twice
@@ -480,13 +484,13 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 
         vm.startPrank(userC);
 
-        token2.approve(address(managerChain2), sendingAmount);
+        token2.approve(address(nttManagerChain2), sendingAmount);
         vm.recordLogs();
 
         // Supply checks on the transfer
         {
             uint256 supplyBefore = token2.totalSupply();
-            managerChain2.transfer(
+            nttManagerChain2.transfer(
                 sendingAmount,
                 chainId1,
                 bytes32(uint256(uint160(userD))),
@@ -500,8 +504,8 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
             require(token2.balanceOf(userB) == 0, "OG user receive tokens");
             require(token2.balanceOf(userC) == 0, "Sending user didn't receive tokens");
             require(
-                token2.balanceOf(address(managerChain2)) == 0,
-                "Manager didn't receive unintended funds"
+                token2.balanceOf(address(nttManagerChain2)) == 0,
+                "NttManager didn't receive unintended funds"
             );
         }
 
@@ -550,8 +554,8 @@ contract TestUpgrades is Test, IManagerEvents, IRateLimiterEvents {
 contract TestInitialize is Test {
     function setUp() public {}
 
-    Manager managerChain1;
-    Manager managerChain2;
+    NttManager nttManagerChain1;
+    NttManager nttManagerChain2;
 
     using NormalizedAmountLib for uint256;
     using NormalizedAmountLib for NormalizedAmount;
@@ -573,17 +577,18 @@ contract TestInitialize is Test {
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
-        Manager implementation =
-            new MockManagerContract(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
+        NttManager implementation =
+            new MockNttManagerContract(address(t1), NttManager.Mode.LOCKING, chainId1, 1 days);
 
-        managerChain1 = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
+        nttManagerChain1 =
+            MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
 
         // Initialize once
-        managerChain1.initialize();
+        nttManagerChain1.initialize();
 
         // Initialize twice
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        managerChain1.initialize();
+        nttManagerChain1.initialize();
     }
 
     function test_cannotFrontrunInitialize() public {
@@ -592,16 +597,17 @@ contract TestInitialize is Test {
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
-        Manager implementation =
-            new MockManagerContract(address(t1), Manager.Mode.LOCKING, chainId1, 1 days);
+        NttManager implementation =
+            new MockNttManagerContract(address(t1), NttManager.Mode.LOCKING, chainId1, 1 days);
 
-        managerChain1 = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
+        nttManagerChain1 =
+            MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
 
         // Attempt to initialize the contract from a non-deployer account.
         vm.prank(userA);
         vm.expectRevert(
             abi.encodeWithSignature("UnexpectedOwner(address,address)", address(this), userA)
         );
-        managerChain1.initialize();
+        nttManagerChain1.initialize();
     }
 }

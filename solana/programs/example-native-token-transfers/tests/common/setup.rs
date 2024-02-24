@@ -172,7 +172,7 @@ pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
         RegisterTransceiver {
             payer: ctx.payer.pubkey(),
             owner: test_data.program_owner.pubkey(),
-            transceiver: example_native_token_transfers::ID, // standalone manager&transceiver
+            transceiver: example_native_token_transfers::ID, // standalone ntt_manager&transceiver
         },
     )
     .submit_with_signers(&[&test_data.program_owner], ctx)

@@ -3,19 +3,19 @@ import { assert } from 'chai'
 
 export class TransceiverMessage<A> {
   static prefix: Buffer
-  sourceManager: Buffer
-  recipientManager: Buffer
-  managerPayload: ManagerMessage<A>
+  sourceNttManager: Buffer
+  recipientNttManager: Buffer
+  ntt_managerPayload: NttManagerMessage<A>
   transceiverPayload: Buffer
 
-  constructor(sourceManager: Buffer, recipientManager: Buffer, managerPayload: ManagerMessage<A>, transceiverPayload: Buffer) {
-    this.sourceManager = sourceManager
-    this.recipientManager = recipientManager
-    this.managerPayload = managerPayload
+  constructor(sourceNttManager: Buffer, recipientNttManager: Buffer, ntt_managerPayload: NttManagerMessage<A>, transceiverPayload: Buffer) {
+    this.sourceNttManager = sourceNttManager
+    this.recipientNttManager = recipientNttManager
+    this.ntt_managerPayload = ntt_managerPayload
     this.transceiverPayload = transceiverPayload
   }
 
-  static deserialize<A>(data: Buffer, deserializer: (data: Buffer) => ManagerMessage<A>): TransceiverMessage<A> {
+  static deserialize<A>(data: Buffer, deserializer: (data: Buffer) => NttManagerMessage<A>): TransceiverMessage<A> {
     if (this.prefix == undefined) {
       throw new Error('Unknown prefix.')
     }
@@ -23,25 +23,25 @@ export class TransceiverMessage<A> {
     if (!prefix.equals(this.prefix)) {
       throw new Error('Invalid prefix')
     }
-    const sourceManager = data.subarray(4, 36)
-    const recipientManager = data.subarray(36, 68)
-    const managerPayloadLen = data.readUInt16BE(68)
-    const managerPayload = deserializer(data.subarray(70, 70 + managerPayloadLen))
-    const transceiverPayloadLen = data.readUInt16BE(70 + managerPayloadLen)
-    const transceiverPayload = data.subarray(72 + managerPayloadLen, 72 + managerPayloadLen + transceiverPayloadLen)
-    return new TransceiverMessage(sourceManager, recipientManager, managerPayload, transceiverPayload)
+    const sourceNttManager = data.subarray(4, 36)
+    const recipientNttManager = data.subarray(36, 68)
+    const ntt_managerPayloadLen = data.readUInt16BE(68)
+    const ntt_managerPayload = deserializer(data.subarray(70, 70 + ntt_managerPayloadLen))
+    const transceiverPayloadLen = data.readUInt16BE(70 + ntt_managerPayloadLen)
+    const transceiverPayload = data.subarray(72 + ntt_managerPayloadLen, 72 + ntt_managerPayloadLen + transceiverPayloadLen)
+    return new TransceiverMessage(sourceNttManager, recipientNttManager, ntt_managerPayload, transceiverPayload)
   }
 
-  static serialize<A>(msg: TransceiverMessage<A>, serializer: (payload: ManagerMessage<A>) => Buffer): Buffer {
-    const payload = serializer(msg.managerPayload)
-    assert(msg.sourceManager.length == 32, 'sourceManager must be 32 bytes')
-    assert(msg.recipientManager.length == 32, 'recipientManager must be 32 bytes')
+  static serialize<A>(msg: TransceiverMessage<A>, serializer: (payload: NttManagerMessage<A>) => Buffer): Buffer {
+    const payload = serializer(msg.ntt_managerPayload)
+    assert(msg.sourceNttManager.length == 32, 'sourceNttManager must be 32 bytes')
+    assert(msg.recipientNttManager.length == 32, 'recipientNttManager must be 32 bytes')
     const payloadLen = new BN(payload.length).toBuffer('be', 2)
     const transceiverPayloadLen = new BN(msg.transceiverPayload.length).toBuffer('be', 2)
     const buffer = Buffer.concat([
       this.prefix,
-      msg.sourceManager,
-      msg.recipientManager,
+      msg.sourceNttManager,
+      msg.recipientNttManager,
       payloadLen,
       payload,
       transceiverPayloadLen,
@@ -51,7 +51,7 @@ export class TransceiverMessage<A> {
   }
 }
 
-export class ManagerMessage<A> {
+export class NttManagerMessage<A> {
   sequence: bigint
   sender: Buffer
   payload: A
@@ -62,15 +62,15 @@ export class ManagerMessage<A> {
     this.payload = payload
   }
 
-  static deserialize = <A>(data: Buffer, deserializer: (data: Buffer) => A): ManagerMessage<A> => {
+  static deserialize = <A>(data: Buffer, deserializer: (data: Buffer) => A): NttManagerMessage<A> => {
     const sequence = data.readBigUInt64BE(0)
     const sender = data.subarray(8, 40)
     const payloadLen = data.readUint16BE(40)
     const payload = deserializer(data.subarray(42, 42 + payloadLen))
-    return new ManagerMessage(sequence, sender, payload)
+    return new NttManagerMessage(sequence, sender, payload)
   }
 
-  static serialize = <A>(msg: ManagerMessage<A>, serializer: (payload: A) => Buffer): Buffer => {
+  static serialize = <A>(msg: NttManagerMessage<A>, serializer: (payload: A) => Buffer): Buffer => {
     const buffer = Buffer.alloc(40)
     buffer.writeBigUInt64BE(msg.sequence, 0)
     buffer.set(msg.sender, 8)

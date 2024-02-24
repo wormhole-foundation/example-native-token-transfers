@@ -13,10 +13,10 @@ pub enum NTTError {
     InvalidRecipientAddress,
     #[msg("InvalidTransceiverSibling")]
     InvalidTransceiverSibling,
-    #[msg("InvalidManagerSibling")]
-    InvalidManagerSibling,
-    #[msg("InvalidRecipientManager")]
-    InvalidRecipientManager,
+    #[msg("InvalidNttManagerSibling")]
+    InvalidNttManagerSibling,
+    #[msg("InvalidRecipientNttManager")]
+    InvalidRecipientNttManager,
     #[msg("TransferAlreadyRedeemed")]
     TransferAlreadyRedeemed,
     #[msg("TransferNotApproved")]

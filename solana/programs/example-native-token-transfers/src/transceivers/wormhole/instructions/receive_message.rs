@@ -33,7 +33,7 @@ pub struct ReceiveMessage<'info> {
     // as the message type).
     #[account(
         // check that the messages is targeted to this chain
-        constraint = vaa.message().manager_payload.payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
+        constraint = vaa.message().ntt_manager_payload.payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
         // NOTE: we don't replay protect VAAs. Instead, we replay protect
         // executing the messages themselves with the [`released`] flag.
     )]
@@ -47,7 +47,7 @@ pub struct ReceiveMessage<'info> {
         seeds = [
             ValidatedTransceiverMessage::<TransceiverMessageData<NativeTokenTransfer>>::SEED_PREFIX,
             vaa.emitter_chain().to_be_bytes().as_ref(),
-            vaa.message().manager_payload.sequence.to_be_bytes().as_ref(),
+            vaa.message().ntt_manager_payload.sequence.to_be_bytes().as_ref(),
         ],
         bump,
     )]

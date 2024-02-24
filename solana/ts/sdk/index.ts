@@ -14,7 +14,7 @@ import {
 } from '@solana/web3.js'
 import { Keccak } from 'sha3'
 import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from '../../target/types/example_native_token_transfers'
-import { ManagerMessage } from './payloads/common'
+import { NttManagerMessage } from './payloads/common'
 import { NativeTokenTransfer } from './payloads/transfers'
 import { WormholeTransceiverMessage } from './payloads/wormhole'
 import { BPF_LOADER_UPGRADEABLE_PROGRAM_ID, programDataAddress } from './utils'
@@ -22,7 +22,7 @@ import * as splToken from '@solana/spl-token';
 import IDL from '../../target/idl/example_native_token_transfers.json';
 
 export { NormalizedAmount } from './normalized_amount'
-export { TransceiverMessage, ManagerMessage } from './payloads/common'
+export { TransceiverMessage, NttManagerMessage } from './payloads/common'
 export { NativeTokenTransfer } from './payloads/transfers'
 export { WormholeTransceiverMessage } from './payloads/wormhole'
 
@@ -105,9 +105,9 @@ export class NTT {
     return this.derive_pda([Buffer.from('inbox_rate_limit'), new BN(chainId).toBuffer('be', 2)])
   }
 
-  inboxItemAccountAddress(chain: ChainName | ChainId, managerMessage: ManagerMessage<NativeTokenTransfer>): PublicKey {
+  inboxItemAccountAddress(chain: ChainName | ChainId, ntt_managerMessage: NttManagerMessage<NativeTokenTransfer>): PublicKey {
     const chainId = coalesceChainId(chain)
-    const serialized = ManagerMessage.serialize(managerMessage, NativeTokenTransfer.serialize)
+    const serialized = NttManagerMessage.serialize(ntt_managerMessage, NativeTokenTransfer.serialize)
     const hasher = new Keccak(256)
     hasher.update(new BN(chainId).toBuffer('be', 2))
     hasher.update(serialized)
@@ -413,7 +413,7 @@ export class NTT {
   async createReleaseInboundMintInstruction(args: {
     payer: PublicKey
     chain: ChainName | ChainId
-    managerMessage: ManagerMessage<NativeTokenTransfer>
+    ntt_managerMessage: NttManagerMessage<NativeTokenTransfer>
     revertOnDelay: boolean
     recipient?: PublicKey
     config?: Config
@@ -425,7 +425,7 @@ export class NTT {
     }
 
     const recipientAddress =
-      args.recipient ?? (await this.getInboxItem(args.chain, args.managerMessage)).recipientAddress
+      args.recipient ?? (await this.getInboxItem(args.chain, args.ntt_managerMessage)).recipientAddress
 
     const mint = await this.mintAccountAddress(config)
 
@@ -437,7 +437,7 @@ export class NTT {
         common: {
           payer: args.payer,
           config: { config: this.configAccountAddress() },
-          inboxItem: this.inboxItemAccountAddress(args.chain, args.managerMessage),
+          inboxItem: this.inboxItemAccountAddress(args.chain, args.ntt_managerMessage),
           recipient: getAssociatedTokenAddressSync(mint, recipientAddress),
           mint,
           tokenAuthority: this.tokenAuthorityAddress(),
@@ -449,7 +449,7 @@ export class NTT {
   async releaseInboundMint(args: {
     payer: Keypair
     chain: ChainName | ChainId
-    managerMessage: ManagerMessage<NativeTokenTransfer>
+    ntt_managerMessage: NttManagerMessage<NativeTokenTransfer>
     revertOnDelay: boolean
     config?: Config
   }): Promise<void> {
@@ -472,7 +472,7 @@ export class NTT {
   async createReleaseInboundUnlockInstruction(args: {
     payer: PublicKey
     chain: ChainName | ChainId
-    managerMessage: ManagerMessage<NativeTokenTransfer>
+    ntt_managerMessage: NttManagerMessage<NativeTokenTransfer>
     revertOnDelay: boolean
     recipient?: PublicKey
     config?: Config
@@ -484,7 +484,7 @@ export class NTT {
     }
 
     const recipientAddress =
-      args.recipient ?? (await this.getInboxItem(args.chain, args.managerMessage)).recipientAddress
+      args.recipient ?? (await this.getInboxItem(args.chain, args.ntt_managerMessage)).recipientAddress
 
     const mint = await this.mintAccountAddress(config)
 
@@ -496,7 +496,7 @@ export class NTT {
         common: {
           payer: args.payer,
           config: { config: this.configAccountAddress() },
-          inboxItem: this.inboxItemAccountAddress(args.chain, args.managerMessage),
+          inboxItem: this.inboxItemAccountAddress(args.chain, args.ntt_managerMessage),
           recipient: getAssociatedTokenAddressSync(mint, recipientAddress),
           mint,
           tokenAuthority: this.tokenAuthorityAddress(),
@@ -509,7 +509,7 @@ export class NTT {
   async releaseInboundUnlock(args: {
     payer: Keypair
     chain: ChainName | ChainId
-    managerMessage: ManagerMessage<NativeTokenTransfer>
+    ntt_managerMessage: NttManagerMessage<NativeTokenTransfer>
     revertOnDelay: boolean
     config?: Config
   }): Promise<void> {
@@ -601,10 +601,10 @@ export class NTT {
     }
 
     const parsedVaa = parseVaa(args.vaa)
-    const managerMessage =
+    const ntt_managerMessage =
       WormholeTransceiverMessage.deserialize(
-        parsedVaa.payload, a => ManagerMessage.deserialize(a, a => a)
-      ).managerPayload
+        parsedVaa.payload, a => NttManagerMessage.deserialize(a, a => a)
+      ).ntt_managerPayload
     // NOTE: we do an 'as ChainId' cast here, which is generally unsafe.
     // TODO: explain why this is fine here
     const chainId = parsedVaa.emitterChain as ChainId
@@ -618,7 +618,7 @@ export class NTT {
       vaa: derivePostedVaaKey(this.wormholeId, parseVaa(args.vaa).hash),
       transceiverMessage: this.transceiverMessageAccountAddress(
         chainId,
-        new BN(managerMessage.sequence.toString())
+        new BN(ntt_managerMessage.sequence.toString())
       ),
     }).instruction();
   }
@@ -638,16 +638,16 @@ export class NTT {
     const parsedVaa = parseVaa(args.vaa)
     const transceiverMessage =
       WormholeTransceiverMessage.deserialize(
-        parsedVaa.payload, a => ManagerMessage.deserialize(
+        parsedVaa.payload, a => NttManagerMessage.deserialize(
           a, NativeTokenTransfer.deserialize
         )
       )
-    const managerMessage = transceiverMessage.managerPayload
+    const ntt_managerMessage = transceiverMessage.ntt_managerPayload
     // NOTE: we do an 'as ChainId' cast here, which is generally unsafe.
     // TODO: explain why this is fine here
     const chainId = parsedVaa.emitterChain as ChainId
 
-    const managerSibling = this.siblingAccountAddress(chainId)
+    const ntt_managerSibling = this.siblingAccountAddress(chainId)
     const inboxRateLimit = this.inboxRateLimitAccountAddress(chainId)
 
     return await this.program.methods
@@ -655,11 +655,11 @@ export class NTT {
       .accounts({
         payer: args.payer,
         config: this.configAccountAddress(),
-        sibling: managerSibling,
-        transceiverMessage: this.transceiverMessageAccountAddress(chainId, new BN(managerMessage.sequence.toString())),
+        sibling: ntt_managerSibling,
+        transceiverMessage: this.transceiverMessageAccountAddress(chainId, new BN(ntt_managerMessage.sequence.toString())),
         transceiver: this.registeredTransceiverAddress(this.program.programId),
         mint: await this.mintAccountAddress(config),
-        inboxItem: this.inboxItemAccountAddress(chainId, managerMessage),
+        inboxItem: this.inboxItemAccountAddress(chainId, ntt_managerMessage),
         inboxRateLimit,
         outboxRateLimit: this.outboxRateLimitAccountAddress(),
       })
@@ -688,10 +688,10 @@ export class NTT {
 
     const parsedVaa = parseVaa(args.vaa)
 
-    const managerMessage =
+    const ntt_managerMessage =
       WormholeTransceiverMessage.deserialize(
-        parsedVaa.payload, a => ManagerMessage.deserialize(a, NativeTokenTransfer.deserialize)
-      ).managerPayload
+        parsedVaa.payload, a => NttManagerMessage.deserialize(a, NativeTokenTransfer.deserialize)
+      ).ntt_managerPayload
     // TODO: explain why this is fine here
     const chainId = parsedVaa.emitterChain as ChainId
 
@@ -717,8 +717,8 @@ export class NTT {
     const releaseArgs = {
       ...args,
       payer: args.payer.publicKey,
-      managerMessage,
-      recipient: new PublicKey(managerMessage.payload.recipientAddress),
+      ntt_managerMessage,
+      recipient: new PublicKey(ntt_managerMessage.payload.recipientAddress),
       chain: chainId,
       revertOnDelay: false
     }
@@ -733,7 +733,7 @@ export class NTT {
     await this.sendAndConfirmTransaction(tx, signers)
 
     // Let's check if the transfer was released
-    const inboxItem = await this.getInboxItem(chainId, managerMessage)
+    const inboxItem = await this.getInboxItem(chainId, ntt_managerMessage)
     return inboxItem.releaseStatus.released !== null
   }
 
@@ -763,8 +763,8 @@ export class NTT {
     return (await this.getConfig(config)).tokenProgram
   }
 
-  async getInboxItem(chain: ChainName | ChainId, managerMessage: ManagerMessage<NativeTokenTransfer>): Promise<InboxItem> {
-    return await this.program.account.inboxItem.fetch(this.inboxItemAccountAddress(chain, managerMessage))
+  async getInboxItem(chain: ChainName | ChainId, ntt_managerMessage: NttManagerMessage<NativeTokenTransfer>): Promise<InboxItem> {
+    return await this.program.account.inboxItem.fetch(this.inboxItemAccountAddress(chain, ntt_managerMessage))
   }
 
   /**

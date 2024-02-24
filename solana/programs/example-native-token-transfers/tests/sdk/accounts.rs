@@ -8,7 +8,7 @@ use example_native_token_transfers::{
     registered_transceiver::RegisteredTransceiver,
     sequence::Sequence,
 };
-use ntt_messages::{manager::ManagerMessage, ntt::NativeTokenTransfer};
+use ntt_messages::{ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage};
 use sha3::{Digest, Keccak256};
 use wormhole_anchor_sdk::wormhole;
 use wormhole_io::TypePrefixedPayload;
@@ -98,11 +98,11 @@ impl NTT {
     pub fn inbox_item(
         &self,
         chain: u16,
-        manager_message: ManagerMessage<NativeTokenTransfer>,
+        ntt_manager_message: NttManagerMessage<NativeTokenTransfer>,
     ) -> Pubkey {
         let mut hasher = Keccak256::new();
         hasher.update(chain.to_be_bytes());
-        hasher.update(&TypePrefixedPayload::to_vec_payload(&manager_message));
+        hasher.update(&TypePrefixedPayload::to_vec_payload(&ntt_manager_message));
 
         let (inbox_item, _) = Pubkey::find_program_address(
             &[InboxItem::SEED_PREFIX, &hasher.finalize()],

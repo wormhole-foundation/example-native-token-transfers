@@ -4,7 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 import "../libraries/NormalizedAmount.sol";
 import "../libraries/TransceiverStructs.sol";
 
-interface IManager {
+interface INttManager {
     /// @notice payment for a transfer is too low.
     /// @param requiredPayment The required payment.
     /// @param providedPayment The provided payment.
@@ -28,7 +28,7 @@ interface IManager {
 
     /// @notice the sibling for the chain does not match the configuration.
     /// @param chainId ChainId of the source chain.
-    /// @param siblingAddress Address of the sibling manager contract.
+    /// @param siblingAddress Address of the sibling nttManager contract.
     error InvalidSibling(uint16 chainId, bytes32 siblingAddress);
     error InvalidSiblingChainIdZero();
 
@@ -120,25 +120,25 @@ interface IManager {
     ///         Once all validations are complete, this function calls _executeMsg to execute
     ///         the command specified by the message.
     /// @param sourceChainId The chain id of the sender.
-    /// @param sourceManagerAddress The address of the sender's manager contract.
+    /// @param sourceNttManagerAddress The address of the sender's nttManager contract.
     /// @param payload The VAA payload.
     function attestationReceived(
         uint16 sourceChainId,
-        bytes32 sourceManagerAddress,
-        TransceiverStructs.ManagerMessage memory payload
+        bytes32 sourceNttManagerAddress,
+        TransceiverStructs.NttManagerMessage memory payload
     ) external;
 
-    /// @notice upgrade to a new manager implementation.
+    /// @notice upgrade to a new nttManager implementation.
     /// @dev This is upgraded via a proxy.
     ///
     /// @param newImplementation The address of the new implementation.
     function upgrade(address newImplementation) external;
 
-    /// @notice Returns the mode (locking or burning) of the Manager.
+    /// @notice Returns the mode (locking or burning) of the NttManager.
     /// @return mode A uint8 corresponding to the mode
     function getMode() external view returns (uint8);
 
-    /// @notice Returns the number of decimals of the token managed by the Manager.
+    /// @notice Returns the number of decimals of the token managed by the NttManager.
     /// @return decimals The number of decimals of the token.
     function tokenDecimals() external view returns (uint8);
 }

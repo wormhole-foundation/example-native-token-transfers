@@ -12,16 +12,16 @@ use crate::utils::maybe_space::MaybeSpace;
     feature = "anchor",
     derive(AnchorSerialize, AnchorDeserialize, InitSpace)
 )]
-pub struct ManagerMessage<A: MaybeSpace> {
+pub struct NttManagerMessage<A: MaybeSpace> {
     pub sequence: u64,
     pub sender: [u8; 32],
     pub payload: A,
 }
 
 #[cfg(feature = "hash")]
-impl<A: MaybeSpace> ManagerMessage<A>
+impl<A: MaybeSpace> NttManagerMessage<A>
 where
-    ManagerMessage<A>: TypePrefixedPayload,
+    NttManagerMessage<A>: TypePrefixedPayload,
 {
     pub fn keccak256(&self, chain_id: crate::chain_id::ChainId) -> solana_program::keccak::Hash {
         let mut bytes: Vec<u8> = Vec::new();
@@ -31,11 +31,11 @@ where
     }
 }
 
-impl<A: TypePrefixedPayload + MaybeSpace> TypePrefixedPayload for ManagerMessage<A> {
+impl<A: TypePrefixedPayload + MaybeSpace> TypePrefixedPayload for NttManagerMessage<A> {
     const TYPE: Option<u8> = None;
 }
 
-impl<A: TypePrefixedPayload + MaybeSpace> Readable for ManagerMessage<A> {
+impl<A: TypePrefixedPayload + MaybeSpace> Readable for NttManagerMessage<A> {
     const SIZE: Option<usize> = None;
 
     fn read<R>(reader: &mut R) -> io::Result<Self>
@@ -45,7 +45,7 @@ impl<A: TypePrefixedPayload + MaybeSpace> Readable for ManagerMessage<A> {
     {
         let sequence = Readable::read(reader)?;
         let sender = Readable::read(reader)?;
-        // TODO: same as below for manager payload
+        // TODO: same as below for ntt_manager payload
         let _payload_len: u16 = Readable::read(reader)?;
         let payload = A::read_payload(reader)?;
 
@@ -57,7 +57,7 @@ impl<A: TypePrefixedPayload + MaybeSpace> Readable for ManagerMessage<A> {
     }
 }
 
-impl<A: TypePrefixedPayload + MaybeSpace> Writeable for ManagerMessage<A> {
+impl<A: TypePrefixedPayload + MaybeSpace> Writeable for NttManagerMessage<A> {
     fn written_size(&self) -> usize {
         u64::SIZE.unwrap()
             + self.sender.len()
@@ -69,7 +69,7 @@ impl<A: TypePrefixedPayload + MaybeSpace> Writeable for ManagerMessage<A> {
     where
         W: io::Write,
     {
-        let ManagerMessage {
+        let NttManagerMessage {
             sequence,
             sender,
             payload,

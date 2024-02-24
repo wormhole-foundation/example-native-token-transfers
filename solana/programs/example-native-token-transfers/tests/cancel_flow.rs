@@ -10,8 +10,8 @@ use example_native_token_transfers::{
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit},
 };
 use ntt_messages::{
-    chain_id::ChainId, manager::ManagerMessage, normalized_amount::NormalizedAmount,
-    ntt::NativeTokenTransfer, transceiver::TransceiverMessage,
+    chain_id::ChainId, normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer,
+    ntt_manager::NttManagerMessage, transceiver::TransceiverMessage,
     transceivers::wormhole::WormholeTransceiver,
 };
 use sdk::transceivers::wormhole::instructions::receive_message::ReceiveMessage;
@@ -69,7 +69,7 @@ fn init_redeem_accs(
     ctx: &mut ProgramTestContext,
     test_data: &TestData,
     chain_id: u16,
-    manager_message: ManagerMessage<NativeTokenTransfer>,
+    ntt_manager_message: NttManagerMessage<NativeTokenTransfer>,
 ) -> Redeem {
     Redeem {
         payer: ctx.payer.pubkey(),
@@ -77,8 +77,8 @@ fn init_redeem_accs(
         transceiver: test_data.ntt.program,
         transceiver_message: test_data
             .ntt
-            .transceiver_message(chain_id, manager_message.sequence),
-        inbox_item: test_data.ntt.inbox_item(chain_id, manager_message),
+            .transceiver_message(chain_id, ntt_manager_message.sequence),
+        inbox_item: test_data.ntt.inbox_item(chain_id, ntt_manager_message),
         inbox_rate_limit: test_data.ntt.inbox_rate_limit(chain_id),
         mint: test_data.mint,
     }
@@ -105,13 +105,13 @@ async fn post_transfer_vaa(
     test_data: &TestData,
     sequence: u64,
     amount: u64,
-    // TODO: this is used for a negative testing of the recipient manager
+    // TODO: this is used for a negative testing of the recipient ntt_manager
     // address. this should not be done in the cancel flow tests, but instead a
     // dedicated receive transfer test suite
-    recipient_manager: Option<&Pubkey>,
+    recipient_ntt_manager: Option<&Pubkey>,
     recipient: &Keypair,
-) -> (Pubkey, ManagerMessage<NativeTokenTransfer>) {
-    let manager_message = ManagerMessage {
+) -> (Pubkey, NttManagerMessage<NativeTokenTransfer>) {
+    let ntt_manager_message = NttManagerMessage {
         sequence,
         sender: [4u8; 32],
         payload: NativeTokenTransfer {
@@ -128,10 +128,10 @@ async fn post_transfer_vaa(
     let transceiver_message: TransceiverMessage<WormholeTransceiver, NativeTokenTransfer> =
         TransceiverMessage::new(
             OTHER_MANAGER,
-            recipient_manager
+            recipient_ntt_manager
                 .map(|k| k.to_bytes())
                 .unwrap_or_else(|| test_data.ntt.program.to_bytes()),
-            manager_message.clone(),
+            ntt_manager_message.clone(),
             vec![],
         );
 
@@ -150,7 +150,7 @@ async fn post_transfer_vaa(
 
     let posted_vaa = post_vaa(&test_data.ntt.wormhole, ctx, vaa).await;
 
-    (posted_vaa, manager_message)
+    (posted_vaa, ntt_manager_message)
 }
 
 async fn outbound_capacity(ctx: &mut ProgramTestContext, test_data: &TestData) -> u64 {
@@ -269,7 +269,7 @@ async fn test_cancel() {
 
 // TODO: this should not live in this file, move to a dedicated receive test suite
 #[tokio::test]
-async fn test_wrong_recipient_manager() {
+async fn test_wrong_recipient_ntt_manager() {
     let recipient = Keypair::new();
     let (mut ctx, test_data) = setup(Mode::Locking).await;
 
@@ -304,7 +304,7 @@ async fn test_wrong_recipient_manager() {
         err.unwrap(),
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(NTTError::InvalidRecipientManager.into())
+            InstructionError::Custom(NTTError::InvalidRecipientNttManager.into())
         )
     );
 }
