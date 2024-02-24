@@ -262,14 +262,14 @@ contract Manager is
                 recipientChain,
                 endpointInstructions[registeredEndpointIndex],
                 managerMessage,
-                _getSibling(recipientChain)
+                getSibling(recipientChain)
             );
         }
     }
 
     function isMessageApproved(bytes32 digest) public view returns (bool) {
         uint8 threshold = getThreshold();
-        return _messageAttestations(digest) >= threshold && threshold > 0;
+        return messageAttestations(digest) >= threshold && threshold > 0;
     }
 
     function _setEndpointAttestedToMessage(bytes32 digest, uint8 index) internal {
@@ -562,7 +562,7 @@ contract Manager is
 
     /// @dev Verify that the sibling address saved for `sourceChainId` matches the `siblingAddress`.
     function _verifySibling(uint16 sourceChainId, bytes32 siblingAddress) internal view {
-        if (_getSibling(sourceChainId) != siblingAddress) {
+        if (getSibling(sourceChainId) != siblingAddress) {
             revert InvalidSibling(sourceChainId, siblingAddress);
         }
     }
@@ -702,7 +702,7 @@ contract Manager is
         return _getMessageAttestationsStorage()[digest].executed;
     }
 
-    function _getSibling(uint16 chainId_) internal view returns (bytes32) {
+    function getSibling(uint16 chainId_) public view returns (bytes32) {
         return _getSiblingsStorage()[chainId_];
     }
 
@@ -755,7 +755,7 @@ contract Manager is
     }
 
     // @dev Count the number of attestations from enabled endpoints for a given message.
-    function _messageAttestations(bytes32 digest) internal view returns (uint8 count) {
+    function messageAttestations(bytes32 digest) public view returns (uint8 count) {
         return countSetBits(_getMessageAttestations(digest));
     }
 
