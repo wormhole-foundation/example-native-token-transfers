@@ -8,7 +8,15 @@ library EndpointStructs {
     using BytesParsing for bytes;
     using NormalizedAmountLib for NormalizedAmount;
 
+    /// @notice Error thrown when the payload length exceeds the allowed maximum.
+    /// @dev Selector 0xa3419691.
+    /// @param size The size of the payload.
     error PayloadTooLong(uint256 size);
+
+    /// @notice Error thrown when the prefix of an encoded message
+    ///         does not match the expected value.
+    /// @dev Selector 0x56d2569d.
+    /// @param prefix The prefix that was found in the encoded message.
     error IncorrectPrefix(bytes4 prefix);
     error UnorderedInstructions();
 
@@ -50,11 +58,9 @@ library EndpointStructs {
         return abi.encodePacked(m.sequence, m.sender, payloadLength, m.payload);
     }
 
-    /*
-     * @dev Parse a ManagerMessage.
-     *
-     * @params encoded The byte array corresponding to the encoded message
-     */
+    /// @notice Parse a ManagerMessage.
+    /// @param encoded The byte array corresponding to the encoded message
+    /// @return managerMessage The parsed ManagerMessage struct.
     function parseManagerMessage(bytes memory encoded)
         public
         pure
@@ -104,11 +110,9 @@ library EndpointStructs {
         );
     }
 
-    /*
-     * @dev Parse a NativeTokenTransfer.
-     *
-     * @params encoded The byte array corresponding to the encoded message
-     */
+    /// @dev Parse a NativeTokenTransfer.
+    /// @param encoded The byte array corresponding to the encoded message
+    /// @return nativeTokenTransfer The parsed NativeTokenTransfer struct.
     function parseNativeTokenTransfer(bytes memory encoded)
         public
         pure
@@ -154,13 +158,12 @@ library EndpointStructs {
         bytes endpointPayload;
     }
 
-    /*
-     * @dev Encodes an Endpoint message for communication between the Manager and the Endpoint.
-     *
-     * @param m The EndpointMessage struct containing the message details.
-     * @return encoded The byte array corresponding to the encoded message.
-     * @throws PayloadTooLong if the length of endpointId, managerPayload, or endpointPayload exceeds the allowed maximum.
-     */
+    // @notice Encodes an Endpoint message for communication between the
+    //         Manager and the Endpoint.
+    // @param m The EndpointMessage struct containing the message details.
+    // @return encoded The byte array corresponding to the encoded message.
+    // @custom:throw PayloadTooLong if the length of endpointId, managerPayload,
+    //         or endpointPayload exceeds the allowed maximum.
     function encodeEndpointMessage(
         bytes4 prefix,
         EndpointMessage memory m
@@ -203,13 +206,11 @@ library EndpointStructs {
         return (endpointMessage, encoded);
     }
 
-    /*
-    * @dev Parses an encoded message and extracts information into an EndpointMessage struct.
-    *
-    * @param encoded The encoded bytes containing information about the EndpointMessage.
-    * @return endpointMessage The parsed EndpointMessage struct.
-    * @throws IncorrectPrefix if the prefix of the encoded message does not match the expected prefix.
-    */
+    /// @dev Parses an encoded message and extracts information into an EndpointMessage struct.
+    /// @param encoded The encoded bytes containing information about the EndpointMessage.
+    /// @return endpointMessage The parsed EndpointMessage struct.
+    /// @custom:throw IncorrectPrefix if the prefix of the encoded message does not
+    ///         match the expected prefix.
     function parseEndpointMessage(
         bytes4 expectedPrefix,
         bytes memory encoded
@@ -238,7 +239,10 @@ library EndpointStructs {
         encoded.checkLength(offset);
     }
 
-    /// @dev Parses the payload of an Endpoint message and returns the parsed ManagerMessage struct.
+    /// @dev Parses the payload of an Endpoint message and returns
+    ///      the parsed ManagerMessage struct.
+    /// @param expectedPrefix The prefix that should be encoded in the manager message.
+    /// @param payload The payload sent across the wire.
     function parseEndpointAndManagerMessage(
         bytes4 expectedPrefix,
         bytes memory payload
