@@ -256,11 +256,10 @@ contract Manager is
         // call into endpoint contracts to send the message
         for (uint256 i = 0; i < numEnabledEndpoints; i++) {
             address endpointAddr = enabledEndpoints[i];
-            uint8 registeredEndpointIndex = endpointInfos[endpointAddr].index;
             // send it to the recipient manager based on the chain
             IEndpoint(endpointAddr).sendMessage{value: priceQuotes[i]}(
                 recipientChain,
-                endpointInstructions[registeredEndpointIndex],
+                endpointInstructions[endpointInfos[endpointAddr].index],
                 managerMessage,
                 getSibling(recipientChain)
             );
@@ -536,16 +535,17 @@ contract Manager is
             }
         }
 
+        // push it on the stack again to avoid a stack too deep error
+        uint64 seq = sequence;
+
+        EndpointStructs.NativeTokenTransfer memory ntt = EndpointStructs.NativeTokenTransfer(
+            amount, toWormholeFormat(token), recipient, recipientChain
+        );
+
         // construct the ManagerMessage payload
         bytes memory encodedManagerPayload = EndpointStructs.encodeManagerMessage(
             EndpointStructs.ManagerMessage(
-                sequence,
-                toWormholeFormat(sender),
-                EndpointStructs.encodeNativeTokenTransfer(
-                    EndpointStructs.NativeTokenTransfer(
-                        amount, toWormholeFormat(token), recipient, recipientChain
-                    )
-                )
+                seq, toWormholeFormat(sender), EndpointStructs.encodeNativeTokenTransfer(ntt)
             )
         );
 
@@ -554,7 +554,7 @@ contract Manager is
             recipientChain, priceQuotes, instructions, enabledEndpoints, encodedManagerPayload
         );
 
-        emit TransferSent(recipient, _nttDenormalize(amount), recipientChain, sequence);
+        emit TransferSent(recipient, _nttDenormalize(amount), recipientChain, seq);
 
         // return the sequence number
         return sequence;
