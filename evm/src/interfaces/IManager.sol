@@ -61,6 +61,8 @@ interface IManager {
         bytes memory encodedInstructions
     ) external payable returns (uint64 msgId);
 
+    function getSibling(uint16 chainId_) external view returns (bytes32);
+
     function setSibling(uint16 siblingChainId, bytes32 siblingContract) external;
 
     /// @notice Check if a message has been approved. The message should have at least

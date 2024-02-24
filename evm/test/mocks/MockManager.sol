@@ -24,10 +24,6 @@ contract MockManagerContract is Manager {
         }
     }
 
-    function messageAttestations(bytes32 digest) public view returns (uint8 count) {
-        return _messageAttestations(digest);
-    }
-
     function getOutboundLimitParams() public pure returns (RateLimitParams memory) {
         return _getOutboundLimitParams();
     }
