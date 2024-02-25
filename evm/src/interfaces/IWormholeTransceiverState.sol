@@ -57,4 +57,10 @@ interface IWormholeTransceiverState {
     /// @param chainId The Wormhole chain ID to set.
     /// @param isRelayingEnabled A boolean indicating whether relaying is enabled.
     function setIsWormholeRelayingEnabled(uint16 chainId, bool isRelayingEnabled) external;
+
+    /// @notice Set whether special relaying is enabled for the given chain.
+    /// @dev This function is only callable by the `owner`.
+    /// @param chainId The Wormhole chain ID to set.
+    /// @param isRelayingEnabled A boolean indicating whether special relaying is enabled.
+    function setIsSpecialRelayingEnabled(uint16 chainId, bool isRelayingEnabled) external;
 }

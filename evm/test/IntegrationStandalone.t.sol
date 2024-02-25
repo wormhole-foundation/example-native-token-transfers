@@ -62,7 +62,7 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
         NttManager implementation =
-            new MockNttManagerContract(address(t1), NttManager.Mode.LOCKING, chainId1, 1 days);
+            new MockNttManagerContract(address(t1), INttManager.Mode.LOCKING, chainId1, 1 days);
 
         nttManagerChain1 =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
@@ -88,7 +88,7 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
         NttManager implementationChain2 =
-            new MockNttManagerContract(address(t2), NttManager.Mode.BURNING, chainId2, 1 days);
+            new MockNttManagerContract(address(t2), INttManager.Mode.BURNING, chainId2, 1 days);
 
         nttManagerChain2 =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));

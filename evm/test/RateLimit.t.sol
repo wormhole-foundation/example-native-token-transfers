@@ -36,7 +36,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         DummyToken t = new DummyToken();
         NttManager implementation =
-            new MockNttManagerContract(address(t), NttManager.Mode.LOCKING, chainId, 1 days);
+            new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, chainId, 1 days);
 
         nttManager = MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         nttManager.initialize();

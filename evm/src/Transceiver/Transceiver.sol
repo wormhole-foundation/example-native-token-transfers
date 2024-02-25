@@ -62,7 +62,7 @@ abstract contract Transceiver is
 
     function _migrate() internal virtual override {}
 
-    // @dev This method checks that the the referecnes to the nttManager and its corresponding function
+    // @define This method checks that the the referecnes to the nttManager and its corresponding function
     // are correct When new immutable variables are added, this function should be updated.
     function _checkImmutables() internal view override {
         assert(this.nttManager() == nttManager);
