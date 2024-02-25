@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type {
   CCTPSender,
   CCTPSenderInterface,
@@ -95,9 +96,12 @@ const _abi = [
 export class CCTPSender__factory {
   static readonly abi = _abi;
   static createInterface(): CCTPSenderInterface {
-    return new Interface(_abi) as CCTPSenderInterface;
+    return new utils.Interface(_abi) as CCTPSenderInterface;
   }
-  static connect(address: string, runner?: ContractRunner | null): CCTPSender {
-    return new Contract(address, _abi, runner) as unknown as CCTPSender;
+  static connect(
+    address: string,
+    signerOrProvider: Signer | Provider
+  ): CCTPSender {
+    return new Contract(address, _abi, signerOrProvider) as CCTPSender;
   }
 }

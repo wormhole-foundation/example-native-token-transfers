@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type {
   PausableOwnable,
   PausableOwnableInterface,
@@ -220,12 +221,12 @@ const _abi = [
 export class PausableOwnable__factory {
   static readonly abi = _abi;
   static createInterface(): PausableOwnableInterface {
-    return new Interface(_abi) as PausableOwnableInterface;
+    return new utils.Interface(_abi) as PausableOwnableInterface;
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null
+    signerOrProvider: Signer | Provider
   ): PausableOwnable {
-    return new Contract(address, _abi, runner) as unknown as PausableOwnable;
+    return new Contract(address, _abi, signerOrProvider) as PausableOwnable;
   }
 }

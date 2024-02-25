@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type {
   IMessageTransmitter,
   IMessageTransmitterInterface,
@@ -129,16 +130,12 @@ const _abi = [
 export class IMessageTransmitter__factory {
   static readonly abi = _abi;
   static createInterface(): IMessageTransmitterInterface {
-    return new Interface(_abi) as IMessageTransmitterInterface;
+    return new utils.Interface(_abi) as IMessageTransmitterInterface;
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null
+    signerOrProvider: Signer | Provider
   ): IMessageTransmitter {
-    return new Contract(
-      address,
-      _abi,
-      runner
-    ) as unknown as IMessageTransmitter;
+    return new Contract(address, _abi, signerOrProvider) as IMessageTransmitter;
   }
 }

@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type {
   TokenSender,
   TokenSenderInterface,
@@ -71,9 +72,12 @@ const _abi = [
 export class TokenSender__factory {
   static readonly abi = _abi;
   static createInterface(): TokenSenderInterface {
-    return new Interface(_abi) as TokenSenderInterface;
+    return new utils.Interface(_abi) as TokenSenderInterface;
   }
-  static connect(address: string, runner?: ContractRunner | null): TokenSender {
-    return new Contract(address, _abi, runner) as unknown as TokenSender;
+  static connect(
+    address: string,
+    signerOrProvider: Signer | Provider
+  ): TokenSender {
+    return new Contract(address, _abi, signerOrProvider) as TokenSender;
   }
 }

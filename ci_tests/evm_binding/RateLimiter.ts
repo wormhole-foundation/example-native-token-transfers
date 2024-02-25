@@ -3,24 +3,25 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  EventFragment,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
-  TypedLogDescription,
+  FunctionFragment,
+  Result,
+  EventFragment,
+} from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
+import type {
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "./common";
 
 export type NormalizedAmountStruct = {
@@ -28,25 +29,25 @@ export type NormalizedAmountStruct = {
   decimals: BigNumberish;
 };
 
-export type NormalizedAmountStructOutput = [
-  amount: bigint,
-  decimals: bigint
-] & { amount: bigint; decimals: bigint };
+export type NormalizedAmountStructOutput = [BigNumber, number] & {
+  amount: BigNumber;
+  decimals: number;
+};
 
 export declare namespace IRateLimiter {
   export type InboundQueuedTransferStruct = {
     amount: NormalizedAmountStruct;
     txTimestamp: BigNumberish;
-    recipient: AddressLike;
+    recipient: string;
   };
 
   export type InboundQueuedTransferStructOutput = [
-    amount: NormalizedAmountStructOutput,
-    txTimestamp: bigint,
-    recipient: string
+    NormalizedAmountStructOutput,
+    BigNumber,
+    string
   ] & {
     amount: NormalizedAmountStructOutput;
-    txTimestamp: bigint;
+    txTimestamp: BigNumber;
     recipient: string;
   };
 
@@ -55,43 +56,46 @@ export declare namespace IRateLimiter {
     amount: NormalizedAmountStruct;
     txTimestamp: BigNumberish;
     recipientChain: BigNumberish;
-    sender: AddressLike;
-    endpointInstructions: BytesLike;
+    sender: string;
+    transceiverInstructions: BytesLike;
   };
 
   export type OutboundQueuedTransferStructOutput = [
-    recipient: string,
-    amount: NormalizedAmountStructOutput,
-    txTimestamp: bigint,
-    recipientChain: bigint,
-    sender: string,
-    endpointInstructions: string
+    string,
+    NormalizedAmountStructOutput,
+    BigNumber,
+    number,
+    string,
+    string
   ] & {
     recipient: string;
     amount: NormalizedAmountStructOutput;
-    txTimestamp: bigint;
-    recipientChain: bigint;
+    txTimestamp: BigNumber;
+    recipientChain: number;
     sender: string;
-    endpointInstructions: string;
+    transceiverInstructions: string;
   };
 }
 
-export interface RateLimiterInterface extends Interface {
+export interface RateLimiterInterface extends utils.Interface {
+  functions: {
+    "getCurrentInboundCapacity(uint16)": FunctionFragment;
+    "getCurrentOutboundCapacity()": FunctionFragment;
+    "getInboundQueuedTransfer(bytes32)": FunctionFragment;
+    "getOutboundQueuedTransfer(uint64)": FunctionFragment;
+    "rateLimitDuration()": FunctionFragment;
+    "tokenDecimals()": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "getCurrentInboundCapacity"
       | "getCurrentOutboundCapacity"
       | "getInboundQueuedTransfer"
       | "getOutboundQueuedTransfer"
       | "rateLimitDuration"
+      | "tokenDecimals"
   ): FunctionFragment;
-
-  getEvent(
-    nameOrSignatureOrTopic:
-      | "InboundTransferQueued"
-      | "OutboundTransferQueued"
-      | "OutboundTransferRateLimited"
-  ): EventFragment;
 
   encodeFunctionData(
     functionFragment: "getCurrentInboundCapacity",
@@ -113,6 +117,10 @@ export interface RateLimiterInterface extends Interface {
     functionFragment: "rateLimitDuration",
     values?: undefined
   ): string;
+  encodeFunctionData(
+    functionFragment: "tokenDecimals",
+    values?: undefined
+  ): string;
 
   decodeFunctionResult(
     functionFragment: "getCurrentInboundCapacity",
@@ -134,204 +142,225 @@ export interface RateLimiterInterface extends Interface {
     functionFragment: "rateLimitDuration",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(
+    functionFragment: "tokenDecimals",
+    data: BytesLike
+  ): Result;
+
+  events: {
+    "InboundTransferQueued(bytes32)": EventFragment;
+    "OutboundTransferQueued(uint64)": EventFragment;
+    "OutboundTransferRateLimited(address,uint64,uint256,uint256)": EventFragment;
+  };
+
+  getEvent(nameOrSignatureOrTopic: "InboundTransferQueued"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "OutboundTransferQueued"): EventFragment;
+  getEvent(
+    nameOrSignatureOrTopic: "OutboundTransferRateLimited"
+  ): EventFragment;
 }
 
-export namespace InboundTransferQueuedEvent {
-  export type InputTuple = [digest: BytesLike];
-  export type OutputTuple = [digest: string];
-  export interface OutputObject {
-    digest: string;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export interface InboundTransferQueuedEventObject {
+  digest: string;
 }
+export type InboundTransferQueuedEvent = TypedEvent<
+  [string],
+  InboundTransferQueuedEventObject
+>;
 
-export namespace OutboundTransferQueuedEvent {
-  export type InputTuple = [queueSequence: BigNumberish];
-  export type OutputTuple = [queueSequence: bigint];
-  export interface OutputObject {
-    queueSequence: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
+export type InboundTransferQueuedEventFilter =
+  TypedEventFilter<InboundTransferQueuedEvent>;
 
-export namespace OutboundTransferRateLimitedEvent {
-  export type InputTuple = [
-    sender: AddressLike,
-    sequence: BigNumberish,
-    amount: BigNumberish,
-    currentCapacity: BigNumberish
-  ];
-  export type OutputTuple = [
-    sender: string,
-    sequence: bigint,
-    amount: bigint,
-    currentCapacity: bigint
-  ];
-  export interface OutputObject {
-    sender: string;
-    sequence: bigint;
-    amount: bigint;
-    currentCapacity: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export interface OutboundTransferQueuedEventObject {
+  queueSequence: BigNumber;
 }
+export type OutboundTransferQueuedEvent = TypedEvent<
+  [BigNumber],
+  OutboundTransferQueuedEventObject
+>;
+
+export type OutboundTransferQueuedEventFilter =
+  TypedEventFilter<OutboundTransferQueuedEvent>;
+
+export interface OutboundTransferRateLimitedEventObject {
+  sender: string;
+  sequence: BigNumber;
+  amount: BigNumber;
+  currentCapacity: BigNumber;
+}
+export type OutboundTransferRateLimitedEvent = TypedEvent<
+  [string, BigNumber, BigNumber, BigNumber],
+  OutboundTransferRateLimitedEventObject
+>;
+
+export type OutboundTransferRateLimitedEventFilter =
+  TypedEventFilter<OutboundTransferRateLimitedEvent>;
 
 export interface RateLimiter extends BaseContract {
-  connect(runner?: ContractRunner | null): RateLimiter;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: RateLimiterInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    getCurrentInboundCapacity(
+      chainId_: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[BigNumber]>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    getCurrentOutboundCapacity(overrides?: CallOverrides): Promise<[BigNumber]>;
 
-  getCurrentInboundCapacity: TypedContractMethod<
-    [chainId_: BigNumberish],
-    [bigint],
-    "view"
-  >;
+    getInboundQueuedTransfer(
+      digest: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<[IRateLimiter.InboundQueuedTransferStructOutput]>;
 
-  getCurrentOutboundCapacity: TypedContractMethod<[], [bigint], "view">;
+    getOutboundQueuedTransfer(
+      queueSequence: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[IRateLimiter.OutboundQueuedTransferStructOutput]>;
 
-  getInboundQueuedTransfer: TypedContractMethod<
-    [digest: BytesLike],
-    [IRateLimiter.InboundQueuedTransferStructOutput],
-    "view"
-  >;
+    rateLimitDuration(overrides?: CallOverrides): Promise<[BigNumber]>;
 
-  getOutboundQueuedTransfer: TypedContractMethod<
-    [queueSequence: BigNumberish],
-    [IRateLimiter.OutboundQueuedTransferStructOutput],
-    "view"
-  >;
+    tokenDecimals(overrides?: CallOverrides): Promise<[number]>;
+  };
 
-  rateLimitDuration: TypedContractMethod<[], [bigint], "view">;
+  getCurrentInboundCapacity(
+    chainId_: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<BigNumber>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  getCurrentOutboundCapacity(overrides?: CallOverrides): Promise<BigNumber>;
 
-  getFunction(
-    nameOrSignature: "getCurrentInboundCapacity"
-  ): TypedContractMethod<[chainId_: BigNumberish], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "getCurrentOutboundCapacity"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "getInboundQueuedTransfer"
-  ): TypedContractMethod<
-    [digest: BytesLike],
-    [IRateLimiter.InboundQueuedTransferStructOutput],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "getOutboundQueuedTransfer"
-  ): TypedContractMethod<
-    [queueSequence: BigNumberish],
-    [IRateLimiter.OutboundQueuedTransferStructOutput],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "rateLimitDuration"
-  ): TypedContractMethod<[], [bigint], "view">;
+  getInboundQueuedTransfer(
+    digest: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<IRateLimiter.InboundQueuedTransferStructOutput>;
 
-  getEvent(
-    key: "InboundTransferQueued"
-  ): TypedContractEvent<
-    InboundTransferQueuedEvent.InputTuple,
-    InboundTransferQueuedEvent.OutputTuple,
-    InboundTransferQueuedEvent.OutputObject
-  >;
-  getEvent(
-    key: "OutboundTransferQueued"
-  ): TypedContractEvent<
-    OutboundTransferQueuedEvent.InputTuple,
-    OutboundTransferQueuedEvent.OutputTuple,
-    OutboundTransferQueuedEvent.OutputObject
-  >;
-  getEvent(
-    key: "OutboundTransferRateLimited"
-  ): TypedContractEvent<
-    OutboundTransferRateLimitedEvent.InputTuple,
-    OutboundTransferRateLimitedEvent.OutputTuple,
-    OutboundTransferRateLimitedEvent.OutputObject
-  >;
+  getOutboundQueuedTransfer(
+    queueSequence: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<IRateLimiter.OutboundQueuedTransferStructOutput>;
+
+  rateLimitDuration(overrides?: CallOverrides): Promise<BigNumber>;
+
+  tokenDecimals(overrides?: CallOverrides): Promise<number>;
+
+  callStatic: {
+    getCurrentInboundCapacity(
+      chainId_: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    getCurrentOutboundCapacity(overrides?: CallOverrides): Promise<BigNumber>;
+
+    getInboundQueuedTransfer(
+      digest: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<IRateLimiter.InboundQueuedTransferStructOutput>;
+
+    getOutboundQueuedTransfer(
+      queueSequence: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<IRateLimiter.OutboundQueuedTransferStructOutput>;
+
+    rateLimitDuration(overrides?: CallOverrides): Promise<BigNumber>;
+
+    tokenDecimals(overrides?: CallOverrides): Promise<number>;
+  };
 
   filters: {
-    "InboundTransferQueued(bytes32)": TypedContractEvent<
-      InboundTransferQueuedEvent.InputTuple,
-      InboundTransferQueuedEvent.OutputTuple,
-      InboundTransferQueuedEvent.OutputObject
-    >;
-    InboundTransferQueued: TypedContractEvent<
-      InboundTransferQueuedEvent.InputTuple,
-      InboundTransferQueuedEvent.OutputTuple,
-      InboundTransferQueuedEvent.OutputObject
-    >;
+    "InboundTransferQueued(bytes32)"(
+      digest?: null
+    ): InboundTransferQueuedEventFilter;
+    InboundTransferQueued(digest?: null): InboundTransferQueuedEventFilter;
 
-    "OutboundTransferQueued(uint64)": TypedContractEvent<
-      OutboundTransferQueuedEvent.InputTuple,
-      OutboundTransferQueuedEvent.OutputTuple,
-      OutboundTransferQueuedEvent.OutputObject
-    >;
-    OutboundTransferQueued: TypedContractEvent<
-      OutboundTransferQueuedEvent.InputTuple,
-      OutboundTransferQueuedEvent.OutputTuple,
-      OutboundTransferQueuedEvent.OutputObject
-    >;
+    "OutboundTransferQueued(uint64)"(
+      queueSequence?: null
+    ): OutboundTransferQueuedEventFilter;
+    OutboundTransferQueued(
+      queueSequence?: null
+    ): OutboundTransferQueuedEventFilter;
 
-    "OutboundTransferRateLimited(address,uint64,uint256,uint256)": TypedContractEvent<
-      OutboundTransferRateLimitedEvent.InputTuple,
-      OutboundTransferRateLimitedEvent.OutputTuple,
-      OutboundTransferRateLimitedEvent.OutputObject
-    >;
-    OutboundTransferRateLimited: TypedContractEvent<
-      OutboundTransferRateLimitedEvent.InputTuple,
-      OutboundTransferRateLimitedEvent.OutputTuple,
-      OutboundTransferRateLimitedEvent.OutputObject
-    >;
+    "OutboundTransferRateLimited(address,uint64,uint256,uint256)"(
+      sender?: string | null,
+      sequence?: null,
+      amount?: null,
+      currentCapacity?: null
+    ): OutboundTransferRateLimitedEventFilter;
+    OutboundTransferRateLimited(
+      sender?: string | null,
+      sequence?: null,
+      amount?: null,
+      currentCapacity?: null
+    ): OutboundTransferRateLimitedEventFilter;
+  };
+
+  estimateGas: {
+    getCurrentInboundCapacity(
+      chainId_: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    getCurrentOutboundCapacity(overrides?: CallOverrides): Promise<BigNumber>;
+
+    getInboundQueuedTransfer(
+      digest: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    getOutboundQueuedTransfer(
+      queueSequence: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    rateLimitDuration(overrides?: CallOverrides): Promise<BigNumber>;
+
+    tokenDecimals(overrides?: CallOverrides): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    getCurrentInboundCapacity(
+      chainId_: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    getCurrentOutboundCapacity(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    getInboundQueuedTransfer(
+      digest: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    getOutboundQueuedTransfer(
+      queueSequence: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    rateLimitDuration(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    tokenDecimals(overrides?: CallOverrides): Promise<PopulatedTransaction>;
   };
 }

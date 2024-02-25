@@ -3,36 +3,36 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "forge-std/Test.sol";
-import "./mocks/MockManager.sol";
+import "./mocks/MockNttManager.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {DummyEndpoint} from "./Manager.t.sol";
-import {DummyToken} from "./Manager.t.sol";
+import {DummyTransceiver} from "./NttManager.t.sol";
+import {DummyToken} from "./NttManager.t.sol";
 
 contract OwnershipTests is Test {
-    Manager manager;
+    NttManager nttManager;
     uint16 constant chainId = 7;
 
     function setUp() public {
         DummyToken t = new DummyToken();
-        Manager implementation =
-            new MockManagerContract(address(t), Manager.Mode.LOCKING, chainId, 1 days);
+        NttManager implementation =
+            new MockNttManagerContract(address(t), NttManager.Mode.LOCKING, chainId, 1 days);
 
-        manager = MockManagerContract(address(new ERC1967Proxy(address(implementation), "")));
-        manager.initialize();
+        nttManager = MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
+        nttManager.initialize();
     }
 
-    function checkOwnership(DummyEndpoint e, address managerOwner) public {
-        address endpointManager = e.getManagerOwner();
-        assertEq(endpointManager, managerOwner);
+    function checkOwnership(DummyTransceiver e, address nttManagerOwner) public {
+        address transceiverNttManager = e.getNttManagerOwner();
+        assertEq(transceiverNttManager, nttManagerOwner);
     }
 
-    /// endpoint retrieves the manager owner correctly
-    function testEndpointOwnership() public {
-        // TODO: use setup_endpoints here
-        DummyEndpoint e1 = new DummyEndpoint(address(manager));
-        manager.setEndpoint(address(e1));
-        manager.setThreshold(1);
+    /// transceiver retrieves the nttManager owner correctly
+    function testTransceiverOwnership() public {
+        // TODO: use setup_transceivers here
+        DummyTransceiver e1 = new DummyTransceiver(address(nttManager));
+        nttManager.setTransceiver(address(e1));
+        nttManager.setThreshold(1);
 
-        checkOwnership(e1, manager.owner());
+        checkOwnership(e1, nttManager.owner());
     }
 }

@@ -52,7 +52,7 @@ WORKDIR /example-native-token-transfers/ci_tests
 RUN source $HOME/.nvm/nvm.sh && npm install && npm install -g ts-node
 
 # Bulid the bindings for the EVM
-RUN source $HOME/.nvm/nvm.sh && typechain --target ethers-v6 --out-dir evm_binding/ '../evm/out/*/*.json'
+RUN source $HOME/.nvm/nvm.sh && typechain --target ethers-v5 --out-dir evm_binding/ '../evm/out/*/*.json'
 
 # Copy the actual tests after we build the bindings.
 COPY ci_tests/ .

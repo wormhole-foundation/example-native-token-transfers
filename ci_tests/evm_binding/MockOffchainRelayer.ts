@@ -3,41 +3,54 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  Overrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "./common";
 
 export declare namespace VmSafe {
   export type LogStruct = {
     topics: BytesLike[];
     data: BytesLike;
-    emitter: AddressLike;
+    emitter: string;
   };
 
-  export type LogStructOutput = [
-    topics: string[],
-    data: string,
-    emitter: string
-  ] & { topics: string[]; data: string; emitter: string };
+  export type LogStructOutput = [string[], string, string] & {
+    topics: string[];
+    data: string;
+    emitter: string;
+  };
 }
 
-export interface MockOffchainRelayerInterface extends Interface {
+export interface MockOffchainRelayerInterface extends utils.Interface {
+  functions: {
+    "getPastDeliveryVAA(uint16,uint64)": FunctionFragment;
+    "getPastEncodedSignedVaas(uint16,uint64)": FunctionFragment;
+    "registerChain(uint16,address,uint256)": FunctionFragment;
+    "relay((bytes32[],bytes,address)[])": FunctionFragment;
+    "relay((bytes32[],bytes,address)[],bool)": FunctionFragment;
+    "relay(bytes)": FunctionFragment;
+    "relay((bytes32[],bytes,address)[],bytes,bool)": FunctionFragment;
+    "relay()": FunctionFragment;
+    "vm()": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "getPastDeliveryVAA"
       | "getPastEncodedSignedVaas"
       | "registerChain"
@@ -59,7 +72,7 @@ export interface MockOffchainRelayerInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "registerChain",
-    values: [BigNumberish, AddressLike, BigNumberish]
+    values: [BigNumberish, string, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "relay((bytes32[],bytes,address)[])",
@@ -110,162 +123,279 @@ export interface MockOffchainRelayerInterface extends Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "relay()", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "vm", data: BytesLike): Result;
+
+  events: {};
 }
 
 export interface MockOffchainRelayer extends BaseContract {
-  connect(runner?: ContractRunner | null): MockOffchainRelayer;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: MockOffchainRelayerInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
-
-  getPastDeliveryVAA: TypedContractMethod<
-    [chainId: BigNumberish, deliveryVAASequence: BigNumberish],
-    [string],
-    "view"
-  >;
-
-  getPastEncodedSignedVaas: TypedContractMethod<
-    [chainId: BigNumberish, deliveryVAASequence: BigNumberish],
-    [string[]],
-    "view"
-  >;
-
-  registerChain: TypedContractMethod<
-    [
+  functions: {
+    getPastDeliveryVAA(
       chainId: BigNumberish,
-      wormholeRelayerContractAddress: AddressLike,
-      fork: BigNumberish
-    ],
-    [void],
-    "nonpayable"
-  >;
+      deliveryVAASequence: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[string]>;
 
-  "relay((bytes32[],bytes,address)[])": TypedContractMethod<
-    [logs: VmSafe.LogStruct[]],
-    [void],
-    "nonpayable"
-  >;
+    getPastEncodedSignedVaas(
+      chainId: BigNumberish,
+      deliveryVAASequence: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[string[]]>;
 
-  "relay((bytes32[],bytes,address)[],bool)": TypedContractMethod<
-    [logs: VmSafe.LogStruct[], debugLogging: boolean],
-    [void],
-    "nonpayable"
-  >;
+    registerChain(
+      chainId: BigNumberish,
+      wormholeRelayerContractAddress: string,
+      fork: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  "relay(bytes)": TypedContractMethod<
-    [deliveryOverrides: BytesLike],
-    [void],
-    "nonpayable"
-  >;
+    "relay((bytes32[],bytes,address)[])"(
+      logs: VmSafe.LogStruct[],
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  "relay((bytes32[],bytes,address)[],bytes,bool)": TypedContractMethod<
-    [
+    "relay((bytes32[],bytes,address)[],bool)"(
+      logs: VmSafe.LogStruct[],
+      debugLogging: boolean,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
+    "relay(bytes)"(
+      deliveryOverrides: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
+    "relay((bytes32[],bytes,address)[],bytes,bool)"(
       logs: VmSafe.LogStruct[],
       deliveryOverrides: BytesLike,
-      debugLogging: boolean
-    ],
-    [void],
-    "nonpayable"
-  >;
+      debugLogging: boolean,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  "relay()": TypedContractMethod<[], [void], "nonpayable">;
+    "relay()"(
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  vm: TypedContractMethod<[], [string], "view">;
+    vm(overrides?: CallOverrides): Promise<[string]>;
+  };
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  getPastDeliveryVAA(
+    chainId: BigNumberish,
+    deliveryVAASequence: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<string>;
 
-  getFunction(
-    nameOrSignature: "getPastDeliveryVAA"
-  ): TypedContractMethod<
-    [chainId: BigNumberish, deliveryVAASequence: BigNumberish],
-    [string],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "getPastEncodedSignedVaas"
-  ): TypedContractMethod<
-    [chainId: BigNumberish, deliveryVAASequence: BigNumberish],
-    [string[]],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "registerChain"
-  ): TypedContractMethod<
-    [
+  getPastEncodedSignedVaas(
+    chainId: BigNumberish,
+    deliveryVAASequence: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<string[]>;
+
+  registerChain(
+    chainId: BigNumberish,
+    wormholeRelayerContractAddress: string,
+    fork: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  "relay((bytes32[],bytes,address)[])"(
+    logs: VmSafe.LogStruct[],
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  "relay((bytes32[],bytes,address)[],bool)"(
+    logs: VmSafe.LogStruct[],
+    debugLogging: boolean,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  "relay(bytes)"(
+    deliveryOverrides: BytesLike,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  "relay((bytes32[],bytes,address)[],bytes,bool)"(
+    logs: VmSafe.LogStruct[],
+    deliveryOverrides: BytesLike,
+    debugLogging: boolean,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  "relay()"(
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  vm(overrides?: CallOverrides): Promise<string>;
+
+  callStatic: {
+    getPastDeliveryVAA(
       chainId: BigNumberish,
-      wormholeRelayerContractAddress: AddressLike,
-      fork: BigNumberish
-    ],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "relay((bytes32[],bytes,address)[])"
-  ): TypedContractMethod<[logs: VmSafe.LogStruct[]], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "relay((bytes32[],bytes,address)[],bool)"
-  ): TypedContractMethod<
-    [logs: VmSafe.LogStruct[], debugLogging: boolean],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "relay(bytes)"
-  ): TypedContractMethod<[deliveryOverrides: BytesLike], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "relay((bytes32[],bytes,address)[],bytes,bool)"
-  ): TypedContractMethod<
-    [
+      deliveryVAASequence: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<string>;
+
+    getPastEncodedSignedVaas(
+      chainId: BigNumberish,
+      deliveryVAASequence: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<string[]>;
+
+    registerChain(
+      chainId: BigNumberish,
+      wormholeRelayerContractAddress: string,
+      fork: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    "relay((bytes32[],bytes,address)[])"(
+      logs: VmSafe.LogStruct[],
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    "relay((bytes32[],bytes,address)[],bool)"(
+      logs: VmSafe.LogStruct[],
+      debugLogging: boolean,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    "relay(bytes)"(
+      deliveryOverrides: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    "relay((bytes32[],bytes,address)[],bytes,bool)"(
       logs: VmSafe.LogStruct[],
       deliveryOverrides: BytesLike,
-      debugLogging: boolean
-    ],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "relay()"
-  ): TypedContractMethod<[], [void], "nonpayable">;
-  getFunction(nameOrSignature: "vm"): TypedContractMethod<[], [string], "view">;
+      debugLogging: boolean,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    "relay()"(overrides?: CallOverrides): Promise<void>;
+
+    vm(overrides?: CallOverrides): Promise<string>;
+  };
 
   filters: {};
+
+  estimateGas: {
+    getPastDeliveryVAA(
+      chainId: BigNumberish,
+      deliveryVAASequence: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    getPastEncodedSignedVaas(
+      chainId: BigNumberish,
+      deliveryVAASequence: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    registerChain(
+      chainId: BigNumberish,
+      wormholeRelayerContractAddress: string,
+      fork: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    "relay((bytes32[],bytes,address)[])"(
+      logs: VmSafe.LogStruct[],
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    "relay((bytes32[],bytes,address)[],bool)"(
+      logs: VmSafe.LogStruct[],
+      debugLogging: boolean,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    "relay(bytes)"(
+      deliveryOverrides: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    "relay((bytes32[],bytes,address)[],bytes,bool)"(
+      logs: VmSafe.LogStruct[],
+      deliveryOverrides: BytesLike,
+      debugLogging: boolean,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    "relay()"(overrides?: Overrides & { from?: string }): Promise<BigNumber>;
+
+    vm(overrides?: CallOverrides): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    getPastDeliveryVAA(
+      chainId: BigNumberish,
+      deliveryVAASequence: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    getPastEncodedSignedVaas(
+      chainId: BigNumberish,
+      deliveryVAASequence: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    registerChain(
+      chainId: BigNumberish,
+      wormholeRelayerContractAddress: string,
+      fork: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    "relay((bytes32[],bytes,address)[])"(
+      logs: VmSafe.LogStruct[],
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    "relay((bytes32[],bytes,address)[],bool)"(
+      logs: VmSafe.LogStruct[],
+      debugLogging: boolean,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    "relay(bytes)"(
+      deliveryOverrides: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    "relay((bytes32[],bytes,address)[],bytes,bool)"(
+      logs: VmSafe.LogStruct[],
+      deliveryOverrides: BytesLike,
+      debugLogging: boolean,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    "relay()"(
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    vm(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+  };
 }

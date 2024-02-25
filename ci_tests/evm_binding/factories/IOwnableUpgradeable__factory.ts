@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type {
   IOwnableUpgradeable,
   IOwnableUpgradeableInterface,
@@ -27,16 +28,12 @@ const _abi = [
 export class IOwnableUpgradeable__factory {
   static readonly abi = _abi;
   static createInterface(): IOwnableUpgradeableInterface {
-    return new Interface(_abi) as IOwnableUpgradeableInterface;
+    return new utils.Interface(_abi) as IOwnableUpgradeableInterface;
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null
+    signerOrProvider: Signer | Provider
   ): IOwnableUpgradeable {
-    return new Contract(
-      address,
-      _abi,
-      runner
-    ) as unknown as IOwnableUpgradeable;
+    return new Contract(address, _abi, signerOrProvider) as IOwnableUpgradeable;
   }
 }

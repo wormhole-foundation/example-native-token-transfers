@@ -3,223 +3,157 @@
 /* eslint-disable */
 import type {
   BaseContract,
-  BigNumberish,
+  BigNumber,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  EventFragment,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
-  TypedLogDescription,
+  FunctionFragment,
+  Result,
+  EventFragment,
+} from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
+import type {
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "./common";
 
-export interface PausableUpgradeableInterface extends Interface {
-  getFunction(nameOrSignature: "isPaused" | "pauser"): FunctionFragment;
+export interface PausableUpgradeableInterface extends utils.Interface {
+  functions: {
+    "isPaused()": FunctionFragment;
+    "pauser()": FunctionFragment;
+  };
 
-  getEvent(
-    nameOrSignatureOrTopic:
-      | "Initialized"
-      | "NotPaused"
-      | "Paused"
-      | "PauserTransferred"
-  ): EventFragment;
+  getFunction(nameOrSignatureOrTopic: "isPaused" | "pauser"): FunctionFragment;
 
   encodeFunctionData(functionFragment: "isPaused", values?: undefined): string;
   encodeFunctionData(functionFragment: "pauser", values?: undefined): string;
 
   decodeFunctionResult(functionFragment: "isPaused", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "pauser", data: BytesLike): Result;
+
+  events: {
+    "Initialized(uint64)": EventFragment;
+    "NotPaused(bool)": EventFragment;
+    "Paused(bool)": EventFragment;
+    "PauserTransferred(address,address)": EventFragment;
+  };
+
+  getEvent(nameOrSignatureOrTopic: "Initialized"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "NotPaused"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "Paused"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "PauserTransferred"): EventFragment;
 }
 
-export namespace InitializedEvent {
-  export type InputTuple = [version: BigNumberish];
-  export type OutputTuple = [version: bigint];
-  export interface OutputObject {
-    version: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export interface InitializedEventObject {
+  version: BigNumber;
 }
+export type InitializedEvent = TypedEvent<[BigNumber], InitializedEventObject>;
 
-export namespace NotPausedEvent {
-  export type InputTuple = [notPaused: boolean];
-  export type OutputTuple = [notPaused: boolean];
-  export interface OutputObject {
-    notPaused: boolean;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
+export type InitializedEventFilter = TypedEventFilter<InitializedEvent>;
 
-export namespace PausedEvent {
-  export type InputTuple = [paused: boolean];
-  export type OutputTuple = [paused: boolean];
-  export interface OutputObject {
-    paused: boolean;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export interface NotPausedEventObject {
+  notPaused: boolean;
 }
+export type NotPausedEvent = TypedEvent<[boolean], NotPausedEventObject>;
 
-export namespace PauserTransferredEvent {
-  export type InputTuple = [oldPauser: AddressLike, newPauser: AddressLike];
-  export type OutputTuple = [oldPauser: string, newPauser: string];
-  export interface OutputObject {
-    oldPauser: string;
-    newPauser: string;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export type NotPausedEventFilter = TypedEventFilter<NotPausedEvent>;
+
+export interface PausedEventObject {
+  paused: boolean;
 }
+export type PausedEvent = TypedEvent<[boolean], PausedEventObject>;
+
+export type PausedEventFilter = TypedEventFilter<PausedEvent>;
+
+export interface PauserTransferredEventObject {
+  oldPauser: string;
+  newPauser: string;
+}
+export type PauserTransferredEvent = TypedEvent<
+  [string, string],
+  PauserTransferredEventObject
+>;
+
+export type PauserTransferredEventFilter =
+  TypedEventFilter<PauserTransferredEvent>;
 
 export interface PausableUpgradeable extends BaseContract {
-  connect(runner?: ContractRunner | null): PausableUpgradeable;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: PausableUpgradeableInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    isPaused(overrides?: CallOverrides): Promise<[boolean]>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    pauser(overrides?: CallOverrides): Promise<[string]>;
+  };
 
-  isPaused: TypedContractMethod<[], [boolean], "view">;
+  isPaused(overrides?: CallOverrides): Promise<boolean>;
 
-  pauser: TypedContractMethod<[], [string], "view">;
+  pauser(overrides?: CallOverrides): Promise<string>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  callStatic: {
+    isPaused(overrides?: CallOverrides): Promise<boolean>;
 
-  getFunction(
-    nameOrSignature: "isPaused"
-  ): TypedContractMethod<[], [boolean], "view">;
-  getFunction(
-    nameOrSignature: "pauser"
-  ): TypedContractMethod<[], [string], "view">;
-
-  getEvent(
-    key: "Initialized"
-  ): TypedContractEvent<
-    InitializedEvent.InputTuple,
-    InitializedEvent.OutputTuple,
-    InitializedEvent.OutputObject
-  >;
-  getEvent(
-    key: "NotPaused"
-  ): TypedContractEvent<
-    NotPausedEvent.InputTuple,
-    NotPausedEvent.OutputTuple,
-    NotPausedEvent.OutputObject
-  >;
-  getEvent(
-    key: "Paused"
-  ): TypedContractEvent<
-    PausedEvent.InputTuple,
-    PausedEvent.OutputTuple,
-    PausedEvent.OutputObject
-  >;
-  getEvent(
-    key: "PauserTransferred"
-  ): TypedContractEvent<
-    PauserTransferredEvent.InputTuple,
-    PauserTransferredEvent.OutputTuple,
-    PauserTransferredEvent.OutputObject
-  >;
+    pauser(overrides?: CallOverrides): Promise<string>;
+  };
 
   filters: {
-    "Initialized(uint64)": TypedContractEvent<
-      InitializedEvent.InputTuple,
-      InitializedEvent.OutputTuple,
-      InitializedEvent.OutputObject
-    >;
-    Initialized: TypedContractEvent<
-      InitializedEvent.InputTuple,
-      InitializedEvent.OutputTuple,
-      InitializedEvent.OutputObject
-    >;
+    "Initialized(uint64)"(version?: null): InitializedEventFilter;
+    Initialized(version?: null): InitializedEventFilter;
 
-    "NotPaused(bool)": TypedContractEvent<
-      NotPausedEvent.InputTuple,
-      NotPausedEvent.OutputTuple,
-      NotPausedEvent.OutputObject
-    >;
-    NotPaused: TypedContractEvent<
-      NotPausedEvent.InputTuple,
-      NotPausedEvent.OutputTuple,
-      NotPausedEvent.OutputObject
-    >;
+    "NotPaused(bool)"(notPaused?: null): NotPausedEventFilter;
+    NotPaused(notPaused?: null): NotPausedEventFilter;
 
-    "Paused(bool)": TypedContractEvent<
-      PausedEvent.InputTuple,
-      PausedEvent.OutputTuple,
-      PausedEvent.OutputObject
-    >;
-    Paused: TypedContractEvent<
-      PausedEvent.InputTuple,
-      PausedEvent.OutputTuple,
-      PausedEvent.OutputObject
-    >;
+    "Paused(bool)"(paused?: null): PausedEventFilter;
+    Paused(paused?: null): PausedEventFilter;
 
-    "PauserTransferred(address,address)": TypedContractEvent<
-      PauserTransferredEvent.InputTuple,
-      PauserTransferredEvent.OutputTuple,
-      PauserTransferredEvent.OutputObject
-    >;
-    PauserTransferred: TypedContractEvent<
-      PauserTransferredEvent.InputTuple,
-      PauserTransferredEvent.OutputTuple,
-      PauserTransferredEvent.OutputObject
-    >;
+    "PauserTransferred(address,address)"(
+      oldPauser?: string | null,
+      newPauser?: string | null
+    ): PauserTransferredEventFilter;
+    PauserTransferred(
+      oldPauser?: string | null,
+      newPauser?: string | null
+    ): PauserTransferredEventFilter;
+  };
+
+  estimateGas: {
+    isPaused(overrides?: CallOverrides): Promise<BigNumber>;
+
+    pauser(overrides?: CallOverrides): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    isPaused(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    pauser(overrides?: CallOverrides): Promise<PopulatedTransaction>;
   };
 }

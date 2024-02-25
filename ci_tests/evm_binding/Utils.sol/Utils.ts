@@ -3,34 +3,33 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "../common";
 
 export declare namespace VmSafe {
   export type ChainInfoStruct = { forkId: BigNumberish; chainId: BigNumberish };
 
-  export type ChainInfoStructOutput = [forkId: bigint, chainId: bigint] & {
-    forkId: bigint;
-    chainId: bigint;
+  export type ChainInfoStructOutput = [BigNumber, BigNumber] & {
+    forkId: BigNumber;
+    chainId: BigNumber;
   };
 
   export type StorageAccessStruct = {
-    account: AddressLike;
+    account: string;
     slot: BytesLike;
     isWrite: boolean;
     previousValue: BytesLike;
@@ -39,12 +38,12 @@ export declare namespace VmSafe {
   };
 
   export type StorageAccessStructOutput = [
-    account: string,
-    slot: string,
-    isWrite: boolean,
-    previousValue: string,
-    newValue: string,
-    reverted: boolean
+    string,
+    string,
+    boolean,
+    string,
+    string,
+    boolean
   ] & {
     account: string;
     slot: string;
@@ -57,8 +56,8 @@ export declare namespace VmSafe {
   export type AccountAccessStruct = {
     chainInfo: VmSafe.ChainInfoStruct;
     kind: BigNumberish;
-    account: AddressLike;
-    accessor: AddressLike;
+    account: string;
+    accessor: string;
     initialized: boolean;
     oldBalance: BigNumberish;
     newBalance: BigNumberish;
@@ -70,28 +69,28 @@ export declare namespace VmSafe {
   };
 
   export type AccountAccessStructOutput = [
-    chainInfo: VmSafe.ChainInfoStructOutput,
-    kind: bigint,
-    account: string,
-    accessor: string,
-    initialized: boolean,
-    oldBalance: bigint,
-    newBalance: bigint,
-    deployedCode: string,
-    value: bigint,
-    data: string,
-    reverted: boolean,
-    storageAccesses: VmSafe.StorageAccessStructOutput[]
+    VmSafe.ChainInfoStructOutput,
+    number,
+    string,
+    string,
+    boolean,
+    BigNumber,
+    BigNumber,
+    string,
+    BigNumber,
+    string,
+    boolean,
+    VmSafe.StorageAccessStructOutput[]
   ] & {
     chainInfo: VmSafe.ChainInfoStructOutput;
-    kind: bigint;
+    kind: number;
     account: string;
     accessor: string;
     initialized: boolean;
-    oldBalance: bigint;
-    newBalance: bigint;
+    oldBalance: BigNumber;
+    newBalance: BigNumber;
     deployedCode: string;
-    value: bigint;
+    value: BigNumber;
     data: string;
     reverted: boolean;
     storageAccesses: VmSafe.StorageAccessStructOutput[];
@@ -100,19 +99,24 @@ export declare namespace VmSafe {
   export type LogStruct = {
     topics: BytesLike[];
     data: BytesLike;
-    emitter: AddressLike;
+    emitter: string;
   };
 
-  export type LogStructOutput = [
-    topics: string[],
-    data: string,
-    emitter: string
-  ] & { topics: string[]; data: string; emitter: string };
+  export type LogStructOutput = [string[], string, string] & {
+    topics: string[];
+    data: string;
+    emitter: string;
+  };
 }
 
-export interface UtilsInterface extends Interface {
+export interface UtilsInterface extends utils.Interface {
+  functions: {
+    "assertSafeUpgradeableConstructor(((uint256,uint256),uint8,address,address,bool,uint256,uint256,bytes,uint256,bytes,bool,(address,bytes32,bool,bytes32,bytes32,bool)[])[])": FunctionFragment;
+    "fetchQueuedTransferDigestsFromLogs((bytes32[],bytes,address)[])": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "assertSafeUpgradeableConstructor"
       | "fetchQueuedTransferDigestsFromLogs"
   ): FunctionFragment;
@@ -134,77 +138,93 @@ export interface UtilsInterface extends Interface {
     functionFragment: "fetchQueuedTransferDigestsFromLogs",
     data: BytesLike
   ): Result;
+
+  events: {};
 }
 
 export interface Utils extends BaseContract {
-  connect(runner?: ContractRunner | null): Utils;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: UtilsInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    assertSafeUpgradeableConstructor(
+      accesses: VmSafe.AccountAccessStruct[],
+      overrides?: CallOverrides
+    ): Promise<[void]>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    fetchQueuedTransferDigestsFromLogs(
+      logs: VmSafe.LogStruct[],
+      overrides?: CallOverrides
+    ): Promise<[string[]]>;
+  };
 
-  assertSafeUpgradeableConstructor: TypedContractMethod<
-    [accesses: VmSafe.AccountAccessStruct[]],
-    [void],
-    "view"
-  >;
+  assertSafeUpgradeableConstructor(
+    accesses: VmSafe.AccountAccessStruct[],
+    overrides?: CallOverrides
+  ): Promise<void>;
 
-  fetchQueuedTransferDigestsFromLogs: TypedContractMethod<
-    [logs: VmSafe.LogStruct[]],
-    [string[]],
-    "view"
-  >;
+  fetchQueuedTransferDigestsFromLogs(
+    logs: VmSafe.LogStruct[],
+    overrides?: CallOverrides
+  ): Promise<string[]>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  callStatic: {
+    assertSafeUpgradeableConstructor(
+      accesses: VmSafe.AccountAccessStruct[],
+      overrides?: CallOverrides
+    ): Promise<void>;
 
-  getFunction(
-    nameOrSignature: "assertSafeUpgradeableConstructor"
-  ): TypedContractMethod<
-    [accesses: VmSafe.AccountAccessStruct[]],
-    [void],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "fetchQueuedTransferDigestsFromLogs"
-  ): TypedContractMethod<[logs: VmSafe.LogStruct[]], [string[]], "view">;
+    fetchQueuedTransferDigestsFromLogs(
+      logs: VmSafe.LogStruct[],
+      overrides?: CallOverrides
+    ): Promise<string[]>;
+  };
 
   filters: {};
+
+  estimateGas: {
+    assertSafeUpgradeableConstructor(
+      accesses: VmSafe.AccountAccessStruct[],
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    fetchQueuedTransferDigestsFromLogs(
+      logs: VmSafe.LogStruct[],
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    assertSafeUpgradeableConstructor(
+      accesses: VmSafe.AccountAccessStruct[],
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    fetchQueuedTransferDigestsFromLogs(
+      logs: VmSafe.LogStruct[],
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+  };
 }

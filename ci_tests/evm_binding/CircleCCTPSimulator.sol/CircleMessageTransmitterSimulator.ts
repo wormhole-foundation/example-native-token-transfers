@@ -3,49 +3,58 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "../common";
 
 export declare namespace VmSafe {
   export type LogStruct = {
     topics: BytesLike[];
     data: BytesLike;
-    emitter: AddressLike;
+    emitter: string;
   };
 
-  export type LogStructOutput = [
-    topics: string[],
-    data: string,
-    emitter: string
-  ] & { topics: string[]; data: string; emitter: string };
+  export type LogStructOutput = [string[], string, string] & {
+    topics: string[];
+    data: string;
+    emitter: string;
+  };
 }
 
 export declare namespace CCTPMessageLib {
   export type CCTPMessageStruct = { message: BytesLike; signature: BytesLike };
 
-  export type CCTPMessageStructOutput = [message: string, signature: string] & {
+  export type CCTPMessageStructOutput = [string, string] & {
     message: string;
     signature: string;
   };
 }
 
-export interface CircleMessageTransmitterSimulatorInterface extends Interface {
+export interface CircleMessageTransmitterSimulatorInterface
+  extends utils.Interface {
+  functions: {
+    "fetchMessageTransmitterLogsFromLogs((bytes32[],bytes,address)[])": FunctionFragment;
+    "fetchSignedMessageFromLog((bytes32[],bytes,address))": FunctionFragment;
+    "messageTransmitter()": FunctionFragment;
+    "signMessage(bytes)": FunctionFragment;
+    "valid()": FunctionFragment;
+    "vm()": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "fetchMessageTransmitterLogsFromLogs"
       | "fetchSignedMessageFromLog"
       | "messageTransmitter"
@@ -91,99 +100,144 @@ export interface CircleMessageTransmitterSimulatorInterface extends Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "valid", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "vm", data: BytesLike): Result;
+
+  events: {};
 }
 
 export interface CircleMessageTransmitterSimulator extends BaseContract {
-  connect(runner?: ContractRunner | null): CircleMessageTransmitterSimulator;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: CircleMessageTransmitterSimulatorInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    fetchMessageTransmitterLogsFromLogs(
+      logs: VmSafe.LogStruct[],
+      overrides?: CallOverrides
+    ): Promise<[VmSafe.LogStructOutput[]]>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    fetchSignedMessageFromLog(
+      log: VmSafe.LogStruct,
+      overrides?: CallOverrides
+    ): Promise<[CCTPMessageLib.CCTPMessageStructOutput]>;
 
-  fetchMessageTransmitterLogsFromLogs: TypedContractMethod<
-    [logs: VmSafe.LogStruct[]],
-    [VmSafe.LogStructOutput[]],
-    "view"
-  >;
+    messageTransmitter(overrides?: CallOverrides): Promise<[string]>;
 
-  fetchSignedMessageFromLog: TypedContractMethod<
-    [log: VmSafe.LogStruct],
-    [CCTPMessageLib.CCTPMessageStructOutput],
-    "view"
-  >;
+    signMessage(
+      message: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<[string] & { signedMessage: string }>;
 
-  messageTransmitter: TypedContractMethod<[], [string], "view">;
+    valid(overrides?: CallOverrides): Promise<[boolean]>;
 
-  signMessage: TypedContractMethod<[message: BytesLike], [string], "view">;
+    vm(overrides?: CallOverrides): Promise<[string]>;
+  };
 
-  valid: TypedContractMethod<[], [boolean], "view">;
+  fetchMessageTransmitterLogsFromLogs(
+    logs: VmSafe.LogStruct[],
+    overrides?: CallOverrides
+  ): Promise<VmSafe.LogStructOutput[]>;
 
-  vm: TypedContractMethod<[], [string], "view">;
+  fetchSignedMessageFromLog(
+    log: VmSafe.LogStruct,
+    overrides?: CallOverrides
+  ): Promise<CCTPMessageLib.CCTPMessageStructOutput>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  messageTransmitter(overrides?: CallOverrides): Promise<string>;
 
-  getFunction(
-    nameOrSignature: "fetchMessageTransmitterLogsFromLogs"
-  ): TypedContractMethod<
-    [logs: VmSafe.LogStruct[]],
-    [VmSafe.LogStructOutput[]],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "fetchSignedMessageFromLog"
-  ): TypedContractMethod<
-    [log: VmSafe.LogStruct],
-    [CCTPMessageLib.CCTPMessageStructOutput],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "messageTransmitter"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "signMessage"
-  ): TypedContractMethod<[message: BytesLike], [string], "view">;
-  getFunction(
-    nameOrSignature: "valid"
-  ): TypedContractMethod<[], [boolean], "view">;
-  getFunction(nameOrSignature: "vm"): TypedContractMethod<[], [string], "view">;
+  signMessage(message: BytesLike, overrides?: CallOverrides): Promise<string>;
+
+  valid(overrides?: CallOverrides): Promise<boolean>;
+
+  vm(overrides?: CallOverrides): Promise<string>;
+
+  callStatic: {
+    fetchMessageTransmitterLogsFromLogs(
+      logs: VmSafe.LogStruct[],
+      overrides?: CallOverrides
+    ): Promise<VmSafe.LogStructOutput[]>;
+
+    fetchSignedMessageFromLog(
+      log: VmSafe.LogStruct,
+      overrides?: CallOverrides
+    ): Promise<CCTPMessageLib.CCTPMessageStructOutput>;
+
+    messageTransmitter(overrides?: CallOverrides): Promise<string>;
+
+    signMessage(message: BytesLike, overrides?: CallOverrides): Promise<string>;
+
+    valid(overrides?: CallOverrides): Promise<boolean>;
+
+    vm(overrides?: CallOverrides): Promise<string>;
+  };
 
   filters: {};
+
+  estimateGas: {
+    fetchMessageTransmitterLogsFromLogs(
+      logs: VmSafe.LogStruct[],
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    fetchSignedMessageFromLog(
+      log: VmSafe.LogStruct,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    messageTransmitter(overrides?: CallOverrides): Promise<BigNumber>;
+
+    signMessage(
+      message: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    valid(overrides?: CallOverrides): Promise<BigNumber>;
+
+    vm(overrides?: CallOverrides): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    fetchMessageTransmitterLogsFromLogs(
+      logs: VmSafe.LogStruct[],
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    fetchSignedMessageFromLog(
+      log: VmSafe.LogStruct,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    messageTransmitter(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    signMessage(
+      message: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    valid(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    vm(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+  };
 }

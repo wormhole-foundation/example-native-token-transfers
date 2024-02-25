@@ -3,28 +3,35 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  Overrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "../common";
 
 export interface MessageTransmitterViewAttesterManagerInterface
-  extends Interface {
+  extends utils.Interface {
+  functions: {
+    "attesterManager()": FunctionFragment;
+    "enableAttester(address)": FunctionFragment;
+    "setSignatureThreshold(uint256)": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "attesterManager"
       | "enableAttester"
       | "setSignatureThreshold"
@@ -36,7 +43,7 @@ export interface MessageTransmitterViewAttesterManagerInterface
   ): string;
   encodeFunctionData(
     functionFragment: "enableAttester",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "setSignatureThreshold",
@@ -55,84 +62,103 @@ export interface MessageTransmitterViewAttesterManagerInterface
     functionFragment: "setSignatureThreshold",
     data: BytesLike
   ): Result;
+
+  events: {};
 }
 
 export interface MessageTransmitterViewAttesterManager extends BaseContract {
-  connect(
-    runner?: ContractRunner | null
-  ): MessageTransmitterViewAttesterManager;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: MessageTransmitterViewAttesterManagerInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    attesterManager(overrides?: CallOverrides): Promise<[string]>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    enableAttester(
+      newAttester: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  attesterManager: TypedContractMethod<[], [string], "view">;
+    setSignatureThreshold(
+      newSignatureThreshold: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+  };
 
-  enableAttester: TypedContractMethod<
-    [newAttester: AddressLike],
-    [void],
-    "nonpayable"
-  >;
+  attesterManager(overrides?: CallOverrides): Promise<string>;
 
-  setSignatureThreshold: TypedContractMethod<
-    [newSignatureThreshold: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
+  enableAttester(
+    newAttester: string,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  setSignatureThreshold(
+    newSignatureThreshold: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
 
-  getFunction(
-    nameOrSignature: "attesterManager"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "enableAttester"
-  ): TypedContractMethod<[newAttester: AddressLike], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "setSignatureThreshold"
-  ): TypedContractMethod<
-    [newSignatureThreshold: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
+  callStatic: {
+    attesterManager(overrides?: CallOverrides): Promise<string>;
+
+    enableAttester(
+      newAttester: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    setSignatureThreshold(
+      newSignatureThreshold: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+  };
 
   filters: {};
+
+  estimateGas: {
+    attesterManager(overrides?: CallOverrides): Promise<BigNumber>;
+
+    enableAttester(
+      newAttester: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    setSignatureThreshold(
+      newSignatureThreshold: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    attesterManager(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    enableAttester(
+      newAttester: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    setSignatureThreshold(
+      newSignatureThreshold: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+  };
 }

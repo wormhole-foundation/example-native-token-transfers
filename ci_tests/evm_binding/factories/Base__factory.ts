@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type { Base, BaseInterface } from "../Base";
 
 const _abi = [
@@ -55,9 +56,9 @@ const _abi = [
 export class Base__factory {
   static readonly abi = _abi;
   static createInterface(): BaseInterface {
-    return new Interface(_abi) as BaseInterface;
+    return new utils.Interface(_abi) as BaseInterface;
   }
-  static connect(address: string, runner?: ContractRunner | null): Base {
-    return new Contract(address, _abi, runner) as unknown as Base;
+  static connect(address: string, signerOrProvider: Signer | Provider): Base {
+    return new Contract(address, _abi, signerOrProvider) as Base;
   }
 }

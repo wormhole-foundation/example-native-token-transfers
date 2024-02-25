@@ -1,24 +1,24 @@
 use anchor_lang::{prelude::Pubkey, system_program::System, Id, InstructionData, ToAccountMetas};
-use example_native_token_transfers::instructions::SetSiblingArgs;
+use example_native_token_transfers::instructions::SetPeerArgs;
 use solana_sdk::instruction::Instruction;
 
 use crate::sdk::accounts::NTT;
 
-pub struct SetSibling {
+pub struct SetPeer {
     pub payer: Pubkey,
     pub owner: Pubkey,
     pub mint: Pubkey,
 }
 
-pub fn set_sibling(ntt: &NTT, accounts: SetSibling, args: SetSiblingArgs) -> Instruction {
+pub fn set_peer(ntt: &NTT, accounts: SetPeer, args: SetPeerArgs) -> Instruction {
     let chain_id = args.chain_id.id;
-    let data = example_native_token_transfers::instruction::SetSibling { args };
+    let data = example_native_token_transfers::instruction::SetPeer { args };
 
-    let accounts = example_native_token_transfers::accounts::SetSibling {
+    let accounts = example_native_token_transfers::accounts::SetPeer {
         config: ntt.config(),
         owner: accounts.owner,
         payer: accounts.payer,
-        sibling: ntt.sibling(chain_id),
+        peer: ntt.peer(chain_id),
         inbox_rate_limit: ntt.inbox_rate_limit(chain_id),
         system_program: System::id(),
     };
@@ -49,21 +49,21 @@ pub fn set_paused(ntt: &NTT, accounts: SetPaused, pause: bool) -> Instruction {
     }
 }
 
-pub struct RegisterEndpoint {
+pub struct RegisterTransceiver {
     pub payer: Pubkey,
     pub owner: Pubkey,
-    pub endpoint: Pubkey,
+    pub transceiver: Pubkey,
 }
 
-pub fn register_endpoint(ntt: &NTT, accounts: RegisterEndpoint) -> Instruction {
-    let data = example_native_token_transfers::instruction::RegisterEndpoint {};
+pub fn register_transceiver(ntt: &NTT, accounts: RegisterTransceiver) -> Instruction {
+    let data = example_native_token_transfers::instruction::RegisterTransceiver {};
 
-    let accounts = example_native_token_transfers::accounts::RegisterEndpoint {
+    let accounts = example_native_token_transfers::accounts::RegisterTransceiver {
         config: ntt.config(),
         owner: accounts.owner,
         payer: accounts.payer,
-        endpoint: accounts.endpoint,
-        registered_endpoint: ntt.registered_endpoint(&accounts.endpoint),
+        transceiver: accounts.transceiver,
+        registered_transceiver: ntt.registered_transceiver(&accounts.transceiver),
         system_program: System::id(),
     };
 

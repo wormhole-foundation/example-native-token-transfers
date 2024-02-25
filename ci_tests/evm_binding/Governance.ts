@@ -3,51 +3,59 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  Overrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "./common";
 
 export declare namespace Governance {
   export type GeneralPurposeGovernanceMessageStruct = {
     action: BigNumberish;
     chain: BigNumberish;
-    governanceContract: AddressLike;
-    governedContract: AddressLike;
+    governanceContract: string;
+    governedContract: string;
     callData: BytesLike;
   };
 
   export type GeneralPurposeGovernanceMessageStructOutput = [
-    action: bigint,
-    chain: bigint,
-    governanceContract: string,
-    governedContract: string,
-    callData: string
+    number,
+    number,
+    string,
+    string,
+    string
   ] & {
-    action: bigint;
-    chain: bigint;
+    action: number;
+    chain: number;
     governanceContract: string;
     governedContract: string;
     callData: string;
   };
 }
 
-export interface GovernanceInterface extends Interface {
+export interface GovernanceInterface extends utils.Interface {
+  functions: {
+    "MODULE()": FunctionFragment;
+    "encodeGeneralPurposeGovernanceMessage((uint8,uint16,address,address,bytes))": FunctionFragment;
+    "parseGeneralPurposeGovernanceMessage(bytes)": FunctionFragment;
+    "performGovernance(bytes)": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "MODULE"
       | "encodeGeneralPurposeGovernanceMessage"
       | "parseGeneralPurposeGovernanceMessage"
@@ -81,95 +89,129 @@ export interface GovernanceInterface extends Interface {
     functionFragment: "performGovernance",
     data: BytesLike
   ): Result;
+
+  events: {};
 }
 
 export interface Governance extends BaseContract {
-  connect(runner?: ContractRunner | null): Governance;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: GovernanceInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    MODULE(overrides?: CallOverrides): Promise<[string]>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    encodeGeneralPurposeGovernanceMessage(
+      m: Governance.GeneralPurposeGovernanceMessageStruct,
+      overrides?: CallOverrides
+    ): Promise<[string] & { encoded: string }>;
 
-  MODULE: TypedContractMethod<[], [string], "view">;
+    parseGeneralPurposeGovernanceMessage(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<
+      [Governance.GeneralPurposeGovernanceMessageStructOutput] & {
+        message: Governance.GeneralPurposeGovernanceMessageStructOutput;
+      }
+    >;
 
-  encodeGeneralPurposeGovernanceMessage: TypedContractMethod<
-    [m: Governance.GeneralPurposeGovernanceMessageStruct],
-    [string],
-    "view"
-  >;
+    performGovernance(
+      vaa: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+  };
 
-  parseGeneralPurposeGovernanceMessage: TypedContractMethod<
-    [encoded: BytesLike],
-    [Governance.GeneralPurposeGovernanceMessageStructOutput],
-    "view"
-  >;
+  MODULE(overrides?: CallOverrides): Promise<string>;
 
-  performGovernance: TypedContractMethod<
-    [vaa: BytesLike],
-    [void],
-    "nonpayable"
-  >;
+  encodeGeneralPurposeGovernanceMessage(
+    m: Governance.GeneralPurposeGovernanceMessageStruct,
+    overrides?: CallOverrides
+  ): Promise<string>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  parseGeneralPurposeGovernanceMessage(
+    encoded: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<Governance.GeneralPurposeGovernanceMessageStructOutput>;
 
-  getFunction(
-    nameOrSignature: "MODULE"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "encodeGeneralPurposeGovernanceMessage"
-  ): TypedContractMethod<
-    [m: Governance.GeneralPurposeGovernanceMessageStruct],
-    [string],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "parseGeneralPurposeGovernanceMessage"
-  ): TypedContractMethod<
-    [encoded: BytesLike],
-    [Governance.GeneralPurposeGovernanceMessageStructOutput],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "performGovernance"
-  ): TypedContractMethod<[vaa: BytesLike], [void], "nonpayable">;
+  performGovernance(
+    vaa: BytesLike,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  callStatic: {
+    MODULE(overrides?: CallOverrides): Promise<string>;
+
+    encodeGeneralPurposeGovernanceMessage(
+      m: Governance.GeneralPurposeGovernanceMessageStruct,
+      overrides?: CallOverrides
+    ): Promise<string>;
+
+    parseGeneralPurposeGovernanceMessage(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<Governance.GeneralPurposeGovernanceMessageStructOutput>;
+
+    performGovernance(vaa: BytesLike, overrides?: CallOverrides): Promise<void>;
+  };
 
   filters: {};
+
+  estimateGas: {
+    MODULE(overrides?: CallOverrides): Promise<BigNumber>;
+
+    encodeGeneralPurposeGovernanceMessage(
+      m: Governance.GeneralPurposeGovernanceMessageStruct,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    parseGeneralPurposeGovernanceMessage(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    performGovernance(
+      vaa: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    MODULE(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    encodeGeneralPurposeGovernanceMessage(
+      m: Governance.GeneralPurposeGovernanceMessageStruct,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    parseGeneralPurposeGovernanceMessage(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    performGovernance(
+      vaa: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+  };
 }

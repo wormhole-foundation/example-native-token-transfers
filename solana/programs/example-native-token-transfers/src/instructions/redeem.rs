@@ -1,19 +1,19 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
-use ntt_messages::{manager::ManagerMessage, ntt::NativeTokenTransfer};
+use ntt_messages::{ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage};
 
 use crate::{
     bitmap::Bitmap,
     config::*,
     error::NTTError,
-    messages::ValidatedEndpointMessage,
+    messages::ValidatedTransceiverMessage,
+    peer::NttManagerPeer,
     queue::{
         inbox::{InboxItem, InboxRateLimit, ReleaseStatus},
         outbox::OutboxRateLimit,
         rate_limit::RateLimitResult,
     },
-    registered_endpoint::*,
-    sibling::ManagerSibling,
+    registered_transceiver::*,
 };
 
 #[derive(Accounts)]
@@ -25,25 +25,27 @@ pub struct Redeem<'info> {
     pub config: Account<'info, Config>,
 
     #[account(
-        seeds = [ManagerSibling::SEED_PREFIX, endpoint_message.from_chain.id.to_be_bytes().as_ref()],
-        constraint = sibling.address == endpoint_message.message.source_manager @ NTTError::InvalidManagerSibling,
-        bump = sibling.bump,
+        seeds = [NttManagerPeer::SEED_PREFIX, transceiver_message.from_chain.id.to_be_bytes().as_ref()],
+        constraint = peer.address == transceiver_message.message.source_ntt_manager @ NTTError::InvalidNttManagerPeer,
+        bump = peer.bump,
     )]
-    pub sibling: Account<'info, ManagerSibling>,
+    pub peer: Account<'info, NttManagerPeer>,
 
     #[account(
-        // check that the messages is targeted to this chain
-        constraint = endpoint_message.message.manager_payload.payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
+        // check that the message is targeted to this chain
+        constraint = transceiver_message.message.ntt_manager_payload.payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
+        // check that we're the intended recipient
+        constraint = transceiver_message.message.recipient_ntt_manager == crate::ID.to_bytes() @ NTTError::InvalidRecipientNttManager,
         // NOTE: we don't replay protect VAAs. Instead, we replay protect
         // executing the messages themselves with the [`released`] flag.
-        owner = endpoint.endpoint_address,
+        owner = transceiver.transceiver_address,
     )]
-    pub endpoint_message: Account<'info, ValidatedEndpointMessage<NativeTokenTransfer>>,
+    pub transceiver_message: Account<'info, ValidatedTransceiverMessage<NativeTokenTransfer>>,
 
     #[account(
-        constraint = config.enabled_endpoints.get(endpoint.id) @ NTTError::DisabledEndpoint
+        constraint = config.enabled_transceivers.get(transceiver.id) @ NTTError::DisabledTransceiver
     )]
-    pub endpoint: Account<'info, RegisteredEndpoint>,
+    pub transceiver: Account<'info, RegisteredTransceiver>,
 
     #[account(
         constraint = mint.key() == config.mint
@@ -56,15 +58,15 @@ pub struct Redeem<'info> {
         space = 8 + InboxItem::INIT_SPACE,
         seeds = [
             InboxItem::SEED_PREFIX,
-            endpoint_message.message.manager_payload.keccak256(
-                endpoint_message.from_chain
+            transceiver_message.message.ntt_manager_payload.keccak256(
+                transceiver_message.from_chain
             ).as_ref(),
         ],
         bump,
     )]
     /// NOTE: This account is content-addressed (PDA seeded by the message hash).
-    /// This is because in a multi-endpoint configuration, the different
-    /// endpoints "vote" on messages (by delivering them). By making the inbox
+    /// This is because in a multi-transceiver configuration, the different
+    /// transceivers "vote" on messages (by delivering them). By making the inbox
     /// items content-addressed, we can ensure that disagreeing votes don't
     /// interfere with each other.
     pub inbox_item: Account<'info, InboxItem>,
@@ -73,7 +75,7 @@ pub struct Redeem<'info> {
         mut,
         seeds = [
             InboxRateLimit::SEED_PREFIX,
-            endpoint_message.from_chain.id.to_be_bytes().as_ref(),
+            transceiver_message.from_chain.id.to_be_bytes().as_ref(),
         ],
         bump,
     )]
@@ -91,8 +93,8 @@ pub struct RedeemArgs {}
 pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let accs = ctx.accounts;
 
-    let message: ManagerMessage<NativeTokenTransfer> =
-        accs.endpoint_message.message.manager_payload.clone();
+    let message: NttManagerMessage<NativeTokenTransfer> =
+        accs.transceiver_message.message.ntt_manager_payload.clone();
 
     let amount = message.payload.amount.denormalize(accs.mint.decimals);
 
@@ -111,12 +113,12 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     }
 
     // idempotent
-    accs.inbox_item.votes.set(accs.endpoint.id, true);
+    accs.inbox_item.votes.set(accs.transceiver.id, true);
 
     if accs
         .inbox_item
         .votes
-        .count_enabled_votes(accs.config.enabled_endpoints)
+        .count_enabled_votes(accs.config.enabled_transceivers)
         < accs.config.threshold
     {
         return Ok(());

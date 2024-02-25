@@ -6,6 +6,7 @@ use crate::{
     bitmap::Bitmap,
     config::*,
     error::NTTError,
+    peer::NttManagerPeer,
     queue::{
         inbox::InboxRateLimit,
         outbox::{OutboxItem, OutboxRateLimit},
@@ -88,9 +89,15 @@ pub struct TransferBurn<'info> {
         seeds = [InboxRateLimit::SEED_PREFIX, args.recipient_chain.id.to_be_bytes().as_ref()],
         bump = inbox_rate_limit.bump,
     )]
-    // NOTE: it would be nice to put this into `common`, but that way we don't
+    // NOTE: it would be nice to put these into `common`, but that way we don't
     // have access to the instruction args
     pub inbox_rate_limit: Account<'info, InboxRateLimit>,
+
+    #[account(
+        seeds = [NttManagerPeer::SEED_PREFIX, args.recipient_chain.id.to_be_bytes().as_ref()],
+        bump = peer.bump,
+    )]
+    pub peer: Account<'info, NttManagerPeer>,
 }
 
 // TODO: fees for relaying?
@@ -128,11 +135,14 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
         amount,
     )?;
 
+    let recipient_ntt_manager = accs.peer.address;
+
     insert_into_outbox(
         &mut accs.common,
         &mut accs.inbox_rate_limit,
         amount,
         recipient_chain,
+        recipient_ntt_manager,
         recipient_address,
         should_queue,
     )
@@ -150,9 +160,15 @@ pub struct TransferLock<'info> {
         seeds = [InboxRateLimit::SEED_PREFIX, args.recipient_chain.id.to_be_bytes().as_ref()],
         bump = inbox_rate_limit.bump,
     )]
-    // NOTE: it would be nice to put this into `common`, but that way we don't
+    // NOTE: it would be nice to put these into `common`, but that way we don't
     // have access to the instruction args
     pub inbox_rate_limit: Account<'info, InboxRateLimit>,
+
+    #[account(
+        seeds = [NttManagerPeer::SEED_PREFIX, args.recipient_chain.id.to_be_bytes().as_ref()],
+        bump = peer.bump,
+    )]
+    pub peer: Account<'info, NttManagerPeer>,
 
     #[account(
         mut,
@@ -200,11 +216,14 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
         accs.common.mint.decimals,
     )?;
 
+    let recipient_ntt_manager = accs.peer.address;
+
     insert_into_outbox(
         &mut accs.common,
         &mut accs.inbox_rate_limit,
         amount,
         recipient_chain,
+        recipient_ntt_manager,
         recipient_address,
         should_queue,
     )
@@ -215,6 +234,7 @@ fn insert_into_outbox(
     inbox_rate_limit: &mut InboxRateLimit,
     amount: u64,
     recipient_chain: ChainId,
+    recipient_ntt_manager: [u8; 32],
     recipient_address: [u8; 32],
     should_queue: bool,
 ) -> Result<()> {
@@ -241,6 +261,7 @@ fn insert_into_outbox(
         amount: NormalizedAmount::normalize(amount, common.mint.decimals),
         sender: common.sender.key(),
         recipient_chain,
+        recipient_ntt_manager,
         recipient_address,
         release_timestamp,
         released: Bitmap::new(),

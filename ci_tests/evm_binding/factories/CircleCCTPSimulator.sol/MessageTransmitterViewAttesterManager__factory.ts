@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type {
   MessageTransmitterViewAttesterManager,
   MessageTransmitterViewAttesterManagerInterface,
@@ -53,18 +54,18 @@ const _abi = [
 export class MessageTransmitterViewAttesterManager__factory {
   static readonly abi = _abi;
   static createInterface(): MessageTransmitterViewAttesterManagerInterface {
-    return new Interface(
+    return new utils.Interface(
       _abi
     ) as MessageTransmitterViewAttesterManagerInterface;
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null
+    signerOrProvider: Signer | Provider
   ): MessageTransmitterViewAttesterManager {
     return new Contract(
       address,
       _abi,
-      runner
-    ) as unknown as MessageTransmitterViewAttesterManager;
+      signerOrProvider
+    ) as MessageTransmitterViewAttesterManager;
   }
 }

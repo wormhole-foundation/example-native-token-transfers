@@ -3,29 +3,40 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  EventFragment,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  PayableOverrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
-  TypedLogDescription,
+  FunctionFragment,
+  Result,
+  EventFragment,
+} from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
+import type {
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "../common";
 
-export interface IWormholeRelayerDeliveryInterface extends Interface {
+export interface IWormholeRelayerDeliveryInterface extends utils.Interface {
+  functions: {
+    "deliver(bytes[],bytes,address,bytes)": FunctionFragment;
+    "deliveryAttempted(bytes32)": FunctionFragment;
+    "deliveryFailureBlock(bytes32)": FunctionFragment;
+    "deliverySuccessBlock(bytes32)": FunctionFragment;
+    "getRegisteredWormholeRelayerContract(uint16)": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "deliver"
       | "deliveryAttempted"
       | "deliveryFailureBlock"
@@ -33,11 +44,9 @@ export interface IWormholeRelayerDeliveryInterface extends Interface {
       | "getRegisteredWormholeRelayerContract"
   ): FunctionFragment;
 
-  getEvent(nameOrSignatureOrTopic: "Delivery" | "SendEvent"): EventFragment;
-
   encodeFunctionData(
     functionFragment: "deliver",
-    values: [BytesLike[], BytesLike, AddressLike, BytesLike]
+    values: [BytesLike[], BytesLike, string, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "deliveryAttempted",
@@ -73,213 +82,263 @@ export interface IWormholeRelayerDeliveryInterface extends Interface {
     functionFragment: "getRegisteredWormholeRelayerContract",
     data: BytesLike
   ): Result;
+
+  events: {
+    "Delivery(address,uint16,uint64,bytes32,uint8,uint256,uint8,bytes,bytes)": EventFragment;
+    "SendEvent(uint64,uint256,uint256)": EventFragment;
+  };
+
+  getEvent(nameOrSignatureOrTopic: "Delivery"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "SendEvent"): EventFragment;
 }
 
-export namespace DeliveryEvent {
-  export type InputTuple = [
-    recipientContract: AddressLike,
-    sourceChain: BigNumberish,
-    sequence: BigNumberish,
-    deliveryVaaHash: BytesLike,
-    status: BigNumberish,
-    gasUsed: BigNumberish,
-    refundStatus: BigNumberish,
-    additionalStatusInfo: BytesLike,
-    overridesInfo: BytesLike
-  ];
-  export type OutputTuple = [
-    recipientContract: string,
-    sourceChain: bigint,
-    sequence: bigint,
-    deliveryVaaHash: string,
-    status: bigint,
-    gasUsed: bigint,
-    refundStatus: bigint,
-    additionalStatusInfo: string,
-    overridesInfo: string
-  ];
-  export interface OutputObject {
-    recipientContract: string;
-    sourceChain: bigint;
-    sequence: bigint;
-    deliveryVaaHash: string;
-    status: bigint;
-    gasUsed: bigint;
-    refundStatus: bigint;
-    additionalStatusInfo: string;
-    overridesInfo: string;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export interface DeliveryEventObject {
+  recipientContract: string;
+  sourceChain: number;
+  sequence: BigNumber;
+  deliveryVaaHash: string;
+  status: number;
+  gasUsed: BigNumber;
+  refundStatus: number;
+  additionalStatusInfo: string;
+  overridesInfo: string;
 }
+export type DeliveryEvent = TypedEvent<
+  [
+    string,
+    number,
+    BigNumber,
+    string,
+    number,
+    BigNumber,
+    number,
+    string,
+    string
+  ],
+  DeliveryEventObject
+>;
 
-export namespace SendEventEvent {
-  export type InputTuple = [
-    sequence: BigNumberish,
-    deliveryQuote: BigNumberish,
-    paymentForExtraReceiverValue: BigNumberish
-  ];
-  export type OutputTuple = [
-    sequence: bigint,
-    deliveryQuote: bigint,
-    paymentForExtraReceiverValue: bigint
-  ];
-  export interface OutputObject {
-    sequence: bigint;
-    deliveryQuote: bigint;
-    paymentForExtraReceiverValue: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export type DeliveryEventFilter = TypedEventFilter<DeliveryEvent>;
+
+export interface SendEventEventObject {
+  sequence: BigNumber;
+  deliveryQuote: BigNumber;
+  paymentForExtraReceiverValue: BigNumber;
 }
+export type SendEventEvent = TypedEvent<
+  [BigNumber, BigNumber, BigNumber],
+  SendEventEventObject
+>;
+
+export type SendEventEventFilter = TypedEventFilter<SendEventEvent>;
 
 export interface IWormholeRelayerDelivery extends BaseContract {
-  connect(runner?: ContractRunner | null): IWormholeRelayerDelivery;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: IWormholeRelayerDeliveryInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
-
-  deliver: TypedContractMethod<
-    [
+  functions: {
+    deliver(
       encodedVMs: BytesLike[],
       encodedDeliveryVAA: BytesLike,
-      relayerRefundAddress: AddressLike,
-      deliveryOverrides: BytesLike
-    ],
-    [void],
-    "payable"
-  >;
+      relayerRefundAddress: string,
+      deliveryOverrides: BytesLike,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  deliveryAttempted: TypedContractMethod<
-    [deliveryHash: BytesLike],
-    [boolean],
-    "view"
-  >;
+    deliveryAttempted(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<[boolean] & { attempted: boolean }>;
 
-  deliveryFailureBlock: TypedContractMethod<
-    [deliveryHash: BytesLike],
-    [bigint],
-    "view"
-  >;
+    deliveryFailureBlock(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<[BigNumber] & { blockNumber: BigNumber }>;
 
-  deliverySuccessBlock: TypedContractMethod<
-    [deliveryHash: BytesLike],
-    [bigint],
-    "view"
-  >;
+    deliverySuccessBlock(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<[BigNumber] & { blockNumber: BigNumber }>;
 
-  getRegisteredWormholeRelayerContract: TypedContractMethod<
-    [chainId: BigNumberish],
-    [string],
-    "view"
-  >;
+    getRegisteredWormholeRelayerContract(
+      chainId: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[string]>;
+  };
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  deliver(
+    encodedVMs: BytesLike[],
+    encodedDeliveryVAA: BytesLike,
+    relayerRefundAddress: string,
+    deliveryOverrides: BytesLike,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
 
-  getFunction(
-    nameOrSignature: "deliver"
-  ): TypedContractMethod<
-    [
+  deliveryAttempted(
+    deliveryHash: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<boolean>;
+
+  deliveryFailureBlock(
+    deliveryHash: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<BigNumber>;
+
+  deliverySuccessBlock(
+    deliveryHash: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<BigNumber>;
+
+  getRegisteredWormholeRelayerContract(
+    chainId: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<string>;
+
+  callStatic: {
+    deliver(
       encodedVMs: BytesLike[],
       encodedDeliveryVAA: BytesLike,
-      relayerRefundAddress: AddressLike,
-      deliveryOverrides: BytesLike
-    ],
-    [void],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "deliveryAttempted"
-  ): TypedContractMethod<[deliveryHash: BytesLike], [boolean], "view">;
-  getFunction(
-    nameOrSignature: "deliveryFailureBlock"
-  ): TypedContractMethod<[deliveryHash: BytesLike], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "deliverySuccessBlock"
-  ): TypedContractMethod<[deliveryHash: BytesLike], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "getRegisteredWormholeRelayerContract"
-  ): TypedContractMethod<[chainId: BigNumberish], [string], "view">;
+      relayerRefundAddress: string,
+      deliveryOverrides: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<void>;
 
-  getEvent(
-    key: "Delivery"
-  ): TypedContractEvent<
-    DeliveryEvent.InputTuple,
-    DeliveryEvent.OutputTuple,
-    DeliveryEvent.OutputObject
-  >;
-  getEvent(
-    key: "SendEvent"
-  ): TypedContractEvent<
-    SendEventEvent.InputTuple,
-    SendEventEvent.OutputTuple,
-    SendEventEvent.OutputObject
-  >;
+    deliveryAttempted(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
+
+    deliveryFailureBlock(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    deliverySuccessBlock(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    getRegisteredWormholeRelayerContract(
+      chainId: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<string>;
+  };
 
   filters: {
-    "Delivery(address,uint16,uint64,bytes32,uint8,uint256,uint8,bytes,bytes)": TypedContractEvent<
-      DeliveryEvent.InputTuple,
-      DeliveryEvent.OutputTuple,
-      DeliveryEvent.OutputObject
-    >;
-    Delivery: TypedContractEvent<
-      DeliveryEvent.InputTuple,
-      DeliveryEvent.OutputTuple,
-      DeliveryEvent.OutputObject
-    >;
+    "Delivery(address,uint16,uint64,bytes32,uint8,uint256,uint8,bytes,bytes)"(
+      recipientContract?: string | null,
+      sourceChain?: BigNumberish | null,
+      sequence?: BigNumberish | null,
+      deliveryVaaHash?: null,
+      status?: null,
+      gasUsed?: null,
+      refundStatus?: null,
+      additionalStatusInfo?: null,
+      overridesInfo?: null
+    ): DeliveryEventFilter;
+    Delivery(
+      recipientContract?: string | null,
+      sourceChain?: BigNumberish | null,
+      sequence?: BigNumberish | null,
+      deliveryVaaHash?: null,
+      status?: null,
+      gasUsed?: null,
+      refundStatus?: null,
+      additionalStatusInfo?: null,
+      overridesInfo?: null
+    ): DeliveryEventFilter;
 
-    "SendEvent(uint64,uint256,uint256)": TypedContractEvent<
-      SendEventEvent.InputTuple,
-      SendEventEvent.OutputTuple,
-      SendEventEvent.OutputObject
-    >;
-    SendEvent: TypedContractEvent<
-      SendEventEvent.InputTuple,
-      SendEventEvent.OutputTuple,
-      SendEventEvent.OutputObject
-    >;
+    "SendEvent(uint64,uint256,uint256)"(
+      sequence?: BigNumberish | null,
+      deliveryQuote?: null,
+      paymentForExtraReceiverValue?: null
+    ): SendEventEventFilter;
+    SendEvent(
+      sequence?: BigNumberish | null,
+      deliveryQuote?: null,
+      paymentForExtraReceiverValue?: null
+    ): SendEventEventFilter;
+  };
+
+  estimateGas: {
+    deliver(
+      encodedVMs: BytesLike[],
+      encodedDeliveryVAA: BytesLike,
+      relayerRefundAddress: string,
+      deliveryOverrides: BytesLike,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    deliveryAttempted(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    deliveryFailureBlock(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    deliverySuccessBlock(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    getRegisteredWormholeRelayerContract(
+      chainId: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    deliver(
+      encodedVMs: BytesLike[],
+      encodedDeliveryVAA: BytesLike,
+      relayerRefundAddress: string,
+      deliveryOverrides: BytesLike,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    deliveryAttempted(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    deliveryFailureBlock(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    deliverySuccessBlock(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    getRegisteredWormholeRelayerContract(
+      chainId: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
   };
 }

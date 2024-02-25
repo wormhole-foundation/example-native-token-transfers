@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type {
   CCTPAndTokenReceiver,
   CCTPAndTokenReceiverInterface,
@@ -115,16 +116,16 @@ const _abi = [
 export class CCTPAndTokenReceiver__factory {
   static readonly abi = _abi;
   static createInterface(): CCTPAndTokenReceiverInterface {
-    return new Interface(_abi) as CCTPAndTokenReceiverInterface;
+    return new utils.Interface(_abi) as CCTPAndTokenReceiverInterface;
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null
+    signerOrProvider: Signer | Provider
   ): CCTPAndTokenReceiver {
     return new Contract(
       address,
       _abi,
-      runner
-    ) as unknown as CCTPAndTokenReceiver;
+      signerOrProvider
+    ) as CCTPAndTokenReceiver;
   }
 }

@@ -3,24 +3,27 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  EventFragment,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  PayableOverrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
-  TypedLogDescription,
+  FunctionFragment,
+  Result,
+  EventFragment,
+} from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
+import type {
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "../common";
 
 export type VaaKeyStruct = {
@@ -29,22 +32,45 @@ export type VaaKeyStruct = {
   sequence: BigNumberish;
 };
 
-export type VaaKeyStructOutput = [
-  chainId: bigint,
-  emitterAddress: string,
-  sequence: bigint
-] & { chainId: bigint; emitterAddress: string; sequence: bigint };
+export type VaaKeyStructOutput = [number, string, BigNumber] & {
+  chainId: number;
+  emitterAddress: string;
+  sequence: BigNumber;
+};
 
 export type MessageKeyStruct = { keyType: BigNumberish; encodedKey: BytesLike };
 
-export type MessageKeyStructOutput = [keyType: bigint, encodedKey: string] & {
-  keyType: bigint;
+export type MessageKeyStructOutput = [number, string] & {
+  keyType: number;
   encodedKey: string;
 };
 
-export interface IWormholeRelayerInterface extends Interface {
+export interface IWormholeRelayerInterface extends utils.Interface {
+  functions: {
+    "deliver(bytes[],bytes,address,bytes)": FunctionFragment;
+    "deliveryAttempted(bytes32)": FunctionFragment;
+    "deliveryFailureBlock(bytes32)": FunctionFragment;
+    "deliverySuccessBlock(bytes32)": FunctionFragment;
+    "getDefaultDeliveryProvider()": FunctionFragment;
+    "getRegisteredWormholeRelayerContract(uint16)": FunctionFragment;
+    "quoteDeliveryPrice(uint16,uint256,bytes,address)": FunctionFragment;
+    "quoteEVMDeliveryPrice(uint16,uint256,uint256,address)": FunctionFragment;
+    "quoteEVMDeliveryPrice(uint16,uint256,uint256)": FunctionFragment;
+    "quoteNativeForChain(uint16,uint256,address)": FunctionFragment;
+    "resend((uint16,bytes32,uint64),uint16,uint256,bytes,address)": FunctionFragment;
+    "resendToEvm((uint16,bytes32,uint64),uint16,uint256,uint256,address)": FunctionFragment;
+    "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint16,bytes32,uint64)[],uint8)": FunctionFragment;
+    "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint8,bytes)[],uint8)": FunctionFragment;
+    "sendPayloadToEvm(uint16,address,bytes,uint256,uint256,uint16,address)": FunctionFragment;
+    "sendPayloadToEvm(uint16,address,bytes,uint256,uint256)": FunctionFragment;
+    "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint16,bytes32,uint64)[],uint8)": FunctionFragment;
+    "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint8,bytes)[],uint8)": FunctionFragment;
+    "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[])": FunctionFragment;
+    "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[],uint16,address)": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "deliver"
       | "deliveryAttempted"
       | "deliveryFailureBlock"
@@ -67,11 +93,9 @@ export interface IWormholeRelayerInterface extends Interface {
       | "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[],uint16,address)"
   ): FunctionFragment;
 
-  getEvent(nameOrSignatureOrTopic: "Delivery" | "SendEvent"): EventFragment;
-
   encodeFunctionData(
     functionFragment: "deliver",
-    values: [BytesLike[], BytesLike, AddressLike, BytesLike]
+    values: [BytesLike[], BytesLike, string, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "deliveryAttempted",
@@ -95,11 +119,11 @@ export interface IWormholeRelayerInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "quoteDeliveryPrice",
-    values: [BigNumberish, BigNumberish, BytesLike, AddressLike]
+    values: [BigNumberish, BigNumberish, BytesLike, string]
   ): string;
   encodeFunctionData(
     functionFragment: "quoteEVMDeliveryPrice(uint16,uint256,uint256,address)",
-    values: [BigNumberish, BigNumberish, BigNumberish, AddressLike]
+    values: [BigNumberish, BigNumberish, BigNumberish, string]
   ): string;
   encodeFunctionData(
     functionFragment: "quoteEVMDeliveryPrice(uint16,uint256,uint256)",
@@ -107,21 +131,15 @@ export interface IWormholeRelayerInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "quoteNativeForChain",
-    values: [BigNumberish, BigNumberish, AddressLike]
+    values: [BigNumberish, BigNumberish, string]
   ): string;
   encodeFunctionData(
     functionFragment: "resend",
-    values: [VaaKeyStruct, BigNumberish, BigNumberish, BytesLike, AddressLike]
+    values: [VaaKeyStruct, BigNumberish, BigNumberish, BytesLike, string]
   ): string;
   encodeFunctionData(
     functionFragment: "resendToEvm",
-    values: [
-      VaaKeyStruct,
-      BigNumberish,
-      BigNumberish,
-      BigNumberish,
-      AddressLike
-    ]
+    values: [VaaKeyStruct, BigNumberish, BigNumberish, BigNumberish, string]
   ): string;
   encodeFunctionData(
     functionFragment: "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint16,bytes32,uint64)[],uint8)",
@@ -134,7 +152,7 @@ export interface IWormholeRelayerInterface extends Interface {
       BytesLike,
       BigNumberish,
       BytesLike,
-      AddressLike,
+      string,
       VaaKeyStruct[],
       BigNumberish
     ]
@@ -150,7 +168,7 @@ export interface IWormholeRelayerInterface extends Interface {
       BytesLike,
       BigNumberish,
       BytesLike,
-      AddressLike,
+      string,
       MessageKeyStruct[],
       BigNumberish
     ]
@@ -159,30 +177,30 @@ export interface IWormholeRelayerInterface extends Interface {
     functionFragment: "sendPayloadToEvm(uint16,address,bytes,uint256,uint256,uint16,address)",
     values: [
       BigNumberish,
-      AddressLike,
+      string,
       BytesLike,
       BigNumberish,
       BigNumberish,
       BigNumberish,
-      AddressLike
+      string
     ]
   ): string;
   encodeFunctionData(
     functionFragment: "sendPayloadToEvm(uint16,address,bytes,uint256,uint256)",
-    values: [BigNumberish, AddressLike, BytesLike, BigNumberish, BigNumberish]
+    values: [BigNumberish, string, BytesLike, BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint16,bytes32,uint64)[],uint8)",
     values: [
       BigNumberish,
-      AddressLike,
+      string,
       BytesLike,
       BigNumberish,
       BigNumberish,
       BigNumberish,
       BigNumberish,
-      AddressLike,
-      AddressLike,
+      string,
+      string,
       VaaKeyStruct[],
       BigNumberish
     ]
@@ -191,14 +209,14 @@ export interface IWormholeRelayerInterface extends Interface {
     functionFragment: "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint8,bytes)[],uint8)",
     values: [
       BigNumberish,
-      AddressLike,
+      string,
       BytesLike,
       BigNumberish,
       BigNumberish,
       BigNumberish,
       BigNumberish,
-      AddressLike,
-      AddressLike,
+      string,
+      string,
       MessageKeyStruct[],
       BigNumberish
     ]
@@ -207,7 +225,7 @@ export interface IWormholeRelayerInterface extends Interface {
     functionFragment: "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[])",
     values: [
       BigNumberish,
-      AddressLike,
+      string,
       BytesLike,
       BigNumberish,
       BigNumberish,
@@ -218,13 +236,13 @@ export interface IWormholeRelayerInterface extends Interface {
     functionFragment: "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[],uint16,address)",
     values: [
       BigNumberish,
-      AddressLike,
+      string,
       BytesLike,
       BigNumberish,
       BigNumberish,
       VaaKeyStruct[],
       BigNumberish,
-      AddressLike
+      string
     ]
   ): string;
 
@@ -302,233 +320,179 @@ export interface IWormholeRelayerInterface extends Interface {
     functionFragment: "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[],uint16,address)",
     data: BytesLike
   ): Result;
+
+  events: {
+    "Delivery(address,uint16,uint64,bytes32,uint8,uint256,uint8,bytes,bytes)": EventFragment;
+    "SendEvent(uint64,uint256,uint256)": EventFragment;
+  };
+
+  getEvent(nameOrSignatureOrTopic: "Delivery"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "SendEvent"): EventFragment;
 }
 
-export namespace DeliveryEvent {
-  export type InputTuple = [
-    recipientContract: AddressLike,
-    sourceChain: BigNumberish,
-    sequence: BigNumberish,
-    deliveryVaaHash: BytesLike,
-    status: BigNumberish,
-    gasUsed: BigNumberish,
-    refundStatus: BigNumberish,
-    additionalStatusInfo: BytesLike,
-    overridesInfo: BytesLike
-  ];
-  export type OutputTuple = [
-    recipientContract: string,
-    sourceChain: bigint,
-    sequence: bigint,
-    deliveryVaaHash: string,
-    status: bigint,
-    gasUsed: bigint,
-    refundStatus: bigint,
-    additionalStatusInfo: string,
-    overridesInfo: string
-  ];
-  export interface OutputObject {
-    recipientContract: string;
-    sourceChain: bigint;
-    sequence: bigint;
-    deliveryVaaHash: string;
-    status: bigint;
-    gasUsed: bigint;
-    refundStatus: bigint;
-    additionalStatusInfo: string;
-    overridesInfo: string;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export interface DeliveryEventObject {
+  recipientContract: string;
+  sourceChain: number;
+  sequence: BigNumber;
+  deliveryVaaHash: string;
+  status: number;
+  gasUsed: BigNumber;
+  refundStatus: number;
+  additionalStatusInfo: string;
+  overridesInfo: string;
 }
+export type DeliveryEvent = TypedEvent<
+  [
+    string,
+    number,
+    BigNumber,
+    string,
+    number,
+    BigNumber,
+    number,
+    string,
+    string
+  ],
+  DeliveryEventObject
+>;
 
-export namespace SendEventEvent {
-  export type InputTuple = [
-    sequence: BigNumberish,
-    deliveryQuote: BigNumberish,
-    paymentForExtraReceiverValue: BigNumberish
-  ];
-  export type OutputTuple = [
-    sequence: bigint,
-    deliveryQuote: bigint,
-    paymentForExtraReceiverValue: bigint
-  ];
-  export interface OutputObject {
-    sequence: bigint;
-    deliveryQuote: bigint;
-    paymentForExtraReceiverValue: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export type DeliveryEventFilter = TypedEventFilter<DeliveryEvent>;
+
+export interface SendEventEventObject {
+  sequence: BigNumber;
+  deliveryQuote: BigNumber;
+  paymentForExtraReceiverValue: BigNumber;
 }
+export type SendEventEvent = TypedEvent<
+  [BigNumber, BigNumber, BigNumber],
+  SendEventEventObject
+>;
+
+export type SendEventEventFilter = TypedEventFilter<SendEventEvent>;
 
 export interface IWormholeRelayer extends BaseContract {
-  connect(runner?: ContractRunner | null): IWormholeRelayer;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: IWormholeRelayerInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
-
-  deliver: TypedContractMethod<
-    [
+  functions: {
+    deliver(
       encodedVMs: BytesLike[],
       encodedDeliveryVAA: BytesLike,
-      relayerRefundAddress: AddressLike,
-      deliveryOverrides: BytesLike
-    ],
-    [void],
-    "payable"
-  >;
+      relayerRefundAddress: string,
+      deliveryOverrides: BytesLike,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  deliveryAttempted: TypedContractMethod<
-    [deliveryHash: BytesLike],
-    [boolean],
-    "view"
-  >;
+    deliveryAttempted(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<[boolean] & { attempted: boolean }>;
 
-  deliveryFailureBlock: TypedContractMethod<
-    [deliveryHash: BytesLike],
-    [bigint],
-    "view"
-  >;
+    deliveryFailureBlock(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<[BigNumber] & { blockNumber: BigNumber }>;
 
-  deliverySuccessBlock: TypedContractMethod<
-    [deliveryHash: BytesLike],
-    [bigint],
-    "view"
-  >;
+    deliverySuccessBlock(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<[BigNumber] & { blockNumber: BigNumber }>;
 
-  getDefaultDeliveryProvider: TypedContractMethod<[], [string], "view">;
+    getDefaultDeliveryProvider(
+      overrides?: CallOverrides
+    ): Promise<[string] & { deliveryProvider: string }>;
 
-  getRegisteredWormholeRelayerContract: TypedContractMethod<
-    [chainId: BigNumberish],
-    [string],
-    "view"
-  >;
+    getRegisteredWormholeRelayerContract(
+      chainId: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[string]>;
 
-  quoteDeliveryPrice: TypedContractMethod<
-    [
+    quoteDeliveryPrice(
       targetChain: BigNumberish,
       receiverValue: BigNumberish,
       encodedExecutionParameters: BytesLike,
-      deliveryProviderAddress: AddressLike
-    ],
-    [
-      [bigint, string] & {
-        nativePriceQuote: bigint;
+      deliveryProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<
+      [BigNumber, string] & {
+        nativePriceQuote: BigNumber;
         encodedExecutionInfo: string;
       }
-    ],
-    "view"
-  >;
+    >;
 
-  "quoteEVMDeliveryPrice(uint16,uint256,uint256,address)": TypedContractMethod<
-    [
+    "quoteEVMDeliveryPrice(uint16,uint256,uint256,address)"(
       targetChain: BigNumberish,
       receiverValue: BigNumberish,
       gasLimit: BigNumberish,
-      deliveryProviderAddress: AddressLike
-    ],
-    [
-      [bigint, bigint] & {
-        nativePriceQuote: bigint;
-        targetChainRefundPerGasUnused: bigint;
+      deliveryProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<
+      [BigNumber, BigNumber] & {
+        nativePriceQuote: BigNumber;
+        targetChainRefundPerGasUnused: BigNumber;
       }
-    ],
-    "view"
-  >;
+    >;
 
-  "quoteEVMDeliveryPrice(uint16,uint256,uint256)": TypedContractMethod<
-    [
+    "quoteEVMDeliveryPrice(uint16,uint256,uint256)"(
       targetChain: BigNumberish,
       receiverValue: BigNumberish,
-      gasLimit: BigNumberish
-    ],
-    [
-      [bigint, bigint] & {
-        nativePriceQuote: bigint;
-        targetChainRefundPerGasUnused: bigint;
+      gasLimit: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<
+      [BigNumber, BigNumber] & {
+        nativePriceQuote: BigNumber;
+        targetChainRefundPerGasUnused: BigNumber;
       }
-    ],
-    "view"
-  >;
+    >;
 
-  quoteNativeForChain: TypedContractMethod<
-    [
+    quoteNativeForChain(
       targetChain: BigNumberish,
       currentChainAmount: BigNumberish,
-      deliveryProviderAddress: AddressLike
-    ],
-    [bigint],
-    "view"
-  >;
+      deliveryProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<[BigNumber] & { targetChainAmount: BigNumber }>;
 
-  resend: TypedContractMethod<
-    [
+    resend(
       deliveryVaaKey: VaaKeyStruct,
       targetChain: BigNumberish,
       newReceiverValue: BigNumberish,
       newEncodedExecutionParameters: BytesLike,
-      newDeliveryProviderAddress: AddressLike
-    ],
-    [bigint],
-    "payable"
-  >;
+      newDeliveryProviderAddress: string,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  resendToEvm: TypedContractMethod<
-    [
+    resendToEvm(
       deliveryVaaKey: VaaKeyStruct,
       targetChain: BigNumberish,
       newReceiverValue: BigNumberish,
       newGasLimit: BigNumberish,
-      newDeliveryProviderAddress: AddressLike
-    ],
-    [bigint],
-    "payable"
-  >;
+      newDeliveryProviderAddress: string,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint16,bytes32,uint64)[],uint8)": TypedContractMethod<
-    [
+    "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint16,bytes32,uint64)[],uint8)"(
       targetChain: BigNumberish,
       targetAddress: BytesLike,
       payload: BytesLike,
@@ -537,16 +501,13 @@ export interface IWormholeRelayer extends BaseContract {
       encodedExecutionParameters: BytesLike,
       refundChain: BigNumberish,
       refundAddress: BytesLike,
-      deliveryProviderAddress: AddressLike,
+      deliveryProviderAddress: string,
       vaaKeys: VaaKeyStruct[],
-      consistencyLevel: BigNumberish
-    ],
-    [bigint],
-    "payable"
-  >;
+      consistencyLevel: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint8,bytes)[],uint8)": TypedContractMethod<
-    [
+    "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint8,bytes)[],uint8)"(
       targetChain: BigNumberish,
       targetAddress: BytesLike,
       payload: BytesLike,
@@ -555,393 +516,876 @@ export interface IWormholeRelayer extends BaseContract {
       encodedExecutionParameters: BytesLike,
       refundChain: BigNumberish,
       refundAddress: BytesLike,
-      deliveryProviderAddress: AddressLike,
+      deliveryProviderAddress: string,
       messageKeys: MessageKeyStruct[],
-      consistencyLevel: BigNumberish
-    ],
-    [bigint],
-    "payable"
-  >;
+      consistencyLevel: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  "sendPayloadToEvm(uint16,address,bytes,uint256,uint256,uint16,address)": TypedContractMethod<
-    [
+    "sendPayloadToEvm(uint16,address,bytes,uint256,uint256,uint16,address)"(
       targetChain: BigNumberish,
-      targetAddress: AddressLike,
+      targetAddress: string,
       payload: BytesLike,
       receiverValue: BigNumberish,
       gasLimit: BigNumberish,
       refundChain: BigNumberish,
-      refundAddress: AddressLike
-    ],
-    [bigint],
-    "payable"
-  >;
+      refundAddress: string,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  "sendPayloadToEvm(uint16,address,bytes,uint256,uint256)": TypedContractMethod<
-    [
+    "sendPayloadToEvm(uint16,address,bytes,uint256,uint256)"(
       targetChain: BigNumberish,
-      targetAddress: AddressLike,
+      targetAddress: string,
       payload: BytesLike,
       receiverValue: BigNumberish,
-      gasLimit: BigNumberish
-    ],
-    [bigint],
-    "payable"
-  >;
+      gasLimit: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint16,bytes32,uint64)[],uint8)": TypedContractMethod<
-    [
+    "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint16,bytes32,uint64)[],uint8)"(
       targetChain: BigNumberish,
-      targetAddress: AddressLike,
+      targetAddress: string,
       payload: BytesLike,
       receiverValue: BigNumberish,
       paymentForExtraReceiverValue: BigNumberish,
       gasLimit: BigNumberish,
       refundChain: BigNumberish,
-      refundAddress: AddressLike,
-      deliveryProviderAddress: AddressLike,
+      refundAddress: string,
+      deliveryProviderAddress: string,
       vaaKeys: VaaKeyStruct[],
-      consistencyLevel: BigNumberish
-    ],
-    [bigint],
-    "payable"
-  >;
+      consistencyLevel: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint8,bytes)[],uint8)": TypedContractMethod<
-    [
+    "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint8,bytes)[],uint8)"(
       targetChain: BigNumberish,
-      targetAddress: AddressLike,
+      targetAddress: string,
       payload: BytesLike,
       receiverValue: BigNumberish,
       paymentForExtraReceiverValue: BigNumberish,
       gasLimit: BigNumberish,
       refundChain: BigNumberish,
-      refundAddress: AddressLike,
-      deliveryProviderAddress: AddressLike,
+      refundAddress: string,
+      deliveryProviderAddress: string,
       messageKeys: MessageKeyStruct[],
-      consistencyLevel: BigNumberish
-    ],
-    [bigint],
-    "payable"
-  >;
+      consistencyLevel: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[])": TypedContractMethod<
-    [
+    "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[])"(
       targetChain: BigNumberish,
-      targetAddress: AddressLike,
+      targetAddress: string,
       payload: BytesLike,
       receiverValue: BigNumberish,
       gasLimit: BigNumberish,
-      vaaKeys: VaaKeyStruct[]
-    ],
-    [bigint],
-    "payable"
-  >;
+      vaaKeys: VaaKeyStruct[],
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[],uint16,address)": TypedContractMethod<
-    [
+    "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[],uint16,address)"(
       targetChain: BigNumberish,
-      targetAddress: AddressLike,
+      targetAddress: string,
       payload: BytesLike,
       receiverValue: BigNumberish,
       gasLimit: BigNumberish,
       vaaKeys: VaaKeyStruct[],
       refundChain: BigNumberish,
-      refundAddress: AddressLike
-    ],
-    [bigint],
-    "payable"
+      refundAddress: string,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
+  };
+
+  deliver(
+    encodedVMs: BytesLike[],
+    encodedDeliveryVAA: BytesLike,
+    relayerRefundAddress: string,
+    deliveryOverrides: BytesLike,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  deliveryAttempted(
+    deliveryHash: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<boolean>;
+
+  deliveryFailureBlock(
+    deliveryHash: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<BigNumber>;
+
+  deliverySuccessBlock(
+    deliveryHash: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<BigNumber>;
+
+  getDefaultDeliveryProvider(overrides?: CallOverrides): Promise<string>;
+
+  getRegisteredWormholeRelayerContract(
+    chainId: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<string>;
+
+  quoteDeliveryPrice(
+    targetChain: BigNumberish,
+    receiverValue: BigNumberish,
+    encodedExecutionParameters: BytesLike,
+    deliveryProviderAddress: string,
+    overrides?: CallOverrides
+  ): Promise<
+    [BigNumber, string] & {
+      nativePriceQuote: BigNumber;
+      encodedExecutionInfo: string;
+    }
   >;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  "quoteEVMDeliveryPrice(uint16,uint256,uint256,address)"(
+    targetChain: BigNumberish,
+    receiverValue: BigNumberish,
+    gasLimit: BigNumberish,
+    deliveryProviderAddress: string,
+    overrides?: CallOverrides
+  ): Promise<
+    [BigNumber, BigNumber] & {
+      nativePriceQuote: BigNumber;
+      targetChainRefundPerGasUnused: BigNumber;
+    }
+  >;
 
-  getFunction(
-    nameOrSignature: "deliver"
-  ): TypedContractMethod<
-    [
+  "quoteEVMDeliveryPrice(uint16,uint256,uint256)"(
+    targetChain: BigNumberish,
+    receiverValue: BigNumberish,
+    gasLimit: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<
+    [BigNumber, BigNumber] & {
+      nativePriceQuote: BigNumber;
+      targetChainRefundPerGasUnused: BigNumber;
+    }
+  >;
+
+  quoteNativeForChain(
+    targetChain: BigNumberish,
+    currentChainAmount: BigNumberish,
+    deliveryProviderAddress: string,
+    overrides?: CallOverrides
+  ): Promise<BigNumber>;
+
+  resend(
+    deliveryVaaKey: VaaKeyStruct,
+    targetChain: BigNumberish,
+    newReceiverValue: BigNumberish,
+    newEncodedExecutionParameters: BytesLike,
+    newDeliveryProviderAddress: string,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  resendToEvm(
+    deliveryVaaKey: VaaKeyStruct,
+    targetChain: BigNumberish,
+    newReceiverValue: BigNumberish,
+    newGasLimit: BigNumberish,
+    newDeliveryProviderAddress: string,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint16,bytes32,uint64)[],uint8)"(
+    targetChain: BigNumberish,
+    targetAddress: BytesLike,
+    payload: BytesLike,
+    receiverValue: BigNumberish,
+    paymentForExtraReceiverValue: BigNumberish,
+    encodedExecutionParameters: BytesLike,
+    refundChain: BigNumberish,
+    refundAddress: BytesLike,
+    deliveryProviderAddress: string,
+    vaaKeys: VaaKeyStruct[],
+    consistencyLevel: BigNumberish,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint8,bytes)[],uint8)"(
+    targetChain: BigNumberish,
+    targetAddress: BytesLike,
+    payload: BytesLike,
+    receiverValue: BigNumberish,
+    paymentForExtraReceiverValue: BigNumberish,
+    encodedExecutionParameters: BytesLike,
+    refundChain: BigNumberish,
+    refundAddress: BytesLike,
+    deliveryProviderAddress: string,
+    messageKeys: MessageKeyStruct[],
+    consistencyLevel: BigNumberish,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  "sendPayloadToEvm(uint16,address,bytes,uint256,uint256,uint16,address)"(
+    targetChain: BigNumberish,
+    targetAddress: string,
+    payload: BytesLike,
+    receiverValue: BigNumberish,
+    gasLimit: BigNumberish,
+    refundChain: BigNumberish,
+    refundAddress: string,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  "sendPayloadToEvm(uint16,address,bytes,uint256,uint256)"(
+    targetChain: BigNumberish,
+    targetAddress: string,
+    payload: BytesLike,
+    receiverValue: BigNumberish,
+    gasLimit: BigNumberish,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint16,bytes32,uint64)[],uint8)"(
+    targetChain: BigNumberish,
+    targetAddress: string,
+    payload: BytesLike,
+    receiverValue: BigNumberish,
+    paymentForExtraReceiverValue: BigNumberish,
+    gasLimit: BigNumberish,
+    refundChain: BigNumberish,
+    refundAddress: string,
+    deliveryProviderAddress: string,
+    vaaKeys: VaaKeyStruct[],
+    consistencyLevel: BigNumberish,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint8,bytes)[],uint8)"(
+    targetChain: BigNumberish,
+    targetAddress: string,
+    payload: BytesLike,
+    receiverValue: BigNumberish,
+    paymentForExtraReceiverValue: BigNumberish,
+    gasLimit: BigNumberish,
+    refundChain: BigNumberish,
+    refundAddress: string,
+    deliveryProviderAddress: string,
+    messageKeys: MessageKeyStruct[],
+    consistencyLevel: BigNumberish,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[])"(
+    targetChain: BigNumberish,
+    targetAddress: string,
+    payload: BytesLike,
+    receiverValue: BigNumberish,
+    gasLimit: BigNumberish,
+    vaaKeys: VaaKeyStruct[],
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[],uint16,address)"(
+    targetChain: BigNumberish,
+    targetAddress: string,
+    payload: BytesLike,
+    receiverValue: BigNumberish,
+    gasLimit: BigNumberish,
+    vaaKeys: VaaKeyStruct[],
+    refundChain: BigNumberish,
+    refundAddress: string,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  callStatic: {
+    deliver(
       encodedVMs: BytesLike[],
       encodedDeliveryVAA: BytesLike,
-      relayerRefundAddress: AddressLike,
-      deliveryOverrides: BytesLike
-    ],
-    [void],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "deliveryAttempted"
-  ): TypedContractMethod<[deliveryHash: BytesLike], [boolean], "view">;
-  getFunction(
-    nameOrSignature: "deliveryFailureBlock"
-  ): TypedContractMethod<[deliveryHash: BytesLike], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "deliverySuccessBlock"
-  ): TypedContractMethod<[deliveryHash: BytesLike], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "getDefaultDeliveryProvider"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "getRegisteredWormholeRelayerContract"
-  ): TypedContractMethod<[chainId: BigNumberish], [string], "view">;
-  getFunction(
-    nameOrSignature: "quoteDeliveryPrice"
-  ): TypedContractMethod<
-    [
+      relayerRefundAddress: string,
+      deliveryOverrides: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    deliveryAttempted(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
+
+    deliveryFailureBlock(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    deliverySuccessBlock(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    getDefaultDeliveryProvider(overrides?: CallOverrides): Promise<string>;
+
+    getRegisteredWormholeRelayerContract(
+      chainId: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<string>;
+
+    quoteDeliveryPrice(
       targetChain: BigNumberish,
       receiverValue: BigNumberish,
       encodedExecutionParameters: BytesLike,
-      deliveryProviderAddress: AddressLike
-    ],
-    [
-      [bigint, string] & {
-        nativePriceQuote: bigint;
+      deliveryProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<
+      [BigNumber, string] & {
+        nativePriceQuote: BigNumber;
         encodedExecutionInfo: string;
       }
-    ],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "quoteEVMDeliveryPrice(uint16,uint256,uint256,address)"
-  ): TypedContractMethod<
-    [
+    >;
+
+    "quoteEVMDeliveryPrice(uint16,uint256,uint256,address)"(
       targetChain: BigNumberish,
       receiverValue: BigNumberish,
       gasLimit: BigNumberish,
-      deliveryProviderAddress: AddressLike
-    ],
-    [
-      [bigint, bigint] & {
-        nativePriceQuote: bigint;
-        targetChainRefundPerGasUnused: bigint;
+      deliveryProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<
+      [BigNumber, BigNumber] & {
+        nativePriceQuote: BigNumber;
+        targetChainRefundPerGasUnused: BigNumber;
       }
-    ],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "quoteEVMDeliveryPrice(uint16,uint256,uint256)"
-  ): TypedContractMethod<
-    [
+    >;
+
+    "quoteEVMDeliveryPrice(uint16,uint256,uint256)"(
       targetChain: BigNumberish,
       receiverValue: BigNumberish,
-      gasLimit: BigNumberish
-    ],
-    [
-      [bigint, bigint] & {
-        nativePriceQuote: bigint;
-        targetChainRefundPerGasUnused: bigint;
+      gasLimit: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<
+      [BigNumber, BigNumber] & {
+        nativePriceQuote: BigNumber;
+        targetChainRefundPerGasUnused: BigNumber;
       }
-    ],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "quoteNativeForChain"
-  ): TypedContractMethod<
-    [
+    >;
+
+    quoteNativeForChain(
       targetChain: BigNumberish,
       currentChainAmount: BigNumberish,
-      deliveryProviderAddress: AddressLike
-    ],
-    [bigint],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "resend"
-  ): TypedContractMethod<
-    [
+      deliveryProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    resend(
       deliveryVaaKey: VaaKeyStruct,
       targetChain: BigNumberish,
       newReceiverValue: BigNumberish,
       newEncodedExecutionParameters: BytesLike,
-      newDeliveryProviderAddress: AddressLike
-    ],
-    [bigint],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "resendToEvm"
-  ): TypedContractMethod<
-    [
+      newDeliveryProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    resendToEvm(
       deliveryVaaKey: VaaKeyStruct,
       targetChain: BigNumberish,
       newReceiverValue: BigNumberish,
       newGasLimit: BigNumberish,
-      newDeliveryProviderAddress: AddressLike
-    ],
-    [bigint],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint16,bytes32,uint64)[],uint8)"
-  ): TypedContractMethod<
-    [
-      targetChain: BigNumberish,
-      targetAddress: BytesLike,
-      payload: BytesLike,
-      receiverValue: BigNumberish,
-      paymentForExtraReceiverValue: BigNumberish,
-      encodedExecutionParameters: BytesLike,
-      refundChain: BigNumberish,
-      refundAddress: BytesLike,
-      deliveryProviderAddress: AddressLike,
-      vaaKeys: VaaKeyStruct[],
-      consistencyLevel: BigNumberish
-    ],
-    [bigint],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint8,bytes)[],uint8)"
-  ): TypedContractMethod<
-    [
-      targetChain: BigNumberish,
-      targetAddress: BytesLike,
-      payload: BytesLike,
-      receiverValue: BigNumberish,
-      paymentForExtraReceiverValue: BigNumberish,
-      encodedExecutionParameters: BytesLike,
-      refundChain: BigNumberish,
-      refundAddress: BytesLike,
-      deliveryProviderAddress: AddressLike,
-      messageKeys: MessageKeyStruct[],
-      consistencyLevel: BigNumberish
-    ],
-    [bigint],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "sendPayloadToEvm(uint16,address,bytes,uint256,uint256,uint16,address)"
-  ): TypedContractMethod<
-    [
-      targetChain: BigNumberish,
-      targetAddress: AddressLike,
-      payload: BytesLike,
-      receiverValue: BigNumberish,
-      gasLimit: BigNumberish,
-      refundChain: BigNumberish,
-      refundAddress: AddressLike
-    ],
-    [bigint],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "sendPayloadToEvm(uint16,address,bytes,uint256,uint256)"
-  ): TypedContractMethod<
-    [
-      targetChain: BigNumberish,
-      targetAddress: AddressLike,
-      payload: BytesLike,
-      receiverValue: BigNumberish,
-      gasLimit: BigNumberish
-    ],
-    [bigint],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint16,bytes32,uint64)[],uint8)"
-  ): TypedContractMethod<
-    [
-      targetChain: BigNumberish,
-      targetAddress: AddressLike,
-      payload: BytesLike,
-      receiverValue: BigNumberish,
-      paymentForExtraReceiverValue: BigNumberish,
-      gasLimit: BigNumberish,
-      refundChain: BigNumberish,
-      refundAddress: AddressLike,
-      deliveryProviderAddress: AddressLike,
-      vaaKeys: VaaKeyStruct[],
-      consistencyLevel: BigNumberish
-    ],
-    [bigint],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint8,bytes)[],uint8)"
-  ): TypedContractMethod<
-    [
-      targetChain: BigNumberish,
-      targetAddress: AddressLike,
-      payload: BytesLike,
-      receiverValue: BigNumberish,
-      paymentForExtraReceiverValue: BigNumberish,
-      gasLimit: BigNumberish,
-      refundChain: BigNumberish,
-      refundAddress: AddressLike,
-      deliveryProviderAddress: AddressLike,
-      messageKeys: MessageKeyStruct[],
-      consistencyLevel: BigNumberish
-    ],
-    [bigint],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[])"
-  ): TypedContractMethod<
-    [
-      targetChain: BigNumberish,
-      targetAddress: AddressLike,
-      payload: BytesLike,
-      receiverValue: BigNumberish,
-      gasLimit: BigNumberish,
-      vaaKeys: VaaKeyStruct[]
-    ],
-    [bigint],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[],uint16,address)"
-  ): TypedContractMethod<
-    [
-      targetChain: BigNumberish,
-      targetAddress: AddressLike,
-      payload: BytesLike,
-      receiverValue: BigNumberish,
-      gasLimit: BigNumberish,
-      vaaKeys: VaaKeyStruct[],
-      refundChain: BigNumberish,
-      refundAddress: AddressLike
-    ],
-    [bigint],
-    "payable"
-  >;
+      newDeliveryProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
 
-  getEvent(
-    key: "Delivery"
-  ): TypedContractEvent<
-    DeliveryEvent.InputTuple,
-    DeliveryEvent.OutputTuple,
-    DeliveryEvent.OutputObject
-  >;
-  getEvent(
-    key: "SendEvent"
-  ): TypedContractEvent<
-    SendEventEvent.InputTuple,
-    SendEventEvent.OutputTuple,
-    SendEventEvent.OutputObject
-  >;
+    "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint16,bytes32,uint64)[],uint8)"(
+      targetChain: BigNumberish,
+      targetAddress: BytesLike,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      paymentForExtraReceiverValue: BigNumberish,
+      encodedExecutionParameters: BytesLike,
+      refundChain: BigNumberish,
+      refundAddress: BytesLike,
+      deliveryProviderAddress: string,
+      vaaKeys: VaaKeyStruct[],
+      consistencyLevel: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint8,bytes)[],uint8)"(
+      targetChain: BigNumberish,
+      targetAddress: BytesLike,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      paymentForExtraReceiverValue: BigNumberish,
+      encodedExecutionParameters: BytesLike,
+      refundChain: BigNumberish,
+      refundAddress: BytesLike,
+      deliveryProviderAddress: string,
+      messageKeys: MessageKeyStruct[],
+      consistencyLevel: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    "sendPayloadToEvm(uint16,address,bytes,uint256,uint256,uint16,address)"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      refundChain: BigNumberish,
+      refundAddress: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    "sendPayloadToEvm(uint16,address,bytes,uint256,uint256)"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint16,bytes32,uint64)[],uint8)"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      paymentForExtraReceiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      refundChain: BigNumberish,
+      refundAddress: string,
+      deliveryProviderAddress: string,
+      vaaKeys: VaaKeyStruct[],
+      consistencyLevel: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint8,bytes)[],uint8)"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      paymentForExtraReceiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      refundChain: BigNumberish,
+      refundAddress: string,
+      deliveryProviderAddress: string,
+      messageKeys: MessageKeyStruct[],
+      consistencyLevel: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[])"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      vaaKeys: VaaKeyStruct[],
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[],uint16,address)"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      vaaKeys: VaaKeyStruct[],
+      refundChain: BigNumberish,
+      refundAddress: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+  };
 
   filters: {
-    "Delivery(address,uint16,uint64,bytes32,uint8,uint256,uint8,bytes,bytes)": TypedContractEvent<
-      DeliveryEvent.InputTuple,
-      DeliveryEvent.OutputTuple,
-      DeliveryEvent.OutputObject
-    >;
-    Delivery: TypedContractEvent<
-      DeliveryEvent.InputTuple,
-      DeliveryEvent.OutputTuple,
-      DeliveryEvent.OutputObject
-    >;
+    "Delivery(address,uint16,uint64,bytes32,uint8,uint256,uint8,bytes,bytes)"(
+      recipientContract?: string | null,
+      sourceChain?: BigNumberish | null,
+      sequence?: BigNumberish | null,
+      deliveryVaaHash?: null,
+      status?: null,
+      gasUsed?: null,
+      refundStatus?: null,
+      additionalStatusInfo?: null,
+      overridesInfo?: null
+    ): DeliveryEventFilter;
+    Delivery(
+      recipientContract?: string | null,
+      sourceChain?: BigNumberish | null,
+      sequence?: BigNumberish | null,
+      deliveryVaaHash?: null,
+      status?: null,
+      gasUsed?: null,
+      refundStatus?: null,
+      additionalStatusInfo?: null,
+      overridesInfo?: null
+    ): DeliveryEventFilter;
 
-    "SendEvent(uint64,uint256,uint256)": TypedContractEvent<
-      SendEventEvent.InputTuple,
-      SendEventEvent.OutputTuple,
-      SendEventEvent.OutputObject
-    >;
-    SendEvent: TypedContractEvent<
-      SendEventEvent.InputTuple,
-      SendEventEvent.OutputTuple,
-      SendEventEvent.OutputObject
-    >;
+    "SendEvent(uint64,uint256,uint256)"(
+      sequence?: BigNumberish | null,
+      deliveryQuote?: null,
+      paymentForExtraReceiverValue?: null
+    ): SendEventEventFilter;
+    SendEvent(
+      sequence?: BigNumberish | null,
+      deliveryQuote?: null,
+      paymentForExtraReceiverValue?: null
+    ): SendEventEventFilter;
+  };
+
+  estimateGas: {
+    deliver(
+      encodedVMs: BytesLike[],
+      encodedDeliveryVAA: BytesLike,
+      relayerRefundAddress: string,
+      deliveryOverrides: BytesLike,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    deliveryAttempted(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    deliveryFailureBlock(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    deliverySuccessBlock(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    getDefaultDeliveryProvider(overrides?: CallOverrides): Promise<BigNumber>;
+
+    getRegisteredWormholeRelayerContract(
+      chainId: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    quoteDeliveryPrice(
+      targetChain: BigNumberish,
+      receiverValue: BigNumberish,
+      encodedExecutionParameters: BytesLike,
+      deliveryProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    "quoteEVMDeliveryPrice(uint16,uint256,uint256,address)"(
+      targetChain: BigNumberish,
+      receiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      deliveryProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    "quoteEVMDeliveryPrice(uint16,uint256,uint256)"(
+      targetChain: BigNumberish,
+      receiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    quoteNativeForChain(
+      targetChain: BigNumberish,
+      currentChainAmount: BigNumberish,
+      deliveryProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    resend(
+      deliveryVaaKey: VaaKeyStruct,
+      targetChain: BigNumberish,
+      newReceiverValue: BigNumberish,
+      newEncodedExecutionParameters: BytesLike,
+      newDeliveryProviderAddress: string,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    resendToEvm(
+      deliveryVaaKey: VaaKeyStruct,
+      targetChain: BigNumberish,
+      newReceiverValue: BigNumberish,
+      newGasLimit: BigNumberish,
+      newDeliveryProviderAddress: string,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint16,bytes32,uint64)[],uint8)"(
+      targetChain: BigNumberish,
+      targetAddress: BytesLike,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      paymentForExtraReceiverValue: BigNumberish,
+      encodedExecutionParameters: BytesLike,
+      refundChain: BigNumberish,
+      refundAddress: BytesLike,
+      deliveryProviderAddress: string,
+      vaaKeys: VaaKeyStruct[],
+      consistencyLevel: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint8,bytes)[],uint8)"(
+      targetChain: BigNumberish,
+      targetAddress: BytesLike,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      paymentForExtraReceiverValue: BigNumberish,
+      encodedExecutionParameters: BytesLike,
+      refundChain: BigNumberish,
+      refundAddress: BytesLike,
+      deliveryProviderAddress: string,
+      messageKeys: MessageKeyStruct[],
+      consistencyLevel: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    "sendPayloadToEvm(uint16,address,bytes,uint256,uint256,uint16,address)"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      refundChain: BigNumberish,
+      refundAddress: string,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    "sendPayloadToEvm(uint16,address,bytes,uint256,uint256)"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint16,bytes32,uint64)[],uint8)"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      paymentForExtraReceiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      refundChain: BigNumberish,
+      refundAddress: string,
+      deliveryProviderAddress: string,
+      vaaKeys: VaaKeyStruct[],
+      consistencyLevel: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint8,bytes)[],uint8)"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      paymentForExtraReceiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      refundChain: BigNumberish,
+      refundAddress: string,
+      deliveryProviderAddress: string,
+      messageKeys: MessageKeyStruct[],
+      consistencyLevel: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[])"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      vaaKeys: VaaKeyStruct[],
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[],uint16,address)"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      vaaKeys: VaaKeyStruct[],
+      refundChain: BigNumberish,
+      refundAddress: string,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    deliver(
+      encodedVMs: BytesLike[],
+      encodedDeliveryVAA: BytesLike,
+      relayerRefundAddress: string,
+      deliveryOverrides: BytesLike,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    deliveryAttempted(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    deliveryFailureBlock(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    deliverySuccessBlock(
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    getDefaultDeliveryProvider(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    getRegisteredWormholeRelayerContract(
+      chainId: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    quoteDeliveryPrice(
+      targetChain: BigNumberish,
+      receiverValue: BigNumberish,
+      encodedExecutionParameters: BytesLike,
+      deliveryProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    "quoteEVMDeliveryPrice(uint16,uint256,uint256,address)"(
+      targetChain: BigNumberish,
+      receiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      deliveryProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    "quoteEVMDeliveryPrice(uint16,uint256,uint256)"(
+      targetChain: BigNumberish,
+      receiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    quoteNativeForChain(
+      targetChain: BigNumberish,
+      currentChainAmount: BigNumberish,
+      deliveryProviderAddress: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    resend(
+      deliveryVaaKey: VaaKeyStruct,
+      targetChain: BigNumberish,
+      newReceiverValue: BigNumberish,
+      newEncodedExecutionParameters: BytesLike,
+      newDeliveryProviderAddress: string,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    resendToEvm(
+      deliveryVaaKey: VaaKeyStruct,
+      targetChain: BigNumberish,
+      newReceiverValue: BigNumberish,
+      newGasLimit: BigNumberish,
+      newDeliveryProviderAddress: string,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint16,bytes32,uint64)[],uint8)"(
+      targetChain: BigNumberish,
+      targetAddress: BytesLike,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      paymentForExtraReceiverValue: BigNumberish,
+      encodedExecutionParameters: BytesLike,
+      refundChain: BigNumberish,
+      refundAddress: BytesLike,
+      deliveryProviderAddress: string,
+      vaaKeys: VaaKeyStruct[],
+      consistencyLevel: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    "send(uint16,bytes32,bytes,uint256,uint256,bytes,uint16,bytes32,address,(uint8,bytes)[],uint8)"(
+      targetChain: BigNumberish,
+      targetAddress: BytesLike,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      paymentForExtraReceiverValue: BigNumberish,
+      encodedExecutionParameters: BytesLike,
+      refundChain: BigNumberish,
+      refundAddress: BytesLike,
+      deliveryProviderAddress: string,
+      messageKeys: MessageKeyStruct[],
+      consistencyLevel: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    "sendPayloadToEvm(uint16,address,bytes,uint256,uint256,uint16,address)"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      refundChain: BigNumberish,
+      refundAddress: string,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    "sendPayloadToEvm(uint16,address,bytes,uint256,uint256)"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint16,bytes32,uint64)[],uint8)"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      paymentForExtraReceiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      refundChain: BigNumberish,
+      refundAddress: string,
+      deliveryProviderAddress: string,
+      vaaKeys: VaaKeyStruct[],
+      consistencyLevel: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    "sendToEvm(uint16,address,bytes,uint256,uint256,uint256,uint16,address,address,(uint8,bytes)[],uint8)"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      paymentForExtraReceiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      refundChain: BigNumberish,
+      refundAddress: string,
+      deliveryProviderAddress: string,
+      messageKeys: MessageKeyStruct[],
+      consistencyLevel: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[])"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      vaaKeys: VaaKeyStruct[],
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    "sendVaasToEvm(uint16,address,bytes,uint256,uint256,(uint16,bytes32,uint64)[],uint16,address)"(
+      targetChain: BigNumberish,
+      targetAddress: string,
+      payload: BytesLike,
+      receiverValue: BigNumberish,
+      gasLimit: BigNumberish,
+      vaaKeys: VaaKeyStruct[],
+      refundChain: BigNumberish,
+      refundAddress: string,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
   };
 }

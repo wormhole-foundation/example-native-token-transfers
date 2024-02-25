@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type { IRateLimiter, IRateLimiterInterface } from "../IRateLimiter";
 
 const _abi = [
@@ -140,7 +141,7 @@ const _abi = [
             internalType: "address",
           },
           {
-            name: "endpointInstructions",
+            name: "transceiverInstructions",
             type: "bytes",
             internalType: "bytes",
           },
@@ -264,12 +265,12 @@ const _abi = [
 export class IRateLimiter__factory {
   static readonly abi = _abi;
   static createInterface(): IRateLimiterInterface {
-    return new Interface(_abi) as IRateLimiterInterface;
+    return new utils.Interface(_abi) as IRateLimiterInterface;
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null
+    signerOrProvider: Signer | Provider
   ): IRateLimiter {
-    return new Contract(address, _abi, runner) as unknown as IRateLimiter;
+    return new Contract(address, _abi, signerOrProvider) as IRateLimiter;
   }
 }

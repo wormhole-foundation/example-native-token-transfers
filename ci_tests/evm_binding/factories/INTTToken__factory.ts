@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type { INTTToken, INTTTokenInterface } from "../INTTToken";
 
 const _abi = [
@@ -71,9 +72,12 @@ const _abi = [
 export class INTTToken__factory {
   static readonly abi = _abi;
   static createInterface(): INTTTokenInterface {
-    return new Interface(_abi) as INTTTokenInterface;
+    return new utils.Interface(_abi) as INTTTokenInterface;
   }
-  static connect(address: string, runner?: ContractRunner | null): INTTToken {
-    return new Contract(address, _abi, runner) as unknown as INTTToken;
+  static connect(
+    address: string,
+    signerOrProvider: Signer | Provider
+  ): INTTToken {
+    return new Contract(address, _abi, signerOrProvider) as INTTToken;
   }
 }

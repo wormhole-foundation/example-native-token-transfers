@@ -3,21 +3,21 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "../common";
 
 export type NormalizedAmountStruct = {
@@ -25,13 +25,17 @@ export type NormalizedAmountStruct = {
   decimals: BigNumberish;
 };
 
-export type NormalizedAmountStructOutput = [
-  amount: bigint,
-  decimals: bigint
-] & { amount: bigint; decimals: bigint };
+export type NormalizedAmountStructOutput = [BigNumber, number] & {
+  amount: BigNumber;
+  decimals: number;
+};
 
-export interface NormalizedAmountLibInterface extends Interface {
-  getFunction(nameOrSignature: "min"): FunctionFragment;
+export interface NormalizedAmountLibInterface extends utils.Interface {
+  functions: {
+    "min((uint64,uint8),(uint64,uint8))": FunctionFragment;
+  };
+
+  getFunction(nameOrSignatureOrTopic: "min"): FunctionFragment;
 
   encodeFunctionData(
     functionFragment: "min",
@@ -39,68 +43,73 @@ export interface NormalizedAmountLibInterface extends Interface {
   ): string;
 
   decodeFunctionResult(functionFragment: "min", data: BytesLike): Result;
+
+  events: {};
 }
 
 export interface NormalizedAmountLib extends BaseContract {
-  connect(runner?: ContractRunner | null): NormalizedAmountLib;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: NormalizedAmountLibInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    min(
+      a: NormalizedAmountStruct,
+      b: NormalizedAmountStruct,
+      overrides?: CallOverrides
+    ): Promise<[NormalizedAmountStructOutput]>;
+  };
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+  min(
+    a: NormalizedAmountStruct,
+    b: NormalizedAmountStruct,
+    overrides?: CallOverrides
+  ): Promise<NormalizedAmountStructOutput>;
 
-  min: TypedContractMethod<
-    [a: NormalizedAmountStruct, b: NormalizedAmountStruct],
-    [NormalizedAmountStructOutput],
-    "view"
-  >;
-
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
-
-  getFunction(
-    nameOrSignature: "min"
-  ): TypedContractMethod<
-    [a: NormalizedAmountStruct, b: NormalizedAmountStruct],
-    [NormalizedAmountStructOutput],
-    "view"
-  >;
+  callStatic: {
+    min(
+      a: NormalizedAmountStruct,
+      b: NormalizedAmountStruct,
+      overrides?: CallOverrides
+    ): Promise<NormalizedAmountStructOutput>;
+  };
 
   filters: {};
+
+  estimateGas: {
+    min(
+      a: NormalizedAmountStruct,
+      b: NormalizedAmountStruct,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    min(
+      a: NormalizedAmountStruct,
+      b: NormalizedAmountStruct,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+  };
 }

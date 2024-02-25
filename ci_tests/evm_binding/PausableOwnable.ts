@@ -3,29 +3,39 @@
 /* eslint-disable */
 import type {
   BaseContract,
-  BigNumberish,
+  BigNumber,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  EventFragment,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  Overrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
-  TypedLogDescription,
+  FunctionFragment,
+  Result,
+  EventFragment,
+} from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
+import type {
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "./common";
 
-export interface PausableOwnableInterface extends Interface {
+export interface PausableOwnableInterface extends utils.Interface {
+  functions: {
+    "isPaused()": FunctionFragment;
+    "owner()": FunctionFragment;
+    "pauser()": FunctionFragment;
+    "transferOwnership(address)": FunctionFragment;
+    "transferPauserCapability(address)": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "isPaused"
       | "owner"
       | "pauser"
@@ -33,25 +43,16 @@ export interface PausableOwnableInterface extends Interface {
       | "transferPauserCapability"
   ): FunctionFragment;
 
-  getEvent(
-    nameOrSignatureOrTopic:
-      | "Initialized"
-      | "NotPaused"
-      | "OwnershipTransferred"
-      | "Paused"
-      | "PauserTransferred"
-  ): EventFragment;
-
   encodeFunctionData(functionFragment: "isPaused", values?: undefined): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(functionFragment: "pauser", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "transferOwnership",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "transferPauserCapability",
-    values: [AddressLike]
+    values: [string]
   ): string;
 
   decodeFunctionResult(functionFragment: "isPaused", data: BytesLike): Result;
@@ -65,241 +66,207 @@ export interface PausableOwnableInterface extends Interface {
     functionFragment: "transferPauserCapability",
     data: BytesLike
   ): Result;
+
+  events: {
+    "Initialized(uint64)": EventFragment;
+    "NotPaused(bool)": EventFragment;
+    "OwnershipTransferred(address,address)": EventFragment;
+    "Paused(bool)": EventFragment;
+    "PauserTransferred(address,address)": EventFragment;
+  };
+
+  getEvent(nameOrSignatureOrTopic: "Initialized"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "NotPaused"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "OwnershipTransferred"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "Paused"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "PauserTransferred"): EventFragment;
 }
 
-export namespace InitializedEvent {
-  export type InputTuple = [version: BigNumberish];
-  export type OutputTuple = [version: bigint];
-  export interface OutputObject {
-    version: bigint;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export interface InitializedEventObject {
+  version: BigNumber;
 }
+export type InitializedEvent = TypedEvent<[BigNumber], InitializedEventObject>;
 
-export namespace NotPausedEvent {
-  export type InputTuple = [notPaused: boolean];
-  export type OutputTuple = [notPaused: boolean];
-  export interface OutputObject {
-    notPaused: boolean;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
+export type InitializedEventFilter = TypedEventFilter<InitializedEvent>;
 
-export namespace OwnershipTransferredEvent {
-  export type InputTuple = [previousOwner: AddressLike, newOwner: AddressLike];
-  export type OutputTuple = [previousOwner: string, newOwner: string];
-  export interface OutputObject {
-    previousOwner: string;
-    newOwner: string;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export interface NotPausedEventObject {
+  notPaused: boolean;
 }
+export type NotPausedEvent = TypedEvent<[boolean], NotPausedEventObject>;
 
-export namespace PausedEvent {
-  export type InputTuple = [paused: boolean];
-  export type OutputTuple = [paused: boolean];
-  export interface OutputObject {
-    paused: boolean;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
-}
+export type NotPausedEventFilter = TypedEventFilter<NotPausedEvent>;
 
-export namespace PauserTransferredEvent {
-  export type InputTuple = [oldPauser: AddressLike, newPauser: AddressLike];
-  export type OutputTuple = [oldPauser: string, newPauser: string];
-  export interface OutputObject {
-    oldPauser: string;
-    newPauser: string;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export interface OwnershipTransferredEventObject {
+  previousOwner: string;
+  newOwner: string;
 }
+export type OwnershipTransferredEvent = TypedEvent<
+  [string, string],
+  OwnershipTransferredEventObject
+>;
+
+export type OwnershipTransferredEventFilter =
+  TypedEventFilter<OwnershipTransferredEvent>;
+
+export interface PausedEventObject {
+  paused: boolean;
+}
+export type PausedEvent = TypedEvent<[boolean], PausedEventObject>;
+
+export type PausedEventFilter = TypedEventFilter<PausedEvent>;
+
+export interface PauserTransferredEventObject {
+  oldPauser: string;
+  newPauser: string;
+}
+export type PauserTransferredEvent = TypedEvent<
+  [string, string],
+  PauserTransferredEventObject
+>;
+
+export type PauserTransferredEventFilter =
+  TypedEventFilter<PauserTransferredEvent>;
 
 export interface PausableOwnable extends BaseContract {
-  connect(runner?: ContractRunner | null): PausableOwnable;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: PausableOwnableInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    isPaused(overrides?: CallOverrides): Promise<[boolean]>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    owner(overrides?: CallOverrides): Promise<[string]>;
 
-  isPaused: TypedContractMethod<[], [boolean], "view">;
+    pauser(overrides?: CallOverrides): Promise<[string]>;
 
-  owner: TypedContractMethod<[], [string], "view">;
+    transferOwnership(
+      newOwner: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  pauser: TypedContractMethod<[], [string], "view">;
+    transferPauserCapability(
+      newPauser: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+  };
 
-  transferOwnership: TypedContractMethod<
-    [newOwner: AddressLike],
-    [void],
-    "nonpayable"
-  >;
+  isPaused(overrides?: CallOverrides): Promise<boolean>;
 
-  transferPauserCapability: TypedContractMethod<
-    [newPauser: AddressLike],
-    [void],
-    "nonpayable"
-  >;
+  owner(overrides?: CallOverrides): Promise<string>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  pauser(overrides?: CallOverrides): Promise<string>;
 
-  getFunction(
-    nameOrSignature: "isPaused"
-  ): TypedContractMethod<[], [boolean], "view">;
-  getFunction(
-    nameOrSignature: "owner"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "pauser"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "transferOwnership"
-  ): TypedContractMethod<[newOwner: AddressLike], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "transferPauserCapability"
-  ): TypedContractMethod<[newPauser: AddressLike], [void], "nonpayable">;
+  transferOwnership(
+    newOwner: string,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
 
-  getEvent(
-    key: "Initialized"
-  ): TypedContractEvent<
-    InitializedEvent.InputTuple,
-    InitializedEvent.OutputTuple,
-    InitializedEvent.OutputObject
-  >;
-  getEvent(
-    key: "NotPaused"
-  ): TypedContractEvent<
-    NotPausedEvent.InputTuple,
-    NotPausedEvent.OutputTuple,
-    NotPausedEvent.OutputObject
-  >;
-  getEvent(
-    key: "OwnershipTransferred"
-  ): TypedContractEvent<
-    OwnershipTransferredEvent.InputTuple,
-    OwnershipTransferredEvent.OutputTuple,
-    OwnershipTransferredEvent.OutputObject
-  >;
-  getEvent(
-    key: "Paused"
-  ): TypedContractEvent<
-    PausedEvent.InputTuple,
-    PausedEvent.OutputTuple,
-    PausedEvent.OutputObject
-  >;
-  getEvent(
-    key: "PauserTransferred"
-  ): TypedContractEvent<
-    PauserTransferredEvent.InputTuple,
-    PauserTransferredEvent.OutputTuple,
-    PauserTransferredEvent.OutputObject
-  >;
+  transferPauserCapability(
+    newPauser: string,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  callStatic: {
+    isPaused(overrides?: CallOverrides): Promise<boolean>;
+
+    owner(overrides?: CallOverrides): Promise<string>;
+
+    pauser(overrides?: CallOverrides): Promise<string>;
+
+    transferOwnership(
+      newOwner: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    transferPauserCapability(
+      newPauser: string,
+      overrides?: CallOverrides
+    ): Promise<void>;
+  };
 
   filters: {
-    "Initialized(uint64)": TypedContractEvent<
-      InitializedEvent.InputTuple,
-      InitializedEvent.OutputTuple,
-      InitializedEvent.OutputObject
-    >;
-    Initialized: TypedContractEvent<
-      InitializedEvent.InputTuple,
-      InitializedEvent.OutputTuple,
-      InitializedEvent.OutputObject
-    >;
+    "Initialized(uint64)"(version?: null): InitializedEventFilter;
+    Initialized(version?: null): InitializedEventFilter;
 
-    "NotPaused(bool)": TypedContractEvent<
-      NotPausedEvent.InputTuple,
-      NotPausedEvent.OutputTuple,
-      NotPausedEvent.OutputObject
-    >;
-    NotPaused: TypedContractEvent<
-      NotPausedEvent.InputTuple,
-      NotPausedEvent.OutputTuple,
-      NotPausedEvent.OutputObject
-    >;
+    "NotPaused(bool)"(notPaused?: null): NotPausedEventFilter;
+    NotPaused(notPaused?: null): NotPausedEventFilter;
 
-    "OwnershipTransferred(address,address)": TypedContractEvent<
-      OwnershipTransferredEvent.InputTuple,
-      OwnershipTransferredEvent.OutputTuple,
-      OwnershipTransferredEvent.OutputObject
-    >;
-    OwnershipTransferred: TypedContractEvent<
-      OwnershipTransferredEvent.InputTuple,
-      OwnershipTransferredEvent.OutputTuple,
-      OwnershipTransferredEvent.OutputObject
-    >;
+    "OwnershipTransferred(address,address)"(
+      previousOwner?: string | null,
+      newOwner?: string | null
+    ): OwnershipTransferredEventFilter;
+    OwnershipTransferred(
+      previousOwner?: string | null,
+      newOwner?: string | null
+    ): OwnershipTransferredEventFilter;
 
-    "Paused(bool)": TypedContractEvent<
-      PausedEvent.InputTuple,
-      PausedEvent.OutputTuple,
-      PausedEvent.OutputObject
-    >;
-    Paused: TypedContractEvent<
-      PausedEvent.InputTuple,
-      PausedEvent.OutputTuple,
-      PausedEvent.OutputObject
-    >;
+    "Paused(bool)"(paused?: null): PausedEventFilter;
+    Paused(paused?: null): PausedEventFilter;
 
-    "PauserTransferred(address,address)": TypedContractEvent<
-      PauserTransferredEvent.InputTuple,
-      PauserTransferredEvent.OutputTuple,
-      PauserTransferredEvent.OutputObject
-    >;
-    PauserTransferred: TypedContractEvent<
-      PauserTransferredEvent.InputTuple,
-      PauserTransferredEvent.OutputTuple,
-      PauserTransferredEvent.OutputObject
-    >;
+    "PauserTransferred(address,address)"(
+      oldPauser?: string | null,
+      newPauser?: string | null
+    ): PauserTransferredEventFilter;
+    PauserTransferred(
+      oldPauser?: string | null,
+      newPauser?: string | null
+    ): PauserTransferredEventFilter;
+  };
+
+  estimateGas: {
+    isPaused(overrides?: CallOverrides): Promise<BigNumber>;
+
+    owner(overrides?: CallOverrides): Promise<BigNumber>;
+
+    pauser(overrides?: CallOverrides): Promise<BigNumber>;
+
+    transferOwnership(
+      newOwner: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    transferPauserCapability(
+      newPauser: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    isPaused(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    owner(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    pauser(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    transferOwnership(
+      newOwner: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    transferPauserCapability(
+      newPauser: string,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
   };
 }

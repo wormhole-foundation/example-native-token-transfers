@@ -3,36 +3,42 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  PayableOverrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "./common";
 
-export interface ISpecialRelayerInterface extends Interface {
+export interface ISpecialRelayerInterface extends utils.Interface {
+  functions: {
+    "quoteDeliveryPrice(address,uint16,uint256)": FunctionFragment;
+    "requestDelivery(address,uint16,uint256,uint64)": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature: "quoteDeliveryPrice" | "requestDelivery"
+    nameOrSignatureOrTopic: "quoteDeliveryPrice" | "requestDelivery"
   ): FunctionFragment;
 
   encodeFunctionData(
     functionFragment: "quoteDeliveryPrice",
-    values: [AddressLike, BigNumberish, BigNumberish]
+    values: [string, BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "requestDelivery",
-    values: [AddressLike, BigNumberish, BigNumberish, BigNumberish]
+    values: [string, BigNumberish, BigNumberish, BigNumberish]
   ): string;
 
   decodeFunctionResult(
@@ -43,99 +49,118 @@ export interface ISpecialRelayerInterface extends Interface {
     functionFragment: "requestDelivery",
     data: BytesLike
   ): Result;
+
+  events: {};
 }
 
 export interface ISpecialRelayer extends BaseContract {
-  connect(runner?: ContractRunner | null): ISpecialRelayer;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: ISpecialRelayerInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
-
-  quoteDeliveryPrice: TypedContractMethod<
-    [
-      sourceContract: AddressLike,
-      targetChain: BigNumberish,
-      additionalValue: BigNumberish
-    ],
-    [bigint],
-    "view"
-  >;
-
-  requestDelivery: TypedContractMethod<
-    [
-      sourceContract: AddressLike,
+  functions: {
+    quoteDeliveryPrice(
+      sourceContract: string,
       targetChain: BigNumberish,
       additionalValue: BigNumberish,
-      sequence: BigNumberish
-    ],
-    [void],
-    "payable"
-  >;
+      overrides?: CallOverrides
+    ): Promise<[BigNumber] & { nativePriceQuote: BigNumber }>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
-
-  getFunction(
-    nameOrSignature: "quoteDeliveryPrice"
-  ): TypedContractMethod<
-    [
-      sourceContract: AddressLike,
-      targetChain: BigNumberish,
-      additionalValue: BigNumberish
-    ],
-    [bigint],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "requestDelivery"
-  ): TypedContractMethod<
-    [
-      sourceContract: AddressLike,
+    requestDelivery(
+      sourceContract: string,
       targetChain: BigNumberish,
       additionalValue: BigNumberish,
-      sequence: BigNumberish
-    ],
-    [void],
-    "payable"
-  >;
+      sequence: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
+  };
+
+  quoteDeliveryPrice(
+    sourceContract: string,
+    targetChain: BigNumberish,
+    additionalValue: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<BigNumber>;
+
+  requestDelivery(
+    sourceContract: string,
+    targetChain: BigNumberish,
+    additionalValue: BigNumberish,
+    sequence: BigNumberish,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  callStatic: {
+    quoteDeliveryPrice(
+      sourceContract: string,
+      targetChain: BigNumberish,
+      additionalValue: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    requestDelivery(
+      sourceContract: string,
+      targetChain: BigNumberish,
+      additionalValue: BigNumberish,
+      sequence: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+  };
 
   filters: {};
+
+  estimateGas: {
+    quoteDeliveryPrice(
+      sourceContract: string,
+      targetChain: BigNumberish,
+      additionalValue: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    requestDelivery(
+      sourceContract: string,
+      targetChain: BigNumberish,
+      additionalValue: BigNumberish,
+      sequence: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    quoteDeliveryPrice(
+      sourceContract: string,
+      targetChain: BigNumberish,
+      additionalValue: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    requestDelivery(
+      sourceContract: string,
+      targetChain: BigNumberish,
+      additionalValue: BigNumberish,
+      sequence: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+  };
 }

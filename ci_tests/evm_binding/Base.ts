@@ -3,26 +3,37 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  Overrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "./common";
 
-export interface BaseInterface extends Interface {
+export interface BaseInterface extends utils.Interface {
+  functions: {
+    "setRegisteredSender(uint16,bytes32)": FunctionFragment;
+    "wormhole()": FunctionFragment;
+    "wormholeRelayer()": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature: "setRegisteredSender" | "wormhole" | "wormholeRelayer"
+    nameOrSignatureOrTopic:
+      | "setRegisteredSender"
+      | "wormhole"
+      | "wormholeRelayer"
   ): FunctionFragment;
 
   encodeFunctionData(
@@ -44,78 +55,93 @@ export interface BaseInterface extends Interface {
     functionFragment: "wormholeRelayer",
     data: BytesLike
   ): Result;
+
+  events: {};
 }
 
 export interface Base extends BaseContract {
-  connect(runner?: ContractRunner | null): Base;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: BaseInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    setRegisteredSender(
+      sourceChain: BigNumberish,
+      sourceAddress: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    wormhole(overrides?: CallOverrides): Promise<[string]>;
 
-  setRegisteredSender: TypedContractMethod<
-    [sourceChain: BigNumberish, sourceAddress: BytesLike],
-    [void],
-    "nonpayable"
-  >;
+    wormholeRelayer(overrides?: CallOverrides): Promise<[string]>;
+  };
 
-  wormhole: TypedContractMethod<[], [string], "view">;
+  setRegisteredSender(
+    sourceChain: BigNumberish,
+    sourceAddress: BytesLike,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
 
-  wormholeRelayer: TypedContractMethod<[], [string], "view">;
+  wormhole(overrides?: CallOverrides): Promise<string>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  wormholeRelayer(overrides?: CallOverrides): Promise<string>;
 
-  getFunction(
-    nameOrSignature: "setRegisteredSender"
-  ): TypedContractMethod<
-    [sourceChain: BigNumberish, sourceAddress: BytesLike],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "wormhole"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "wormholeRelayer"
-  ): TypedContractMethod<[], [string], "view">;
+  callStatic: {
+    setRegisteredSender(
+      sourceChain: BigNumberish,
+      sourceAddress: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    wormhole(overrides?: CallOverrides): Promise<string>;
+
+    wormholeRelayer(overrides?: CallOverrides): Promise<string>;
+  };
 
   filters: {};
+
+  estimateGas: {
+    setRegisteredSender(
+      sourceChain: BigNumberish,
+      sourceAddress: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    wormhole(overrides?: CallOverrides): Promise<BigNumber>;
+
+    wormholeRelayer(overrides?: CallOverrides): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    setRegisteredSender(
+      sourceChain: BigNumberish,
+      sourceAddress: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    wormhole(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    wormholeRelayer(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+  };
 }

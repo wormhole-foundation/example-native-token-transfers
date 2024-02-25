@@ -1,7 +1,7 @@
 load('ext://namespace', 'namespace_create')
 load('ext://git_resource', 'git_checkout')
 
-git_checkout('https://github.com/wormhole-foundation/wormhole.git#main', '.wormhole/',unsafe_mode=True)
+#git_checkout('https://github.com/wormhole-foundation/wormhole.git#main', '.wormhole/',unsafe_mode=True)
 
 # Could modify the ganache layout here?
 #load("os", "system")

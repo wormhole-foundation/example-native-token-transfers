@@ -3,26 +3,37 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  Overrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "../common";
 
-export interface CCTPAndTokenSenderInterface extends Interface {
+export interface CCTPAndTokenSenderInterface extends utils.Interface {
+  functions: {
+    "chainIdToCCTPDomain(uint16)": FunctionFragment;
+    "setCCTPDomain(uint16,uint32)": FunctionFragment;
+    "setRegisteredSender(uint16,bytes32)": FunctionFragment;
+    "tokenBridge()": FunctionFragment;
+    "wormhole()": FunctionFragment;
+    "wormholeRelayer()": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "chainIdToCCTPDomain"
       | "setCCTPDomain"
       | "setRegisteredSender"
@@ -74,105 +85,158 @@ export interface CCTPAndTokenSenderInterface extends Interface {
     functionFragment: "wormholeRelayer",
     data: BytesLike
   ): Result;
+
+  events: {};
 }
 
 export interface CCTPAndTokenSender extends BaseContract {
-  connect(runner?: ContractRunner | null): CCTPAndTokenSender;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: CCTPAndTokenSenderInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    chainIdToCCTPDomain(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[number]>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    setCCTPDomain(
+      chain: BigNumberish,
+      cctpDomain: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  chainIdToCCTPDomain: TypedContractMethod<
-    [arg0: BigNumberish],
-    [bigint],
-    "view"
-  >;
+    setRegisteredSender(
+      sourceChain: BigNumberish,
+      sourceAddress: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  setCCTPDomain: TypedContractMethod<
-    [chain: BigNumberish, cctpDomain: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
+    tokenBridge(overrides?: CallOverrides): Promise<[string]>;
 
-  setRegisteredSender: TypedContractMethod<
-    [sourceChain: BigNumberish, sourceAddress: BytesLike],
-    [void],
-    "nonpayable"
-  >;
+    wormhole(overrides?: CallOverrides): Promise<[string]>;
 
-  tokenBridge: TypedContractMethod<[], [string], "view">;
+    wormholeRelayer(overrides?: CallOverrides): Promise<[string]>;
+  };
 
-  wormhole: TypedContractMethod<[], [string], "view">;
+  chainIdToCCTPDomain(
+    arg0: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<number>;
 
-  wormholeRelayer: TypedContractMethod<[], [string], "view">;
+  setCCTPDomain(
+    chain: BigNumberish,
+    cctpDomain: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  setRegisteredSender(
+    sourceChain: BigNumberish,
+    sourceAddress: BytesLike,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
 
-  getFunction(
-    nameOrSignature: "chainIdToCCTPDomain"
-  ): TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "setCCTPDomain"
-  ): TypedContractMethod<
-    [chain: BigNumberish, cctpDomain: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "setRegisteredSender"
-  ): TypedContractMethod<
-    [sourceChain: BigNumberish, sourceAddress: BytesLike],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "tokenBridge"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "wormhole"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "wormholeRelayer"
-  ): TypedContractMethod<[], [string], "view">;
+  tokenBridge(overrides?: CallOverrides): Promise<string>;
+
+  wormhole(overrides?: CallOverrides): Promise<string>;
+
+  wormholeRelayer(overrides?: CallOverrides): Promise<string>;
+
+  callStatic: {
+    chainIdToCCTPDomain(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<number>;
+
+    setCCTPDomain(
+      chain: BigNumberish,
+      cctpDomain: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    setRegisteredSender(
+      sourceChain: BigNumberish,
+      sourceAddress: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    tokenBridge(overrides?: CallOverrides): Promise<string>;
+
+    wormhole(overrides?: CallOverrides): Promise<string>;
+
+    wormholeRelayer(overrides?: CallOverrides): Promise<string>;
+  };
 
   filters: {};
+
+  estimateGas: {
+    chainIdToCCTPDomain(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    setCCTPDomain(
+      chain: BigNumberish,
+      cctpDomain: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    setRegisteredSender(
+      sourceChain: BigNumberish,
+      sourceAddress: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    tokenBridge(overrides?: CallOverrides): Promise<BigNumber>;
+
+    wormhole(overrides?: CallOverrides): Promise<BigNumber>;
+
+    wormholeRelayer(overrides?: CallOverrides): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    chainIdToCCTPDomain(
+      arg0: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    setCCTPDomain(
+      chain: BigNumberish,
+      cctpDomain: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    setRegisteredSender(
+      sourceChain: BigNumberish,
+      sourceAddress: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    tokenBridge(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    wormhole(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    wormholeRelayer(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+  };
 }

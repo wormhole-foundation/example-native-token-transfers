@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type {
   ITokenMessenger,
   ITokenMessengerInterface,
@@ -53,12 +54,12 @@ const _abi = [
 export class ITokenMessenger__factory {
   static readonly abi = _abi;
   static createInterface(): ITokenMessengerInterface {
-    return new Interface(_abi) as ITokenMessengerInterface;
+    return new utils.Interface(_abi) as ITokenMessengerInterface;
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null
+    signerOrProvider: Signer | Provider
   ): ITokenMessenger {
-    return new Contract(address, _abi, runner) as unknown as ITokenMessenger;
+    return new Contract(address, _abi, signerOrProvider) as ITokenMessenger;
   }
 }

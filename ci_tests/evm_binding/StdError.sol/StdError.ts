@@ -3,25 +3,37 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "../common";
 
-export interface StdErrorInterface extends Interface {
+export interface StdErrorInterface extends utils.Interface {
+  functions: {
+    "arithmeticError()": FunctionFragment;
+    "assertionError()": FunctionFragment;
+    "divisionError()": FunctionFragment;
+    "encodeStorageError()": FunctionFragment;
+    "enumConversionError()": FunctionFragment;
+    "indexOOBError()": FunctionFragment;
+    "memOverflowError()": FunctionFragment;
+    "popError()": FunctionFragment;
+    "zeroVarError()": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "arithmeticError"
       | "assertionError"
       | "divisionError"
@@ -100,100 +112,137 @@ export interface StdErrorInterface extends Interface {
     functionFragment: "zeroVarError",
     data: BytesLike
   ): Result;
+
+  events: {};
 }
 
 export interface StdError extends BaseContract {
-  connect(runner?: ContractRunner | null): StdError;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: StdErrorInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    arithmeticError(overrides?: CallOverrides): Promise<[string]>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    assertionError(overrides?: CallOverrides): Promise<[string]>;
 
-  arithmeticError: TypedContractMethod<[], [string], "view">;
+    divisionError(overrides?: CallOverrides): Promise<[string]>;
 
-  assertionError: TypedContractMethod<[], [string], "view">;
+    encodeStorageError(overrides?: CallOverrides): Promise<[string]>;
 
-  divisionError: TypedContractMethod<[], [string], "view">;
+    enumConversionError(overrides?: CallOverrides): Promise<[string]>;
 
-  encodeStorageError: TypedContractMethod<[], [string], "view">;
+    indexOOBError(overrides?: CallOverrides): Promise<[string]>;
 
-  enumConversionError: TypedContractMethod<[], [string], "view">;
+    memOverflowError(overrides?: CallOverrides): Promise<[string]>;
 
-  indexOOBError: TypedContractMethod<[], [string], "view">;
+    popError(overrides?: CallOverrides): Promise<[string]>;
 
-  memOverflowError: TypedContractMethod<[], [string], "view">;
+    zeroVarError(overrides?: CallOverrides): Promise<[string]>;
+  };
 
-  popError: TypedContractMethod<[], [string], "view">;
+  arithmeticError(overrides?: CallOverrides): Promise<string>;
 
-  zeroVarError: TypedContractMethod<[], [string], "view">;
+  assertionError(overrides?: CallOverrides): Promise<string>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  divisionError(overrides?: CallOverrides): Promise<string>;
 
-  getFunction(
-    nameOrSignature: "arithmeticError"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "assertionError"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "divisionError"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "encodeStorageError"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "enumConversionError"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "indexOOBError"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "memOverflowError"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "popError"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "zeroVarError"
-  ): TypedContractMethod<[], [string], "view">;
+  encodeStorageError(overrides?: CallOverrides): Promise<string>;
+
+  enumConversionError(overrides?: CallOverrides): Promise<string>;
+
+  indexOOBError(overrides?: CallOverrides): Promise<string>;
+
+  memOverflowError(overrides?: CallOverrides): Promise<string>;
+
+  popError(overrides?: CallOverrides): Promise<string>;
+
+  zeroVarError(overrides?: CallOverrides): Promise<string>;
+
+  callStatic: {
+    arithmeticError(overrides?: CallOverrides): Promise<string>;
+
+    assertionError(overrides?: CallOverrides): Promise<string>;
+
+    divisionError(overrides?: CallOverrides): Promise<string>;
+
+    encodeStorageError(overrides?: CallOverrides): Promise<string>;
+
+    enumConversionError(overrides?: CallOverrides): Promise<string>;
+
+    indexOOBError(overrides?: CallOverrides): Promise<string>;
+
+    memOverflowError(overrides?: CallOverrides): Promise<string>;
+
+    popError(overrides?: CallOverrides): Promise<string>;
+
+    zeroVarError(overrides?: CallOverrides): Promise<string>;
+  };
 
   filters: {};
+
+  estimateGas: {
+    arithmeticError(overrides?: CallOverrides): Promise<BigNumber>;
+
+    assertionError(overrides?: CallOverrides): Promise<BigNumber>;
+
+    divisionError(overrides?: CallOverrides): Promise<BigNumber>;
+
+    encodeStorageError(overrides?: CallOverrides): Promise<BigNumber>;
+
+    enumConversionError(overrides?: CallOverrides): Promise<BigNumber>;
+
+    indexOOBError(overrides?: CallOverrides): Promise<BigNumber>;
+
+    memOverflowError(overrides?: CallOverrides): Promise<BigNumber>;
+
+    popError(overrides?: CallOverrides): Promise<BigNumber>;
+
+    zeroVarError(overrides?: CallOverrides): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    arithmeticError(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    assertionError(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    divisionError(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    encodeStorageError(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    enumConversionError(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    indexOOBError(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    memOverflowError(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    popError(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    zeroVarError(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+  };
 }

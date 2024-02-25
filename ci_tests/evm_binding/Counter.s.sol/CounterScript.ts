@@ -3,24 +3,34 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  Overrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "../common";
 
-export interface CounterScriptInterface extends Interface {
-  getFunction(nameOrSignature: "IS_SCRIPT" | "run" | "setUp"): FunctionFragment;
+export interface CounterScriptInterface extends utils.Interface {
+  functions: {
+    "IS_SCRIPT()": FunctionFragment;
+    "run()": FunctionFragment;
+    "setUp()": FunctionFragment;
+  };
+
+  getFunction(
+    nameOrSignatureOrTopic: "IS_SCRIPT" | "run" | "setUp"
+  ): FunctionFragment;
 
   encodeFunctionData(functionFragment: "IS_SCRIPT", values?: undefined): string;
   encodeFunctionData(functionFragment: "run", values?: undefined): string;
@@ -29,70 +39,83 @@ export interface CounterScriptInterface extends Interface {
   decodeFunctionResult(functionFragment: "IS_SCRIPT", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "run", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "setUp", data: BytesLike): Result;
+
+  events: {};
 }
 
 export interface CounterScript extends BaseContract {
-  connect(runner?: ContractRunner | null): CounterScript;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: CounterScriptInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    IS_SCRIPT(overrides?: CallOverrides): Promise<[boolean]>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    run(
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  IS_SCRIPT: TypedContractMethod<[], [boolean], "view">;
+    setUp(
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+  };
 
-  run: TypedContractMethod<[], [void], "nonpayable">;
+  IS_SCRIPT(overrides?: CallOverrides): Promise<boolean>;
 
-  setUp: TypedContractMethod<[], [void], "nonpayable">;
+  run(overrides?: Overrides & { from?: string }): Promise<ContractTransaction>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  setUp(
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
 
-  getFunction(
-    nameOrSignature: "IS_SCRIPT"
-  ): TypedContractMethod<[], [boolean], "view">;
-  getFunction(
-    nameOrSignature: "run"
-  ): TypedContractMethod<[], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "setUp"
-  ): TypedContractMethod<[], [void], "nonpayable">;
+  callStatic: {
+    IS_SCRIPT(overrides?: CallOverrides): Promise<boolean>;
+
+    run(overrides?: CallOverrides): Promise<void>;
+
+    setUp(overrides?: CallOverrides): Promise<void>;
+  };
 
   filters: {};
+
+  estimateGas: {
+    IS_SCRIPT(overrides?: CallOverrides): Promise<BigNumber>;
+
+    run(overrides?: Overrides & { from?: string }): Promise<BigNumber>;
+
+    setUp(overrides?: Overrides & { from?: string }): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    IS_SCRIPT(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    run(
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    setUp(
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+  };
 }

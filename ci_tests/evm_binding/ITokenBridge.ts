@@ -3,24 +3,28 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  EventFragment,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  Overrides,
+  PayableOverrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
-  TypedLogDescription,
+  FunctionFragment,
+  Result,
+  EventFragment,
+} from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
+import type {
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "./common";
 
 export declare namespace ITokenBridge {
@@ -35,21 +39,21 @@ export declare namespace ITokenBridge {
   };
 
   export type TransferStructOutput = [
-    payloadID: bigint,
-    amount: bigint,
-    tokenAddress: string,
-    tokenChain: bigint,
-    to: string,
-    toChain: bigint,
-    fee: bigint
+    number,
+    BigNumber,
+    string,
+    number,
+    string,
+    number,
+    BigNumber
   ] & {
-    payloadID: bigint;
-    amount: bigint;
+    payloadID: number;
+    amount: BigNumber;
     tokenAddress: string;
-    tokenChain: bigint;
+    tokenChain: number;
     to: string;
-    toChain: bigint;
-    fee: bigint;
+    toChain: number;
+    fee: BigNumber;
   };
 
   export type AssetMetaStruct = {
@@ -62,17 +66,17 @@ export declare namespace ITokenBridge {
   };
 
   export type AssetMetaStructOutput = [
-    payloadID: bigint,
-    tokenAddress: string,
-    tokenChain: bigint,
-    decimals: bigint,
-    symbol: string,
-    name: string
+    number,
+    string,
+    number,
+    number,
+    string,
+    string
   ] & {
-    payloadID: bigint;
+    payloadID: number;
     tokenAddress: string;
-    tokenChain: bigint;
-    decimals: bigint;
+    tokenChain: number;
+    decimals: number;
     symbol: string;
     name: string;
   };
@@ -89,21 +93,21 @@ export declare namespace ITokenBridge {
   };
 
   export type TransferWithPayloadStructOutput = [
-    payloadID: bigint,
-    amount: bigint,
-    tokenAddress: string,
-    tokenChain: bigint,
-    to: string,
-    toChain: bigint,
-    fromAddress: string,
-    payload: string
+    number,
+    BigNumber,
+    string,
+    number,
+    string,
+    number,
+    string,
+    string
   ] & {
-    payloadID: bigint;
-    amount: bigint;
+    payloadID: number;
+    amount: BigNumber;
     tokenAddress: string;
-    tokenChain: bigint;
+    tokenChain: number;
     to: string;
-    toChain: bigint;
+    toChain: number;
     fromAddress: string;
     payload: string;
   };
@@ -116,15 +120,15 @@ export declare namespace ITokenBridge {
   };
 
   export type RecoverChainIdStructOutput = [
-    module: string,
-    action: bigint,
-    evmChainId: bigint,
-    newChainId: bigint
+    string,
+    number,
+    BigNumber,
+    number
   ] & {
     module: string;
-    action: bigint;
-    evmChainId: bigint;
-    newChainId: bigint;
+    action: number;
+    evmChainId: BigNumber;
+    newChainId: number;
   };
 
   export type RegisterChainStruct = {
@@ -136,16 +140,16 @@ export declare namespace ITokenBridge {
   };
 
   export type RegisterChainStructOutput = [
-    module: string,
-    action: bigint,
-    chainId: bigint,
-    emitterChainID: bigint,
-    emitterAddress: string
+    string,
+    number,
+    number,
+    number,
+    string
   ] & {
     module: string;
-    action: bigint;
-    chainId: bigint;
-    emitterChainID: bigint;
+    action: number;
+    chainId: number;
+    emitterChainID: number;
     emitterAddress: string;
   };
 
@@ -156,17 +160,63 @@ export declare namespace ITokenBridge {
     newContract: BytesLike;
   };
 
-  export type UpgradeContractStructOutput = [
-    module: string,
-    action: bigint,
-    chainId: bigint,
-    newContract: string
-  ] & { module: string; action: bigint; chainId: bigint; newContract: string };
+  export type UpgradeContractStructOutput = [string, number, number, string] & {
+    module: string;
+    action: number;
+    chainId: number;
+    newContract: string;
+  };
 }
 
-export interface ITokenBridgeInterface extends Interface {
+export interface ITokenBridgeInterface extends utils.Interface {
+  functions: {
+    "WETH()": FunctionFragment;
+    "_parseTransferCommon(bytes)": FunctionFragment;
+    "attestToken(address,uint32)": FunctionFragment;
+    "bridgeContracts(uint16)": FunctionFragment;
+    "chainId()": FunctionFragment;
+    "completeTransfer(bytes)": FunctionFragment;
+    "completeTransferAndUnwrapETH(bytes)": FunctionFragment;
+    "completeTransferAndUnwrapETHWithPayload(bytes)": FunctionFragment;
+    "completeTransferWithPayload(bytes)": FunctionFragment;
+    "createWrapped(bytes)": FunctionFragment;
+    "encodeAssetMeta((uint8,bytes32,uint16,uint8,bytes32,bytes32))": FunctionFragment;
+    "encodeTransfer((uint8,uint256,bytes32,uint16,bytes32,uint16,uint256))": FunctionFragment;
+    "encodeTransferWithPayload((uint8,uint256,bytes32,uint16,bytes32,uint16,bytes32,bytes))": FunctionFragment;
+    "evmChainId()": FunctionFragment;
+    "finality()": FunctionFragment;
+    "governanceActionIsConsumed(bytes32)": FunctionFragment;
+    "governanceChainId()": FunctionFragment;
+    "governanceContract()": FunctionFragment;
+    "implementation()": FunctionFragment;
+    "initialize()": FunctionFragment;
+    "isFork()": FunctionFragment;
+    "isInitialized(address)": FunctionFragment;
+    "isTransferCompleted(bytes32)": FunctionFragment;
+    "isWrappedAsset(address)": FunctionFragment;
+    "outstandingBridged(address)": FunctionFragment;
+    "parseAssetMeta(bytes)": FunctionFragment;
+    "parsePayloadID(bytes)": FunctionFragment;
+    "parseRecoverChainId(bytes)": FunctionFragment;
+    "parseRegisterChain(bytes)": FunctionFragment;
+    "parseTransfer(bytes)": FunctionFragment;
+    "parseTransferWithPayload(bytes)": FunctionFragment;
+    "parseUpgrade(bytes)": FunctionFragment;
+    "registerChain(bytes)": FunctionFragment;
+    "submitRecoverChainId(bytes)": FunctionFragment;
+    "tokenImplementation()": FunctionFragment;
+    "transferTokens(address,uint256,uint16,bytes32,uint256,uint32)": FunctionFragment;
+    "transferTokensWithPayload(address,uint256,uint16,bytes32,uint32,bytes)": FunctionFragment;
+    "updateWrapped(bytes)": FunctionFragment;
+    "upgrade(bytes)": FunctionFragment;
+    "wormhole()": FunctionFragment;
+    "wrapAndTransferETH(uint16,bytes32,uint256,uint32)": FunctionFragment;
+    "wrapAndTransferETHWithPayload(uint16,bytes32,uint32,bytes)": FunctionFragment;
+    "wrappedAsset(uint16,bytes32)": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "WETH"
       | "_parseTransferCommon"
       | "attestToken"
@@ -212,8 +262,6 @@ export interface ITokenBridgeInterface extends Interface {
       | "wrappedAsset"
   ): FunctionFragment;
 
-  getEvent(nameOrSignatureOrTopic: "ContractUpgraded"): EventFragment;
-
   encodeFunctionData(functionFragment: "WETH", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "_parseTransferCommon",
@@ -221,7 +269,7 @@ export interface ITokenBridgeInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "attestToken",
-    values: [AddressLike, BigNumberish]
+    values: [string, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "bridgeContracts",
@@ -288,7 +336,7 @@ export interface ITokenBridgeInterface extends Interface {
   encodeFunctionData(functionFragment: "isFork", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "isInitialized",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "isTransferCompleted",
@@ -296,11 +344,11 @@ export interface ITokenBridgeInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "isWrappedAsset",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "outstandingBridged",
-    values: [AddressLike]
+    values: [string]
   ): string;
   encodeFunctionData(
     functionFragment: "parseAssetMeta",
@@ -345,7 +393,7 @@ export interface ITokenBridgeInterface extends Interface {
   encodeFunctionData(
     functionFragment: "transferTokens",
     values: [
-      AddressLike,
+      string,
       BigNumberish,
       BigNumberish,
       BytesLike,
@@ -356,7 +404,7 @@ export interface ITokenBridgeInterface extends Interface {
   encodeFunctionData(
     functionFragment: "transferTokensWithPayload",
     values: [
-      AddressLike,
+      string,
       BigNumberish,
       BigNumberish,
       BytesLike,
@@ -531,526 +579,1085 @@ export interface ITokenBridgeInterface extends Interface {
     functionFragment: "wrappedAsset",
     data: BytesLike
   ): Result;
+
+  events: {
+    "ContractUpgraded(address,address)": EventFragment;
+  };
+
+  getEvent(nameOrSignatureOrTopic: "ContractUpgraded"): EventFragment;
 }
 
-export namespace ContractUpgradedEvent {
-  export type InputTuple = [oldContract: AddressLike, newContract: AddressLike];
-  export type OutputTuple = [oldContract: string, newContract: string];
-  export interface OutputObject {
-    oldContract: string;
-    newContract: string;
-  }
-  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
-  export type Filter = TypedDeferredTopicFilter<Event>;
-  export type Log = TypedEventLog<Event>;
-  export type LogDescription = TypedLogDescription<Event>;
+export interface ContractUpgradedEventObject {
+  oldContract: string;
+  newContract: string;
 }
+export type ContractUpgradedEvent = TypedEvent<
+  [string, string],
+  ContractUpgradedEventObject
+>;
+
+export type ContractUpgradedEventFilter =
+  TypedEventFilter<ContractUpgradedEvent>;
 
 export interface ITokenBridge extends BaseContract {
-  connect(runner?: ContractRunner | null): ITokenBridge;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: ITokenBridgeInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    WETH(overrides?: CallOverrides): Promise<[string]>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    _parseTransferCommon(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<
+      [ITokenBridge.TransferStructOutput] & {
+        transfer: ITokenBridge.TransferStructOutput;
+      }
+    >;
 
-  WETH: TypedContractMethod<[], [string], "view">;
+    attestToken(
+      tokenAddress: string,
+      nonce: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  _parseTransferCommon: TypedContractMethod<
-    [encoded: BytesLike],
-    [ITokenBridge.TransferStructOutput],
-    "view"
-  >;
+    bridgeContracts(
+      chainId_: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[string]>;
 
-  attestToken: TypedContractMethod<
-    [tokenAddress: AddressLike, nonce: BigNumberish],
-    [bigint],
-    "payable"
-  >;
+    chainId(overrides?: CallOverrides): Promise<[number]>;
 
-  bridgeContracts: TypedContractMethod<
-    [chainId_: BigNumberish],
-    [string],
-    "view"
-  >;
+    completeTransfer(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  chainId: TypedContractMethod<[], [bigint], "view">;
+    completeTransferAndUnwrapETH(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  completeTransfer: TypedContractMethod<
-    [encodedVm: BytesLike],
-    [void],
-    "nonpayable"
-  >;
+    completeTransferAndUnwrapETHWithPayload(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  completeTransferAndUnwrapETH: TypedContractMethod<
-    [encodedVm: BytesLike],
-    [void],
-    "nonpayable"
-  >;
+    completeTransferWithPayload(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  completeTransferAndUnwrapETHWithPayload: TypedContractMethod<
-    [encodedVm: BytesLike],
-    [string],
-    "nonpayable"
-  >;
+    createWrapped(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  completeTransferWithPayload: TypedContractMethod<
-    [encodedVm: BytesLike],
-    [string],
-    "nonpayable"
-  >;
+    encodeAssetMeta(
+      meta: ITokenBridge.AssetMetaStruct,
+      overrides?: CallOverrides
+    ): Promise<[string] & { encoded: string }>;
 
-  createWrapped: TypedContractMethod<
-    [encodedVm: BytesLike],
-    [string],
-    "nonpayable"
-  >;
+    encodeTransfer(
+      transfer: ITokenBridge.TransferStruct,
+      overrides?: CallOverrides
+    ): Promise<[string] & { encoded: string }>;
 
-  encodeAssetMeta: TypedContractMethod<
-    [meta: ITokenBridge.AssetMetaStruct],
-    [string],
-    "view"
-  >;
+    encodeTransferWithPayload(
+      transfer: ITokenBridge.TransferWithPayloadStruct,
+      overrides?: CallOverrides
+    ): Promise<[string] & { encoded: string }>;
 
-  encodeTransfer: TypedContractMethod<
-    [transfer: ITokenBridge.TransferStruct],
-    [string],
-    "view"
-  >;
+    evmChainId(overrides?: CallOverrides): Promise<[BigNumber]>;
 
-  encodeTransferWithPayload: TypedContractMethod<
-    [transfer: ITokenBridge.TransferWithPayloadStruct],
-    [string],
-    "view"
-  >;
+    finality(overrides?: CallOverrides): Promise<[number]>;
 
-  evmChainId: TypedContractMethod<[], [bigint], "view">;
+    governanceActionIsConsumed(
+      hash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<[boolean]>;
 
-  finality: TypedContractMethod<[], [bigint], "view">;
+    governanceChainId(overrides?: CallOverrides): Promise<[number]>;
 
-  governanceActionIsConsumed: TypedContractMethod<
-    [hash: BytesLike],
-    [boolean],
-    "view"
-  >;
+    governanceContract(overrides?: CallOverrides): Promise<[string]>;
 
-  governanceChainId: TypedContractMethod<[], [bigint], "view">;
+    implementation(overrides?: CallOverrides): Promise<[string]>;
 
-  governanceContract: TypedContractMethod<[], [string], "view">;
+    initialize(
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  implementation: TypedContractMethod<[], [string], "view">;
+    isFork(overrides?: CallOverrides): Promise<[boolean]>;
 
-  initialize: TypedContractMethod<[], [void], "nonpayable">;
+    isInitialized(impl: string, overrides?: CallOverrides): Promise<[boolean]>;
 
-  isFork: TypedContractMethod<[], [boolean], "view">;
+    isTransferCompleted(
+      hash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<[boolean]>;
 
-  isInitialized: TypedContractMethod<[impl: AddressLike], [boolean], "view">;
+    isWrappedAsset(
+      token: string,
+      overrides?: CallOverrides
+    ): Promise<[boolean]>;
 
-  isTransferCompleted: TypedContractMethod<
-    [hash: BytesLike],
-    [boolean],
-    "view"
-  >;
+    outstandingBridged(
+      token: string,
+      overrides?: CallOverrides
+    ): Promise<[BigNumber]>;
 
-  isWrappedAsset: TypedContractMethod<[token: AddressLike], [boolean], "view">;
+    parseAssetMeta(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<
+      [ITokenBridge.AssetMetaStructOutput] & {
+        meta: ITokenBridge.AssetMetaStructOutput;
+      }
+    >;
 
-  outstandingBridged: TypedContractMethod<
-    [token: AddressLike],
-    [bigint],
-    "view"
-  >;
+    parsePayloadID(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<[number] & { payloadID: number }>;
 
-  parseAssetMeta: TypedContractMethod<
-    [encoded: BytesLike],
-    [ITokenBridge.AssetMetaStructOutput],
-    "view"
-  >;
+    parseRecoverChainId(
+      encodedRecoverChainId: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<
+      [ITokenBridge.RecoverChainIdStructOutput] & {
+        rci: ITokenBridge.RecoverChainIdStructOutput;
+      }
+    >;
 
-  parsePayloadID: TypedContractMethod<[encoded: BytesLike], [bigint], "view">;
+    parseRegisterChain(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<
+      [ITokenBridge.RegisterChainStructOutput] & {
+        chain: ITokenBridge.RegisterChainStructOutput;
+      }
+    >;
 
-  parseRecoverChainId: TypedContractMethod<
-    [encodedRecoverChainId: BytesLike],
-    [ITokenBridge.RecoverChainIdStructOutput],
-    "view"
-  >;
+    parseTransfer(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<
+      [ITokenBridge.TransferStructOutput] & {
+        transfer: ITokenBridge.TransferStructOutput;
+      }
+    >;
 
-  parseRegisterChain: TypedContractMethod<
-    [encoded: BytesLike],
-    [ITokenBridge.RegisterChainStructOutput],
-    "view"
-  >;
+    parseTransferWithPayload(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<
+      [ITokenBridge.TransferWithPayloadStructOutput] & {
+        transfer: ITokenBridge.TransferWithPayloadStructOutput;
+      }
+    >;
 
-  parseTransfer: TypedContractMethod<
-    [encoded: BytesLike],
-    [ITokenBridge.TransferStructOutput],
-    "view"
-  >;
+    parseUpgrade(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<
+      [ITokenBridge.UpgradeContractStructOutput] & {
+        chain: ITokenBridge.UpgradeContractStructOutput;
+      }
+    >;
 
-  parseTransferWithPayload: TypedContractMethod<
-    [encoded: BytesLike],
-    [ITokenBridge.TransferWithPayloadStructOutput],
-    "view"
-  >;
+    registerChain(
+      encodedVM: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  parseUpgrade: TypedContractMethod<
-    [encoded: BytesLike],
-    [ITokenBridge.UpgradeContractStructOutput],
-    "view"
-  >;
+    submitRecoverChainId(
+      encodedVM: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  registerChain: TypedContractMethod<
-    [encodedVM: BytesLike],
-    [void],
-    "nonpayable"
-  >;
+    tokenImplementation(overrides?: CallOverrides): Promise<[string]>;
 
-  submitRecoverChainId: TypedContractMethod<
-    [encodedVM: BytesLike],
-    [void],
-    "nonpayable"
-  >;
-
-  tokenImplementation: TypedContractMethod<[], [string], "view">;
-
-  transferTokens: TypedContractMethod<
-    [
-      token: AddressLike,
+    transferTokens(
+      token: string,
       amount: BigNumberish,
       recipientChain: BigNumberish,
       recipient: BytesLike,
       arbiterFee: BigNumberish,
-      nonce: BigNumberish
-    ],
-    [bigint],
-    "payable"
-  >;
+      nonce: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  transferTokensWithPayload: TypedContractMethod<
-    [
-      token: AddressLike,
+    transferTokensWithPayload(
+      token: string,
       amount: BigNumberish,
       recipientChain: BigNumberish,
       recipient: BytesLike,
       nonce: BigNumberish,
-      payload: BytesLike
-    ],
-    [bigint],
-    "payable"
-  >;
+      payload: BytesLike,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  updateWrapped: TypedContractMethod<
-    [encodedVm: BytesLike],
-    [string],
-    "nonpayable"
-  >;
+    updateWrapped(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  upgrade: TypedContractMethod<[encodedVM: BytesLike], [void], "nonpayable">;
+    upgrade(
+      encodedVM: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  wormhole: TypedContractMethod<[], [string], "view">;
+    wormhole(overrides?: CallOverrides): Promise<[string]>;
 
-  wrapAndTransferETH: TypedContractMethod<
-    [
+    wrapAndTransferETH(
       recipientChain: BigNumberish,
       recipient: BytesLike,
       arbiterFee: BigNumberish,
-      nonce: BigNumberish
-    ],
-    [bigint],
-    "payable"
-  >;
+      nonce: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  wrapAndTransferETHWithPayload: TypedContractMethod<
-    [
+    wrapAndTransferETHWithPayload(
       recipientChain: BigNumberish,
       recipient: BytesLike,
       nonce: BigNumberish,
-      payload: BytesLike
-    ],
-    [bigint],
-    "payable"
-  >;
+      payload: BytesLike,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  wrappedAsset: TypedContractMethod<
-    [tokenChainId: BigNumberish, tokenAddress: BytesLike],
-    [string],
-    "view"
-  >;
+    wrappedAsset(
+      tokenChainId: BigNumberish,
+      tokenAddress: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<[string]>;
+  };
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  WETH(overrides?: CallOverrides): Promise<string>;
 
-  getFunction(
-    nameOrSignature: "WETH"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "_parseTransferCommon"
-  ): TypedContractMethod<
-    [encoded: BytesLike],
-    [ITokenBridge.TransferStructOutput],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "attestToken"
-  ): TypedContractMethod<
-    [tokenAddress: AddressLike, nonce: BigNumberish],
-    [bigint],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "bridgeContracts"
-  ): TypedContractMethod<[chainId_: BigNumberish], [string], "view">;
-  getFunction(
-    nameOrSignature: "chainId"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "completeTransfer"
-  ): TypedContractMethod<[encodedVm: BytesLike], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "completeTransferAndUnwrapETH"
-  ): TypedContractMethod<[encodedVm: BytesLike], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "completeTransferAndUnwrapETHWithPayload"
-  ): TypedContractMethod<[encodedVm: BytesLike], [string], "nonpayable">;
-  getFunction(
-    nameOrSignature: "completeTransferWithPayload"
-  ): TypedContractMethod<[encodedVm: BytesLike], [string], "nonpayable">;
-  getFunction(
-    nameOrSignature: "createWrapped"
-  ): TypedContractMethod<[encodedVm: BytesLike], [string], "nonpayable">;
-  getFunction(
-    nameOrSignature: "encodeAssetMeta"
-  ): TypedContractMethod<
-    [meta: ITokenBridge.AssetMetaStruct],
-    [string],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "encodeTransfer"
-  ): TypedContractMethod<
-    [transfer: ITokenBridge.TransferStruct],
-    [string],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "encodeTransferWithPayload"
-  ): TypedContractMethod<
-    [transfer: ITokenBridge.TransferWithPayloadStruct],
-    [string],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "evmChainId"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "finality"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "governanceActionIsConsumed"
-  ): TypedContractMethod<[hash: BytesLike], [boolean], "view">;
-  getFunction(
-    nameOrSignature: "governanceChainId"
-  ): TypedContractMethod<[], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "governanceContract"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "implementation"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "initialize"
-  ): TypedContractMethod<[], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "isFork"
-  ): TypedContractMethod<[], [boolean], "view">;
-  getFunction(
-    nameOrSignature: "isInitialized"
-  ): TypedContractMethod<[impl: AddressLike], [boolean], "view">;
-  getFunction(
-    nameOrSignature: "isTransferCompleted"
-  ): TypedContractMethod<[hash: BytesLike], [boolean], "view">;
-  getFunction(
-    nameOrSignature: "isWrappedAsset"
-  ): TypedContractMethod<[token: AddressLike], [boolean], "view">;
-  getFunction(
-    nameOrSignature: "outstandingBridged"
-  ): TypedContractMethod<[token: AddressLike], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "parseAssetMeta"
-  ): TypedContractMethod<
-    [encoded: BytesLike],
-    [ITokenBridge.AssetMetaStructOutput],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "parsePayloadID"
-  ): TypedContractMethod<[encoded: BytesLike], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "parseRecoverChainId"
-  ): TypedContractMethod<
-    [encodedRecoverChainId: BytesLike],
-    [ITokenBridge.RecoverChainIdStructOutput],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "parseRegisterChain"
-  ): TypedContractMethod<
-    [encoded: BytesLike],
-    [ITokenBridge.RegisterChainStructOutput],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "parseTransfer"
-  ): TypedContractMethod<
-    [encoded: BytesLike],
-    [ITokenBridge.TransferStructOutput],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "parseTransferWithPayload"
-  ): TypedContractMethod<
-    [encoded: BytesLike],
-    [ITokenBridge.TransferWithPayloadStructOutput],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "parseUpgrade"
-  ): TypedContractMethod<
-    [encoded: BytesLike],
-    [ITokenBridge.UpgradeContractStructOutput],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "registerChain"
-  ): TypedContractMethod<[encodedVM: BytesLike], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "submitRecoverChainId"
-  ): TypedContractMethod<[encodedVM: BytesLike], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "tokenImplementation"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "transferTokens"
-  ): TypedContractMethod<
-    [
-      token: AddressLike,
+  _parseTransferCommon(
+    encoded: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<ITokenBridge.TransferStructOutput>;
+
+  attestToken(
+    tokenAddress: string,
+    nonce: BigNumberish,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  bridgeContracts(
+    chainId_: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<string>;
+
+  chainId(overrides?: CallOverrides): Promise<number>;
+
+  completeTransfer(
+    encodedVm: BytesLike,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  completeTransferAndUnwrapETH(
+    encodedVm: BytesLike,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  completeTransferAndUnwrapETHWithPayload(
+    encodedVm: BytesLike,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  completeTransferWithPayload(
+    encodedVm: BytesLike,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  createWrapped(
+    encodedVm: BytesLike,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  encodeAssetMeta(
+    meta: ITokenBridge.AssetMetaStruct,
+    overrides?: CallOverrides
+  ): Promise<string>;
+
+  encodeTransfer(
+    transfer: ITokenBridge.TransferStruct,
+    overrides?: CallOverrides
+  ): Promise<string>;
+
+  encodeTransferWithPayload(
+    transfer: ITokenBridge.TransferWithPayloadStruct,
+    overrides?: CallOverrides
+  ): Promise<string>;
+
+  evmChainId(overrides?: CallOverrides): Promise<BigNumber>;
+
+  finality(overrides?: CallOverrides): Promise<number>;
+
+  governanceActionIsConsumed(
+    hash: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<boolean>;
+
+  governanceChainId(overrides?: CallOverrides): Promise<number>;
+
+  governanceContract(overrides?: CallOverrides): Promise<string>;
+
+  implementation(overrides?: CallOverrides): Promise<string>;
+
+  initialize(
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  isFork(overrides?: CallOverrides): Promise<boolean>;
+
+  isInitialized(impl: string, overrides?: CallOverrides): Promise<boolean>;
+
+  isTransferCompleted(
+    hash: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<boolean>;
+
+  isWrappedAsset(token: string, overrides?: CallOverrides): Promise<boolean>;
+
+  outstandingBridged(
+    token: string,
+    overrides?: CallOverrides
+  ): Promise<BigNumber>;
+
+  parseAssetMeta(
+    encoded: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<ITokenBridge.AssetMetaStructOutput>;
+
+  parsePayloadID(
+    encoded: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<number>;
+
+  parseRecoverChainId(
+    encodedRecoverChainId: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<ITokenBridge.RecoverChainIdStructOutput>;
+
+  parseRegisterChain(
+    encoded: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<ITokenBridge.RegisterChainStructOutput>;
+
+  parseTransfer(
+    encoded: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<ITokenBridge.TransferStructOutput>;
+
+  parseTransferWithPayload(
+    encoded: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<ITokenBridge.TransferWithPayloadStructOutput>;
+
+  parseUpgrade(
+    encoded: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<ITokenBridge.UpgradeContractStructOutput>;
+
+  registerChain(
+    encodedVM: BytesLike,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  submitRecoverChainId(
+    encodedVM: BytesLike,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  tokenImplementation(overrides?: CallOverrides): Promise<string>;
+
+  transferTokens(
+    token: string,
+    amount: BigNumberish,
+    recipientChain: BigNumberish,
+    recipient: BytesLike,
+    arbiterFee: BigNumberish,
+    nonce: BigNumberish,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  transferTokensWithPayload(
+    token: string,
+    amount: BigNumberish,
+    recipientChain: BigNumberish,
+    recipient: BytesLike,
+    nonce: BigNumberish,
+    payload: BytesLike,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  updateWrapped(
+    encodedVm: BytesLike,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  upgrade(
+    encodedVM: BytesLike,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  wormhole(overrides?: CallOverrides): Promise<string>;
+
+  wrapAndTransferETH(
+    recipientChain: BigNumberish,
+    recipient: BytesLike,
+    arbiterFee: BigNumberish,
+    nonce: BigNumberish,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  wrapAndTransferETHWithPayload(
+    recipientChain: BigNumberish,
+    recipient: BytesLike,
+    nonce: BigNumberish,
+    payload: BytesLike,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  wrappedAsset(
+    tokenChainId: BigNumberish,
+    tokenAddress: BytesLike,
+    overrides?: CallOverrides
+  ): Promise<string>;
+
+  callStatic: {
+    WETH(overrides?: CallOverrides): Promise<string>;
+
+    _parseTransferCommon(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<ITokenBridge.TransferStructOutput>;
+
+    attestToken(
+      tokenAddress: string,
+      nonce: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    bridgeContracts(
+      chainId_: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<string>;
+
+    chainId(overrides?: CallOverrides): Promise<number>;
+
+    completeTransfer(
+      encodedVm: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    completeTransferAndUnwrapETH(
+      encodedVm: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    completeTransferAndUnwrapETHWithPayload(
+      encodedVm: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<string>;
+
+    completeTransferWithPayload(
+      encodedVm: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<string>;
+
+    createWrapped(
+      encodedVm: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<string>;
+
+    encodeAssetMeta(
+      meta: ITokenBridge.AssetMetaStruct,
+      overrides?: CallOverrides
+    ): Promise<string>;
+
+    encodeTransfer(
+      transfer: ITokenBridge.TransferStruct,
+      overrides?: CallOverrides
+    ): Promise<string>;
+
+    encodeTransferWithPayload(
+      transfer: ITokenBridge.TransferWithPayloadStruct,
+      overrides?: CallOverrides
+    ): Promise<string>;
+
+    evmChainId(overrides?: CallOverrides): Promise<BigNumber>;
+
+    finality(overrides?: CallOverrides): Promise<number>;
+
+    governanceActionIsConsumed(
+      hash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
+
+    governanceChainId(overrides?: CallOverrides): Promise<number>;
+
+    governanceContract(overrides?: CallOverrides): Promise<string>;
+
+    implementation(overrides?: CallOverrides): Promise<string>;
+
+    initialize(overrides?: CallOverrides): Promise<void>;
+
+    isFork(overrides?: CallOverrides): Promise<boolean>;
+
+    isInitialized(impl: string, overrides?: CallOverrides): Promise<boolean>;
+
+    isTransferCompleted(
+      hash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
+
+    isWrappedAsset(token: string, overrides?: CallOverrides): Promise<boolean>;
+
+    outstandingBridged(
+      token: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    parseAssetMeta(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<ITokenBridge.AssetMetaStructOutput>;
+
+    parsePayloadID(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<number>;
+
+    parseRecoverChainId(
+      encodedRecoverChainId: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<ITokenBridge.RecoverChainIdStructOutput>;
+
+    parseRegisterChain(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<ITokenBridge.RegisterChainStructOutput>;
+
+    parseTransfer(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<ITokenBridge.TransferStructOutput>;
+
+    parseTransferWithPayload(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<ITokenBridge.TransferWithPayloadStructOutput>;
+
+    parseUpgrade(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<ITokenBridge.UpgradeContractStructOutput>;
+
+    registerChain(
+      encodedVM: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    submitRecoverChainId(
+      encodedVM: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    tokenImplementation(overrides?: CallOverrides): Promise<string>;
+
+    transferTokens(
+      token: string,
       amount: BigNumberish,
       recipientChain: BigNumberish,
       recipient: BytesLike,
       arbiterFee: BigNumberish,
-      nonce: BigNumberish
-    ],
-    [bigint],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "transferTokensWithPayload"
-  ): TypedContractMethod<
-    [
-      token: AddressLike,
+      nonce: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    transferTokensWithPayload(
+      token: string,
       amount: BigNumberish,
       recipientChain: BigNumberish,
       recipient: BytesLike,
       nonce: BigNumberish,
-      payload: BytesLike
-    ],
-    [bigint],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "updateWrapped"
-  ): TypedContractMethod<[encodedVm: BytesLike], [string], "nonpayable">;
-  getFunction(
-    nameOrSignature: "upgrade"
-  ): TypedContractMethod<[encodedVM: BytesLike], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "wormhole"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "wrapAndTransferETH"
-  ): TypedContractMethod<
-    [
+      payload: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    updateWrapped(
+      encodedVm: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<string>;
+
+    upgrade(encodedVM: BytesLike, overrides?: CallOverrides): Promise<void>;
+
+    wormhole(overrides?: CallOverrides): Promise<string>;
+
+    wrapAndTransferETH(
       recipientChain: BigNumberish,
       recipient: BytesLike,
       arbiterFee: BigNumberish,
-      nonce: BigNumberish
-    ],
-    [bigint],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "wrapAndTransferETHWithPayload"
-  ): TypedContractMethod<
-    [
+      nonce: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    wrapAndTransferETHWithPayload(
       recipientChain: BigNumberish,
       recipient: BytesLike,
       nonce: BigNumberish,
-      payload: BytesLike
-    ],
-    [bigint],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "wrappedAsset"
-  ): TypedContractMethod<
-    [tokenChainId: BigNumberish, tokenAddress: BytesLike],
-    [string],
-    "view"
-  >;
+      payload: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
 
-  getEvent(
-    key: "ContractUpgraded"
-  ): TypedContractEvent<
-    ContractUpgradedEvent.InputTuple,
-    ContractUpgradedEvent.OutputTuple,
-    ContractUpgradedEvent.OutputObject
-  >;
+    wrappedAsset(
+      tokenChainId: BigNumberish,
+      tokenAddress: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<string>;
+  };
 
   filters: {
-    "ContractUpgraded(address,address)": TypedContractEvent<
-      ContractUpgradedEvent.InputTuple,
-      ContractUpgradedEvent.OutputTuple,
-      ContractUpgradedEvent.OutputObject
-    >;
-    ContractUpgraded: TypedContractEvent<
-      ContractUpgradedEvent.InputTuple,
-      ContractUpgradedEvent.OutputTuple,
-      ContractUpgradedEvent.OutputObject
-    >;
+    "ContractUpgraded(address,address)"(
+      oldContract?: string | null,
+      newContract?: string | null
+    ): ContractUpgradedEventFilter;
+    ContractUpgraded(
+      oldContract?: string | null,
+      newContract?: string | null
+    ): ContractUpgradedEventFilter;
+  };
+
+  estimateGas: {
+    WETH(overrides?: CallOverrides): Promise<BigNumber>;
+
+    _parseTransferCommon(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    attestToken(
+      tokenAddress: string,
+      nonce: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    bridgeContracts(
+      chainId_: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    chainId(overrides?: CallOverrides): Promise<BigNumber>;
+
+    completeTransfer(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    completeTransferAndUnwrapETH(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    completeTransferAndUnwrapETHWithPayload(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    completeTransferWithPayload(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    createWrapped(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    encodeAssetMeta(
+      meta: ITokenBridge.AssetMetaStruct,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    encodeTransfer(
+      transfer: ITokenBridge.TransferStruct,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    encodeTransferWithPayload(
+      transfer: ITokenBridge.TransferWithPayloadStruct,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    evmChainId(overrides?: CallOverrides): Promise<BigNumber>;
+
+    finality(overrides?: CallOverrides): Promise<BigNumber>;
+
+    governanceActionIsConsumed(
+      hash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    governanceChainId(overrides?: CallOverrides): Promise<BigNumber>;
+
+    governanceContract(overrides?: CallOverrides): Promise<BigNumber>;
+
+    implementation(overrides?: CallOverrides): Promise<BigNumber>;
+
+    initialize(overrides?: Overrides & { from?: string }): Promise<BigNumber>;
+
+    isFork(overrides?: CallOverrides): Promise<BigNumber>;
+
+    isInitialized(impl: string, overrides?: CallOverrides): Promise<BigNumber>;
+
+    isTransferCompleted(
+      hash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    isWrappedAsset(
+      token: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    outstandingBridged(
+      token: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    parseAssetMeta(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    parsePayloadID(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    parseRecoverChainId(
+      encodedRecoverChainId: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    parseRegisterChain(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    parseTransfer(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    parseTransferWithPayload(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    parseUpgrade(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    registerChain(
+      encodedVM: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    submitRecoverChainId(
+      encodedVM: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    tokenImplementation(overrides?: CallOverrides): Promise<BigNumber>;
+
+    transferTokens(
+      token: string,
+      amount: BigNumberish,
+      recipientChain: BigNumberish,
+      recipient: BytesLike,
+      arbiterFee: BigNumberish,
+      nonce: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    transferTokensWithPayload(
+      token: string,
+      amount: BigNumberish,
+      recipientChain: BigNumberish,
+      recipient: BytesLike,
+      nonce: BigNumberish,
+      payload: BytesLike,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    updateWrapped(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    upgrade(
+      encodedVM: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    wormhole(overrides?: CallOverrides): Promise<BigNumber>;
+
+    wrapAndTransferETH(
+      recipientChain: BigNumberish,
+      recipient: BytesLike,
+      arbiterFee: BigNumberish,
+      nonce: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    wrapAndTransferETHWithPayload(
+      recipientChain: BigNumberish,
+      recipient: BytesLike,
+      nonce: BigNumberish,
+      payload: BytesLike,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    wrappedAsset(
+      tokenChainId: BigNumberish,
+      tokenAddress: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    WETH(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    _parseTransferCommon(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    attestToken(
+      tokenAddress: string,
+      nonce: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    bridgeContracts(
+      chainId_: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    chainId(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    completeTransfer(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    completeTransferAndUnwrapETH(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    completeTransferAndUnwrapETHWithPayload(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    completeTransferWithPayload(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    createWrapped(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    encodeAssetMeta(
+      meta: ITokenBridge.AssetMetaStruct,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    encodeTransfer(
+      transfer: ITokenBridge.TransferStruct,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    encodeTransferWithPayload(
+      transfer: ITokenBridge.TransferWithPayloadStruct,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    evmChainId(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    finality(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    governanceActionIsConsumed(
+      hash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    governanceChainId(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    governanceContract(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    implementation(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    initialize(
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    isFork(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    isInitialized(
+      impl: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    isTransferCompleted(
+      hash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    isWrappedAsset(
+      token: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    outstandingBridged(
+      token: string,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    parseAssetMeta(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    parsePayloadID(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    parseRecoverChainId(
+      encodedRecoverChainId: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    parseRegisterChain(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    parseTransfer(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    parseTransferWithPayload(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    parseUpgrade(
+      encoded: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    registerChain(
+      encodedVM: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    submitRecoverChainId(
+      encodedVM: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    tokenImplementation(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    transferTokens(
+      token: string,
+      amount: BigNumberish,
+      recipientChain: BigNumberish,
+      recipient: BytesLike,
+      arbiterFee: BigNumberish,
+      nonce: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    transferTokensWithPayload(
+      token: string,
+      amount: BigNumberish,
+      recipientChain: BigNumberish,
+      recipient: BytesLike,
+      nonce: BigNumberish,
+      payload: BytesLike,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    updateWrapped(
+      encodedVm: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    upgrade(
+      encodedVM: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    wormhole(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    wrapAndTransferETH(
+      recipientChain: BigNumberish,
+      recipient: BytesLike,
+      arbiterFee: BigNumberish,
+      nonce: BigNumberish,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    wrapAndTransferETHWithPayload(
+      recipientChain: BigNumberish,
+      recipient: BytesLike,
+      nonce: BigNumberish,
+      payload: BytesLike,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    wrappedAsset(
+      tokenChainId: BigNumberish,
+      tokenAddress: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
   };
 }

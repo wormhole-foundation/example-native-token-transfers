@@ -3,26 +3,37 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  Overrides,
+  PayableOverrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "../common";
 
-export interface CCTPAndTokenReceiverInterface extends Interface {
+export interface CCTPAndTokenReceiverInterface extends utils.Interface {
+  functions: {
+    "receiveWormholeMessages(bytes,bytes[],bytes32,uint16,bytes32)": FunctionFragment;
+    "setRegisteredSender(uint16,bytes32)": FunctionFragment;
+    "tokenBridge()": FunctionFragment;
+    "wormhole()": FunctionFragment;
+    "wormholeRelayer()": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "receiveWormholeMessages"
       | "setRegisteredSender"
       | "tokenBridge"
@@ -65,108 +76,148 @@ export interface CCTPAndTokenReceiverInterface extends Interface {
     functionFragment: "wormholeRelayer",
     data: BytesLike
   ): Result;
+
+  events: {};
 }
 
 export interface CCTPAndTokenReceiver extends BaseContract {
-  connect(runner?: ContractRunner | null): CCTPAndTokenReceiver;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: CCTPAndTokenReceiverInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
-
-  receiveWormholeMessages: TypedContractMethod<
-    [
+  functions: {
+    receiveWormholeMessages(
       payload: BytesLike,
       additionalMessages: BytesLike[],
       sourceAddress: BytesLike,
       sourceChain: BigNumberish,
-      deliveryHash: BytesLike
-    ],
-    [void],
-    "payable"
-  >;
+      deliveryHash: BytesLike,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  setRegisteredSender: TypedContractMethod<
-    [sourceChain: BigNumberish, sourceAddress: BytesLike],
-    [void],
-    "nonpayable"
-  >;
+    setRegisteredSender(
+      sourceChain: BigNumberish,
+      sourceAddress: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  tokenBridge: TypedContractMethod<[], [string], "view">;
+    tokenBridge(overrides?: CallOverrides): Promise<[string]>;
 
-  wormhole: TypedContractMethod<[], [string], "view">;
+    wormhole(overrides?: CallOverrides): Promise<[string]>;
 
-  wormholeRelayer: TypedContractMethod<[], [string], "view">;
+    wormholeRelayer(overrides?: CallOverrides): Promise<[string]>;
+  };
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  receiveWormholeMessages(
+    payload: BytesLike,
+    additionalMessages: BytesLike[],
+    sourceAddress: BytesLike,
+    sourceChain: BigNumberish,
+    deliveryHash: BytesLike,
+    overrides?: PayableOverrides & { from?: string }
+  ): Promise<ContractTransaction>;
 
-  getFunction(
-    nameOrSignature: "receiveWormholeMessages"
-  ): TypedContractMethod<
-    [
+  setRegisteredSender(
+    sourceChain: BigNumberish,
+    sourceAddress: BytesLike,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  tokenBridge(overrides?: CallOverrides): Promise<string>;
+
+  wormhole(overrides?: CallOverrides): Promise<string>;
+
+  wormholeRelayer(overrides?: CallOverrides): Promise<string>;
+
+  callStatic: {
+    receiveWormholeMessages(
       payload: BytesLike,
       additionalMessages: BytesLike[],
       sourceAddress: BytesLike,
       sourceChain: BigNumberish,
-      deliveryHash: BytesLike
-    ],
-    [void],
-    "payable"
-  >;
-  getFunction(
-    nameOrSignature: "setRegisteredSender"
-  ): TypedContractMethod<
-    [sourceChain: BigNumberish, sourceAddress: BytesLike],
-    [void],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "tokenBridge"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "wormhole"
-  ): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "wormholeRelayer"
-  ): TypedContractMethod<[], [string], "view">;
+      deliveryHash: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    setRegisteredSender(
+      sourceChain: BigNumberish,
+      sourceAddress: BytesLike,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    tokenBridge(overrides?: CallOverrides): Promise<string>;
+
+    wormhole(overrides?: CallOverrides): Promise<string>;
+
+    wormholeRelayer(overrides?: CallOverrides): Promise<string>;
+  };
 
   filters: {};
+
+  estimateGas: {
+    receiveWormholeMessages(
+      payload: BytesLike,
+      additionalMessages: BytesLike[],
+      sourceAddress: BytesLike,
+      sourceChain: BigNumberish,
+      deliveryHash: BytesLike,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    setRegisteredSender(
+      sourceChain: BigNumberish,
+      sourceAddress: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    tokenBridge(overrides?: CallOverrides): Promise<BigNumber>;
+
+    wormhole(overrides?: CallOverrides): Promise<BigNumber>;
+
+    wormholeRelayer(overrides?: CallOverrides): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    receiveWormholeMessages(
+      payload: BytesLike,
+      additionalMessages: BytesLike[],
+      sourceAddress: BytesLike,
+      sourceChain: BigNumberish,
+      deliveryHash: BytesLike,
+      overrides?: PayableOverrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    setRegisteredSender(
+      sourceChain: BigNumberish,
+      sourceAddress: BytesLike,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    tokenBridge(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    wormhole(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    wormholeRelayer(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+  };
 }

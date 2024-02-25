@@ -3,32 +3,39 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  Overrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "../common";
 
-export interface USDCMinterInterface extends Interface {
+export interface USDCMinterInterface extends utils.Interface {
+  functions: {
+    "configureMinter(address,uint256)": FunctionFragment;
+    "masterMinter()": FunctionFragment;
+    "mint(address,uint256)": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature: "configureMinter" | "masterMinter" | "mint"
+    nameOrSignatureOrTopic: "configureMinter" | "masterMinter" | "mint"
   ): FunctionFragment;
 
   encodeFunctionData(
     functionFragment: "configureMinter",
-    values: [AddressLike, BigNumberish]
+    values: [string, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "masterMinter",
@@ -36,7 +43,7 @@ export interface USDCMinterInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "mint",
-    values: [AddressLike, BigNumberish]
+    values: [string, BigNumberish]
   ): string;
 
   decodeFunctionResult(
@@ -48,86 +55,119 @@ export interface USDCMinterInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "mint", data: BytesLike): Result;
+
+  events: {};
 }
 
 export interface USDCMinter extends BaseContract {
-  connect(runner?: ContractRunner | null): USDCMinter;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: USDCMinterInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    configureMinter(
+      minter: string,
+      minterAllowedAmount: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    masterMinter(
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  configureMinter: TypedContractMethod<
-    [minter: AddressLike, minterAllowedAmount: BigNumberish],
-    [boolean],
-    "nonpayable"
-  >;
+    mint(
+      _to: string,
+      _amount: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+  };
 
-  masterMinter: TypedContractMethod<[], [string], "nonpayable">;
+  configureMinter(
+    minter: string,
+    minterAllowedAmount: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
 
-  mint: TypedContractMethod<
-    [_to: AddressLike, _amount: BigNumberish],
-    [boolean],
-    "nonpayable"
-  >;
+  masterMinter(
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  mint(
+    _to: string,
+    _amount: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
 
-  getFunction(
-    nameOrSignature: "configureMinter"
-  ): TypedContractMethod<
-    [minter: AddressLike, minterAllowedAmount: BigNumberish],
-    [boolean],
-    "nonpayable"
-  >;
-  getFunction(
-    nameOrSignature: "masterMinter"
-  ): TypedContractMethod<[], [string], "nonpayable">;
-  getFunction(
-    nameOrSignature: "mint"
-  ): TypedContractMethod<
-    [_to: AddressLike, _amount: BigNumberish],
-    [boolean],
-    "nonpayable"
-  >;
+  callStatic: {
+    configureMinter(
+      minter: string,
+      minterAllowedAmount: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
+
+    masterMinter(overrides?: CallOverrides): Promise<string>;
+
+    mint(
+      _to: string,
+      _amount: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<boolean>;
+  };
 
   filters: {};
+
+  estimateGas: {
+    configureMinter(
+      minter: string,
+      minterAllowedAmount: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    masterMinter(overrides?: Overrides & { from?: string }): Promise<BigNumber>;
+
+    mint(
+      _to: string,
+      _amount: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    configureMinter(
+      minter: string,
+      minterAllowedAmount: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    masterMinter(
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    mint(
+      _to: string,
+      _amount: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+  };
 }

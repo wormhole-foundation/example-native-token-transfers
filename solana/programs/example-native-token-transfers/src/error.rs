@@ -11,10 +11,12 @@ pub enum NTTError {
     InvalidChainId,
     #[msg("InvalidRecipientAddress")]
     InvalidRecipientAddress,
-    #[msg("InvalidEndpointSibling")]
-    InvalidEndpointSibling,
-    #[msg("InvalidManagerSibling")]
-    InvalidManagerSibling,
+    #[msg("InvalidTransceiverPeer")]
+    InvalidTransceiverPeer,
+    #[msg("InvalidNttManagerPeer")]
+    InvalidNttManagerPeer,
+    #[msg("InvalidRecipientNttManager")]
+    InvalidRecipientNttManager,
     #[msg("TransferAlreadyRedeemed")]
     TransferAlreadyRedeemed,
     #[msg("TransferNotApproved")]
@@ -29,8 +31,8 @@ pub enum NTTError {
     TransferExceedsRateLimit,
     #[msg("Paused")]
     Paused,
-    #[msg("DisabledEndpoint")]
-    DisabledEndpoint,
+    #[msg("DisabledTransceiver")]
+    DisabledTransceiver,
     #[msg("InvalidDeployer")]
     InvalidDeployer,
 }

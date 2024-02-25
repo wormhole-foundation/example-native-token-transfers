@@ -108,10 +108,10 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
         owner: ctx.accounts.deployer.key(),
         pending_owner: None,
         paused: false,
-        next_endpoint_id: 0,
+        next_transceiver_id: 0,
         // NOTE: can't be changed for now
         threshold: 1,
-        enabled_endpoints: Bitmap::new(),
+        enabled_transceivers: Bitmap::new(),
     });
 
     ctx.accounts.seq.set_inner(Sequence {

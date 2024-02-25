@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type {
   USDCMinter,
   USDCMinterInterface,
@@ -75,9 +76,12 @@ const _abi = [
 export class USDCMinter__factory {
   static readonly abi = _abi;
   static createInterface(): USDCMinterInterface {
-    return new Interface(_abi) as USDCMinterInterface;
+    return new utils.Interface(_abi) as USDCMinterInterface;
   }
-  static connect(address: string, runner?: ContractRunner | null): USDCMinter {
-    return new Contract(address, _abi, runner) as unknown as USDCMinter;
+  static connect(
+    address: string,
+    signerOrProvider: Signer | Provider
+  ): USDCMinter {
+    return new Contract(address, _abi, signerOrProvider) as USDCMinter;
   }
 }

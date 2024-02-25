@@ -5,10 +5,10 @@ use example_native_token_transfers::{
         inbox::{InboxItem, InboxRateLimit},
         outbox::OutboxRateLimit,
     },
-    registered_endpoint::RegisteredEndpoint,
+    registered_transceiver::RegisteredTransceiver,
     sequence::Sequence,
 };
-use ntt_messages::{manager::ManagerMessage, ntt::NativeTokenTransfer};
+use ntt_messages::{ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage};
 use sha3::{Digest, Keccak256};
 use wormhole_anchor_sdk::wormhole;
 use wormhole_io::TypePrefixedPayload;
@@ -98,11 +98,11 @@ impl NTT {
     pub fn inbox_item(
         &self,
         chain: u16,
-        manager_message: ManagerMessage<NativeTokenTransfer>,
+        ntt_manager_message: NttManagerMessage<NativeTokenTransfer>,
     ) -> Pubkey {
         let mut hasher = Keccak256::new();
         hasher.update(chain.to_be_bytes());
-        hasher.update(&TypePrefixedPayload::to_vec_payload(&manager_message));
+        hasher.update(&TypePrefixedPayload::to_vec_payload(&ntt_manager_message));
 
         let (inbox_item, _) = Pubkey::find_program_address(
             &[InboxItem::SEED_PREFIX, &hasher.finalize()],
@@ -117,12 +117,12 @@ impl NTT {
         token_authority
     }
 
-    pub fn registered_endpoint(&self, endpoint: &Pubkey) -> Pubkey {
-        let (registered_endpoint, _) = Pubkey::find_program_address(
-            &[RegisteredEndpoint::SEED_PREFIX, endpoint.as_ref()],
+    pub fn registered_transceiver(&self, transceiver: &Pubkey) -> Pubkey {
+        let (registered_transceiver, _) = Pubkey::find_program_address(
+            &[RegisteredTransceiver::SEED_PREFIX, transceiver.as_ref()],
             &self.program,
         );
-        registered_endpoint
+        registered_transceiver
     }
 
     pub fn emitter(&self) -> Pubkey {
@@ -138,32 +138,30 @@ impl NTT {
         wormhole_message
     }
 
-    pub fn sibling(&self, chain: u16) -> Pubkey {
-        let (sibling, _) = Pubkey::find_program_address(
-            &[b"sibling".as_ref(), &chain.to_be_bytes()],
-            &self.program,
-        );
-        sibling
+    pub fn peer(&self, chain: u16) -> Pubkey {
+        let (peer, _) =
+            Pubkey::find_program_address(&[b"peer".as_ref(), &chain.to_be_bytes()], &self.program);
+        peer
     }
 
-    pub fn endpoint_sibling(&self, chain: u16) -> Pubkey {
-        let (sibling, _) = Pubkey::find_program_address(
-            &[b"endpoint_sibling".as_ref(), &chain.to_be_bytes()],
+    pub fn transceiver_peer(&self, chain: u16) -> Pubkey {
+        let (peer, _) = Pubkey::find_program_address(
+            &[b"transceiver_peer".as_ref(), &chain.to_be_bytes()],
             &self.program,
         );
-        sibling
+        peer
     }
 
-    pub fn endpoint_message(&self, chain: u16, sequence: u64) -> Pubkey {
-        let (endpoint_message, _) = Pubkey::find_program_address(
+    pub fn transceiver_message(&self, chain: u16, sequence: u64) -> Pubkey {
+        let (transceiver_message, _) = Pubkey::find_program_address(
             &[
-                b"endpoint_message".as_ref(),
+                b"transceiver_message".as_ref(),
                 &chain.to_be_bytes(),
                 &sequence.to_be_bytes(),
             ],
             &self.program,
         );
-        endpoint_message
+        transceiver_message
     }
 
     pub fn custody(&self, mint: &Pubkey) -> Pubkey {

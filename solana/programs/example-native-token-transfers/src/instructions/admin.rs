@@ -8,9 +8,9 @@ use crate::messages::Hack;
 use crate::{
     config::Config,
     error::NTTError,
+    peer::NttManagerPeer,
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit, rate_limit::RateLimitState},
-    registered_endpoint::RegisteredEndpoint,
-    sibling::ManagerSibling,
+    registered_transceiver::RegisteredTransceiver,
 };
 
 // * Transfer ownership
@@ -124,13 +124,13 @@ pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
     )
 }
 
-// * Set siblings
-// TODO: update siblings? should that be a separate instruction? take timestamp
+// * Set peers
+// TODO: update peers? should that be a separate instruction? take timestamp
 // for modification? (for total ordering)
 
 #[derive(Accounts)]
-#[instruction(args: SetSiblingArgs)]
-pub struct SetSibling<'info> {
+#[instruction(args: SetPeerArgs)]
+pub struct SetPeer<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
@@ -143,12 +143,12 @@ pub struct SetSibling<'info> {
 
     #[account(
         init,
-        space = 8 + ManagerSibling::INIT_SPACE,
+        space = 8 + NttManagerPeer::INIT_SPACE,
         payer = payer,
-        seeds = [ManagerSibling::SEED_PREFIX, args.chain_id.id.to_be_bytes().as_ref()],
+        seeds = [NttManagerPeer::SEED_PREFIX, args.chain_id.id.to_be_bytes().as_ref()],
         bump
     )]
-    pub sibling: Account<'info, ManagerSibling>,
+    pub peer: Account<'info, NttManagerPeer>,
 
     #[account(
         init,
@@ -166,15 +166,15 @@ pub struct SetSibling<'info> {
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct SetSiblingArgs {
+pub struct SetPeerArgs {
     pub chain_id: ChainId,
     pub address: [u8; 32],
     pub limit: u64,
 }
 
-pub fn set_sibling(ctx: Context<SetSibling>, args: SetSiblingArgs) -> Result<()> {
-    ctx.accounts.sibling.set_inner(ManagerSibling {
-        bump: ctx.bumps.sibling,
+pub fn set_peer(ctx: Context<SetPeer>, args: SetPeerArgs) -> Result<()> {
+    ctx.accounts.peer.set_inner(NttManagerPeer {
+        bump: ctx.bumps.peer,
         address: args.address,
     });
 
@@ -185,10 +185,10 @@ pub fn set_sibling(ctx: Context<SetSibling>, args: SetSiblingArgs) -> Result<()>
     Ok(())
 }
 
-// * Register endpoints
+// * Register transceivers
 
 #[derive(Accounts)]
-pub struct RegisterEndpoint<'info> {
+pub struct RegisterTransceiver<'info> {
     #[account(
         mut,
         has_one = owner,
@@ -201,32 +201,32 @@ pub struct RegisterEndpoint<'info> {
     pub payer: Signer<'info>,
 
     #[account(executable)]
-    pub endpoint: AccountInfo<'info>,
+    pub transceiver: AccountInfo<'info>,
 
     #[account(
         init,
-        space = 8 + RegisteredEndpoint::INIT_SPACE,
+        space = 8 + RegisteredTransceiver::INIT_SPACE,
         payer = payer,
-        seeds = [RegisteredEndpoint::SEED_PREFIX, endpoint.key().as_ref()],
+        seeds = [RegisteredTransceiver::SEED_PREFIX, transceiver.key().as_ref()],
         bump
     )]
-    pub registered_endpoint: Account<'info, RegisteredEndpoint>,
+    pub registered_transceiver: Account<'info, RegisteredTransceiver>,
 
     pub system_program: Program<'info, System>,
 }
 
-pub fn register_endpoint(ctx: Context<RegisterEndpoint>) -> Result<()> {
-    let id = ctx.accounts.config.next_endpoint_id;
-    ctx.accounts.config.next_endpoint_id += 1;
+pub fn register_transceiver(ctx: Context<RegisterTransceiver>) -> Result<()> {
+    let id = ctx.accounts.config.next_transceiver_id;
+    ctx.accounts.config.next_transceiver_id += 1;
     ctx.accounts
-        .registered_endpoint
-        .set_inner(RegisteredEndpoint {
-            bump: ctx.bumps.registered_endpoint,
+        .registered_transceiver
+        .set_inner(RegisteredTransceiver {
+            bump: ctx.bumps.registered_transceiver,
             id,
-            endpoint_address: ctx.accounts.endpoint.key(),
+            transceiver_address: ctx.accounts.transceiver.key(),
         });
 
-    ctx.accounts.config.enabled_endpoints.set(id, true);
+    ctx.accounts.config.enabled_transceivers.set(id, true);
     Ok(())
 }
 

@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type { CCTPBase, CCTPBaseInterface } from "../../CCTPBase.sol/CCTPBase";
 
 const _abi = [
@@ -55,9 +56,12 @@ const _abi = [
 export class CCTPBase__factory {
   static readonly abi = _abi;
   static createInterface(): CCTPBaseInterface {
-    return new Interface(_abi) as CCTPBaseInterface;
+    return new utils.Interface(_abi) as CCTPBaseInterface;
   }
-  static connect(address: string, runner?: ContractRunner | null): CCTPBase {
-    return new Contract(address, _abi, runner) as unknown as CCTPBase;
+  static connect(
+    address: string,
+    signerOrProvider: Signer | Provider
+  ): CCTPBase {
+    return new Contract(address, _abi, signerOrProvider) as CCTPBase;
   }
 }

@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type { RateLimiter, RateLimiterInterface } from "../RateLimiter";
 
 const _abi = [
@@ -140,7 +141,7 @@ const _abi = [
             internalType: "address",
           },
           {
-            name: "endpointInstructions",
+            name: "transceiverInstructions",
             type: "bytes",
             internalType: "bytes",
           },
@@ -158,6 +159,19 @@ const _abi = [
         name: "",
         type: "uint64",
         internalType: "uint64",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "tokenDecimals",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
     ],
     stateMutability: "view",
@@ -334,9 +348,12 @@ const _abi = [
 export class RateLimiter__factory {
   static readonly abi = _abi;
   static createInterface(): RateLimiterInterface {
-    return new Interface(_abi) as RateLimiterInterface;
+    return new utils.Interface(_abi) as RateLimiterInterface;
   }
-  static connect(address: string, runner?: ContractRunner | null): RateLimiter {
-    return new Contract(address, _abi, runner) as unknown as RateLimiter;
+  static connect(
+    address: string,
+    signerOrProvider: Signer | Provider
+  ): RateLimiter {
+    return new Contract(address, _abi, signerOrProvider) as RateLimiter;
   }
 }

@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type {
   IWormholeRelayerSend,
   IWormholeRelayerSendInterface,
@@ -935,16 +936,16 @@ const _abi = [
 export class IWormholeRelayerSend__factory {
   static readonly abi = _abi;
   static createInterface(): IWormholeRelayerSendInterface {
-    return new Interface(_abi) as IWormholeRelayerSendInterface;
+    return new utils.Interface(_abi) as IWormholeRelayerSendInterface;
   }
   static connect(
     address: string,
-    runner?: ContractRunner | null
+    signerOrProvider: Signer | Provider
   ): IWormholeRelayerSend {
     return new Contract(
       address,
       _abi,
-      runner
-    ) as unknown as IWormholeRelayerSend;
+      signerOrProvider
+    ) as IWormholeRelayerSend;
   }
 }

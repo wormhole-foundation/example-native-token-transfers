@@ -3,22 +3,23 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BigNumberish,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  ContractTransaction,
+  Overrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "./common";
 
 export declare namespace IWormhole {
@@ -29,12 +30,12 @@ export declare namespace IWormhole {
     guardianIndex: BigNumberish;
   };
 
-  export type SignatureStructOutput = [
-    r: string,
-    s: string,
-    v: bigint,
-    guardianIndex: bigint
-  ] & { r: string; s: string; v: bigint; guardianIndex: bigint };
+  export type SignatureStructOutput = [string, string, number, number] & {
+    r: string;
+    s: string;
+    v: number;
+    guardianIndex: number;
+  };
 
   export type VMStruct = {
     version: BigNumberish;
@@ -51,27 +52,27 @@ export declare namespace IWormhole {
   };
 
   export type VMStructOutput = [
-    version: bigint,
-    timestamp: bigint,
-    nonce: bigint,
-    emitterChainId: bigint,
-    emitterAddress: string,
-    sequence: bigint,
-    consistencyLevel: bigint,
-    payload: string,
-    guardianSetIndex: bigint,
-    signatures: IWormhole.SignatureStructOutput[],
-    hash: string
+    number,
+    number,
+    number,
+    number,
+    string,
+    BigNumber,
+    number,
+    string,
+    number,
+    IWormhole.SignatureStructOutput[],
+    string
   ] & {
-    version: bigint;
-    timestamp: bigint;
-    nonce: bigint;
-    emitterChainId: bigint;
+    version: number;
+    timestamp: number;
+    nonce: number;
+    emitterChainId: number;
     emitterAddress: string;
-    sequence: bigint;
-    consistencyLevel: bigint;
+    sequence: BigNumber;
+    consistencyLevel: number;
     payload: string;
-    guardianSetIndex: bigint;
+    guardianSetIndex: number;
     signatures: IWormhole.SignatureStructOutput[];
     hash: string;
   };
@@ -81,19 +82,29 @@ export declare namespace VmSafe {
   export type LogStruct = {
     topics: BytesLike[];
     data: BytesLike;
-    emitter: AddressLike;
+    emitter: string;
   };
 
-  export type LogStructOutput = [
-    topics: string[],
-    data: string,
-    emitter: string
-  ] & { topics: string[]; data: string; emitter: string };
+  export type LogStructOutput = [string[], string, string] & {
+    topics: string[];
+    data: string;
+    emitter: string;
+  };
 }
 
-export interface WormholeSimulatorInterface extends Interface {
+export interface WormholeSimulatorInterface extends utils.Interface {
+  functions: {
+    "encodeAndSignMessage((uint8,uint32,uint32,uint16,bytes32,uint64,uint8,bytes,uint32,(bytes32,bytes32,uint8,uint8)[],bytes32))": FunctionFragment;
+    "encodeObservation((uint8,uint32,uint32,uint16,bytes32,uint64,uint8,bytes,uint32,(bytes32,bytes32,uint8,uint8)[],bytes32))": FunctionFragment;
+    "fetchSignedMessageFromLogs((bytes32[],bytes,address),uint16)": FunctionFragment;
+    "fetchWormholeMessageFromLog((bytes32[],bytes,address)[])": FunctionFragment;
+    "setMessageFee(uint256)": FunctionFragment;
+    "vm()": FunctionFragment;
+    "wormhole()": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "encodeAndSignMessage"
       | "encodeObservation"
       | "fetchSignedMessageFromLogs"
@@ -148,116 +159,193 @@ export interface WormholeSimulatorInterface extends Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "vm", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "wormhole", data: BytesLike): Result;
+
+  events: {};
 }
 
 export interface WormholeSimulator extends BaseContract {
-  connect(runner?: ContractRunner | null): WormholeSimulator;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: WormholeSimulatorInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    encodeAndSignMessage(
+      vm_: IWormhole.VMStruct,
+      overrides?: CallOverrides
+    ): Promise<[string] & { signedMessage: string }>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    encodeObservation(
+      vm_: IWormhole.VMStruct,
+      overrides?: CallOverrides
+    ): Promise<[string] & { encodedObservation: string }>;
 
-  encodeAndSignMessage: TypedContractMethod<
-    [vm_: IWormhole.VMStruct],
-    [string],
-    "view"
-  >;
+    fetchSignedMessageFromLogs(
+      log: VmSafe.LogStruct,
+      emitterChainId: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[string] & { signedMessage: string }>;
 
-  encodeObservation: TypedContractMethod<
-    [vm_: IWormhole.VMStruct],
-    [string],
-    "view"
-  >;
+    fetchWormholeMessageFromLog(
+      logs: VmSafe.LogStruct[],
+      overrides?: CallOverrides
+    ): Promise<[VmSafe.LogStructOutput[]]>;
 
-  fetchSignedMessageFromLogs: TypedContractMethod<
-    [log: VmSafe.LogStruct, emitterChainId: BigNumberish],
-    [string],
-    "view"
-  >;
+    setMessageFee(
+      newFee: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
 
-  fetchWormholeMessageFromLog: TypedContractMethod<
-    [logs: VmSafe.LogStruct[]],
-    [VmSafe.LogStructOutput[]],
-    "view"
-  >;
+    vm(overrides?: CallOverrides): Promise<[string]>;
 
-  setMessageFee: TypedContractMethod<
-    [newFee: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
+    wormhole(overrides?: CallOverrides): Promise<[string]>;
+  };
 
-  vm: TypedContractMethod<[], [string], "view">;
+  encodeAndSignMessage(
+    vm_: IWormhole.VMStruct,
+    overrides?: CallOverrides
+  ): Promise<string>;
 
-  wormhole: TypedContractMethod<[], [string], "view">;
+  encodeObservation(
+    vm_: IWormhole.VMStruct,
+    overrides?: CallOverrides
+  ): Promise<string>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  fetchSignedMessageFromLogs(
+    log: VmSafe.LogStruct,
+    emitterChainId: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<string>;
 
-  getFunction(
-    nameOrSignature: "encodeAndSignMessage"
-  ): TypedContractMethod<[vm_: IWormhole.VMStruct], [string], "view">;
-  getFunction(
-    nameOrSignature: "encodeObservation"
-  ): TypedContractMethod<[vm_: IWormhole.VMStruct], [string], "view">;
-  getFunction(
-    nameOrSignature: "fetchSignedMessageFromLogs"
-  ): TypedContractMethod<
-    [log: VmSafe.LogStruct, emitterChainId: BigNumberish],
-    [string],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "fetchWormholeMessageFromLog"
-  ): TypedContractMethod<
-    [logs: VmSafe.LogStruct[]],
-    [VmSafe.LogStructOutput[]],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "setMessageFee"
-  ): TypedContractMethod<[newFee: BigNumberish], [void], "nonpayable">;
-  getFunction(nameOrSignature: "vm"): TypedContractMethod<[], [string], "view">;
-  getFunction(
-    nameOrSignature: "wormhole"
-  ): TypedContractMethod<[], [string], "view">;
+  fetchWormholeMessageFromLog(
+    logs: VmSafe.LogStruct[],
+    overrides?: CallOverrides
+  ): Promise<VmSafe.LogStructOutput[]>;
+
+  setMessageFee(
+    newFee: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  vm(overrides?: CallOverrides): Promise<string>;
+
+  wormhole(overrides?: CallOverrides): Promise<string>;
+
+  callStatic: {
+    encodeAndSignMessage(
+      vm_: IWormhole.VMStruct,
+      overrides?: CallOverrides
+    ): Promise<string>;
+
+    encodeObservation(
+      vm_: IWormhole.VMStruct,
+      overrides?: CallOverrides
+    ): Promise<string>;
+
+    fetchSignedMessageFromLogs(
+      log: VmSafe.LogStruct,
+      emitterChainId: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<string>;
+
+    fetchWormholeMessageFromLog(
+      logs: VmSafe.LogStruct[],
+      overrides?: CallOverrides
+    ): Promise<VmSafe.LogStructOutput[]>;
+
+    setMessageFee(
+      newFee: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    vm(overrides?: CallOverrides): Promise<string>;
+
+    wormhole(overrides?: CallOverrides): Promise<string>;
+  };
 
   filters: {};
+
+  estimateGas: {
+    encodeAndSignMessage(
+      vm_: IWormhole.VMStruct,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    encodeObservation(
+      vm_: IWormhole.VMStruct,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    fetchSignedMessageFromLogs(
+      log: VmSafe.LogStruct,
+      emitterChainId: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    fetchWormholeMessageFromLog(
+      logs: VmSafe.LogStruct[],
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    setMessageFee(
+      newFee: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    vm(overrides?: CallOverrides): Promise<BigNumber>;
+
+    wormhole(overrides?: CallOverrides): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    encodeAndSignMessage(
+      vm_: IWormhole.VMStruct,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    encodeObservation(
+      vm_: IWormhole.VMStruct,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    fetchSignedMessageFromLogs(
+      log: VmSafe.LogStruct,
+      emitterChainId: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    fetchWormholeMessageFromLog(
+      logs: VmSafe.LogStruct[],
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    setMessageFee(
+      newFee: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    vm(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    wormhole(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+  };
 }

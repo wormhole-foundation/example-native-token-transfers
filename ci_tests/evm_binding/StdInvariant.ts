@@ -3,45 +3,53 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumber,
   BytesLike,
-  FunctionFragment,
-  Result,
-  Interface,
-  AddressLike,
-  ContractRunner,
-  ContractMethod,
-  Listener,
+  CallOverrides,
+  PopulatedTransaction,
+  Signer,
+  utils,
 } from "ethers";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
+import type { Listener, Provider } from "@ethersproject/providers";
 import type {
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
+  TypedEventFilter,
+  TypedEvent,
   TypedListener,
-  TypedContractMethod,
+  OnEvent,
 } from "./common";
 
 export declare namespace StdInvariant {
-  export type FuzzSelectorStruct = {
-    addr: AddressLike;
-    selectors: BytesLike[];
-  };
+  export type FuzzSelectorStruct = { addr: string; selectors: BytesLike[] };
 
-  export type FuzzSelectorStructOutput = [addr: string, selectors: string[]] & {
+  export type FuzzSelectorStructOutput = [string, string[]] & {
     addr: string;
     selectors: string[];
   };
 
-  export type FuzzInterfaceStruct = { addr: AddressLike; artifacts: string[] };
+  export type FuzzInterfaceStruct = { addr: string; artifacts: string[] };
 
-  export type FuzzInterfaceStructOutput = [
-    addr: string,
-    artifacts: string[]
-  ] & { addr: string; artifacts: string[] };
+  export type FuzzInterfaceStructOutput = [string, string[]] & {
+    addr: string;
+    artifacts: string[];
+  };
 }
 
-export interface StdInvariantInterface extends Interface {
+export interface StdInvariantInterface extends utils.Interface {
+  functions: {
+    "excludeArtifacts()": FunctionFragment;
+    "excludeContracts()": FunctionFragment;
+    "excludeSenders()": FunctionFragment;
+    "targetArtifactSelectors()": FunctionFragment;
+    "targetArtifacts()": FunctionFragment;
+    "targetContracts()": FunctionFragment;
+    "targetInterfaces()": FunctionFragment;
+    "targetSelectors()": FunctionFragment;
+    "targetSenders()": FunctionFragment;
+  };
+
   getFunction(
-    nameOrSignature:
+    nameOrSignatureOrTopic:
       | "excludeArtifacts"
       | "excludeContracts"
       | "excludeSenders"
@@ -126,116 +134,177 @@ export interface StdInvariantInterface extends Interface {
     functionFragment: "targetSenders",
     data: BytesLike
   ): Result;
+
+  events: {};
 }
 
 export interface StdInvariant extends BaseContract {
-  connect(runner?: ContractRunner | null): StdInvariant;
-  waitForDeployment(): Promise<this>;
+  connect(signerOrProvider: Signer | Provider | string): this;
+  attach(addressOrName: string): this;
+  deployed(): Promise<this>;
 
   interface: StdInvariantInterface;
 
-  queryFilter<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+  queryFilter<TEvent extends TypedEvent>(
+    event: TypedEventFilter<TEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
-  queryFilter<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined
-  ): Promise<Array<TypedEventLog<TCEvent>>>;
+  ): Promise<Array<TEvent>>;
 
-  on<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  on<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  listeners<TEvent extends TypedEvent>(
+    eventFilter?: TypedEventFilter<TEvent>
+  ): Array<TypedListener<TEvent>>;
+  listeners(eventName?: string): Array<Listener>;
+  removeAllListeners<TEvent extends TypedEvent>(
+    eventFilter: TypedEventFilter<TEvent>
+  ): this;
+  removeAllListeners(eventName?: string): this;
+  off: OnEvent<this>;
+  on: OnEvent<this>;
+  once: OnEvent<this>;
+  removeListener: OnEvent<this>;
 
-  once<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
-  once<TCEvent extends TypedContractEvent>(
-    filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>
-  ): Promise<this>;
+  functions: {
+    excludeArtifacts(
+      overrides?: CallOverrides
+    ): Promise<[string[]] & { excludedArtifacts_: string[] }>;
 
-  listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent
-  ): Promise<Array<TypedListener<TCEvent>>>;
-  listeners(eventName?: string): Promise<Array<Listener>>;
-  removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent
-  ): Promise<this>;
+    excludeContracts(
+      overrides?: CallOverrides
+    ): Promise<[string[]] & { excludedContracts_: string[] }>;
 
-  excludeArtifacts: TypedContractMethod<[], [string[]], "view">;
+    excludeSenders(
+      overrides?: CallOverrides
+    ): Promise<[string[]] & { excludedSenders_: string[] }>;
 
-  excludeContracts: TypedContractMethod<[], [string[]], "view">;
+    targetArtifactSelectors(
+      overrides?: CallOverrides
+    ): Promise<
+      [StdInvariant.FuzzSelectorStructOutput[]] & {
+        targetedArtifactSelectors_: StdInvariant.FuzzSelectorStructOutput[];
+      }
+    >;
 
-  excludeSenders: TypedContractMethod<[], [string[]], "view">;
+    targetArtifacts(
+      overrides?: CallOverrides
+    ): Promise<[string[]] & { targetedArtifacts_: string[] }>;
 
-  targetArtifactSelectors: TypedContractMethod<
-    [],
-    [StdInvariant.FuzzSelectorStructOutput[]],
-    "view"
-  >;
+    targetContracts(
+      overrides?: CallOverrides
+    ): Promise<[string[]] & { targetedContracts_: string[] }>;
 
-  targetArtifacts: TypedContractMethod<[], [string[]], "view">;
+    targetInterfaces(
+      overrides?: CallOverrides
+    ): Promise<
+      [StdInvariant.FuzzInterfaceStructOutput[]] & {
+        targetedInterfaces_: StdInvariant.FuzzInterfaceStructOutput[];
+      }
+    >;
 
-  targetContracts: TypedContractMethod<[], [string[]], "view">;
+    targetSelectors(
+      overrides?: CallOverrides
+    ): Promise<
+      [StdInvariant.FuzzSelectorStructOutput[]] & {
+        targetedSelectors_: StdInvariant.FuzzSelectorStructOutput[];
+      }
+    >;
 
-  targetInterfaces: TypedContractMethod<
-    [],
-    [StdInvariant.FuzzInterfaceStructOutput[]],
-    "view"
-  >;
+    targetSenders(
+      overrides?: CallOverrides
+    ): Promise<[string[]] & { targetedSenders_: string[] }>;
+  };
 
-  targetSelectors: TypedContractMethod<
-    [],
-    [StdInvariant.FuzzSelectorStructOutput[]],
-    "view"
-  >;
+  excludeArtifacts(overrides?: CallOverrides): Promise<string[]>;
 
-  targetSenders: TypedContractMethod<[], [string[]], "view">;
+  excludeContracts(overrides?: CallOverrides): Promise<string[]>;
 
-  getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment
-  ): T;
+  excludeSenders(overrides?: CallOverrides): Promise<string[]>;
 
-  getFunction(
-    nameOrSignature: "excludeArtifacts"
-  ): TypedContractMethod<[], [string[]], "view">;
-  getFunction(
-    nameOrSignature: "excludeContracts"
-  ): TypedContractMethod<[], [string[]], "view">;
-  getFunction(
-    nameOrSignature: "excludeSenders"
-  ): TypedContractMethod<[], [string[]], "view">;
-  getFunction(
-    nameOrSignature: "targetArtifactSelectors"
-  ): TypedContractMethod<[], [StdInvariant.FuzzSelectorStructOutput[]], "view">;
-  getFunction(
-    nameOrSignature: "targetArtifacts"
-  ): TypedContractMethod<[], [string[]], "view">;
-  getFunction(
-    nameOrSignature: "targetContracts"
-  ): TypedContractMethod<[], [string[]], "view">;
-  getFunction(
-    nameOrSignature: "targetInterfaces"
-  ): TypedContractMethod<
-    [],
-    [StdInvariant.FuzzInterfaceStructOutput[]],
-    "view"
-  >;
-  getFunction(
-    nameOrSignature: "targetSelectors"
-  ): TypedContractMethod<[], [StdInvariant.FuzzSelectorStructOutput[]], "view">;
-  getFunction(
-    nameOrSignature: "targetSenders"
-  ): TypedContractMethod<[], [string[]], "view">;
+  targetArtifactSelectors(
+    overrides?: CallOverrides
+  ): Promise<StdInvariant.FuzzSelectorStructOutput[]>;
+
+  targetArtifacts(overrides?: CallOverrides): Promise<string[]>;
+
+  targetContracts(overrides?: CallOverrides): Promise<string[]>;
+
+  targetInterfaces(
+    overrides?: CallOverrides
+  ): Promise<StdInvariant.FuzzInterfaceStructOutput[]>;
+
+  targetSelectors(
+    overrides?: CallOverrides
+  ): Promise<StdInvariant.FuzzSelectorStructOutput[]>;
+
+  targetSenders(overrides?: CallOverrides): Promise<string[]>;
+
+  callStatic: {
+    excludeArtifacts(overrides?: CallOverrides): Promise<string[]>;
+
+    excludeContracts(overrides?: CallOverrides): Promise<string[]>;
+
+    excludeSenders(overrides?: CallOverrides): Promise<string[]>;
+
+    targetArtifactSelectors(
+      overrides?: CallOverrides
+    ): Promise<StdInvariant.FuzzSelectorStructOutput[]>;
+
+    targetArtifacts(overrides?: CallOverrides): Promise<string[]>;
+
+    targetContracts(overrides?: CallOverrides): Promise<string[]>;
+
+    targetInterfaces(
+      overrides?: CallOverrides
+    ): Promise<StdInvariant.FuzzInterfaceStructOutput[]>;
+
+    targetSelectors(
+      overrides?: CallOverrides
+    ): Promise<StdInvariant.FuzzSelectorStructOutput[]>;
+
+    targetSenders(overrides?: CallOverrides): Promise<string[]>;
+  };
 
   filters: {};
+
+  estimateGas: {
+    excludeArtifacts(overrides?: CallOverrides): Promise<BigNumber>;
+
+    excludeContracts(overrides?: CallOverrides): Promise<BigNumber>;
+
+    excludeSenders(overrides?: CallOverrides): Promise<BigNumber>;
+
+    targetArtifactSelectors(overrides?: CallOverrides): Promise<BigNumber>;
+
+    targetArtifacts(overrides?: CallOverrides): Promise<BigNumber>;
+
+    targetContracts(overrides?: CallOverrides): Promise<BigNumber>;
+
+    targetInterfaces(overrides?: CallOverrides): Promise<BigNumber>;
+
+    targetSelectors(overrides?: CallOverrides): Promise<BigNumber>;
+
+    targetSenders(overrides?: CallOverrides): Promise<BigNumber>;
+  };
+
+  populateTransaction: {
+    excludeArtifacts(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    excludeContracts(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    excludeSenders(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    targetArtifactSelectors(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    targetArtifacts(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    targetContracts(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    targetInterfaces(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    targetSelectors(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    targetSenders(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+  };
 }

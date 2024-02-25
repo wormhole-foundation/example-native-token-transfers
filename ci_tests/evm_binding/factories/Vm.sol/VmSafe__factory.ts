@@ -2,7 +2,8 @@
 /* tslint:disable */
 /* eslint-disable */
 
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Signer, utils } from "ethers";
+import type { Provider } from "@ethersproject/providers";
 import type { VmSafe, VmSafeInterface } from "../../Vm.sol/VmSafe";
 
 const _abi = [
@@ -3625,9 +3626,9 @@ const _abi = [
 export class VmSafe__factory {
   static readonly abi = _abi;
   static createInterface(): VmSafeInterface {
-    return new Interface(_abi) as VmSafeInterface;
+    return new utils.Interface(_abi) as VmSafeInterface;
   }
-  static connect(address: string, runner?: ContractRunner | null): VmSafe {
-    return new Contract(address, _abi, runner) as unknown as VmSafe;
+  static connect(address: string, signerOrProvider: Signer | Provider): VmSafe {
+    return new Contract(address, _abi, signerOrProvider) as VmSafe;
   }
 }
