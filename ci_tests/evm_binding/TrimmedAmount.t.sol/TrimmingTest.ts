@@ -4,7 +4,6 @@
 import type {
   BaseContract,
   BigNumber,
-  BigNumberish,
   BytesLike,
   CallOverrides,
   ContractTransaction,
@@ -26,16 +25,6 @@ import type {
   OnEvent,
 } from "../common";
 
-export type TrimmedAmountStruct = {
-  amount: BigNumberish;
-  decimals: BigNumberish;
-};
-
-export type TrimmedAmountStructOutput = [BigNumber, number] & {
-  amount: BigNumber;
-  decimals: number;
-};
-
 export declare namespace StdInvariant {
   export type FuzzSelectorStruct = { addr: string; selectors: BytesLike[] };
 
@@ -52,40 +41,7 @@ export declare namespace StdInvariant {
   };
 }
 
-export declare namespace TransceiverStructs {
-  export type NativeTokenTransferStruct = {
-    amount: TrimmedAmountStruct;
-    sourceToken: BytesLike;
-    to: BytesLike;
-    toChain: BigNumberish;
-  };
-
-  export type NativeTokenTransferStructOutput = [
-    TrimmedAmountStructOutput,
-    string,
-    string,
-    number
-  ] & {
-    amount: TrimmedAmountStructOutput;
-    sourceToken: string;
-    to: string;
-    toChain: number;
-  };
-
-  export type NttManagerMessageStruct = {
-    sequence: BigNumberish;
-    sender: BytesLike;
-    payload: BytesLike;
-  };
-
-  export type NttManagerMessageStructOutput = [BigNumber, string, string] & {
-    sequence: BigNumber;
-    sender: string;
-    payload: string;
-  };
-}
-
-export interface TestTransceiverStructsInterface extends utils.Interface {
+export interface TrimmingTestInterface extends utils.Interface {
   functions: {
     "IS_TEST()": FunctionFragment;
     "excludeArtifacts()": FunctionFragment;
@@ -98,11 +54,15 @@ export interface TestTransceiverStructsInterface extends utils.Interface {
     "targetInterfaces()": FunctionFragment;
     "targetSelectors()": FunctionFragment;
     "targetSenders()": FunctionFragment;
-    "test_SerdeJunk_NativeTokenTransfer(((uint64,uint8),bytes32,bytes32,uint16))": FunctionFragment;
-    "test_SerdeJunk_NttManagerMessage((uint64,bytes32,bytes))": FunctionFragment;
-    "test_SerdeRoundtrip_NativeTokenTransfer(((uint64,uint8),bytes32,bytes32,uint16))": FunctionFragment;
-    "test_SerdeRoundtrip_NttManagerMessage((uint64,bytes32,bytes))": FunctionFragment;
-    "test_serialize_TransceiverMessage()": FunctionFragment;
+    "testAddOperatorDecimalsNotEqualNoRevert()": FunctionFragment;
+    "testAddOperatorDecimalsNotEqualRevert()": FunctionFragment;
+    "testAddOperatorNonZero()": FunctionFragment;
+    "testAddOperatorZero()": FunctionFragment;
+    "testDifferentDecimals()": FunctionFragment;
+    "testSubOperatorNonZero()": FunctionFragment;
+    "testSubOperatorOverflow()": FunctionFragment;
+    "testSubOperatorZero()": FunctionFragment;
+    "testTrimmingRoundTrip()": FunctionFragment;
   };
 
   getFunction(
@@ -118,11 +78,15 @@ export interface TestTransceiverStructsInterface extends utils.Interface {
       | "targetInterfaces"
       | "targetSelectors"
       | "targetSenders"
-      | "test_SerdeJunk_NativeTokenTransfer"
-      | "test_SerdeJunk_NttManagerMessage"
-      | "test_SerdeRoundtrip_NativeTokenTransfer"
-      | "test_SerdeRoundtrip_NttManagerMessage"
-      | "test_serialize_TransceiverMessage"
+      | "testAddOperatorDecimalsNotEqualNoRevert"
+      | "testAddOperatorDecimalsNotEqualRevert"
+      | "testAddOperatorNonZero"
+      | "testAddOperatorZero"
+      | "testDifferentDecimals"
+      | "testSubOperatorNonZero"
+      | "testSubOperatorOverflow"
+      | "testSubOperatorZero"
+      | "testTrimmingRoundTrip"
   ): FunctionFragment;
 
   encodeFunctionData(functionFragment: "IS_TEST", values?: undefined): string;
@@ -164,23 +128,39 @@ export interface TestTransceiverStructsInterface extends utils.Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "test_SerdeJunk_NativeTokenTransfer",
-    values: [TransceiverStructs.NativeTokenTransferStruct]
+    functionFragment: "testAddOperatorDecimalsNotEqualNoRevert",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "test_SerdeJunk_NttManagerMessage",
-    values: [TransceiverStructs.NttManagerMessageStruct]
+    functionFragment: "testAddOperatorDecimalsNotEqualRevert",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "test_SerdeRoundtrip_NativeTokenTransfer",
-    values: [TransceiverStructs.NativeTokenTransferStruct]
+    functionFragment: "testAddOperatorNonZero",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "test_SerdeRoundtrip_NttManagerMessage",
-    values: [TransceiverStructs.NttManagerMessageStruct]
+    functionFragment: "testAddOperatorZero",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "test_serialize_TransceiverMessage",
+    functionFragment: "testDifferentDecimals",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "testSubOperatorNonZero",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "testSubOperatorOverflow",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "testSubOperatorZero",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "testTrimmingRoundTrip",
     values?: undefined
   ): string;
 
@@ -223,23 +203,39 @@ export interface TestTransceiverStructsInterface extends utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "test_SerdeJunk_NativeTokenTransfer",
+    functionFragment: "testAddOperatorDecimalsNotEqualNoRevert",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "test_SerdeJunk_NttManagerMessage",
+    functionFragment: "testAddOperatorDecimalsNotEqualRevert",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "test_SerdeRoundtrip_NativeTokenTransfer",
+    functionFragment: "testAddOperatorNonZero",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "test_SerdeRoundtrip_NttManagerMessage",
+    functionFragment: "testAddOperatorZero",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "test_serialize_TransceiverMessage",
+    functionFragment: "testDifferentDecimals",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "testSubOperatorNonZero",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "testSubOperatorOverflow",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "testSubOperatorZero",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "testTrimmingRoundTrip",
     data: BytesLike
   ): Result;
 
@@ -518,12 +514,12 @@ export type logsEvent = TypedEvent<[string], logsEventObject>;
 
 export type logsEventFilter = TypedEventFilter<logsEvent>;
 
-export interface TestTransceiverStructs extends BaseContract {
+export interface TrimmingTest extends BaseContract {
   connect(signerOrProvider: Signer | Provider | string): this;
   attach(addressOrName: string): this;
   deployed(): Promise<this>;
 
-  interface: TestTransceiverStructsInterface;
+  interface: TrimmingTestInterface;
 
   queryFilter<TEvent extends TypedEvent>(
     event: TypedEventFilter<TEvent>,
@@ -599,27 +595,31 @@ export interface TestTransceiverStructs extends BaseContract {
       overrides?: CallOverrides
     ): Promise<[string[]] & { targetedSenders_: string[] }>;
 
-    test_SerdeJunk_NativeTokenTransfer(
-      m: TransceiverStructs.NativeTokenTransferStruct,
+    testAddOperatorDecimalsNotEqualNoRevert(
+      overrides?: CallOverrides
+    ): Promise<[void]>;
+
+    testAddOperatorDecimalsNotEqualRevert(
       overrides?: Overrides & { from?: string }
     ): Promise<ContractTransaction>;
 
-    test_SerdeJunk_NttManagerMessage(
-      m: TransceiverStructs.NttManagerMessageStruct,
+    testAddOperatorNonZero(overrides?: CallOverrides): Promise<[void]>;
+
+    testAddOperatorZero(overrides?: CallOverrides): Promise<[void]>;
+
+    testDifferentDecimals(
       overrides?: Overrides & { from?: string }
     ): Promise<ContractTransaction>;
 
-    test_SerdeRoundtrip_NativeTokenTransfer(
-      m: TransceiverStructs.NativeTokenTransferStruct,
+    testSubOperatorNonZero(overrides?: CallOverrides): Promise<[void]>;
+
+    testSubOperatorOverflow(
       overrides?: Overrides & { from?: string }
     ): Promise<ContractTransaction>;
 
-    test_SerdeRoundtrip_NttManagerMessage(
-      m: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: Overrides & { from?: string }
-    ): Promise<ContractTransaction>;
+    testSubOperatorZero(overrides?: CallOverrides): Promise<[void]>;
 
-    test_serialize_TransceiverMessage(
+    testTrimmingRoundTrip(
       overrides?: Overrides & { from?: string }
     ): Promise<ContractTransaction>;
   };
@@ -654,27 +654,31 @@ export interface TestTransceiverStructs extends BaseContract {
 
   targetSenders(overrides?: CallOverrides): Promise<string[]>;
 
-  test_SerdeJunk_NativeTokenTransfer(
-    m: TransceiverStructs.NativeTokenTransferStruct,
+  testAddOperatorDecimalsNotEqualNoRevert(
+    overrides?: CallOverrides
+  ): Promise<void>;
+
+  testAddOperatorDecimalsNotEqualRevert(
     overrides?: Overrides & { from?: string }
   ): Promise<ContractTransaction>;
 
-  test_SerdeJunk_NttManagerMessage(
-    m: TransceiverStructs.NttManagerMessageStruct,
+  testAddOperatorNonZero(overrides?: CallOverrides): Promise<void>;
+
+  testAddOperatorZero(overrides?: CallOverrides): Promise<void>;
+
+  testDifferentDecimals(
     overrides?: Overrides & { from?: string }
   ): Promise<ContractTransaction>;
 
-  test_SerdeRoundtrip_NativeTokenTransfer(
-    m: TransceiverStructs.NativeTokenTransferStruct,
+  testSubOperatorNonZero(overrides?: CallOverrides): Promise<void>;
+
+  testSubOperatorOverflow(
     overrides?: Overrides & { from?: string }
   ): Promise<ContractTransaction>;
 
-  test_SerdeRoundtrip_NttManagerMessage(
-    m: TransceiverStructs.NttManagerMessageStruct,
-    overrides?: Overrides & { from?: string }
-  ): Promise<ContractTransaction>;
+  testSubOperatorZero(overrides?: CallOverrides): Promise<void>;
 
-  test_serialize_TransceiverMessage(
+  testTrimmingRoundTrip(
     overrides?: Overrides & { from?: string }
   ): Promise<ContractTransaction>;
 
@@ -707,27 +711,27 @@ export interface TestTransceiverStructs extends BaseContract {
 
     targetSenders(overrides?: CallOverrides): Promise<string[]>;
 
-    test_SerdeJunk_NativeTokenTransfer(
-      m: TransceiverStructs.NativeTokenTransferStruct,
+    testAddOperatorDecimalsNotEqualNoRevert(
       overrides?: CallOverrides
     ): Promise<void>;
 
-    test_SerdeJunk_NttManagerMessage(
-      m: TransceiverStructs.NttManagerMessageStruct,
+    testAddOperatorDecimalsNotEqualRevert(
       overrides?: CallOverrides
     ): Promise<void>;
 
-    test_SerdeRoundtrip_NativeTokenTransfer(
-      m: TransceiverStructs.NativeTokenTransferStruct,
-      overrides?: CallOverrides
-    ): Promise<void>;
+    testAddOperatorNonZero(overrides?: CallOverrides): Promise<void>;
 
-    test_SerdeRoundtrip_NttManagerMessage(
-      m: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: CallOverrides
-    ): Promise<void>;
+    testAddOperatorZero(overrides?: CallOverrides): Promise<void>;
 
-    test_serialize_TransceiverMessage(overrides?: CallOverrides): Promise<void>;
+    testDifferentDecimals(overrides?: CallOverrides): Promise<void>;
+
+    testSubOperatorNonZero(overrides?: CallOverrides): Promise<void>;
+
+    testSubOperatorOverflow(overrides?: CallOverrides): Promise<void>;
+
+    testSubOperatorZero(overrides?: CallOverrides): Promise<void>;
+
+    testTrimmingRoundTrip(overrides?: CallOverrides): Promise<void>;
   };
 
   filters: {
@@ -854,27 +858,31 @@ export interface TestTransceiverStructs extends BaseContract {
 
     targetSenders(overrides?: CallOverrides): Promise<BigNumber>;
 
-    test_SerdeJunk_NativeTokenTransfer(
-      m: TransceiverStructs.NativeTokenTransferStruct,
+    testAddOperatorDecimalsNotEqualNoRevert(
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    testAddOperatorDecimalsNotEqualRevert(
       overrides?: Overrides & { from?: string }
     ): Promise<BigNumber>;
 
-    test_SerdeJunk_NttManagerMessage(
-      m: TransceiverStructs.NttManagerMessageStruct,
+    testAddOperatorNonZero(overrides?: CallOverrides): Promise<BigNumber>;
+
+    testAddOperatorZero(overrides?: CallOverrides): Promise<BigNumber>;
+
+    testDifferentDecimals(
       overrides?: Overrides & { from?: string }
     ): Promise<BigNumber>;
 
-    test_SerdeRoundtrip_NativeTokenTransfer(
-      m: TransceiverStructs.NativeTokenTransferStruct,
+    testSubOperatorNonZero(overrides?: CallOverrides): Promise<BigNumber>;
+
+    testSubOperatorOverflow(
       overrides?: Overrides & { from?: string }
     ): Promise<BigNumber>;
 
-    test_SerdeRoundtrip_NttManagerMessage(
-      m: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: Overrides & { from?: string }
-    ): Promise<BigNumber>;
+    testSubOperatorZero(overrides?: CallOverrides): Promise<BigNumber>;
 
-    test_serialize_TransceiverMessage(
+    testTrimmingRoundTrip(
       overrides?: Overrides & { from?: string }
     ): Promise<BigNumber>;
   };
@@ -906,27 +914,39 @@ export interface TestTransceiverStructs extends BaseContract {
 
     targetSenders(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
-    test_SerdeJunk_NativeTokenTransfer(
-      m: TransceiverStructs.NativeTokenTransferStruct,
+    testAddOperatorDecimalsNotEqualNoRevert(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    testAddOperatorDecimalsNotEqualRevert(
       overrides?: Overrides & { from?: string }
     ): Promise<PopulatedTransaction>;
 
-    test_SerdeJunk_NttManagerMessage(
-      m: TransceiverStructs.NttManagerMessageStruct,
+    testAddOperatorNonZero(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    testAddOperatorZero(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    testDifferentDecimals(
       overrides?: Overrides & { from?: string }
     ): Promise<PopulatedTransaction>;
 
-    test_SerdeRoundtrip_NativeTokenTransfer(
-      m: TransceiverStructs.NativeTokenTransferStruct,
+    testSubOperatorNonZero(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    testSubOperatorOverflow(
       overrides?: Overrides & { from?: string }
     ): Promise<PopulatedTransaction>;
 
-    test_SerdeRoundtrip_NttManagerMessage(
-      m: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: Overrides & { from?: string }
+    testSubOperatorZero(
+      overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
-    test_serialize_TransceiverMessage(
+    testTrimmingRoundTrip(
       overrides?: Overrides & { from?: string }
     ): Promise<PopulatedTransaction>;
   };
