@@ -26,11 +26,11 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
 
     /// @dev Prefix for all Wormhole transceiver initialisation payloads
     ///      This is bytes4(keccak256("WormholeTransceiverInit"))
-    bytes4 constant WH_TRANSCEIVER_INIT_PREFIX = 0xc83e3d2e;
+    bytes4 constant WH_TRANSCEIVER_INIT_PREFIX = 0x9c23bd3b;
 
     /// @dev Prefix for all Wormhole peer registration payloads
     ///      This is bytes4(keccak256("WormholePeerRegistration"))
-    bytes4 constant WH_PEER_REGISTRATION_PREFIX = 0xd0d292f1;
+    bytes4 constant WH_PEER_REGISTRATION_PREFIX = 0x18fc67c2;
 
     IWormhole public immutable wormhole;
     IWormholeRelayer public immutable wormholeRelayer;
