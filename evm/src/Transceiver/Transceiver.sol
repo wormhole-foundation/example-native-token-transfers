@@ -18,7 +18,8 @@ abstract contract Transceiver is
     Implementation
 {
     /// @dev updating bridgeNttManager requires a new Transceiver deployment.
-    /// Projects should implement their own governance to remove the old Transceiver contract address and then add the new one.
+    /// Projects should implement their own governance to remove the old Transceiver
+    /// contract address and then add the new one.
     address public immutable nttManager;
     address public immutable nttManagerToken;
 
@@ -61,8 +62,8 @@ abstract contract Transceiver is
 
     function _migrate() internal virtual override {}
 
-    /// @dev This method checks that the the referecnes to the nttManager and its corresponding function are correct
-    /// When new immutable variables are added, this function should be updated.
+    // @dev This method checks that the the referecnes to the nttManager and its corresponding function
+    // are correct When new immutable variables are added, this function should be updated.
     function _checkImmutables() internal view override {
         assert(this.nttManager() == nttManager);
         assert(this.nttManagerToken() == nttManagerToken);
@@ -79,13 +80,16 @@ abstract contract Transceiver is
     }
 
     /// =============== TRANSCEIVING LOGIC ===============================================
-    /**
-     *   @dev send a message to another chain.
-     *   @param recipientChain The chain id of the recipient.
-     *   @param instruction An additional Instruction provided by the Transceiver to be
-     *          executed on the recipient chain.
-     *   @param nttManagerMessage A message to be sent to the nttManager on the recipient chain.
-     */
+
+    /// @inheritdoc ITransceiver
+    function quoteDeliveryPrice(
+        uint16 targetChain,
+        TransceiverStructs.TransceiverInstruction memory instruction
+    ) external view returns (uint256) {
+        return _quoteDeliveryPrice(targetChain, instruction);
+    }
+
+    /// @inheritdoc ITransceiver
     function sendMessage(
         uint16 recipientChain,
         TransceiverStructs.TransceiverInstruction memory instruction,
@@ -102,6 +106,8 @@ abstract contract Transceiver is
         );
     }
 
+    /// ============================= INTERNAL =========================================
+
     function _sendMessage(
         uint16 recipientChain,
         uint256 deliveryPayment,
@@ -111,11 +117,9 @@ abstract contract Transceiver is
         bytes memory nttManagerMessage
     ) internal virtual;
 
-    // @dev      This method is called by the BridgeNttManager contract to send a cross-chain message.
-    //           Forwards the VAA payload to the transceiver nttManager contract.
-    // @param    sourceChainId The chain id of the sender.
-    // @param    sourceNttManagerAddress The address of the sender's nttManager contract.
-    // @param    payload The VAA payload.
+    // @define This method is called by the BridgeNttManager contract to send a cross-chain message.
+    // @reverts if:
+    //     - `recipientNttManagerAddress` does not match the address of this manager contract
     function _deliverToNttManager(
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
@@ -128,13 +132,6 @@ abstract contract Transceiver is
             );
         }
         INttManager(nttManager).attestationReceived(sourceChainId, sourceNttManagerAddress, payload);
-    }
-
-    function quoteDeliveryPrice(
-        uint16 targetChain,
-        TransceiverStructs.TransceiverInstruction memory instruction
-    ) external view returns (uint256) {
-        return _quoteDeliveryPrice(targetChain, instruction);
     }
 
     function _quoteDeliveryPrice(
