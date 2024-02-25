@@ -1,0 +1,18 @@
+{
+  "name": "cli",
+  "module": "src/index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/yargs": "^17.0.32"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "bin": {
+    "ntt": "src/index.ts"
+  },
+  "dependencies": {
+    "yargs": "^17.7.2"
+  }
+}

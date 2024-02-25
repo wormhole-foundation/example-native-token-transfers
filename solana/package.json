@@ -1,4 +1,5 @@
 {
+    "name": "example-native-token-transfers-solana",
     "license": "Apache-2.0",
     "scripts": {
         "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
