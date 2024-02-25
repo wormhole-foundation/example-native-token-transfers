@@ -5,10 +5,10 @@ import "../interfaces/IRateLimiter.sol";
 import "../interfaces/IRateLimiterEvents.sol";
 import "./TransceiverHelpers.sol";
 import "./TransceiverStructs.sol";
-import "../libraries/NormalizedAmount.sol";
+import "../libraries/TrimmedAmount.sol";
 
 abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
-    using NormalizedAmountLib for NormalizedAmount;
+    using TrimmedAmountLib for TrimmedAmount;
     /**
      * @dev The duration it takes for the limits to fully replenish
      */
@@ -74,11 +74,11 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     }
 
     function _setLimit(
-        NormalizedAmount memory limit,
+        TrimmedAmount memory limit,
         RateLimitParams storage rateLimitParams
     ) internal {
-        NormalizedAmount memory oldLimit = rateLimitParams.limit;
-        NormalizedAmount memory currentCapacity = _getCurrentCapacity(rateLimitParams);
+        TrimmedAmount memory oldLimit = rateLimitParams.limit;
+        TrimmedAmount memory currentCapacity = _getCurrentCapacity(rateLimitParams);
         rateLimitParams.limit = limit;
 
         rateLimitParams.currentCapacity =
@@ -87,7 +87,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         rateLimitParams.lastTxTimestamp = uint64(block.timestamp);
     }
 
-    function _setOutboundLimit(NormalizedAmount memory limit) internal {
+    function _setOutboundLimit(TrimmedAmount memory limit) internal {
         _setLimit(limit, _getOutboundLimitParamsStorage());
     }
 
@@ -96,9 +96,9 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     }
 
     function getCurrentOutboundCapacity() public view returns (uint256) {
-        NormalizedAmount memory normalizedCapacity = _getCurrentCapacity(_getOutboundLimitParams());
+        TrimmedAmount memory trimmedCapacity = _getCurrentCapacity(_getOutboundLimitParams());
         uint8 decimals = tokenDecimals();
-        return normalizedCapacity.denormalize(decimals);
+        return trimmedCapacity.untrim(decimals);
     }
 
     function getOutboundQueuedTransfer(uint64 queueSequence)
@@ -109,7 +109,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         return _getOutboundQueueStorage()[queueSequence];
     }
 
-    function _setInboundLimit(NormalizedAmount memory limit, uint16 chainId_) internal {
+    function _setInboundLimit(TrimmedAmount memory limit, uint16 chainId_) internal {
         _setLimit(limit, _getInboundLimitParamsStorage()[chainId_]);
     }
 
@@ -122,10 +122,9 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     }
 
     function getCurrentInboundCapacity(uint16 chainId_) public view returns (uint256) {
-        NormalizedAmount memory normalizedCapacity =
-            _getCurrentCapacity(_getInboundLimitParams(chainId_));
+        TrimmedAmount memory trimmedCapacity = _getCurrentCapacity(_getInboundLimitParams(chainId_));
         uint8 decimals = tokenDecimals();
-        return normalizedCapacity.denormalize(decimals);
+        return trimmedCapacity.untrim(decimals);
     }
 
     function getInboundQueuedTransfer(bytes32 digest)
@@ -142,9 +141,9 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     function _getCurrentCapacity(RateLimitParams memory rateLimitParams)
         internal
         view
-        returns (NormalizedAmount memory capacity)
+        returns (TrimmedAmount memory capacity)
     {
-        // The capacity and rate limit are expressed as normalized amounts, i.e.
+        // The capacity and rate limit are expressed as trimmed amounts, i.e.
         // 64-bit unsigned integers. The following operations upcast the 64-bit
         // unsigned integers to 256-bit unsigned integers to avoid overflow.
         // Specifically, the calculatedCapacity can overflow the u64 max.
@@ -157,13 +156,13 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
             // Multiply (limit * timePassed), then divide by the duration.
             // Dividing first has terrible numerical stability --
             // when rateLimitDuration is close to the limit, there is significant rounding error.
-            // We are safe to multiply first, since these numbers are u64 NormalizedAmount memory types
+            // We are safe to multiply first, since these numbers are u64 TrimmedAmount memory types
             // and we're performing arithmetic on u256 words.
             uint256 calculatedCapacity = rateLimitParams.currentCapacity.getAmount()
                 + (rateLimitParams.limit.getAmount() * timePassed) / rateLimitDuration;
 
             uint256 result = min(calculatedCapacity, rateLimitParams.limit.getAmount());
-            return NormalizedAmount(uint64(result), rateLimitParams.currentCapacity.getDecimals());
+            return TrimmedAmount(uint64(result), rateLimitParams.currentCapacity.getDecimals());
         }
     }
 
@@ -175,17 +174,17 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
      * @param currentCapacity The current capacity
      */
     function _calculateNewCurrentCapacity(
-        NormalizedAmount memory newLimit,
-        NormalizedAmount memory oldLimit,
-        NormalizedAmount memory currentCapacity
-    ) internal pure returns (NormalizedAmount memory newCurrentCapacity) {
-        NormalizedAmount memory difference;
+        TrimmedAmount memory newLimit,
+        TrimmedAmount memory oldLimit,
+        TrimmedAmount memory currentCapacity
+    ) internal pure returns (TrimmedAmount memory newCurrentCapacity) {
+        TrimmedAmount memory difference;
 
         if (oldLimit.gt(newLimit)) {
             difference = oldLimit.sub(newLimit);
             newCurrentCapacity = currentCapacity.gt(difference)
                 ? currentCapacity.sub(difference)
-                : NormalizedAmount(0, currentCapacity.decimals);
+                : TrimmedAmount(0, currentCapacity.decimals);
         } else {
             difference = newLimit.sub(oldLimit);
             newCurrentCapacity = currentCapacity.add(difference);
@@ -196,19 +195,19 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         }
     }
 
-    function _consumeOutboundAmount(NormalizedAmount memory amount) internal {
+    function _consumeOutboundAmount(TrimmedAmount memory amount) internal {
         _consumeRateLimitAmount(
             amount, _getCurrentCapacity(_getOutboundLimitParams()), _getOutboundLimitParamsStorage()
         );
     }
 
-    function _backfillOutboundAmount(NormalizedAmount memory amount) internal {
+    function _backfillOutboundAmount(TrimmedAmount memory amount) internal {
         _backfillRateLimitAmount(
             amount, _getCurrentCapacity(_getOutboundLimitParams()), _getOutboundLimitParamsStorage()
         );
     }
 
-    function _consumeInboundAmount(NormalizedAmount memory amount, uint16 chainId_) internal {
+    function _consumeInboundAmount(TrimmedAmount memory amount, uint16 chainId_) internal {
         _consumeRateLimitAmount(
             amount,
             _getCurrentCapacity(_getInboundLimitParams(chainId_)),
@@ -216,7 +215,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         );
     }
 
-    function _backfillInboundAmount(NormalizedAmount memory amount, uint16 chainId_) internal {
+    function _backfillInboundAmount(TrimmedAmount memory amount, uint16 chainId_) internal {
         _backfillRateLimitAmount(
             amount,
             _getCurrentCapacity(_getInboundLimitParams(chainId_)),
@@ -225,8 +224,8 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     }
 
     function _consumeRateLimitAmount(
-        NormalizedAmount memory amount,
-        NormalizedAmount memory capacity,
+        TrimmedAmount memory amount,
+        TrimmedAmount memory capacity,
         RateLimitParams storage rateLimitParams
     ) internal {
         rateLimitParams.lastTxTimestamp = uint64(block.timestamp);
@@ -236,15 +235,15 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     /// @dev Refills the capacity by the given amount.
     /// This is used to replenish the capacity via backflows.
     function _backfillRateLimitAmount(
-        NormalizedAmount memory amount,
-        NormalizedAmount memory capacity,
+        TrimmedAmount memory amount,
+        TrimmedAmount memory capacity,
         RateLimitParams storage rateLimitParams
     ) internal {
         rateLimitParams.lastTxTimestamp = uint64(block.timestamp);
         rateLimitParams.currentCapacity = capacity.add(amount).min(rateLimitParams.limit);
     }
 
-    function _isOutboundAmountRateLimited(NormalizedAmount memory amount)
+    function _isOutboundAmountRateLimited(TrimmedAmount memory amount)
         internal
         view
         returns (bool)
@@ -253,22 +252,22 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     }
 
     function _isInboundAmountRateLimited(
-        NormalizedAmount memory amount,
+        TrimmedAmount memory amount,
         uint16 chainId_
     ) internal view returns (bool) {
         return _isAmountRateLimited(_getCurrentCapacity(_getInboundLimitParams(chainId_)), amount);
     }
 
     function _isAmountRateLimited(
-        NormalizedAmount memory capacity,
-        NormalizedAmount memory amount
+        TrimmedAmount memory capacity,
+        TrimmedAmount memory amount
     ) internal pure returns (bool) {
         return capacity.lt(amount);
     }
 
     function _enqueueOutboundTransfer(
         uint64 sequence,
-        NormalizedAmount memory amount,
+        TrimmedAmount memory amount,
         uint16 recipientChain,
         bytes32 recipient,
         address senderAddress,
@@ -288,7 +287,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
 
     function _enqueueInboundTransfer(
         bytes32 digest,
-        NormalizedAmount memory amount,
+        TrimmedAmount memory amount,
         address recipient
     ) internal {
         _getInboundQueueStorage()[digest] = InboundQueuedTransfer({

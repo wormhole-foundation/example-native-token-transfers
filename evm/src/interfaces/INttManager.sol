@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.8 <0.9.0;
 
-import "../libraries/NormalizedAmount.sol";
+import "../libraries/TrimmedAmount.sol";
 import "../libraries/TransceiverStructs.sol";
 
 interface INttManager {
@@ -12,7 +12,7 @@ interface INttManager {
 
     //// @notice The transfer has some dust.
     //// @dev    This is a security measure to prevent users from losing funds.
-    ////         This is the result of normalizing the amount and then denormalizing it.
+    ////         This is the result of trimming the amount and then untrimming it.
     //// @param  amount The amount to transfer.
     error TransferAmountHasDust(uint256 amount, uint256 dust);
 

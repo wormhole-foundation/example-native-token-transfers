@@ -71,8 +71,8 @@ contract TestEndToEndRelayer is
     NttManager nttManagerChain1;
     NttManager nttManagerChain2;
 
-    using NormalizedAmountLib for uint256;
-    using NormalizedAmountLib for NormalizedAmount;
+    using TrimmedAmountLib for uint256;
+    using TrimmedAmountLib for TrimmedAmount;
 
     uint16 constant chainId1 = 4;
     uint16 constant chainId2 = 5;
@@ -410,8 +410,8 @@ contract TestRelayerEndToEndManual is
     NttManager nttManagerChain1;
     NttManager nttManagerChain2;
 
-    using NormalizedAmountLib for uint256;
-    using NormalizedAmountLib for NormalizedAmount;
+    using TrimmedAmountLib for uint256;
+    using TrimmedAmountLib for TrimmedAmount;
 
     uint16 constant chainId1 = 4;
     uint16 constant chainId2 = 5;

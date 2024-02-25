@@ -179,8 +179,8 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        chain_id::ChainId, normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer,
-        transceivers::wormhole::WormholeTransceiver,
+        chain_id::ChainId, ntt::NativeTokenTransfer, transceivers::wormhole::WormholeTransceiver,
+        trimmed_amount::TrimmedAmount,
     };
 
     use super::*;
@@ -210,7 +210,7 @@ mod test {
                         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     ],
                     payload: NativeTokenTransfer {
-                        amount: NormalizedAmount {
+                        amount: TrimmedAmount {
                             amount: 1234567,
                             decimals: 7,
                         },

@@ -14,9 +14,9 @@ use example_native_token_transfers::{
     transceivers::wormhole::ReleaseOutboundArgs,
 };
 use ntt_messages::{
-    chain_id::ChainId, normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer,
-    ntt_manager::NttManagerMessage, transceiver::TransceiverMessage,
-    transceivers::wormhole::WormholeTransceiver,
+    chain_id::ChainId, ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage,
+    transceiver::TransceiverMessage, transceivers::wormhole::WormholeTransceiver,
+    trimmed_amount::TrimmedAmount,
 };
 use solana_program_test::*;
 use solana_sdk::{
@@ -126,7 +126,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
         outbox_item_account,
         OutboxItem {
             sequence: sequence.sequence,
-            amount: NormalizedAmount {
+            amount: TrimmedAmount {
                 amount: 10,
                 decimals: 8
             },
@@ -186,7 +186,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
                 sequence: sequence.sequence,
                 sender: test_data.user.pubkey().to_bytes(),
                 payload: NativeTokenTransfer {
-                    amount: NormalizedAmount {
+                    amount: TrimmedAmount {
                         amount: 10,
                         decimals: 8
                     },
@@ -238,7 +238,7 @@ async fn test_burn_mode_burns_tokens() {
         .await;
 
     // NOTE: we transfer 105, but only 100 gets burned (token is 9 decimals, and
-    // gets normalised to 8)
+    // gets trimmed to 8)
     // TODO: should we just revert if there's dust?
     assert_eq!(mint_before.supply - 100, mint_after.supply);
     assert_eq!(
@@ -290,7 +290,7 @@ async fn locking_mode_locks_tokens() {
     let mint_after: Mint = ctx.get_account_data_anchor(test_data.mint).await;
 
     // NOTE: we transfer 105, but only 100 gets locked (token is 9 decimals, and
-    // gets normalised to 8)
+    // gets trimmed to 8)
 
     assert_eq!(
         token_account_before.amount - 100,

@@ -28,8 +28,8 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
     MockNttManagerContract nttManager;
     MockNttManagerContract nttManagerOther;
 
-    using NormalizedAmountLib for uint256;
-    using NormalizedAmountLib for NormalizedAmount;
+    using TrimmedAmountLib for uint256;
+    using TrimmedAmountLib for TrimmedAmount;
 
     // 0x99'E''T''T'
     uint16 constant chainId = 7;
@@ -301,8 +301,8 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
             chainId,
             nttManager,
             nttManagerOther,
-            NormalizedAmount(50, 8),
-            NormalizedAmount(type(uint64).max, 8),
+            TrimmedAmount(50, 8),
+            TrimmedAmount(type(uint64).max, 8),
             transceivers
         );
 
@@ -326,7 +326,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         uint8 decimals = token.decimals();
 
-        nttManager.setOutboundLimit(NormalizedAmount(type(uint64).max, 8).denormalize(decimals));
+        nttManager.setOutboundLimit(TrimmedAmount(type(uint64).max, 8).untrim(decimals));
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
 
@@ -355,7 +355,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         (DummyTransceiver e1, DummyTransceiver e2) =
             TransceiverHelpersLib.setup_transceivers(nttManagerOther);
 
-        NormalizedAmount memory transferAmount = NormalizedAmount(50, 8);
+        TrimmedAmount memory transferAmount = TrimmedAmount(50, 8);
 
         TransceiverStructs.NttManagerMessage memory m;
         bytes memory encodedEm;
@@ -372,7 +372,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
                 nttManager,
                 nttManagerOther,
                 transferAmount,
-                NormalizedAmount(type(uint64).max, 8),
+                TrimmedAmount(type(uint64).max, 8),
                 transceivers
             );
             encodedEm = TransceiverStructs.encodeTransceiverMessage(
@@ -382,7 +382,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         {
             DummyToken token = DummyToken(nttManager.token());
-            assertEq(token.balanceOf(address(user_B)), transferAmount.denormalize(token.decimals()));
+            assertEq(token.balanceOf(address(user_B)), transferAmount.untrim(token.decimals()));
         }
 
         // replay protection
@@ -444,9 +444,9 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         uint256 maxAmount = 5 * 10 ** decimals;
         token.mintDummy(from, maxAmount);
-        nttManager.setOutboundLimit(NormalizedAmount(type(uint64).max, 8).denormalize(decimals));
+        nttManager.setOutboundLimit(TrimmedAmount(type(uint64).max, 8).untrim(decimals));
         nttManager.setInboundLimit(
-            NormalizedAmount(type(uint64).max, 8).denormalize(decimals),
+            TrimmedAmount(type(uint64).max, 8).untrim(decimals),
             TransceiverHelpersLib.SENDING_CHAIN_ID
         );
 
@@ -495,7 +495,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         address user_B = address(0x456);
         DummyToken token = DummyToken(nttManager.token());
-        NormalizedAmount memory transferAmount = NormalizedAmount(50, 8);
+        TrimmedAmount memory transferAmount = TrimmedAmount(50, 8);
         (ITransceiverReceiver e1, ITransceiverReceiver e2) =
             TransceiverHelpersLib.setup_transceivers(nttManagerOther);
 
@@ -515,7 +515,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
                 nttManager,
                 nttManagerOther,
                 transferAmount,
-                NormalizedAmount(type(uint64).max, 8),
+                TrimmedAmount(type(uint64).max, 8),
                 transceivers
             );
             encodedEm = TransceiverStructs.encodeTransceiverMessage(
@@ -523,7 +523,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
             );
         }
 
-        assertEq(token.balanceOf(address(user_B)), transferAmount.denormalize(token.decimals()));
+        assertEq(token.balanceOf(address(user_B)), transferAmount.untrim(token.decimals()));
 
         // Step 2 (upgrade to a new nttManager)
         MockNttManagerContract newNttManager =
@@ -537,10 +537,10 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
             nttManager, // this is the proxy
             nttManagerOther, // this is the proxy
             transferAmount,
-            NormalizedAmount(type(uint64).max, 8),
+            TrimmedAmount(type(uint64).max, 8),
             transceivers
         );
 
-        assertEq(token.balanceOf(address(user_B)), transferAmount.denormalize(token.decimals()) * 2);
+        assertEq(token.balanceOf(address(user_B)), transferAmount.untrim(token.decimals()) * 2);
     }
 }

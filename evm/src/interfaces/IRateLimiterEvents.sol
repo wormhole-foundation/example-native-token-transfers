@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.8 <0.9.0;
 
-import "../libraries/NormalizedAmount.sol";
+import "../libraries/TrimmedAmount.sol";
 
 interface IRateLimiterEvents {
     /// @notice Emitted when an inbound transfer is queued

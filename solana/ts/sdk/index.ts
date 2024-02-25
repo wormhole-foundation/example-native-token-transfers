@@ -21,7 +21,7 @@ import { BPF_LOADER_UPGRADEABLE_PROGRAM_ID, programDataAddress } from './utils'
 import * as splToken from '@solana/spl-token';
 import IDL from '../../target/idl/example_native_token_transfers.json';
 
-export { NormalizedAmount } from './normalized_amount'
+export { TrimmedAmount } from './trimmed_amount'
 export { TransceiverMessage, NttManagerMessage } from './payloads/common'
 export { NativeTokenTransfer } from './payloads/transfers'
 export { WormholeTransceiverMessage } from './payloads/wormhole'

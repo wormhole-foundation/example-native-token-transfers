@@ -6,10 +6,10 @@ import "./NttManagerHelpers.sol";
 import "../mocks/DummyTransceiver.sol";
 import "../mocks/DummyToken.sol";
 import "../../src/NttManager.sol";
-import "../../src/libraries/NormalizedAmount.sol";
+import "../../src/libraries/TrimmedAmount.sol";
 
 library TransceiverHelpersLib {
-    using NormalizedAmountLib for NormalizedAmount;
+    using TrimmedAmountLib for TrimmedAmount;
 
     // 0x99'E''T''T'
     bytes4 constant TEST_TRANSCEIVER_PAYLOAD_PREFIX = 0x99455454;
@@ -33,8 +33,8 @@ library TransceiverHelpersLib {
         uint16 toChain,
         NttManager nttManager,
         NttManager recipientNttManager,
-        NormalizedAmount memory amount,
-        NormalizedAmount memory inboundLimit,
+        TrimmedAmount memory amount,
+        TrimmedAmount memory inboundLimit,
         ITransceiverReceiver[] memory transceivers
     )
         internal
@@ -72,7 +72,7 @@ library TransceiverHelpersLib {
         uint64 sequence,
         uint16 toChain,
         NttManager nttManager,
-        NormalizedAmount memory amount
+        TrimmedAmount memory amount
     ) internal view returns (TransceiverStructs.NttManagerMessage memory) {
         DummyToken token = DummyToken(nttManager.token());
 
@@ -93,11 +93,11 @@ library TransceiverHelpersLib {
     function prepTokenReceive(
         NttManager nttManager,
         NttManager recipientNttManager,
-        NormalizedAmount memory amount,
-        NormalizedAmount memory inboundLimit
+        TrimmedAmount memory amount,
+        TrimmedAmount memory inboundLimit
     ) internal {
         DummyToken token = DummyToken(nttManager.token());
-        token.mintDummy(address(recipientNttManager), amount.denormalize(token.decimals()));
+        token.mintDummy(address(recipientNttManager), amount.untrim(token.decimals()));
         NttManagerHelpersLib.setConfigs(
             inboundLimit, nttManager, recipientNttManager, token.decimals()
         );
