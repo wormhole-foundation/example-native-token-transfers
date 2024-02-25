@@ -14,8 +14,13 @@ contract OwnershipTests is Test {
 
     function setUp() public {
         DummyToken t = new DummyToken();
+<<<<<<< Updated upstream
         NttManager implementation =
             new MockNttManagerContract(address(t), NttManager.Mode.LOCKING, chainId, 1 days);
+=======
+        Manager implementation =
+            new MockManagerContract(address(t), IManager.Mode.LOCKING, chainId, 1 days);
+>>>>>>> Stashed changes
 
         nttManager = MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         nttManager.initialize();

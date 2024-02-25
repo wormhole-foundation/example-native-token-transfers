@@ -61,8 +61,13 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
+<<<<<<< Updated upstream
         NttManager implementation =
             new MockNttManagerContract(address(t1), NttManager.Mode.LOCKING, chainId1, 1 days);
+=======
+        Manager implementation =
+            new MockManagerContract(address(t1), IManager.Mode.LOCKING, chainId1, 1 days);
+>>>>>>> Stashed changes
 
         nttManagerChain1 =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
@@ -87,8 +92,13 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
         // Chain 2 setup
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
+<<<<<<< Updated upstream
         NttManager implementationChain2 =
             new MockNttManagerContract(address(t2), NttManager.Mode.BURNING, chainId2, 1 days);
+=======
+        Manager implementationChain2 =
+            new MockManagerContract(address(t2), IManager.Mode.BURNING, chainId2, 1 days);
+>>>>>>> Stashed changes
 
         nttManagerChain2 =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));

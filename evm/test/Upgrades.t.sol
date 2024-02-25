@@ -62,8 +62,13 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
+<<<<<<< Updated upstream
         NttManager implementation =
             new MockNttManagerContract(address(t1), NttManager.Mode.LOCKING, chainId1, 1 days);
+=======
+        Manager implementation =
+            new MockManagerContract(address(t1), IManager.Mode.LOCKING, chainId1, 1 days);
+>>>>>>> Stashed changes
 
         nttManagerChain1 =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
@@ -88,8 +93,13 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
         // Chain 2 setup
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
+<<<<<<< Updated upstream
         NttManager implementationChain2 =
             new MockNttManagerContract(address(t2), NttManager.Mode.BURNING, chainId2, 1 days);
+=======
+        Manager implementationChain2 =
+            new MockManagerContract(address(t2), IManager.Mode.BURNING, chainId2, 1 days);
+>>>>>>> Stashed changes
 
         nttManagerChain2 =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
@@ -129,8 +139,13 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
 
     function test_basicUpgradeNttManager() public {
         // Basic call to upgrade with the same contact as ewll
+<<<<<<< Updated upstream
         NttManager newImplementation = new MockNttManagerContract(
             address(nttManagerChain1.token()), NttManager.Mode.LOCKING, chainId1, 1 days
+=======
+        Manager newImplementation = new MockManagerContract(
+            address(managerChain1.token()), IManager.Mode.LOCKING, chainId1, 1 days
+>>>>>>> Stashed changes
         );
         nttManagerChain1.upgrade(address(newImplementation));
 
@@ -155,14 +170,24 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
     // Confirm that we can handle multiple upgrades as a nttManager
     function test_doubleUpgradeNttManager() public {
         // Basic call to upgrade with the same contact as ewll
+<<<<<<< Updated upstream
         NttManager newImplementation = new MockNttManagerContract(
             address(nttManagerChain1.token()), NttManager.Mode.LOCKING, chainId1, 1 days
+=======
+        Manager newImplementation = new MockManagerContract(
+            address(managerChain1.token()), IManager.Mode.LOCKING, chainId1, 1 days
+>>>>>>> Stashed changes
         );
         nttManagerChain1.upgrade(address(newImplementation));
         basicFunctionality();
 
+<<<<<<< Updated upstream
         newImplementation = new MockNttManagerContract(
             address(nttManagerChain1.token()), NttManager.Mode.LOCKING, chainId1, 1 days
+=======
+        newImplementation = new MockManagerContract(
+            address(managerChain1.token()), IManager.Mode.LOCKING, chainId1, 1 days
+>>>>>>> Stashed changes
         );
         nttManagerChain1.upgrade(address(newImplementation));
 
@@ -191,8 +216,13 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
 
     function test_storageSlotNttManager() public {
         // Basic call to upgrade with the same contact as ewll
+<<<<<<< Updated upstream
         NttManager newImplementation = new MockNttManagerStorageLayoutChange(
             address(nttManagerChain1.token()), NttManager.Mode.LOCKING, chainId1, 1 days
+=======
+        Manager newImplementation = new MockManagerStorageLayoutChange(
+            address(managerChain1.token()), IManager.Mode.LOCKING, chainId1, 1 days
+>>>>>>> Stashed changes
         );
         nttManagerChain1.upgrade(address(newImplementation));
 
@@ -227,8 +257,13 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
 
     function test_callMigrateNttManager() public {
         // Basic call to upgrade with the same contact as ewll
+<<<<<<< Updated upstream
         NttManager newImplementation = new MockNttManagerMigrateBasic(
             address(nttManagerChain1.token()), NttManager.Mode.LOCKING, chainId1, 1 days
+=======
+        Manager newImplementation = new MockManagerMigrateBasic(
+            address(managerChain1.token()), IManager.Mode.LOCKING, chainId1, 1 days
+>>>>>>> Stashed changes
         );
 
         vm.expectRevert("Proper migrate called");
@@ -258,9 +293,14 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
         DummyToken tnew = new DummyToken();
 
         // Basic call to upgrade with the same contact as ewll
+<<<<<<< Updated upstream
         NttManager newImplementation = new MockNttManagerImmutableCheck(
             address(tnew), NttManager.Mode.LOCKING, chainId1, 1 days
         );
+=======
+        Manager newImplementation =
+            new MockManagerImmutableCheck(address(tnew), IManager.Mode.LOCKING, chainId1, 1 days);
+>>>>>>> Stashed changes
 
         vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
         nttManagerChain1.upgrade(address(newImplementation));
@@ -295,8 +335,13 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
         DummyToken tnew = new DummyToken();
 
         // Basic call to upgrade with the same contact as ewll
+<<<<<<< Updated upstream
         NttManager newImplementation = new MockNttManagerImmutableRemoveCheck(
             address(tnew), NttManager.Mode.LOCKING, chainId1, 1 days
+=======
+        Manager newImplementation = new MockManagerImmutableRemoveCheck(
+            address(tnew), IManager.Mode.LOCKING, chainId1, 1 days
+>>>>>>> Stashed changes
         );
 
         // Allow an upgrade, since we enabled the ability to edit the immutables within the code
@@ -333,8 +378,13 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
         nttManagerChain1.upgrade(address(0x1));
 
         // Basic call to upgrade so that we can get the real implementation.
+<<<<<<< Updated upstream
         NttManager newImplementation = new MockNttManagerContract(
             address(nttManagerChain1.token()), NttManager.Mode.LOCKING, chainId1, 1 days
+=======
+        Manager newImplementation = new MockManagerContract(
+            address(managerChain1.token()), IManager.Mode.LOCKING, chainId1, 1 days
+>>>>>>> Stashed changes
         );
         nttManagerChain1.upgrade(address(newImplementation));
 
@@ -577,8 +627,13 @@ contract TestInitialize is Test {
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
+<<<<<<< Updated upstream
         NttManager implementation =
             new MockNttManagerContract(address(t1), NttManager.Mode.LOCKING, chainId1, 1 days);
+=======
+        Manager implementation =
+            new MockManagerContract(address(t1), IManager.Mode.LOCKING, chainId1, 1 days);
+>>>>>>> Stashed changes
 
         nttManagerChain1 =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
@@ -597,8 +652,13 @@ contract TestInitialize is Test {
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
+<<<<<<< Updated upstream
         NttManager implementation =
             new MockNttManagerContract(address(t1), NttManager.Mode.LOCKING, chainId1, 1 days);
+=======
+        Manager implementation =
+            new MockManagerContract(address(t1), IManager.Mode.LOCKING, chainId1, 1 days);
+>>>>>>> Stashed changes
 
         nttManagerChain1 =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));

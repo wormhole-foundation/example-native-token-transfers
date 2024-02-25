@@ -33,23 +33,31 @@ contract NttManager is
     Implementation
 {
     using BytesParsing for bytes;
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     using SafeERC20 for IERC20;
 
     error RefundFailed(uint256 refundAmount);
     error CannotRenounceNttManagerOwnership(address owner);
     error UnexpectedOwner(address expectedOwner, address owner);
     error TransceiverAlreadyAttestedToMessage(bytes32 nttManagerMessageHash);
+=======
+    using SafeERC20 for IERC20; 
+>>>>>>> Stashed changes:evm/src/Manager.sol
 
     address public immutable token;
     address immutable deployer;
     Mode public immutable mode;
     uint16 public immutable chainId;
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     uint256 immutable evmChainId;
 
     enum Mode {
         LOCKING,
         BURNING
     }
+=======
+    uint256 public immutable evmChainId; 
+>>>>>>> Stashed changes:evm/src/Manager.sol
 
     // @dev Information about attestations for a given message.
     struct AttestationInfo {
@@ -113,6 +121,7 @@ contract NttManager is
         }
     }
 
+    /// @inheritdoc IManager
     function setThreshold(uint8 threshold) external onlyOwner {
         if (threshold == 0) {
             revert ZeroThreshold();
@@ -127,6 +136,7 @@ contract NttManager is
         emit ThresholdChanged(oldThreshold, threshold);
     }
 
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     function getMode() public view returns (uint8) {
         return uint8(mode);
     }
@@ -139,6 +149,17 @@ contract NttManager is
 
     function setTransceiver(address transceiver) external onlyOwner {
         _setTransceiver(transceiver);
+=======
+    /// @inheritdoc IManager
+    function getThreshold() public view returns (uint8) {
+        _Threshold storage _threshold = _getThresholdStorage();
+        return _threshold.num;
+    }
+
+    /// @inheritdoc IManager
+    function setEndpoint(address endpoint) external onlyOwner {
+        _setEndpoint(endpoint);
+>>>>>>> Stashed changes:evm/src/Manager.sol
 
         _Threshold storage _threshold = _getThresholdStorage();
         // We do not automatically increase the threshold here.
@@ -161,8 +182,14 @@ contract NttManager is
         emit TransceiverAdded(transceiver, _getNumTransceiversStorage().enabled, _threshold.num);
     }
 
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     function removeTransceiver(address transceiver) external onlyOwner {
         _removeTransceiver(transceiver);
+=======
+    /// @inheritdoc IManager
+    function removeEndpoint(address endpoint) external onlyOwner {
+        _removeEndpoint(endpoint);
+>>>>>>> Stashed changes:evm/src/Manager.sol
 
         _Threshold storage _threshold = _getThresholdStorage();
         uint8 numEnabledTransceivers = _getNumTransceiversStorage().enabled;
@@ -209,11 +236,17 @@ contract NttManager is
     }
 
     /// =============== ADMIN ===============================================
+    
+    /// @inheritdoc IManager
     function upgrade(address newImplementation) external onlyOwner {
         _upgrade(newImplementation);
     }
 
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     /// @dev Transfer ownership of the NttManager contract and all Transceiver contracts to a new owner.
+=======
+    /// @notice Transfer ownership of the Manager contract and all Endpoint contracts to a new owner.
+>>>>>>> Stashed changes:evm/src/Manager.sol
     function transferOwnership(address newOwner) public override onlyOwner {
         super.transferOwnership(newOwner);
         // loop through all the registered transceivers and set the new owner of each transceiver to the newOwner
@@ -225,7 +258,17 @@ contract NttManager is
         }
     }
 
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     /// @dev This method should return an array of delivery prices corresponding to each transceiver.
+=======
+    /// @dev Override the [`renounceOwnership`] function to ensure
+    /// the manager ownership is not renounced.
+    function renounceOwnership() public view override onlyOwner {
+        revert CannotRenounceManagerOwnership(owner());
+    }
+
+    /// @inheritdoc IManager
+>>>>>>> Stashed changes:evm/src/Manager.sol
     function quoteDeliveryPrice(
         uint16 recipientChain,
         TransceiverStructs.TransceiverInstruction[] memory transceiverInstructions,
@@ -248,7 +291,11 @@ contract NttManager is
         return (priceQuotes, totalPriceQuote);
     }
 
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     function _sendMessageToTransceivers(
+=======
+    function _sendMessageToEndpoints(
+>>>>>>> Stashed changes:evm/src/Manager.sol
         uint16 recipientChain,
         uint256[] memory priceQuotes,
         TransceiverStructs.TransceiverInstruction[] memory transceiverInstructions,
@@ -270,6 +317,7 @@ contract NttManager is
         }
     }
 
+    /// @inheritdoc IManager
     function isMessageApproved(bytes32 digest) public view returns (bool) {
         uint8 threshold = getThreshold();
         return messageAttestations(digest) >= threshold && threshold > 0;
@@ -287,14 +335,21 @@ contract NttManager is
         );
     }
 
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     /*
      * @dev pause the Transceiver.
      */
+=======
+    /// @inheritdoc IManager
+>>>>>>> Stashed changes:evm/src/Manager.sol
     function pause() public onlyOwnerOrPauser {
         _pause();
     }
 
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     /// @dev Returns the bitmap of attestations from enabled transceivers for a given message.
+=======
+>>>>>>> Stashed changes:evm/src/Manager.sol
     function _getMessageAttestations(bytes32 digest) internal view returns (uint64) {
         uint64 enabledTransceiverBitmap = _getEnabledTransceiversBitmap();
         return
@@ -308,14 +363,17 @@ contract NttManager is
         return _getMessageAttestations(digest) & uint64(1 << index) != 0;
     }
 
+    /// @inheritdoc IManager
     function setOutboundLimit(uint256 limit) external onlyOwner {
         _setOutboundLimit(_nttNormalize(limit));
     }
 
+    /// @inheritdoc IManager
     function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
         _setInboundLimit(_nttNormalize(limit), chainId_);
     }
 
+    /// @inheritdoc IManager
     function completeOutboundQueuedTransfer(uint64 messageSequence)
         external
         payable
@@ -348,8 +406,7 @@ contract NttManager is
         );
     }
 
-    /// @dev Refunds the remaining amount back to the sender.
-    function refundToSender(uint256 refundAmount) internal {
+    function _refundToSender(uint256 refundAmount) internal {
         // refund the price quote back to sender
         (bool refundSuccessful,) = payable(msg.sender).call{value: refundAmount}("");
 
@@ -359,8 +416,7 @@ contract NttManager is
         }
     }
 
-    /// @dev Returns normalized amount and checks for dust
-    function normalizeTransferAmount(uint256 amount)
+    function _normalizeTransferAmount(uint256 amount)
         internal
         view
         returns (NormalizedAmount memory)
@@ -378,7 +434,11 @@ contract NttManager is
         return normalizedAmount;
     }
 
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     /// @dev Simple quality of life transfer method that doesn't deal with queuing or passing transceiver instructions.
+=======
+    /// @inheritdoc IManager
+>>>>>>> Stashed changes:evm/src/Manager.sol
     function transfer(
         uint256 amount,
         uint16 recipientChain,
@@ -387,9 +447,13 @@ contract NttManager is
         return _transferEntryPoint(amount, recipientChain, recipient, false, new bytes(1));
     }
 
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     /// @notice Called by the user to send the token cross-chain.
     ///         This function will either lock or burn the sender's tokens.
     ///         Finally, this function will call into the Transceiver contracts to send a message with the incrementing sequence number and the token transfer payload.
+=======
+    /// @inheritdoc IManager
+>>>>>>> Stashed changes:evm/src/Manager.sol
     function transfer(
         uint256 amount,
         uint16 recipientChain,
@@ -423,13 +487,13 @@ contract NttManager is
                 {
                     // use transferFrom to pull tokens from the user and lock them
                     // query own token balance before transfer
-                    uint256 balanceBefore = getTokenBalanceOf(token, address(this));
+                    uint256 balanceBefore = _getTokenBalanceOf(token, address(this));
 
                     // transfer tokens
                     IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
                     // query own token balance after transfer
-                    uint256 balanceAfter = getTokenBalanceOf(token, address(this));
+                    uint256 balanceAfter = _getTokenBalanceOf(token, address(this));
 
                     // correct amount for potential transfer fees
                     amount = balanceAfter - balanceBefore;
@@ -437,7 +501,7 @@ contract NttManager is
             } else if (mode == Mode.BURNING) {
                 {
                     // query sender's token balance before burn
-                    uint256 balanceBefore = getTokenBalanceOf(token, msg.sender);
+                    uint256 balanceBefore = _getTokenBalanceOf(token, msg.sender);
 
                     // call the token's burn function to burn the sender's token
                     // NOTE: We don't account for burn fees in this code path.
@@ -454,7 +518,7 @@ contract NttManager is
                     ERC20Burnable(token).burnFrom(msg.sender, amount);
 
                     // query sender's token balance after transfer
-                    uint256 balanceAfter = getTokenBalanceOf(token, msg.sender);
+                    uint256 balanceAfter = _getTokenBalanceOf(token, msg.sender);
 
                     uint256 balanceDiff = balanceBefore - balanceAfter;
                     if (balanceDiff != amount) {
@@ -467,7 +531,7 @@ contract NttManager is
         }
 
         // normalize amount after burning to ensure transfer amount matches (amount - fee)
-        NormalizedAmount memory normalizedAmount = normalizeTransferAmount(amount);
+        NormalizedAmount memory normalizedAmount = _normalizeTransferAmount(amount);
 
         // get the sequence for this transfer
         uint64 sequence = _useMessageSequence();
@@ -495,7 +559,7 @@ contract NttManager is
                 );
 
                 // refund price quote back to sender
-                refundToSender(msg.value);
+                _refundToSender(msg.value);
 
                 // return the sequence in the queue
                 return sequence;
@@ -543,7 +607,7 @@ contract NttManager is
             // refund user extra excess value from msg.value
             uint256 excessValue = msg.value - totalPriceQuote;
             if (excessValue > 0) {
-                refundToSender(excessValue);
+                _refundToSender(excessValue);
             }
         }
 
@@ -572,15 +636,19 @@ contract NttManager is
         return sequence;
     }
 
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     /// @dev Verify that the peer address saved for `sourceChainId` matches the `peerAddress`.
     function _verifyPeer(uint16 sourceChainId, bytes32 peerAddress) internal view {
         if (getPeer(sourceChainId) != peerAddress) {
             revert InvalidPeer(sourceChainId, peerAddress);
+=======
+    function _verifySibling(uint16 sourceChainId, bytes32 siblingAddress) internal view {
+        if (getSibling(sourceChainId) != siblingAddress) {
+            revert InvalidSibling(sourceChainId, siblingAddress);
+>>>>>>> Stashed changes:evm/src/Manager.sol
         }
     }
 
-    // @dev Mark a message as executed.
-    // This function will retuns `true` if the message has already been executed.
     function _replayProtect(bytes32 digest) internal returns (bool) {
         // check if this message has already been executed
         if (isMessageExecuted(digest)) {
@@ -593,8 +661,12 @@ contract NttManager is
         return false;
     }
 
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     /// @dev Called after a message has been sufficiently verified to execute the command in the message.
     ///      This function will decode the payload as an NttManagerMessage to extract the sequence, msgType, and other parameters.
+=======
+    /// @inheritdoc IManager
+>>>>>>> Stashed changes:evm/src/Manager.sol
     function executeMsg(
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
@@ -651,6 +723,7 @@ contract NttManager is
         _mintOrUnlockToRecipient(digest, transferRecipient, nativeTransferAmount);
     }
 
+    /// @inheritdoc IManager
     function completeInboundQueuedTransfer(bytes32 digest) external nonReentrant whenNotPaused {
         // find the message in the queue
         InboundQueuedTransfer memory queuedTransfer = getInboundQueuedTransfer(digest);
@@ -692,6 +765,7 @@ contract NttManager is
         }
     }
 
+    /// @inheritdoc IManager
     function nextMessageSequence() external view returns (uint64) {
         return _getMessageSequenceStorage().num;
     }
@@ -701,7 +775,7 @@ contract NttManager is
         _getMessageSequenceStorage().num++;
     }
 
-    function getTokenBalanceOf(
+    function _getTokenBalanceOf(
         address tokenAddr,
         address accountAddr
     ) internal view returns (uint256) {
@@ -710,10 +784,12 @@ contract NttManager is
         return abi.decode(queriedBalance, (uint256));
     }
 
+     /// @inheritdoc IManager
     function isMessageExecuted(bytes32 digest) public view returns (bool) {
         return _getMessageAttestationsStorage()[digest].executed;
     }
 
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     function getPeer(uint16 chainId_) public view returns (bytes32) {
         return _getPeersStorage()[chainId_];
     }
@@ -723,6 +799,17 @@ contract NttManager is
     function setPeer(uint16 peerChainId, bytes32 peerContract) public onlyOwner {
         if (peerChainId == 0) {
             revert InvalidPeerChainIdZero();
+=======
+     /// @inheritdoc IManager
+    function getSibling(uint16 chainId_) public view returns (bytes32) {
+        return _getSiblingsStorage()[chainId_];
+    }
+ 
+    /// @inheritdoc IManager
+    function setSibling(uint16 siblingChainId, bytes32 siblingContract) public onlyOwner {
+        if (siblingChainId == 0) {
+            revert InvalidSiblingChainIdZero();
+>>>>>>> Stashed changes:evm/src/Manager.sol
         }
         if (peerContract == bytes32(0)) {
             revert InvalidPeerZeroAddress();
@@ -735,11 +822,18 @@ contract NttManager is
         emit PeerUpdated(peerChainId, oldPeerContract, peerContract);
     }
 
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     function transceiverAttestedToMessage(bytes32 digest, uint8 index) public view returns (bool) {
         return
             _getMessageAttestationsStorage()[digest].attestedTransceivers & uint64(1 << index) == 1;
+=======
+    /// @inheritdoc IManager
+    function endpointAttestedToMessage(bytes32 digest, uint8 index) public view returns (bool) {
+        return _getMessageAttestationsStorage()[digest].attestedEndpoints & uint64(1 << index) == 1;
+>>>>>>> Stashed changes:evm/src/Manager.sol
     }
 
+     /// @inheritdoc IManager
     function attestationReceived(
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
@@ -768,18 +862,35 @@ contract NttManager is
         }
     }
 
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     // @dev Count the number of attestations from enabled transceivers for a given message.
+=======
+    /// @inheritdoc IManager
+>>>>>>> Stashed changes:evm/src/Manager.sol
     function messageAttestations(bytes32 digest) public view returns (uint8 count) {
         return countSetBits(_getMessageAttestations(digest));
     }
 
+<<<<<<< Updated upstream:evm/src/NttManager.sol
     function tokenDecimals() public view override(INttManager, RateLimiter) returns (uint8) {
         return tokenDecimals_;
+=======
+    function _tokenDecimals() internal view override returns (uint8) {
+        return tokenDecimals;
+    }
+
+    function countSetBits(uint64 x) public pure returns (uint8 count) {
+        while (x != 0) {
+            x &= x - 1;
+            count++;
+        }
+
+        return count;
+>>>>>>> Stashed changes:evm/src/Manager.sol
     }
 
     /// ============== INVARIANTS =============================================
 
-    /// @dev When we add new immutables, this function should be updated
     function _checkImmutables() internal view override {
         assert(this.token() == token);
         assert(this.mode() == mode);
