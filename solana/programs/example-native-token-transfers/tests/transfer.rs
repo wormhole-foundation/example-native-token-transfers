@@ -7,15 +7,16 @@ use common::setup::{TestData, OTHER_CHAIN};
 use example_native_token_transfers::{
     bitmap::Bitmap,
     config::Mode,
-    endpoints::wormhole::ReleaseOutboundArgs,
     error::NTTError,
     instructions::TransferArgs,
     queue::outbox::{OutboxItem, OutboxRateLimit},
     sequence::Sequence,
+    transceivers::wormhole::ReleaseOutboundArgs,
 };
 use ntt_messages::{
-    chain_id::ChainId, endpoint::EndpointMessage, endpoints::wormhole::WormholeEndpoint,
-    manager::ManagerMessage, normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer,
+    chain_id::ChainId, normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer,
+    ntt_manager::NttManagerMessage, transceiver::TransceiverMessage,
+    transceivers::wormhole::WormholeTransceiver,
 };
 use solana_program_test::*;
 use solana_sdk::{
@@ -31,10 +32,12 @@ use crate::{
 use crate::{
     common::{setup::OTHER_MANAGER, submit::Submittable},
     sdk::{
-        endpoints::wormhole::instructions::release_outbound::{release_outbound, ReleaseOutbound},
         instructions::{
             admin::{set_paused, SetPaused},
             transfer::{approve_token_authority, transfer},
+        },
+        transceivers::wormhole::instructions::release_outbound::{
+            release_outbound, ReleaseOutbound,
         },
     },
 };
@@ -45,8 +48,8 @@ pub mod sdk;
 use crate::common::setup::setup;
 
 // TODO: some more tests
-// - unregistered sibling can't transfer
-// - can't transfer to unregistered sibling
+// - unregistered peer can't transfer
+// - can't transfer to unregistered peer
 // - can't transfer more than balance
 // - wrong inbox accounts
 // - paused contracts
@@ -66,7 +69,7 @@ fn init_accs_args(
         mint: test_data.mint,
         from: test_data.user_token_account,
         from_authority: test_data.user.pubkey(),
-        sibling: test_data.ntt.sibling(OTHER_CHAIN),
+        peer: test_data.ntt.peer(OTHER_CHAIN),
         outbox_item,
     };
 
@@ -129,7 +132,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
             },
             sender: test_data.user.pubkey(),
             recipient_chain: ChainId { id: 2 },
-            recipient_manager: OTHER_MANAGER,
+            recipient_ntt_manager: OTHER_MANAGER,
             recipient_address: [1u8; 32],
             release_timestamp: clock.unix_timestamp,
             released: Bitmap::new(),
@@ -169,17 +172,17 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
     // They are identical modulo the discriminator, which we just skip by using
     // the unchecked deserialiser.
     // TODO: update the sdk to export PostedMessage
-    let msg: PostedVaa<EndpointMessage<WormholeEndpoint, NativeTokenTransfer>> =
+    let msg: PostedVaa<TransceiverMessage<WormholeTransceiver, NativeTokenTransfer>> =
         ctx.get_account_data_anchor_unchecked(wh_message).await;
 
-    let endpoint_message = msg.data();
+    let transceiver_message = msg.data();
 
     assert_eq!(
-        endpoint_message,
-        &EndpointMessage::new(
+        transceiver_message,
+        &TransceiverMessage::new(
             example_native_token_transfers::ID.to_bytes(),
             OTHER_MANAGER,
-            ManagerMessage {
+            NttManagerMessage {
                 sequence: sequence.sequence,
                 sender: test_data.user.pubkey().to_bytes(),
                 payload: NativeTokenTransfer {

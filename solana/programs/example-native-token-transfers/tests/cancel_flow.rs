@@ -2,7 +2,7 @@
 #![feature(type_changing_struct_update)]
 
 use anchor_lang::prelude::*;
-use common::setup::{TestData, OTHER_CHAIN, OTHER_ENDPOINT, OTHER_MANAGER, THIS_CHAIN};
+use common::setup::{TestData, OTHER_CHAIN, OTHER_MANAGER, OTHER_TRANSCEIVER, THIS_CHAIN};
 use example_native_token_transfers::{
     config::Mode,
     error::NTTError,
@@ -10,10 +10,11 @@ use example_native_token_transfers::{
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit},
 };
 use ntt_messages::{
-    chain_id::ChainId, endpoint::EndpointMessage, endpoints::wormhole::WormholeEndpoint,
-    manager::ManagerMessage, normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer,
+    chain_id::ChainId, normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer,
+    ntt_manager::NttManagerMessage, transceiver::TransceiverMessage,
+    transceivers::wormhole::WormholeTransceiver,
 };
-use sdk::endpoints::wormhole::instructions::receive_message::ReceiveMessage;
+use sdk::transceivers::wormhole::instructions::receive_message::ReceiveMessage;
 use solana_program::instruction::InstructionError;
 use solana_program_test::*;
 use solana_sdk::{signature::Keypair, signer::Signer, transaction::TransactionError};
@@ -26,12 +27,12 @@ use crate::{
 use crate::{
     common::{query::GetAccountDataAnchor, setup::setup},
     sdk::{
-        endpoints::wormhole::instructions::receive_message::receive_message,
         instructions::{
             post_vaa::post_vaa,
             redeem::{redeem, Redeem},
             transfer::Transfer,
         },
+        transceivers::wormhole::instructions::receive_message::receive_message,
     },
 };
 
@@ -47,7 +48,7 @@ fn init_transfer_accs_args(
 ) -> (Transfer, TransferArgs) {
     let accs = Transfer {
         payer: ctx.payer.pubkey(),
-        sibling: test_data.ntt.sibling(OTHER_CHAIN),
+        peer: test_data.ntt.peer(OTHER_CHAIN),
         mint: test_data.mint,
         from: test_data.user_token_account,
         from_authority: test_data.user.pubkey(),
@@ -68,16 +69,16 @@ fn init_redeem_accs(
     ctx: &mut ProgramTestContext,
     test_data: &TestData,
     chain_id: u16,
-    manager_message: ManagerMessage<NativeTokenTransfer>,
+    ntt_manager_message: NttManagerMessage<NativeTokenTransfer>,
 ) -> Redeem {
     Redeem {
         payer: ctx.payer.pubkey(),
-        sibling: test_data.ntt.sibling(chain_id),
-        endpoint: test_data.ntt.program,
-        endpoint_message: test_data
+        peer: test_data.ntt.peer(chain_id),
+        transceiver: test_data.ntt.program,
+        transceiver_message: test_data
             .ntt
-            .endpoint_message(chain_id, manager_message.sequence),
-        inbox_item: test_data.ntt.inbox_item(chain_id, manager_message),
+            .transceiver_message(chain_id, ntt_manager_message.sequence),
+        inbox_item: test_data.ntt.inbox_item(chain_id, ntt_manager_message),
         inbox_rate_limit: test_data.ntt.inbox_rate_limit(chain_id),
         mint: test_data.mint,
     }
@@ -92,7 +93,7 @@ fn init_receive_message_accs(
 ) -> ReceiveMessage {
     ReceiveMessage {
         payer: ctx.payer.pubkey(),
-        sibling: test_data.ntt.endpoint_sibling(chain_id),
+        peer: test_data.ntt.transceiver_peer(chain_id),
         vaa,
         chain_id,
         sequence,
@@ -104,13 +105,13 @@ async fn post_transfer_vaa(
     test_data: &TestData,
     sequence: u64,
     amount: u64,
-    // TODO: this is used for a negative testing of the recipient manager
+    // TODO: this is used for a negative testing of the recipient ntt_manager
     // address. this should not be done in the cancel flow tests, but instead a
     // dedicated receive transfer test suite
-    recipient_manager: Option<&Pubkey>,
+    recipient_ntt_manager: Option<&Pubkey>,
     recipient: &Keypair,
-) -> (Pubkey, ManagerMessage<NativeTokenTransfer>) {
-    let manager_message = ManagerMessage {
+) -> (Pubkey, NttManagerMessage<NativeTokenTransfer>) {
+    let ntt_manager_message = NttManagerMessage {
         sequence,
         sender: [4u8; 32],
         payload: NativeTokenTransfer {
@@ -124,13 +125,13 @@ async fn post_transfer_vaa(
         },
     };
 
-    let endpoint_message: EndpointMessage<WormholeEndpoint, NativeTokenTransfer> =
-        EndpointMessage::new(
+    let transceiver_message: TransceiverMessage<WormholeTransceiver, NativeTokenTransfer> =
+        TransceiverMessage::new(
             OTHER_MANAGER,
-            recipient_manager
+            recipient_ntt_manager
                 .map(|k| k.to_bytes())
                 .unwrap_or_else(|| test_data.ntt.program.to_bytes()),
-            manager_message.clone(),
+            ntt_manager_message.clone(),
             vec![],
         );
 
@@ -141,15 +142,15 @@ async fn post_transfer_vaa(
         timestamp: 123232,
         nonce: 0,
         emitter_chain: OTHER_CHAIN.into(),
-        emitter_address: Address(OTHER_ENDPOINT),
+        emitter_address: Address(OTHER_TRANSCEIVER),
         sequence: 0,
         consistency_level: 0,
-        payload: endpoint_message,
+        payload: transceiver_message,
     };
 
     let posted_vaa = post_vaa(&test_data.ntt.wormhole, ctx, vaa).await;
 
-    (posted_vaa, manager_message)
+    (posted_vaa, ntt_manager_message)
 }
 
 async fn outbound_capacity(ctx: &mut ProgramTestContext, test_data: &TestData) -> u64 {
@@ -268,7 +269,7 @@ async fn test_cancel() {
 
 // TODO: this should not live in this file, move to a dedicated receive test suite
 #[tokio::test]
-async fn test_wrong_recipient_manager() {
+async fn test_wrong_recipient_ntt_manager() {
     let recipient = Keypair::new();
     let (mut ctx, test_data) = setup(Mode::Locking).await;
 
@@ -303,7 +304,7 @@ async fn test_wrong_recipient_manager() {
         err.unwrap(),
         TransactionError::InstructionError(
             0,
-            InstructionError::Custom(NTTError::InvalidRecipientManager.into())
+            InstructionError::Custom(NTTError::InvalidRecipientNttManager.into())
         )
     );
 }

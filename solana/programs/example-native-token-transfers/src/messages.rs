@@ -1,16 +1,16 @@
 use anchor_lang::prelude::*;
-use ntt_messages::{chain_id::ChainId, endpoint::EndpointMessageData};
+use ntt_messages::{chain_id::ChainId, transceiver::TransceiverMessageData};
 use std::{collections::HashMap, marker::PhantomData};
 
 #[account]
 #[derive(InitSpace)]
-pub struct ValidatedEndpointMessage<A: AnchorDeserialize + AnchorSerialize + Space + Clone> {
+pub struct ValidatedTransceiverMessage<A: AnchorDeserialize + AnchorSerialize + Space + Clone> {
     pub from_chain: ChainId,
-    pub message: EndpointMessageData<A>,
+    pub message: TransceiverMessageData<A>,
 }
 
-impl<A: AnchorDeserialize + AnchorSerialize + Space + Clone> ValidatedEndpointMessage<A> {
-    pub const SEED_PREFIX: &'static [u8] = b"endpoint_message";
+impl<A: AnchorDeserialize + AnchorSerialize + Space + Clone> ValidatedTransceiverMessage<A> {
+    pub const SEED_PREFIX: &'static [u8] = b"transceiver_message";
 }
 
 // This is a hack to get around the fact that the IDL generator doesn't support

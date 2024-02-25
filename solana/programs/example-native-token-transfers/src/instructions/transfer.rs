@@ -6,12 +6,12 @@ use crate::{
     bitmap::Bitmap,
     config::*,
     error::NTTError,
+    peer::NttManagerPeer,
     queue::{
         inbox::InboxRateLimit,
         outbox::{OutboxItem, OutboxRateLimit},
         rate_limit::RateLimitResult,
     },
-    sibling::ManagerSibling,
 };
 
 // this will burn the funds and create an account that either allows sending the
@@ -94,10 +94,10 @@ pub struct TransferBurn<'info> {
     pub inbox_rate_limit: Account<'info, InboxRateLimit>,
 
     #[account(
-        seeds = [ManagerSibling::SEED_PREFIX, args.recipient_chain.id.to_be_bytes().as_ref()],
-        bump = sibling.bump,
+        seeds = [NttManagerPeer::SEED_PREFIX, args.recipient_chain.id.to_be_bytes().as_ref()],
+        bump = peer.bump,
     )]
-    pub sibling: Account<'info, ManagerSibling>,
+    pub peer: Account<'info, NttManagerPeer>,
 }
 
 // TODO: fees for relaying?
@@ -135,14 +135,14 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
         amount,
     )?;
 
-    let recipient_manager = accs.sibling.address;
+    let recipient_ntt_manager = accs.peer.address;
 
     insert_into_outbox(
         &mut accs.common,
         &mut accs.inbox_rate_limit,
         amount,
         recipient_chain,
-        recipient_manager,
+        recipient_ntt_manager,
         recipient_address,
         should_queue,
     )
@@ -165,10 +165,10 @@ pub struct TransferLock<'info> {
     pub inbox_rate_limit: Account<'info, InboxRateLimit>,
 
     #[account(
-        seeds = [ManagerSibling::SEED_PREFIX, args.recipient_chain.id.to_be_bytes().as_ref()],
-        bump = sibling.bump,
+        seeds = [NttManagerPeer::SEED_PREFIX, args.recipient_chain.id.to_be_bytes().as_ref()],
+        bump = peer.bump,
     )]
-    pub sibling: Account<'info, ManagerSibling>,
+    pub peer: Account<'info, NttManagerPeer>,
 
     #[account(
         mut,
@@ -216,14 +216,14 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
         accs.common.mint.decimals,
     )?;
 
-    let recipient_manager = accs.sibling.address;
+    let recipient_ntt_manager = accs.peer.address;
 
     insert_into_outbox(
         &mut accs.common,
         &mut accs.inbox_rate_limit,
         amount,
         recipient_chain,
-        recipient_manager,
+        recipient_ntt_manager,
         recipient_address,
         should_queue,
     )
@@ -234,7 +234,7 @@ fn insert_into_outbox(
     inbox_rate_limit: &mut InboxRateLimit,
     amount: u64,
     recipient_chain: ChainId,
-    recipient_manager: [u8; 32],
+    recipient_ntt_manager: [u8; 32],
     recipient_address: [u8; 32],
     should_queue: bool,
 ) -> Result<()> {
@@ -261,7 +261,7 @@ fn insert_into_outbox(
         amount: NormalizedAmount::normalize(amount, common.mint.decimals),
         sender: common.sender.key(),
         recipient_chain,
-        recipient_manager,
+        recipient_ntt_manager,
         recipient_address,
         release_timestamp,
         released: Bitmap::new(),

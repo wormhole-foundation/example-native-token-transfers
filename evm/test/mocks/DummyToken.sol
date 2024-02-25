@@ -8,17 +8,17 @@ contract DummyToken is ERC20 {
     constructor() ERC20("DummyToken", "DTKN") {}
 
     // NOTE: this is purposefully not called mint() to so we can test that in
-    // locking mode the Manager contract doesn't call mint (or burn)
+    // locking mode the NttManager contract doesn't call mint (or burn)
     function mintDummy(address to, uint256 amount) public {
         _mint(to, amount);
     }
 
     function mint(address, uint256) public virtual {
-        revert("Locking manager should not call 'mint()'");
+        revert("Locking nttManager should not call 'mint()'");
     }
 
     function burnFrom(address, uint256) public virtual {
-        revert("Locking manager should not call 'burnFrom()'");
+        revert("Locking nttManager should not call 'burnFrom()'");
     }
 }
 

@@ -3,8 +3,8 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import "../interfaces/IRateLimiter.sol";
 import "../interfaces/IRateLimiterEvents.sol";
-import "./EndpointHelpers.sol";
-import "./EndpointStructs.sol";
+import "./TransceiverHelpers.sol";
+import "./TransceiverStructs.sol";
 import "../libraries/NormalizedAmount.sol";
 
 abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
@@ -272,7 +272,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         uint16 recipientChain,
         bytes32 recipient,
         address senderAddress,
-        bytes memory endpointInstructions
+        bytes memory transceiverInstructions
     ) internal {
         _getOutboundQueueStorage()[sequence] = OutboundQueuedTransfer({
             amount: amount,
@@ -280,7 +280,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
             recipient: recipient,
             txTimestamp: uint64(block.timestamp),
             sender: senderAddress,
-            endpointInstructions: endpointInstructions
+            transceiverInstructions: transceiverInstructions
         });
 
         emit OutboundTransferQueued(sequence);
