@@ -1,0 +1,18 @@
+{
+  "name": "ci_tests",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "go": "ts-node src/index.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@certusone/wormhole-sdk": "^0.10.11",
+    "@improbable-eng/grpc-web-node-http-transport": "^0.15.0",
+    "@typechain/ethers-v5": "^11.1.2",
+    "ethers": "^5.7.2",
+    "ts-node": "^10.9.2"
+  }
+}
