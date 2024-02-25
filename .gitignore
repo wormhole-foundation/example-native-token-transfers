@@ -22,3 +22,9 @@ docs/
 
 # Misc
 .private
+
+# Node
+node_modules
+
+# Tilt
+.wormhole
