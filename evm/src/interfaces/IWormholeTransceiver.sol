@@ -14,7 +14,6 @@ interface IWormholeTransceiver is IWormholeTransceiverState {
     event ReceivedMessage(
         bytes32 digest, uint16 emitterChainId, bytes32 emitterAddress, uint64 sequence
     );
-
     event SendTransceiverMessage(
         uint16 recipientChain, TransceiverStructs.TransceiverMessage message
     );

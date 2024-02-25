@@ -183,22 +183,40 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
 
     /// @inheritdoc IWormholeTransceiverState
     function setWormholePeer(uint16 peerChainId, bytes32 peerContract) external onlyOwner {
-        _setWormholePeer(peerChainId, peerContract);
+        if (peerChainId == 0) {
+            revert InvalidWormholeChainIdZero();
+        }
+        if (peerContract == bytes32(0)) {
+            revert InvalidWormholePeerZeroAddress();
+        }
+
+        bytes32 oldPeerContract = _getWormholePeersStorage()[peerChainId];
+
+        // We don't want to allow updating a peer since this adds complexity in the accountant
+        // If the owner makes a mistake with peer registration they should deploy a new Wormhole
+        // transceiver and register this new transceiver with the NttManager
+        if (oldPeerContract != bytes32(0)) {
+            revert PeerAlreadySet(peerChainId, oldPeerContract);
+        }
+
+        _getWormholePeersStorage()[peerChainId] = peerContract;
+
+        // Publish a message for this transceiver registration
+        TransceiverStructs.TransceiverRegistration memory registration = TransceiverStructs
+            .TransceiverRegistration({
+            transceiverIdentifier: WH_PEER_REGISTRATION_PREFIX,
+            transceiverChainId: peerChainId,
+            transceiverAddress: peerContract
+        });
+        wormhole.publishMessage(
+            0, TransceiverStructs.encodeTransceiverRegistration(registration), consistencyLevel
+        );
+
+        emit SetWormholePeer(peerChainId, peerContract);
     }
 
     /// @inheritdoc IWormholeTransceiverState
     function setIsWormholeEvmChain(uint16 chainId) external onlyOwner {
-        _setIsWormholeEvmChain(chainId);
-    }
-
-    /// @inheritdoc IWormholeTransceiverState
-    function setIsWormholeRelayingEnabled(uint16 chainId, bool isEnabled) external onlyOwner {
-        _setIsWormholeRelayingEnabled(chainId, isEnabled);
-    }
-
-    // ============= Internal ===============================================================
-
-    function _setIsWormholeEvmChain(uint16 chainId) internal {
         if (chainId == 0) {
             revert InvalidWormholeChainIdZero();
         }
@@ -206,6 +224,28 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
 
         emit SetIsWormholeEvmChain(chainId);
     }
+
+    /// @inheritdoc IWormholeTransceiverState
+    function setIsWormholeRelayingEnabled(uint16 chainId, bool isEnabled) external onlyOwner {
+        if (chainId == 0) {
+            revert InvalidWormholeChainIdZero();
+        }
+        _getWormholeRelayingEnabledChainsStorage()[chainId] = toWord(isEnabled);
+
+        emit SetIsWormholeRelayingEnabled(chainId, isEnabled);
+    }
+
+    /// @inheritdoc IWormholeTransceiverState
+    function setIsSpecialRelayingEnabled(uint16 chainId, bool isEnabled) external onlyOwner {
+        if (chainId == 0) {
+            revert InvalidWormholeChainIdZero();
+        }
+        _getSpecialRelayingEnabledChainsStorage()[chainId] = toWord(isEnabled);
+
+        emit SetIsSpecialRelayingEnabled(chainId, isEnabled);
+    }
+
+    // ============= Internal ===============================================================
 
     function _checkInvalidRelayingConfig(uint16 chainId) internal view returns (bool) {
         return isWormholeRelayingEnabled(chainId) && !isWormholeEvmChain(chainId);
@@ -217,57 +257,6 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
 
     function _setVAAConsumed(bytes32 hash) internal {
         _getWormholeConsumedVAAsStorage()[hash] = true;
-    }
-
-    function _setWormholePeer(uint16 chainId, bytes32 peerContract) internal {
-        if (chainId == 0) {
-            revert InvalidWormholeChainIdZero();
-        }
-        if (peerContract == bytes32(0)) {
-            revert InvalidWormholePeerZeroAddress();
-        }
-
-        bytes32 oldPeerContract = _getWormholePeersStorage()[chainId];
-
-        // We don't want to allow updating a peer since this adds complexity in the accountant
-        // If the owner makes a mistake with peer registration they should deploy a new Wormhole
-        // transceiver and register this new transceiver with the NttManager
-        if (oldPeerContract != bytes32(0)) {
-            revert PeerAlreadySet(chainId, oldPeerContract);
-        }
-
-        _getWormholePeersStorage()[chainId] = peerContract;
-
-        // Publish a message for this transceiver registration
-        TransceiverStructs.TransceiverRegistration memory registration = TransceiverStructs
-            .TransceiverRegistration({
-            transceiverIdentifier: WH_PEER_REGISTRATION_PREFIX,
-            transceiverChainId: chainId,
-            transceiverAddress: peerContract
-        });
-        wormhole.publishMessage(
-            0, TransceiverStructs.encodeTransceiverRegistration(registration), consistencyLevel
-        );
-
-        emit SetWormholePeer(chainId, peerContract);
-    }
-
-    function _setIsWormholeRelayingEnabled(uint16 chainId, bool isEnabled) internal {
-        if (chainId == 0) {
-            revert InvalidWormholeChainIdZero();
-        }
-        _getWormholeRelayingEnabledChainsStorage()[chainId] = toWord(isEnabled);
-
-        emit SetIsWormholeRelayingEnabled(chainId, isEnabled);
-    }
-
-    function _setIsSpecialRelayingEnabled(uint16 chainId, bool isEnabled) internal {
-        if (chainId == 0) {
-            revert InvalidWormholeChainIdZero();
-        }
-        _getSpecialRelayingEnabledChainsStorage()[chainId] = toWord(isEnabled);
-
-        emit SetIsSpecialRelayingEnabled(chainId, isEnabled);
     }
 
     // =============== MODIFIERS ===============================================
