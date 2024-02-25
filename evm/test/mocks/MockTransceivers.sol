@@ -2,7 +2,7 @@
 
 pragma solidity >=0.8.8 <0.9.0;
 
-import "../../src/WormholeTransceiver.sol";
+import "../../src/Transceiver/WormholeTransceiver.sol";
 
 contract MockWormholeTransceiverContract is WormholeTransceiver {
     constructor(

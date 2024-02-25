@@ -5,11 +5,13 @@ import "wormhole-solidity-sdk/WormholeRelayerSDK.sol";
 import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 
-import "./libraries/TransceiverHelpers.sol";
-import "./libraries/TransceiverStructs.sol";
-import "./interfaces/IWormholeTransceiver.sol";
-import "./interfaces/ISpecialRelayer.sol";
-import "./interfaces/INttManager.sol";
+import "../libraries/TransceiverHelpers.sol";
+import "../libraries/TransceiverStructs.sol";
+
+import "../interfaces/IWormholeTransceiver.sol";
+import "../interfaces/ISpecialRelayer.sol";
+import "../interfaces/INttManager.sol";
+
 import "./Transceiver.sol";
 
 contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeReceiver {

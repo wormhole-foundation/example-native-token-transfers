@@ -8,19 +8,21 @@ import "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.so
 import "wormhole-solidity-sdk/Utils.sol";
 import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 
-import "./libraries/external/OwnableUpgradeable.sol";
-import "./libraries/external/ReentrancyGuardUpgradeable.sol";
-import "./libraries/TransceiverStructs.sol";
-import "./libraries/TransceiverHelpers.sol";
-import "./libraries/RateLimiter.sol";
-import "./interfaces/INttManager.sol";
-import "./interfaces/INttManagerEvents.sol";
-import "./interfaces/INTTToken.sol";
-import "./interfaces/ITransceiver.sol";
+import "../libraries/external/OwnableUpgradeable.sol";
+import "../libraries/external/ReentrancyGuardUpgradeable.sol";
+import "../libraries/TransceiverStructs.sol";
+import "../libraries/TransceiverHelpers.sol";
+import "../libraries/RateLimiter.sol";
+import "../libraries/PausableOwnable.sol";
+import "../libraries/Implementation.sol";
+
+import "../interfaces/INttManager.sol";
+import "../interfaces/INttManagerEvents.sol";
+import "../interfaces/INTTToken.sol";
+import "../interfaces/ITransceiver.sol";
+
 import "./TransceiverRegistry.sol";
 import "./NttTrimmer.sol";
-import "./libraries/PausableOwnable.sol";
-import "./libraries/Implementation.sol";
 
 contract NttManager is
     INttManager,

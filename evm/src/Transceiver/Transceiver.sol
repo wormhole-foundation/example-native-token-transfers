@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.8 <0.9.0;
 
-import "./libraries/TransceiverStructs.sol";
-import "./libraries/PausableOwnable.sol";
-import "./interfaces/INttManager.sol";
-import "./interfaces/ITransceiver.sol";
-import "./libraries/external/ReentrancyGuardUpgradeable.sol";
-import "./libraries/Implementation.sol";
 import "wormhole-solidity-sdk/Utils.sol";
+
+import "../libraries/TransceiverStructs.sol";
+import "../libraries/PausableOwnable.sol";
+import "../libraries/external/ReentrancyGuardUpgradeable.sol";
+import "../libraries/Implementation.sol";
+
+import "../interfaces/INttManager.sol";
+import "../interfaces/ITransceiver.sol";
 
 abstract contract Transceiver is
     ITransceiver,

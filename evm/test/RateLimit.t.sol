@@ -2,7 +2,7 @@
 
 import "forge-std/Test.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
-import "../src/NttManager.sol";
+import "../src/NttManager/NttManager.sol";
 import "./mocks/DummyTransceiver.sol";
 import "./mocks/DummyToken.sol";
 import "./mocks/MockNttManager.sol";
