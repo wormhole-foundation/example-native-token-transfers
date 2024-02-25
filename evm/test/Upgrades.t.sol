@@ -14,7 +14,7 @@ import "../src/libraries/external/Initializable.sol";
 import "../src/libraries/Implementation.sol";
 import {Utils} from "./libraries/Utils.sol";
 import {DummyToken, DummyTokenMintAndBurn} from "./NttManager.t.sol";
-import {WormholeTransceiver} from "../src/Transceiver/WormholeTransceiver.sol";
+import {WormholeTransceiver} from "../src/Transceiver/WormholeTransceiver/WormholeTransceiver.sol";
 import "../src/libraries/TransceiverStructs.sol";
 import "./mocks/MockNttManager.sol";
 import "./mocks/MockTransceivers.sol";
@@ -538,7 +538,7 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
 
     function encodeTransceiverInstruction(bool relayer_off) public view returns (bytes memory) {
         WormholeTransceiver.WormholeTransceiverInstruction memory instruction =
-            WormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
+            IWormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
         bytes memory encodedInstructionWormhole =
             wormholeTransceiverChain1.encodeWormholeTransceiverInstruction(instruction);
         TransceiverStructs.TransceiverInstruction memory TransceiverInstruction = TransceiverStructs

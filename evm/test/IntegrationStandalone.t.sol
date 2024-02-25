@@ -13,7 +13,7 @@ import "../src/interfaces/IRateLimiterEvents.sol";
 import {Utils} from "./libraries/Utils.sol";
 import {DummyToken, DummyTokenMintAndBurn} from "./NttManager.t.sol";
 import "../src/interfaces/IWormholeTransceiver.sol";
-import {WormholeTransceiver} from "../src/Transceiver/WormholeTransceiver.sol";
+import {WormholeTransceiver} from "../src/Transceiver/WormholeTransceiver/WormholeTransceiver.sol";
 import "../src/libraries/TransceiverStructs.sol";
 import "./mocks/MockNttManager.sol";
 import "./mocks/MockTransceivers.sol";
@@ -584,7 +584,7 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
 
     function encodeTransceiverInstruction(bool relayer_off) public view returns (bytes memory) {
         WormholeTransceiver.WormholeTransceiverInstruction memory instruction =
-            WormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
+            IWormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
         bytes memory encodedInstructionWormhole =
             wormholeTransceiverChain1.encodeWormholeTransceiverInstruction(instruction);
         TransceiverStructs.TransceiverInstruction memory TransceiverInstruction = TransceiverStructs
@@ -598,7 +598,7 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
     // Encode an instruction for each of the relayers
     function encodeTransceiverInstructions(bool relayer_off) public view returns (bytes memory) {
         WormholeTransceiver.WormholeTransceiverInstruction memory instruction =
-            WormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
+            IWormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
 
         bytes memory encodedInstructionWormhole =
             wormholeTransceiverChain1.encodeWormholeTransceiverInstruction(instruction);

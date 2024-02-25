@@ -11,9 +11,10 @@ import "../src/interfaces/IRateLimiter.sol";
 import "../src/interfaces/INttManagerEvents.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
 import "../src/interfaces/IWormholeTransceiver.sol";
+import "../src/interfaces/IWormholeTransceiverState.sol";
 import {Utils} from "./libraries/Utils.sol";
 import {DummyToken, DummyTokenMintAndBurn} from "./mocks/DummyToken.sol";
-import {WormholeTransceiver} from "../src/Transceiver/WormholeTransceiver.sol";
+import {WormholeTransceiver} from "../src/Transceiver/WormholeTransceiver/WormholeTransceiver.sol";
 import "../src/libraries/TransceiverStructs.sol";
 import "./mocks/MockNttManager.sol";
 import "./mocks/MockTransceivers.sol";
@@ -35,7 +36,7 @@ contract TestEndToEndRelayerBase is Test {
         returns (TransceiverStructs.TransceiverInstruction memory)
     {
         WormholeTransceiver.WormholeTransceiverInstruction memory instruction =
-            WormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
+            IWormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
 
         bytes memory encodedInstructionWormhole;
         // Source fork has id 0 and corresponds to chain 1
@@ -560,7 +561,7 @@ contract TestRelayerEndToEndManual is
         nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
         vm.prank(userD);
         vm.expectRevert(
-            abi.encodeWithSelector(IWormholeTransceiver.CallerNotRelayer.selector, userD)
+            abi.encodeWithSelector(IWormholeTransceiverState.CallerNotRelayer.selector, userD)
         );
         wormholeTransceiverChain2.receiveWormholeMessages(
             vaa.payload,
