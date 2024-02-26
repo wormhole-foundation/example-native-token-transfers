@@ -4,6 +4,8 @@ pragma solidity >=0.8.8 <0.9.0;
 import "../libraries/TransceiverStructs.sol";
 
 interface ITransceiver {
+    /// @notice The caller is not the deployer.
+    error UnexpectedDeployer(address deployer, address caller);
     error CallerNotNttManager(address caller);
     error CannotRenounceTransceiverOwnership(address currentOwner);
     error CannotTransferTransceiverOwnership(address currentOwner, address newOwner);
