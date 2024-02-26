@@ -5,7 +5,7 @@ use std::io;
 
 use wormhole_io::{Readable, TypePrefixedPayload, Writeable};
 
-use crate::{chain_id::ChainId, normalized_amount::NormalizedAmount};
+use crate::{chain_id::ChainId, trimmed_amount::TrimmedAmount};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(
@@ -13,7 +13,7 @@ use crate::{chain_id::ChainId, normalized_amount::NormalizedAmount};
     derive(AnchorSerialize, AnchorDeserialize, InitSpace)
 )]
 pub struct NativeTokenTransfer {
-    pub amount: NormalizedAmount,
+    pub amount: TrimmedAmount,
     // TODO: is this needed?
     pub source_token: [u8; 32],
     // TODO: shouldn't we put this in the outer message?
@@ -62,7 +62,7 @@ impl Readable for NativeTokenTransfer {
 impl Writeable for NativeTokenTransfer {
     fn written_size(&self) -> usize {
         Self::PREFIX.len()
-            + NormalizedAmount::SIZE.unwrap()
+            + TrimmedAmount::SIZE.unwrap()
             + self.source_token.len()
             + self.to.len()
             + ChainId::SIZE.unwrap()

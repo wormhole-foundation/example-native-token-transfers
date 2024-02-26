@@ -8,7 +8,7 @@ import { toChainId } from '@certusone/wormhole-sdk'
 import { MockEmitter, MockGuardians } from '@certusone/wormhole-sdk/lib/cjs/mock'
 import * as fs from "fs";
 
-import { type TransceiverMessage, NttManagerMessage, NativeTokenTransfer, NormalizedAmount, postVaa, WormholeTransceiverMessage, NTT } from '../ts/sdk'
+import { type TransceiverMessage, NttManagerMessage, NativeTokenTransfer, TrimmedAmount, postVaa, WormholeTransceiverMessage, NTT } from '../ts/sdk'
 
 export const GUARDIAN_KEY = 'cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0'
 
@@ -120,7 +120,7 @@ describe('example-native-token-transfers', () => {
       )
 
       // assert theat amount is what we expect
-      expect(transceiverMessage.ntt_managerPayload.payload.normalizedAmount).to.deep.equal(new NormalizedAmount(BigInt(10000), 8))
+      expect(transceiverMessage.ntt_managerPayload.payload.trimmedAmount).to.deep.equal(new TrimmedAmount(BigInt(10000), 8))
       // get from balance
       const balance = await connection.getTokenAccountBalance(tokenAccount)
       expect(balance.value.amount).to.equal('9900000')
@@ -158,7 +158,7 @@ describe('example-native-token-transfers', () => {
           Buffer.from('FACE'.padStart(64, '0'), 'hex'),
           new NativeTokenTransfer(
             Buffer.from('FAFA'.padStart(64, '0'), 'hex'),
-            new NormalizedAmount(BigInt(10000), 8),
+            new TrimmedAmount(BigInt(10000), 8),
             toChainId('solana'),
             user.publicKey.toBuffer()
           ),

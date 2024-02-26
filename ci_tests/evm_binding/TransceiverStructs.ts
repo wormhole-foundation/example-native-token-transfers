@@ -20,12 +20,12 @@ import type {
   OnEvent,
 } from "./common";
 
-export type NormalizedAmountStruct = {
+export type TrimmedAmountStruct = {
   amount: BigNumberish;
   decimals: BigNumberish;
 };
 
-export type NormalizedAmountStructOutput = [BigNumber, number] & {
+export type TrimmedAmountStructOutput = [BigNumber, number] & {
   amount: BigNumber;
   decimals: number;
 };
@@ -85,19 +85,19 @@ export declare namespace TransceiverStructs {
   };
 
   export type NativeTokenTransferStruct = {
-    amount: NormalizedAmountStruct;
+    amount: TrimmedAmountStruct;
     sourceToken: BytesLike;
     to: BytesLike;
     toChain: BigNumberish;
   };
 
   export type NativeTokenTransferStructOutput = [
-    NormalizedAmountStructOutput,
+    TrimmedAmountStructOutput,
     string,
     string,
     number
   ] & {
-    amount: NormalizedAmountStructOutput;
+    amount: TrimmedAmountStructOutput;
     sourceToken: string;
     to: string;
     toChain: number;

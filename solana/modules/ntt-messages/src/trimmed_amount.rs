@@ -1,10 +1,10 @@
 //! Amounts represented in VAAs are capped at 8 decimals. This
 //! means that any amount that's given as having more decimals is truncated to 8
 //! decimals. On the way out, these amount have to be scaled back to the
-//! original decimal amount. This module defines [`NormalizedAmount`], which
+//! original decimal amount. This module defines [`TrimmedAmount`], which
 //! represents amounts that have been capped at 8 decimals.
 //!
-//! The functions [`normalize`] and [`denormalize`] take care of convertion to/from
+//! The functions [`trim`] and [`untrim`] take care of convertion to/from
 //! this type given the original amount's decimals.
 
 use std::io;
@@ -14,28 +14,28 @@ use anchor_lang::prelude::*;
 
 use wormhole_io::{Readable, Writeable};
 
-pub const NORMALIZED_DECIMALS: u8 = 8;
+pub const TRIMMED_DECIMALS: u8 = 8;
 
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(
     feature = "anchor",
     derive(AnchorSerialize, AnchorDeserialize, InitSpace)
 )]
-pub struct NormalizedAmount {
+pub struct TrimmedAmount {
     pub amount: u64,
     pub decimals: u8,
 }
 
-impl PartialEq for NormalizedAmount {
+impl PartialEq for TrimmedAmount {
     fn eq(&self, other: &Self) -> bool {
         assert_eq!(self.decimals, other.decimals);
         self.amount == other.amount
     }
 }
 
-impl Eq for NormalizedAmount {}
+impl Eq for TrimmedAmount {}
 
-impl NormalizedAmount {
+impl TrimmedAmount {
     pub fn new(amount: u64, decimals: u8) -> Self {
         Self { amount, decimals }
     }
@@ -45,7 +45,7 @@ impl NormalizedAmount {
             return *self;
         }
         Self {
-            amount: self.denormalize(new_decimals),
+            amount: self.untrim(new_decimals),
             decimals: new_decimals,
         }
     }
@@ -61,20 +61,20 @@ impl NormalizedAmount {
         }
     }
 
-    pub fn normalize(amount: u64, from_decimals: u8) -> NormalizedAmount {
-        let to_decimals = NORMALIZED_DECIMALS.min(from_decimals);
+    pub fn trim(amount: u64, from_decimals: u8) -> TrimmedAmount {
+        let to_decimals = TRIMMED_DECIMALS.min(from_decimals);
         Self {
             amount: Self::scale(amount, from_decimals, to_decimals),
             decimals: to_decimals,
         }
     }
 
-    pub fn denormalize(&self, to_decimals: u8) -> u64 {
+    pub fn untrim(&self, to_decimals: u8) -> u64 {
         Self::scale(self.amount, self.decimals, to_decimals)
     }
 
     pub fn remove_dust(amount: u64, from_decimals: u8) -> u64 {
-        Self::normalize(amount, from_decimals).denormalize(from_decimals)
+        Self::trim(amount, from_decimals).untrim(from_decimals)
     }
 
     pub fn amount(&self) -> u64 {
@@ -82,7 +82,7 @@ impl NormalizedAmount {
     }
 }
 
-impl Readable for NormalizedAmount {
+impl Readable for TrimmedAmount {
     const SIZE: Option<usize> = Some(1 + 8);
 
     fn read<R>(reader: &mut R) -> io::Result<Self>
@@ -96,12 +96,12 @@ impl Readable for NormalizedAmount {
     }
 }
 
-impl Writeable for NormalizedAmount {
+impl Writeable for TrimmedAmount {
     fn write<W>(&self, writer: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
-        let NormalizedAmount { amount, decimals } = self;
+        let TrimmedAmount { amount, decimals } = self;
         decimals.write(writer)?;
         amount.write(writer)?;
 
@@ -119,28 +119,28 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_normalize() {
+    fn test_trim() {
         assert_eq!(
-            NormalizedAmount::normalize(100_000_000_000_000_000, 18).amount(),
+            TrimmedAmount::trim(100_000_000_000_000_000, 18).amount(),
             10_000_000
         );
 
         assert_eq!(
-            NormalizedAmount::normalize(100_000_000_000_000_000, 7).amount(),
+            TrimmedAmount::trim(100_000_000_000_000_000, 7).amount(),
             100_000_000_000_000_000
         );
 
         assert_eq!(
-            NormalizedAmount::normalize(100_555_555_555_555_555, 18).denormalize(18),
+            TrimmedAmount::trim(100_555_555_555_555_555, 18).untrim(18),
             100_555_550_000_000_000
         );
 
         assert_eq!(
-            NormalizedAmount {
+            TrimmedAmount {
                 amount: 1,
                 decimals: 6,
             }
-            .denormalize(13),
+            .untrim(13),
             10000000
         );
     }

@@ -96,7 +96,7 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let message: NttManagerMessage<NativeTokenTransfer> =
         accs.transceiver_message.message.ntt_manager_payload.clone();
 
-    let amount = message.payload.amount.denormalize(accs.mint.decimals);
+    let amount = message.payload.amount.untrim(accs.mint.decimals);
 
     if !accs.inbox_item.init {
         let recipient_address =

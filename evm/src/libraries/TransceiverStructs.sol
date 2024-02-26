@@ -2,11 +2,11 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
-import "./NormalizedAmount.sol";
+import "./TrimmedAmount.sol";
 
 library TransceiverStructs {
     using BytesParsing for bytes;
-    using NormalizedAmountLib for NormalizedAmount;
+    using TrimmedAmountLib for TrimmedAmount;
 
     /// @notice Error thrown when the payload length exceeds the allowed maximum.
     /// @dev Selector 0xa3419691.
@@ -85,7 +85,7 @@ library TransceiverStructs {
     ///      - toChain - 2 bytes
     struct NativeTokenTransfer {
         /// @notice Amount being transferred (big-endian u64 and u8 for decimals)
-        NormalizedAmount amount;
+        TrimmedAmount amount;
         /// @notice Source chain token address.
         bytes32 sourceToken;
         /// @notice Address of the recipient.
@@ -99,7 +99,7 @@ library TransceiverStructs {
         pure
         returns (bytes memory encoded)
     {
-        NormalizedAmount memory transferAmount = m.amount;
+        TrimmedAmount memory transferAmount = m.amount;
         return abi.encodePacked(
             NTT_PREFIX,
             transferAmount.getDecimals(),
@@ -129,7 +129,7 @@ library TransceiverStructs {
         (numDecimals, offset) = encoded.asUint8Unchecked(offset);
         uint64 amount;
         (amount, offset) = encoded.asUint64Unchecked(offset);
-        nativeTokenTransfer.amount = NormalizedAmount(amount, numDecimals);
+        nativeTokenTransfer.amount = TrimmedAmount(amount, numDecimals);
 
         (nativeTokenTransfer.sourceToken, offset) = encoded.asBytes32Unchecked(offset);
         (nativeTokenTransfer.to, offset) = encoded.asBytes32Unchecked(offset);
