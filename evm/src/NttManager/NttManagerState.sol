@@ -15,6 +15,7 @@ import "../libraries/TransceiverHelpers.sol";
 import "../libraries/RateLimiter.sol";
 import "../libraries/PausableOwnable.sol";
 import "../libraries/Implementation.sol";
+import "../libraries/TrimmedAmount.sol";
 
 import "../interfaces/INttManager.sol";
 import "../interfaces/INttManagerState.sol";
@@ -23,18 +24,18 @@ import "../interfaces/INTTToken.sol";
 import "../interfaces/ITransceiver.sol";
 
 import "./TransceiverRegistry.sol";
-import "./../NttTrimmer.sol";
 
 abstract contract NttManagerState is
     INttManagerState,
     INttManagerEvents,
     RateLimiter,
-    NttTrimmer,
     TransceiverRegistry,
     PausableOwnable,
     ReentrancyGuardUpgradeable,
     Implementation
 {
+    using TrimmedAmountLib for uint256;
+    using TrimmedAmountLib for TrimmedAmount;
     // =============== Immutables ============================================================
 
     address public immutable token;
@@ -42,6 +43,7 @@ abstract contract NttManagerState is
     INttManager.Mode public immutable mode;
     uint16 public immutable chainId;
     uint256 immutable evmChainId;
+    uint8 public immutable tokenDecimals_;
 
     // =============== Setup =================================================================
 
@@ -50,8 +52,9 @@ abstract contract NttManagerState is
         INttManager.Mode _mode,
         uint16 _chainId,
         uint64 _rateLimitDuration
-    ) RateLimiter(_rateLimitDuration) NttTrimmer(_token) {
+    ) RateLimiter(_rateLimitDuration) {
         token = _token;
+        tokenDecimals_ = tokenDecimals();
         mode = _mode;
         chainId = _chainId;
         evmChainId = block.chainid;
@@ -265,12 +268,12 @@ abstract contract NttManagerState is
 
     /// @inheritdoc INttManagerState
     function setOutboundLimit(uint256 limit) external onlyOwner {
-        _setOutboundLimit(_nttTrimmer(limit));
+        _setOutboundLimit(limit.trim(tokenDecimals_));
     }
 
     /// @inheritdoc INttManagerState
     function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
-        _setInboundLimit(_nttTrimmer(limit), chainId_);
+        _setInboundLimit(limit.trim(tokenDecimals_), chainId_);
     }
 
     // =============== Internal ==============================================================

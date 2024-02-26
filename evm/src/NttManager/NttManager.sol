@@ -20,6 +20,8 @@ import {NttManagerState} from "./NttManagerState.sol";
 contract NttManager is INttManager, NttManagerState {
     using BytesParsing for bytes;
     using SafeERC20 for IERC20;
+    using TrimmedAmountLib for uint256;
+    using TrimmedAmountLib for TrimmedAmount;
 
     constructor(
         address _token,
@@ -135,8 +137,8 @@ contract NttManager is INttManager, NttManagerState {
         if (nativeTokenTransfer.toChain != chainId) {
             revert InvalidTargetChain(nativeTokenTransfer.toChain, chainId);
         }
-
-        TrimmedAmount memory nativeTransferAmount = _nttFixDecimals(nativeTokenTransfer.amount);
+        TrimmedAmount memory nativeTransferAmount =
+            nativeTokenTransfer.amount.untrim(tokenDecimals()).trim(tokenDecimals());
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
@@ -212,11 +214,6 @@ contract NttManager is INttManager, NttManagerState {
             queuedTransfer.sender,
             queuedTransfer.transceiverInstructions
         );
-    }
-
-    /// @inheritdoc INttManager
-    function tokenDecimals() public view override(INttManager, RateLimiter) returns (uint8) {
-        return tokenDecimals_;
     }
 
     // ==================== Internal Business Logic =========================================
@@ -402,7 +399,11 @@ contract NttManager is INttManager, NttManagerState {
             recipientChain, priceQuotes, instructions, enabledTransceivers, encodedNttManagerPayload
         );
 
-        emit TransferSent(recipient, _nttUntrim(amount), msg.value, recipientChain, seq);
+        // push it on the stack again to avoid a stack too deep error
+        TrimmedAmount memory amt = amount;
+        uint16 destinationChain = recipientChain;
+
+        emit TransferSent(recipient, amt.untrim(tokenDecimals_), msg.value, destinationChain, seq);
 
         // return the sequence number
         return sequence;
@@ -415,7 +416,7 @@ contract NttManager is INttManager, NttManagerState {
     ) internal {
         // calculate proper amount of tokens to unlock/mint to recipient
         // untrim the amount
-        uint256 untrimmedAmount = _nttUntrim(amount);
+        uint256 untrimmedAmount = amount.untrim(tokenDecimals());
 
         emit TransferRedeemed(digest);
 
@@ -430,6 +431,11 @@ contract NttManager is INttManager, NttManagerState {
         }
     }
 
+    /// @inheritdoc INttManager
+    function tokenDecimals() public view override(INttManager, RateLimiter) returns (uint8) {
+        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
+        return abi.decode(queriedDecimals, (uint8));
+    }
     // ==================== Internal Helpers ===============================================
 
     function _refundToSender(uint256 refundAmount) internal {
@@ -445,9 +451,9 @@ contract NttManager is INttManager, NttManagerState {
     function _trimTransferAmount(uint256 amount) internal view returns (TrimmedAmount memory) {
         TrimmedAmount memory trimmedAmount;
         {
-            trimmedAmount = _nttTrimmer(amount);
+            trimmedAmount = amount.trim(tokenDecimals_);
             // don't deposit dust that can not be bridged due to the decimal shift
-            uint256 newAmount = _nttUntrim(trimmedAmount);
+            uint256 newAmount = trimmedAmount.untrim(tokenDecimals_);
             if (amount != newAmount) {
                 revert TransferAmountHasDust(amount, amount - newAmount);
             }
