@@ -18,7 +18,7 @@ import "./interfaces/INttManagerEvents.sol";
 import "./interfaces/INTTToken.sol";
 import "./interfaces/ITransceiver.sol";
 import "./TransceiverRegistry.sol";
-import "./NttTrimmer.sol";
+import "./libraries/TrimmedAmount.sol";
 import "./libraries/PausableOwnable.sol";
 import "./libraries/Implementation.sol";
 
@@ -27,13 +27,14 @@ contract NttManager is
     INttManagerEvents,
     TransceiverRegistry,
     RateLimiter,
-    NttTrimmer,
     ReentrancyGuardUpgradeable,
     PausableOwnable,
     Implementation
 {
     using BytesParsing for bytes;
     using SafeERC20 for IERC20;
+    using TrimmedAmountLib for uint256;
+    using TrimmedAmountLib for TrimmedAmount;
 
     error RefundFailed(uint256 refundAmount);
     error CannotRenounceNttManagerOwnership(address owner);
@@ -179,7 +180,7 @@ contract NttManager is
         Mode _mode,
         uint16 _chainId,
         uint64 _rateLimitDuration
-    ) RateLimiter(_rateLimitDuration) NttTrimmer(_token) {
+    ) RateLimiter(_rateLimitDuration) {
         token = _token;
         mode = _mode;
         chainId = _chainId;
@@ -309,11 +310,11 @@ contract NttManager is
     }
 
     function setOutboundLimit(uint256 limit) external onlyOwner {
-        _setOutboundLimit(_nttTrimmer(limit));
+        _setOutboundLimit(limit.trim(tokenDecimals()));
     }
 
     function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
-        _setInboundLimit(_nttTrimmer(limit), chainId_);
+        _setInboundLimit(limit.trim(tokenDecimals()), chainId_);
     }
 
     function completeOutboundQueuedTransfer(uint64 messageSequence)
@@ -363,9 +364,9 @@ contract NttManager is
     function trimTransferAmount(uint256 amount) internal view returns (TrimmedAmount memory) {
         TrimmedAmount memory trimmedAmount;
         {
-            trimmedAmount = _nttTrimmer(amount);
+            trimmedAmount = amount.trim(tokenDecimals());
             // don't deposit dust that can not be bridged due to the decimal shift
-            uint256 newAmount = _nttUntrim(trimmedAmount);
+            uint256 newAmount = trimmedAmount.untrim(tokenDecimals());
             if (amount != newAmount) {
                 revert TransferAmountHasDust(amount, amount - newAmount);
             }
@@ -557,7 +558,10 @@ contract NttManager is
             recipientChain, priceQuotes, instructions, enabledTransceivers, encodedNttManagerPayload
         );
 
-        emit TransferSent(recipient, _nttUntrim(amount), recipientChain, seq);
+        // push it on the stack again to avoid a stack too deep error
+        TrimmedAmount memory amt = amount;
+
+        emit TransferSent(recipient, amt.untrim(tokenDecimals()), recipientChain, seq);
 
         // return the sequence number
         return sequence;
@@ -616,8 +620,8 @@ contract NttManager is
         if (nativeTokenTransfer.toChain != chainId) {
             revert InvalidTargetChain(nativeTokenTransfer.toChain, chainId);
         }
-
-        TrimmedAmount memory nativeTransferAmount = _nttFixDecimals(nativeTokenTransfer.amount);
+        TrimmedAmount memory nativeTransferAmount =
+            nativeTokenTransfer.amount.untrim(tokenDecimals()).trim(tokenDecimals());
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
@@ -668,7 +672,7 @@ contract NttManager is
     ) internal {
         // calculate proper amount of tokens to unlock/mint to recipient
         // untrim the amount
-        uint256 untrimmedAmount = _nttUntrim(amount);
+        uint256 untrimmedAmount = amount.untrim(tokenDecimals());
 
         emit TransferRedeemed(digest);
 
@@ -765,7 +769,8 @@ contract NttManager is
     }
 
     function tokenDecimals() public view override(INttManager, RateLimiter) returns (uint8) {
-        return tokenDecimals_;
+        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
+        return abi.decode(queriedDecimals, (uint8));
     }
 
     /// ============== INVARIANTS =============================================
