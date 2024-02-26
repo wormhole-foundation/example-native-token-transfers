@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
-use ntt_messages::{chain_id::ChainId, normalized_amount::NormalizedAmount};
+use ntt_messages::{chain_id::ChainId, trimmed_amount::TrimmedAmount};
 
 use crate::{
     bitmap::Bitmap,
@@ -117,7 +117,7 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
     } = args;
 
     // TODO: should we revert if we have dust?
-    let amount = NormalizedAmount::remove_dust(amount, accs.common.mint.decimals);
+    let amount = TrimmedAmount::remove_dust(amount, accs.common.mint.decimals);
 
     token_interface::burn(
         CpiContext::new_with_signer(
@@ -196,7 +196,7 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
     } = args;
 
     // TODO: should we revert if we have dust?
-    let amount = NormalizedAmount::remove_dust(amount, accs.common.mint.decimals);
+    let amount = TrimmedAmount::remove_dust(amount, accs.common.mint.decimals);
 
     token_interface::transfer_checked(
         CpiContext::new_with_signer(
@@ -258,7 +258,7 @@ fn insert_into_outbox(
 
     common.outbox_item.set_inner(OutboxItem {
         sequence,
-        amount: NormalizedAmount::normalize(amount, common.mint.decimals),
+        amount: TrimmedAmount::trim(amount, common.mint.decimals),
         sender: common.sender.key(),
         recipient_chain,
         recipient_ntt_manager,

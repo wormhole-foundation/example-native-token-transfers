@@ -7,14 +7,14 @@ import "../src/libraries/TransceiverStructs.sol";
 import "../src/WormholeTransceiver.sol";
 
 contract TestTransceiverStructs is Test {
-    using NormalizedAmountLib for uint256;
-    using NormalizedAmountLib for NormalizedAmount;
+    using TrimmedAmountLib for uint256;
+    using TrimmedAmountLib for TrimmedAmount;
 
     // TODO: add some negative tests for unknown message types etc
 
     function test_serialize_TransceiverMessage() public {
         TransceiverStructs.NativeTokenTransfer memory ntt = TransceiverStructs.NativeTokenTransfer({
-            amount: NormalizedAmount({amount: 1234567, decimals: 7}),
+            amount: TrimmedAmount({amount: 1234567, decimals: 7}),
             sourceToken: hex"BEEFFACE",
             to: hex"FEEBCAFE",
             toChain: 17

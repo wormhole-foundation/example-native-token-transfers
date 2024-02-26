@@ -18,7 +18,7 @@ import "./interfaces/INttManagerEvents.sol";
 import "./interfaces/INTTToken.sol";
 import "./interfaces/ITransceiver.sol";
 import "./TransceiverRegistry.sol";
-import "./NttNormalizer.sol";
+import "./NttTrimmer.sol";
 import "./libraries/PausableOwnable.sol";
 import "./libraries/Implementation.sol";
 
@@ -27,7 +27,7 @@ contract NttManager is
     INttManagerEvents,
     TransceiverRegistry,
     RateLimiter,
-    NttNormalizer,
+    NttTrimmer,
     ReentrancyGuardUpgradeable,
     PausableOwnable,
     Implementation
@@ -179,7 +179,7 @@ contract NttManager is
         Mode _mode,
         uint16 _chainId,
         uint64 _rateLimitDuration
-    ) RateLimiter(_rateLimitDuration) NttNormalizer(_token) {
+    ) RateLimiter(_rateLimitDuration) NttTrimmer(_token) {
         token = _token;
         mode = _mode;
         chainId = _chainId;
@@ -309,11 +309,11 @@ contract NttManager is
     }
 
     function setOutboundLimit(uint256 limit) external onlyOwner {
-        _setOutboundLimit(_nttNormalize(limit));
+        _setOutboundLimit(_nttTrimmer(limit));
     }
 
     function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
-        _setInboundLimit(_nttNormalize(limit), chainId_);
+        _setInboundLimit(_nttTrimmer(limit), chainId_);
     }
 
     function completeOutboundQueuedTransfer(uint64 messageSequence)
@@ -359,23 +359,19 @@ contract NttManager is
         }
     }
 
-    /// @dev Returns normalized amount and checks for dust
-    function normalizeTransferAmount(uint256 amount)
-        internal
-        view
-        returns (NormalizedAmount memory)
-    {
-        NormalizedAmount memory normalizedAmount;
+    /// @dev Returns trimmed amount and checks for dust
+    function trimTransferAmount(uint256 amount) internal view returns (TrimmedAmount memory) {
+        TrimmedAmount memory trimmedAmount;
         {
-            normalizedAmount = _nttNormalize(amount);
+            trimmedAmount = _nttTrimmer(amount);
             // don't deposit dust that can not be bridged due to the decimal shift
-            uint256 newAmount = _nttDenormalize(normalizedAmount);
+            uint256 newAmount = _nttUntrim(trimmedAmount);
             if (amount != newAmount) {
                 revert TransferAmountHasDust(amount, amount - newAmount);
             }
         }
 
-        return normalizedAmount;
+        return trimmedAmount;
     }
 
     /// @dev Simple quality of life transfer method that doesn't deal with queuing or passing transceiver instructions.
@@ -466,15 +462,15 @@ contract NttManager is
             }
         }
 
-        // normalize amount after burning to ensure transfer amount matches (amount - fee)
-        NormalizedAmount memory normalizedAmount = normalizeTransferAmount(amount);
+        // trim amount after burning to ensure transfer amount matches (amount - fee)
+        TrimmedAmount memory trimmedAmount = trimTransferAmount(amount);
 
         // get the sequence for this transfer
         uint64 sequence = _useMessageSequence();
 
         {
             // now check rate limits
-            bool isAmountRateLimited = _isOutboundAmountRateLimited(normalizedAmount);
+            bool isAmountRateLimited = _isOutboundAmountRateLimited(trimmedAmount);
             if (!shouldQueue && isAmountRateLimited) {
                 revert NotEnoughCapacity(getCurrentOutboundCapacity(), amount);
             }
@@ -487,7 +483,7 @@ contract NttManager is
                 // queue up and return
                 _enqueueOutboundTransfer(
                     sequence,
-                    normalizedAmount,
+                    trimmedAmount,
                     recipientChain,
                     recipient,
                     msg.sender,
@@ -503,24 +499,19 @@ contract NttManager is
         }
 
         // otherwise, consume the outbound amount
-        _consumeOutboundAmount(normalizedAmount);
+        _consumeOutboundAmount(trimmedAmount);
         // When sending a transfer, we refill the inbound rate limit for
         // that chain by the same amount (we call this "backflow")
-        _backfillInboundAmount(normalizedAmount, recipientChain);
+        _backfillInboundAmount(trimmedAmount, recipientChain);
 
         return _transfer(
-            sequence,
-            normalizedAmount,
-            recipientChain,
-            recipient,
-            msg.sender,
-            transceiverInstructions
+            sequence, trimmedAmount, recipientChain, recipient, msg.sender, transceiverInstructions
         );
     }
 
     function _transfer(
         uint64 sequence,
-        NormalizedAmount memory amount,
+        TrimmedAmount memory amount,
         uint16 recipientChain,
         bytes32 recipient,
         address sender,
@@ -566,7 +557,7 @@ contract NttManager is
             recipientChain, priceQuotes, instructions, enabledTransceivers, encodedNttManagerPayload
         );
 
-        emit TransferSent(recipient, _nttDenormalize(amount), recipientChain, seq);
+        emit TransferSent(recipient, _nttUntrim(amount), recipientChain, seq);
 
         // return the sequence number
         return sequence;
@@ -626,7 +617,7 @@ contract NttManager is
             revert InvalidTargetChain(nativeTokenTransfer.toChain, chainId);
         }
 
-        NormalizedAmount memory nativeTransferAmount = _nttFixDecimals(nativeTokenTransfer.amount);
+        TrimmedAmount memory nativeTransferAmount = _nttFixDecimals(nativeTokenTransfer.amount);
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
@@ -673,20 +664,20 @@ contract NttManager is
     function _mintOrUnlockToRecipient(
         bytes32 digest,
         address recipient,
-        NormalizedAmount memory amount
+        TrimmedAmount memory amount
     ) internal {
         // calculate proper amount of tokens to unlock/mint to recipient
-        // denormalize the amount
-        uint256 denormalizedAmount = _nttDenormalize(amount);
+        // untrim the amount
+        uint256 untrimmedAmount = _nttUntrim(amount);
 
         emit TransferRedeemed(digest);
 
         if (mode == Mode.LOCKING) {
             // unlock tokens to the specified recipient
-            IERC20(token).safeTransfer(recipient, denormalizedAmount);
+            IERC20(token).safeTransfer(recipient, untrimmedAmount);
         } else if (mode == Mode.BURNING) {
             // mint tokens to the specified recipient
-            INTTToken(token).mint(recipient, denormalizedAmount);
+            INTTToken(token).mint(recipient, untrimmedAmount);
         } else {
             revert InvalidMode(uint8(mode));
         }

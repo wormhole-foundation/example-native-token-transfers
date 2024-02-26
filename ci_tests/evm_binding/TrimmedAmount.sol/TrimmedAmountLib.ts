@@ -20,17 +20,17 @@ import type {
   OnEvent,
 } from "../common";
 
-export type NormalizedAmountStruct = {
+export type TrimmedAmountStruct = {
   amount: BigNumberish;
   decimals: BigNumberish;
 };
 
-export type NormalizedAmountStructOutput = [BigNumber, number] & {
+export type TrimmedAmountStructOutput = [BigNumber, number] & {
   amount: BigNumber;
   decimals: number;
 };
 
-export interface NormalizedAmountLibInterface extends utils.Interface {
+export interface TrimmedAmountLibInterface extends utils.Interface {
   functions: {
     "min((uint64,uint8),(uint64,uint8))": FunctionFragment;
   };
@@ -39,7 +39,7 @@ export interface NormalizedAmountLibInterface extends utils.Interface {
 
   encodeFunctionData(
     functionFragment: "min",
-    values: [NormalizedAmountStruct, NormalizedAmountStruct]
+    values: [TrimmedAmountStruct, TrimmedAmountStruct]
   ): string;
 
   decodeFunctionResult(functionFragment: "min", data: BytesLike): Result;
@@ -47,12 +47,12 @@ export interface NormalizedAmountLibInterface extends utils.Interface {
   events: {};
 }
 
-export interface NormalizedAmountLib extends BaseContract {
+export interface TrimmedAmountLib extends BaseContract {
   connect(signerOrProvider: Signer | Provider | string): this;
   attach(addressOrName: string): this;
   deployed(): Promise<this>;
 
-  interface: NormalizedAmountLibInterface;
+  interface: TrimmedAmountLibInterface;
 
   queryFilter<TEvent extends TypedEvent>(
     event: TypedEventFilter<TEvent>,
@@ -75,40 +75,40 @@ export interface NormalizedAmountLib extends BaseContract {
 
   functions: {
     min(
-      a: NormalizedAmountStruct,
-      b: NormalizedAmountStruct,
+      a: TrimmedAmountStruct,
+      b: TrimmedAmountStruct,
       overrides?: CallOverrides
-    ): Promise<[NormalizedAmountStructOutput]>;
+    ): Promise<[TrimmedAmountStructOutput]>;
   };
 
   min(
-    a: NormalizedAmountStruct,
-    b: NormalizedAmountStruct,
+    a: TrimmedAmountStruct,
+    b: TrimmedAmountStruct,
     overrides?: CallOverrides
-  ): Promise<NormalizedAmountStructOutput>;
+  ): Promise<TrimmedAmountStructOutput>;
 
   callStatic: {
     min(
-      a: NormalizedAmountStruct,
-      b: NormalizedAmountStruct,
+      a: TrimmedAmountStruct,
+      b: TrimmedAmountStruct,
       overrides?: CallOverrides
-    ): Promise<NormalizedAmountStructOutput>;
+    ): Promise<TrimmedAmountStructOutput>;
   };
 
   filters: {};
 
   estimateGas: {
     min(
-      a: NormalizedAmountStruct,
-      b: NormalizedAmountStruct,
+      a: TrimmedAmountStruct,
+      b: TrimmedAmountStruct,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
   };
 
   populateTransaction: {
     min(
-      a: NormalizedAmountStruct,
-      b: NormalizedAmountStruct,
+      a: TrimmedAmountStruct,
+      b: TrimmedAmountStruct,
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
   };

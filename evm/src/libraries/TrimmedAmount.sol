@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache 2
-/// @dev NormalizedAmount is a utility library to handle token amounts with different decimals
+/// @dev TrimmedAmount is a utility library to handle token amounts with different decimals
 pragma solidity >=0.8.8 <0.9.0;
 
-struct NormalizedAmount {
+struct TrimmedAmount {
     uint64 amount;
     uint8 decimals;
 }
@@ -11,35 +11,29 @@ function minUint8(uint8 a, uint8 b) pure returns (uint8) {
     return a < b ? a : b;
 }
 
-library NormalizedAmountLib {
-    uint8 constant NORMALIZED_DECIMALS = 8;
+library TrimmedAmountLib {
+    uint8 constant TRIMMED_DECIMALS = 8;
 
     error AmountTooLarge(uint256 amount);
     error NumberOfDecimalsNotEqual(uint8 decimals, uint8 decimalsOther);
 
-    function unwrap(NormalizedAmount memory a) internal pure returns (uint64, uint8) {
+    function unwrap(TrimmedAmount memory a) internal pure returns (uint64, uint8) {
         return (a.amount, a.decimals);
     }
 
-    function getAmount(NormalizedAmount memory a) internal pure returns (uint64) {
+    function getAmount(TrimmedAmount memory a) internal pure returns (uint64) {
         return a.amount;
     }
 
-    function getDecimals(NormalizedAmount memory a) internal pure returns (uint8) {
+    function getDecimals(TrimmedAmount memory a) internal pure returns (uint8) {
         return a.decimals;
     }
 
-    function eq(
-        NormalizedAmount memory a,
-        NormalizedAmount memory b
-    ) internal pure returns (bool) {
+    function eq(TrimmedAmount memory a, TrimmedAmount memory b) internal pure returns (bool) {
         return a.amount == b.amount && a.decimals == b.decimals;
     }
 
-    function gt(
-        NormalizedAmount memory a,
-        NormalizedAmount memory b
-    ) internal pure returns (bool) {
+    function gt(TrimmedAmount memory a, TrimmedAmount memory b) internal pure returns (bool) {
         // on initialization
         if (isZero(b) && !isZero(a)) {
             return true;
@@ -55,10 +49,7 @@ library NormalizedAmountLib {
         return a.amount > b.amount;
     }
 
-    function lt(
-        NormalizedAmount memory a,
-        NormalizedAmount memory b
-    ) internal pure returns (bool) {
+    function lt(TrimmedAmount memory a, TrimmedAmount memory b) internal pure returns (bool) {
         // on initialization
         if (isZero(b) && !isZero(a)) {
             return false;
@@ -74,14 +65,14 @@ library NormalizedAmountLib {
         return a.amount < b.amount;
     }
 
-    function isZero(NormalizedAmount memory a) internal pure returns (bool) {
+    function isZero(TrimmedAmount memory a) internal pure returns (bool) {
         return (a.amount == 0 && a.decimals == 0);
     }
 
     function sub(
-        NormalizedAmount memory a,
-        NormalizedAmount memory b
-    ) internal pure returns (NormalizedAmount memory) {
+        TrimmedAmount memory a,
+        TrimmedAmount memory b
+    ) internal pure returns (TrimmedAmount memory) {
         // on initialization
         if (isZero(b)) {
             return a;
@@ -91,13 +82,13 @@ library NormalizedAmountLib {
             revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
         }
 
-        return NormalizedAmount(a.amount - b.amount, a.decimals);
+        return TrimmedAmount(a.amount - b.amount, a.decimals);
     }
 
     function add(
-        NormalizedAmount memory a,
-        NormalizedAmount memory b
-    ) internal pure returns (NormalizedAmount memory) {
+        TrimmedAmount memory a,
+        TrimmedAmount memory b
+    ) internal pure returns (TrimmedAmount memory) {
         // on initialization
         if (isZero(a)) {
             return b;
@@ -110,13 +101,13 @@ library NormalizedAmountLib {
         if (a.decimals != b.decimals) {
             revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
         }
-        return NormalizedAmount(a.amount + b.amount, a.decimals);
+        return TrimmedAmount(a.amount + b.amount, a.decimals);
     }
 
     function min(
-        NormalizedAmount memory a,
-        NormalizedAmount memory b
-    ) public pure returns (NormalizedAmount memory) {
+        TrimmedAmount memory a,
+        TrimmedAmount memory b
+    ) public pure returns (TrimmedAmount memory) {
         // on initialization
         if (isZero(a) && !isZero(b)) {
             return a;
@@ -149,25 +140,19 @@ library NormalizedAmountLib {
         }
     }
 
-    function normalize(
-        uint256 amt,
-        uint8 fromDecimals
-    ) internal pure returns (NormalizedAmount memory) {
-        uint8 toDecimals = minUint8(NORMALIZED_DECIMALS, fromDecimals);
+    function trim(uint256 amt, uint8 fromDecimals) internal pure returns (TrimmedAmount memory) {
+        uint8 toDecimals = minUint8(TRIMMED_DECIMALS, fromDecimals);
         uint256 amountScaled = scale(amt, fromDecimals, toDecimals);
 
-        // NOTE: amt after normalization must fit into uint64 (that's the point of
-        // normalization, as Solana only supports uint64 for token amts)
+        // NOTE: amt after trimming must fit into uint64 (that's the point of
+        // trimming, as Solana only supports uint64 for token amts)
         if (amountScaled > type(uint64).max) {
             revert AmountTooLarge(amt);
         }
-        return NormalizedAmount(uint64(amountScaled), toDecimals);
+        return TrimmedAmount(uint64(amountScaled), toDecimals);
     }
 
-    function denormalize(
-        NormalizedAmount memory amt,
-        uint8 toDecimals
-    ) internal pure returns (uint256) {
+    function untrim(TrimmedAmount memory amt, uint8 toDecimals) internal pure returns (uint256) {
         (uint256 deNorm, uint8 fromDecimals) = unwrap(amt);
         uint256 amountScaled = scale(deNorm, fromDecimals, toDecimals);
 

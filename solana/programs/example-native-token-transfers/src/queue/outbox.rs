@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use anchor_lang::prelude::*;
-use ntt_messages::{chain_id::ChainId, normalized_amount::NormalizedAmount};
+use ntt_messages::{chain_id::ChainId, trimmed_amount::TrimmedAmount};
 
 use crate::{bitmap::*, clock::current_timestamp, error::NTTError};
 
@@ -12,7 +12,7 @@ use super::rate_limit::RateLimitState;
 // TODO: generalise this to arbitrary outbound messages (via a generic parameter in place of amount and recipient info)
 pub struct OutboxItem {
     pub sequence: u64,
-    pub amount: NormalizedAmount,
+    pub amount: TrimmedAmount,
     pub sender: Pubkey,
     pub recipient_chain: ChainId,
     pub recipient_ntt_manager: [u8; 32],

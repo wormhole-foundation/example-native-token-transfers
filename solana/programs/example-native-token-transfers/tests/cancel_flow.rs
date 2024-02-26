@@ -10,9 +10,9 @@ use example_native_token_transfers::{
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit},
 };
 use ntt_messages::{
-    chain_id::ChainId, normalized_amount::NormalizedAmount, ntt::NativeTokenTransfer,
-    ntt_manager::NttManagerMessage, transceiver::TransceiverMessage,
-    transceivers::wormhole::WormholeTransceiver,
+    chain_id::ChainId, ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage,
+    transceiver::TransceiverMessage, transceivers::wormhole::WormholeTransceiver,
+    trimmed_amount::TrimmedAmount,
 };
 use sdk::transceivers::wormhole::instructions::receive_message::ReceiveMessage;
 use solana_program::instruction::InstructionError;
@@ -115,7 +115,7 @@ async fn post_transfer_vaa(
         sequence,
         sender: [4u8; 32],
         payload: NativeTokenTransfer {
-            amount: NormalizedAmount {
+            amount: TrimmedAmount {
                 amount,
                 decimals: 9,
             },

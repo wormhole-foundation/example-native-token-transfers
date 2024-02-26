@@ -30,8 +30,8 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
     NttManager nttManagerChain1;
     NttManager nttManagerChain2;
 
-    using NormalizedAmountLib for uint256;
-    using NormalizedAmountLib for NormalizedAmount;
+    using TrimmedAmountLib for uint256;
+    using TrimmedAmountLib for TrimmedAmount;
 
     uint16 constant chainId1 = 7;
     uint16 constant chainId2 = 100;
@@ -557,8 +557,8 @@ contract TestInitialize is Test {
     NttManager nttManagerChain1;
     NttManager nttManagerChain2;
 
-    using NormalizedAmountLib for uint256;
-    using NormalizedAmountLib for NormalizedAmount;
+    using TrimmedAmountLib for uint256;
+    using TrimmedAmountLib for TrimmedAmount;
 
     uint16 constant chainId1 = 7;
 

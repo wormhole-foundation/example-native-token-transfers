@@ -41,7 +41,7 @@ export declare namespace StdInvariant {
   };
 }
 
-export interface NormalizationTestInterface extends utils.Interface {
+export interface TrimmingTestInterface extends utils.Interface {
   functions: {
     "IS_TEST()": FunctionFragment;
     "excludeArtifacts()": FunctionFragment;
@@ -59,10 +59,10 @@ export interface NormalizationTestInterface extends utils.Interface {
     "testAddOperatorNonZero()": FunctionFragment;
     "testAddOperatorZero()": FunctionFragment;
     "testDifferentDecimals()": FunctionFragment;
-    "testNormalizationRoundTrip()": FunctionFragment;
     "testSubOperatorNonZero()": FunctionFragment;
     "testSubOperatorOverflow()": FunctionFragment;
     "testSubOperatorZero()": FunctionFragment;
+    "testTrimmingRoundTrip()": FunctionFragment;
   };
 
   getFunction(
@@ -83,10 +83,10 @@ export interface NormalizationTestInterface extends utils.Interface {
       | "testAddOperatorNonZero"
       | "testAddOperatorZero"
       | "testDifferentDecimals"
-      | "testNormalizationRoundTrip"
       | "testSubOperatorNonZero"
       | "testSubOperatorOverflow"
       | "testSubOperatorZero"
+      | "testTrimmingRoundTrip"
   ): FunctionFragment;
 
   encodeFunctionData(functionFragment: "IS_TEST", values?: undefined): string;
@@ -148,10 +148,6 @@ export interface NormalizationTestInterface extends utils.Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "testNormalizationRoundTrip",
-    values?: undefined
-  ): string;
-  encodeFunctionData(
     functionFragment: "testSubOperatorNonZero",
     values?: undefined
   ): string;
@@ -161,6 +157,10 @@ export interface NormalizationTestInterface extends utils.Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "testSubOperatorZero",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "testTrimmingRoundTrip",
     values?: undefined
   ): string;
 
@@ -223,10 +223,6 @@ export interface NormalizationTestInterface extends utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "testNormalizationRoundTrip",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
     functionFragment: "testSubOperatorNonZero",
     data: BytesLike
   ): Result;
@@ -236,6 +232,10 @@ export interface NormalizationTestInterface extends utils.Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "testSubOperatorZero",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "testTrimmingRoundTrip",
     data: BytesLike
   ): Result;
 
@@ -514,12 +514,12 @@ export type logsEvent = TypedEvent<[string], logsEventObject>;
 
 export type logsEventFilter = TypedEventFilter<logsEvent>;
 
-export interface NormalizationTest extends BaseContract {
+export interface TrimmingTest extends BaseContract {
   connect(signerOrProvider: Signer | Provider | string): this;
   attach(addressOrName: string): this;
   deployed(): Promise<this>;
 
-  interface: NormalizationTestInterface;
+  interface: TrimmingTestInterface;
 
   queryFilter<TEvent extends TypedEvent>(
     event: TypedEventFilter<TEvent>,
@@ -611,10 +611,6 @@ export interface NormalizationTest extends BaseContract {
       overrides?: Overrides & { from?: string }
     ): Promise<ContractTransaction>;
 
-    testNormalizationRoundTrip(
-      overrides?: Overrides & { from?: string }
-    ): Promise<ContractTransaction>;
-
     testSubOperatorNonZero(overrides?: CallOverrides): Promise<[void]>;
 
     testSubOperatorOverflow(
@@ -622,6 +618,10 @@ export interface NormalizationTest extends BaseContract {
     ): Promise<ContractTransaction>;
 
     testSubOperatorZero(overrides?: CallOverrides): Promise<[void]>;
+
+    testTrimmingRoundTrip(
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
   };
 
   IS_TEST(overrides?: CallOverrides): Promise<boolean>;
@@ -670,10 +670,6 @@ export interface NormalizationTest extends BaseContract {
     overrides?: Overrides & { from?: string }
   ): Promise<ContractTransaction>;
 
-  testNormalizationRoundTrip(
-    overrides?: Overrides & { from?: string }
-  ): Promise<ContractTransaction>;
-
   testSubOperatorNonZero(overrides?: CallOverrides): Promise<void>;
 
   testSubOperatorOverflow(
@@ -681,6 +677,10 @@ export interface NormalizationTest extends BaseContract {
   ): Promise<ContractTransaction>;
 
   testSubOperatorZero(overrides?: CallOverrides): Promise<void>;
+
+  testTrimmingRoundTrip(
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
 
   callStatic: {
     IS_TEST(overrides?: CallOverrides): Promise<boolean>;
@@ -725,13 +725,13 @@ export interface NormalizationTest extends BaseContract {
 
     testDifferentDecimals(overrides?: CallOverrides): Promise<void>;
 
-    testNormalizationRoundTrip(overrides?: CallOverrides): Promise<void>;
-
     testSubOperatorNonZero(overrides?: CallOverrides): Promise<void>;
 
     testSubOperatorOverflow(overrides?: CallOverrides): Promise<void>;
 
     testSubOperatorZero(overrides?: CallOverrides): Promise<void>;
+
+    testTrimmingRoundTrip(overrides?: CallOverrides): Promise<void>;
   };
 
   filters: {
@@ -874,10 +874,6 @@ export interface NormalizationTest extends BaseContract {
       overrides?: Overrides & { from?: string }
     ): Promise<BigNumber>;
 
-    testNormalizationRoundTrip(
-      overrides?: Overrides & { from?: string }
-    ): Promise<BigNumber>;
-
     testSubOperatorNonZero(overrides?: CallOverrides): Promise<BigNumber>;
 
     testSubOperatorOverflow(
@@ -885,6 +881,10 @@ export interface NormalizationTest extends BaseContract {
     ): Promise<BigNumber>;
 
     testSubOperatorZero(overrides?: CallOverrides): Promise<BigNumber>;
+
+    testTrimmingRoundTrip(
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
   };
 
   populateTransaction: {
@@ -934,10 +934,6 @@ export interface NormalizationTest extends BaseContract {
       overrides?: Overrides & { from?: string }
     ): Promise<PopulatedTransaction>;
 
-    testNormalizationRoundTrip(
-      overrides?: Overrides & { from?: string }
-    ): Promise<PopulatedTransaction>;
-
     testSubOperatorNonZero(
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
@@ -948,6 +944,10 @@ export interface NormalizationTest extends BaseContract {
 
     testSubOperatorZero(
       overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    testTrimmingRoundTrip(
+      overrides?: Overrides & { from?: string }
     ): Promise<PopulatedTransaction>;
   };
 }

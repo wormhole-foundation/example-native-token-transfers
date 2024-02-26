@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.8 <0.9.0;
 
-import "../libraries/NormalizedAmount.sol";
+import "../libraries/TrimmedAmount.sol";
 import "../libraries/TransceiverStructs.sol";
 
 interface IRateLimiter {
@@ -37,7 +37,7 @@ interface IRateLimiter {
     /// @dev Selector 0x0f85ba52.
     /// @param newCurrentCapacity The new current capacity.
     /// @param newLimit The new limit.
-    error CapacityCannotExceedLimit(NormalizedAmount newCurrentCapacity, NormalizedAmount newLimit);
+    error CapacityCannotExceedLimit(TrimmedAmount newCurrentCapacity, TrimmedAmount newLimit);
 
     /// @notice Parameters used in determining rate limits and queuing.
     /// @dev
@@ -46,22 +46,22 @@ interface IRateLimiter {
     ///    - lastTxTimestamp: the timestamp of when the
     ///                       capacity was previously consumption.
     struct RateLimitParams {
-        NormalizedAmount limit;
-        NormalizedAmount currentCapacity;
+        TrimmedAmount limit;
+        TrimmedAmount currentCapacity;
         uint64 lastTxTimestamp;
     }
 
     /// @notice Parameters for an outbound queued transfer.
     /// @dev
     ///    - recipient: the recipient of the transfer.
-    ///    - amount: the amount of the transfer, normalized.
+    ///    - amount: the amount of the transfer, trimmed.
     ///    - txTimestamp: the timestamp of the transfer.
     ///    - recipientChain: the chain of the recipient.
     ///    - sender: the sender of the transfer.
     ///    - transceiverInstructions: additional instructions to be forwarded to the recipient chain.
     struct OutboundQueuedTransfer {
         bytes32 recipient;
-        NormalizedAmount amount;
+        TrimmedAmount amount;
         uint64 txTimestamp;
         uint16 recipientChain;
         address sender;
@@ -70,11 +70,11 @@ interface IRateLimiter {
 
     /// @notice Parameters for an inbound queued transfer.
     /// @dev
-    ///   - amount: the amount of the transfer, normalized.
+    ///   - amount: the amount of the transfer, trimmed.
     ///   - txTimestamp: the timestamp of the transfer.
     ///   - recipient: the recipient of the transfer.
     struct InboundQueuedTransfer {
-        NormalizedAmount amount;
+        TrimmedAmount amount;
         uint64 txTimestamp;
         address recipient;
     }

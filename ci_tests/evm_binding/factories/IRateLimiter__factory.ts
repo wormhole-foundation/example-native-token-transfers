@@ -58,7 +58,7 @@ const _abi = [
           {
             name: "amount",
             type: "tuple",
-            internalType: "struct NormalizedAmount",
+            internalType: "struct TrimmedAmount",
             components: [
               {
                 name: "amount",
@@ -111,7 +111,7 @@ const _abi = [
           {
             name: "amount",
             type: "tuple",
-            internalType: "struct NormalizedAmount",
+            internalType: "struct TrimmedAmount",
             components: [
               {
                 name: "amount",
@@ -157,7 +157,7 @@ const _abi = [
       {
         name: "newCurrentCapacity",
         type: "tuple",
-        internalType: "struct NormalizedAmount",
+        internalType: "struct TrimmedAmount",
         components: [
           {
             name: "amount",
@@ -174,7 +174,7 @@ const _abi = [
       {
         name: "newLimit",
         type: "tuple",
-        internalType: "struct NormalizedAmount",
+        internalType: "struct TrimmedAmount",
         components: [
           {
             name: "amount",
