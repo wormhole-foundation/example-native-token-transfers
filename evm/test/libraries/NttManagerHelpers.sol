@@ -3,7 +3,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "../../src/libraries/TrimmedAmount.sol";
-import "../../src/NttManager.sol";
+import "../../src/NttManager/NttManager.sol";
 
 library NttManagerHelpersLib {
     uint16 constant SENDING_CHAIN_ID = 1;

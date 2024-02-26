@@ -50,7 +50,7 @@ abstract contract TransceiverRegistry {
         _;
     }
 
-    /// =============== STORAGE ===============================================
+    // =============== Storage ===============================================
 
     bytes32 private constant TRANSCEIVER_INFOS_SLOT =
         bytes32(uint256(keccak256("ntt.transceiverInfos")) - 1);
@@ -110,7 +110,7 @@ abstract contract TransceiverRegistry {
         }
     }
 
-    /// =============== GETTERS/SETTERS ========================================
+    // =============== Storage Getters/Setters ========================================
 
     function _setTransceiver(address transceiver) internal returns (uint8 index) {
         mapping(address => TransceiverInfo) storage transceiverInfos = _getTransceiverInfosStorage();
@@ -213,7 +213,7 @@ abstract contract TransceiverRegistry {
         result = _getEnabledTransceiversStorage();
     }
 
-    /// ============== INVARIANTS =============================================
+    // ============== Invariants =============================================
 
     /// @dev Check that the transceiver nttManager is in a valid state.
     /// Checking these invariants is somewhat costly, but we only need to do it

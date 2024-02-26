@@ -2,7 +2,7 @@
 
 import "forge-std/Test.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
-import "../src/NttManager.sol";
+import "../src/NttManager/NttManager.sol";
 import "./mocks/DummyTransceiver.sol";
 import "./mocks/DummyToken.sol";
 import "./mocks/MockNttManager.sol";
@@ -36,7 +36,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         DummyToken t = new DummyToken();
         NttManager implementation =
-            new MockNttManagerContract(address(t), NttManager.Mode.LOCKING, chainId, 1 days);
+            new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, chainId, 1 days);
 
         nttManager = MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         nttManager.initialize();

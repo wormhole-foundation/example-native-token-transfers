@@ -3,35 +3,44 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import "../libraries/TransceiverStructs.sol";
 
-interface IWormholeTransceiver {
+import "./IWormholeTransceiverState.sol";
+
+interface IWormholeTransceiver is IWormholeTransceiverState {
+    struct WormholeTransceiverInstruction {
+        bool shouldSkipRelayerSend;
+    }
+
     event ReceivedRelayedMessage(bytes32 digest, uint16 emitterChainId, bytes32 emitterAddress);
     event ReceivedMessage(
         bytes32 digest, uint16 emitterChainId, bytes32 emitterAddress, uint64 sequence
     );
-
     event SendTransceiverMessage(
         uint16 recipientChain, TransceiverStructs.TransceiverMessage message
     );
-    event RelayingInfo(uint8 relayingType, uint256 deliveryPayment);
-    event SetWormholePeer(uint16 chainId, bytes32 peerContract);
-    event SetIsWormholeRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
-    event SetIsSpecialRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
-    event SetIsWormholeEvmChain(uint16 chainId);
 
     error InvalidRelayingConfig(uint16 chainId);
-    error CallerNotRelayer(address caller);
-    error UnexpectedAdditionalMessages();
-    error InvalidVaa(string reason);
     error InvalidWormholePeer(uint16 chainId, bytes32 peerAddress);
-    error PeerAlreadySet(uint16 chainId, bytes32 peerAddress);
     error TransferAlreadyCompleted(bytes32 vaaHash);
-    error InvalidWormholePeerZeroAddress();
-    error InvalidWormholeChainIdZero();
 
+    /// @notice Receive an attested message from the verification layer. This function should verify
+    /// the `encodedVm` and then deliver the attestation to the transceiver NttManager contract.
+    /// @param encodedMessage The attested message.
     function receiveMessage(bytes memory encodedMessage) external;
-    function isVAAConsumed(bytes32 hash) external view returns (bool);
-    function getWormholePeer(uint16 chainId) external view returns (bytes32);
-    function isWormholeRelayingEnabled(uint16 chainId) external view returns (bool);
-    function isSpecialRelayingEnabled(uint16 chainId) external view returns (bool);
-    function isWormholeEvmChain(uint16 chainId) external view returns (bool);
+
+    /// @notice Parses the encoded instruction and returns the instruction struct. This instruction
+    /// is specific to the WormholeTransceiver contract.
+    /// @param encoded The encoded instruction.
+    /// @return instruction The parsed `WormholeTransceiverInstruction`.
+    function parseWormholeTransceiverInstruction(bytes memory encoded)
+        external
+        pure
+        returns (WormholeTransceiverInstruction memory instruction);
+
+    /// @notice Encodes the `WormholeTransceiverInstruction` into a byte array.
+    /// @param instruction The `WormholeTransceiverInstruction` to encode.
+    /// @return encoded The encoded instruction.
+    function encodeWormholeTransceiverInstruction(WormholeTransceiverInstruction memory instruction)
+        external
+        pure
+        returns (bytes memory);
 }

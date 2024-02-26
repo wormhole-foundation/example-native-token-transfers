@@ -4,7 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import "../src/NttManager.sol";
+import "../src/NttManager/NttManager.sol";
 import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
 import "../src/interfaces/INttManagerEvents.sol";
@@ -48,10 +48,10 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         DummyToken t = new DummyToken();
         NttManager implementation =
-            new MockNttManagerContract(address(t), NttManager.Mode.LOCKING, chainId, 1 days);
+            new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, chainId, 1 days);
 
         NttManager otherImplementation =
-            new MockNttManagerContract(address(t), NttManager.Mode.LOCKING, chainId, 1 days);
+            new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, chainId, 1 days);
 
         nttManager = MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         nttManager.initialize();
@@ -148,7 +148,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         // a convenience check, not a security one)
         DummyToken t = new DummyToken();
         NttManager altNttManager =
-            new MockNttManagerContract(address(t), NttManager.Mode.LOCKING, chainId, 1 days);
+            new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, chainId, 1 days);
         DummyTransceiver e = new DummyTransceiver(address(altNttManager));
         nttManager.setTransceiver(address(e));
     }
@@ -417,7 +417,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
     function test_noAutomaticSlot() public {
         DummyToken t = new DummyToken();
         MockNttManagerContract c =
-            new MockNttManagerContract(address(t), NttManager.Mode.LOCKING, 1, 1 days);
+            new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, 1, 1 days);
         assertEq(c.lastSlot(), 0x0);
     }
 
@@ -426,7 +426,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         vm.startStateDiffRecording();
 
-        new MockNttManagerContract(address(t), NttManager.Mode.LOCKING, 1, 1 days);
+        new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, 1, 1 days);
 
         Utils.assertSafeUpgradeableConstructor(vm.stopAndReturnStateDiff());
     }
@@ -526,8 +526,9 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         assertEq(token.balanceOf(address(user_B)), transferAmount.untrim(token.decimals()));
 
         // Step 2 (upgrade to a new nttManager)
-        MockNttManagerContract newNttManager =
-            new MockNttManagerContract(nttManager.token(), NttManager.Mode.LOCKING, chainId, 1 days);
+        MockNttManagerContract newNttManager = new MockNttManagerContract(
+            nttManager.token(), INttManager.Mode.LOCKING, chainId, 1 days
+        );
         nttManagerOther.upgrade(address(newNttManager));
 
         TransceiverHelpersLib.attestTransceiversHelper(

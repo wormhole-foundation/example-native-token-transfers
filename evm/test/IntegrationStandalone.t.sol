@@ -4,8 +4,8 @@ pragma solidity >=0.8.8 <0.9.0;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import "../src/NttManager.sol";
-import "../src/Transceiver.sol";
+import "../src/NttManager/NttManager.sol";
+import "../src/Transceiver/Transceiver.sol";
 import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
 import "../src/interfaces/INttManagerEvents.sol";
@@ -13,7 +13,7 @@ import "../src/interfaces/IRateLimiterEvents.sol";
 import {Utils} from "./libraries/Utils.sol";
 import {DummyToken, DummyTokenMintAndBurn} from "./NttManager.t.sol";
 import "../src/interfaces/IWormholeTransceiver.sol";
-import {WormholeTransceiver} from "../src/WormholeTransceiver.sol";
+import {WormholeTransceiver} from "../src/Transceiver/WormholeTransceiver/WormholeTransceiver.sol";
 import "../src/libraries/TransceiverStructs.sol";
 import "./mocks/MockNttManager.sol";
 import "./mocks/MockTransceivers.sol";
@@ -62,7 +62,7 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
         NttManager implementation =
-            new MockNttManagerContract(address(t1), NttManager.Mode.LOCKING, chainId1, 1 days);
+            new MockNttManagerContract(address(t1), INttManager.Mode.LOCKING, chainId1, 1 days);
 
         nttManagerChain1 =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
@@ -88,7 +88,7 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
         NttManager implementationChain2 =
-            new MockNttManagerContract(address(t2), NttManager.Mode.BURNING, chainId2, 1 days);
+            new MockNttManagerContract(address(t2), INttManager.Mode.BURNING, chainId2, 1 days);
 
         nttManagerChain2 =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
@@ -584,7 +584,7 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
 
     function encodeTransceiverInstruction(bool relayer_off) public view returns (bytes memory) {
         WormholeTransceiver.WormholeTransceiverInstruction memory instruction =
-            WormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
+            IWormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
         bytes memory encodedInstructionWormhole =
             wormholeTransceiverChain1.encodeWormholeTransceiverInstruction(instruction);
         TransceiverStructs.TransceiverInstruction memory TransceiverInstruction = TransceiverStructs
@@ -598,7 +598,7 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
     // Encode an instruction for each of the relayers
     function encodeTransceiverInstructions(bool relayer_off) public view returns (bytes memory) {
         WormholeTransceiver.WormholeTransceiverInstruction memory instruction =
-            WormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
+            IWormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
 
         bytes memory encodedInstructionWormhole =
             wormholeTransceiverChain1.encodeWormholeTransceiverInstruction(instruction);

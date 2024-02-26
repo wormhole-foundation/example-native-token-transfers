@@ -3,7 +3,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "forge-std/Test.sol";
-import "../../src/Transceiver.sol";
+import "../../src/Transceiver/Transceiver.sol";
 import "../interfaces/ITransceiverReceiver.sol";
 
 contract DummyTransceiver is Transceiver, ITransceiverReceiver {

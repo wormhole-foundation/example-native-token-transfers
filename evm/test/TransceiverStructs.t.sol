@@ -4,7 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 import "forge-std/Test.sol";
 
 import "../src/libraries/TransceiverStructs.sol";
-import "../src/WormholeTransceiver.sol";
+import "../src/Transceiver/WormholeTransceiver/WormholeTransceiver.sol";
 
 contract TestTransceiverStructs is Test {
     using TrimmedAmountLib for uint256;

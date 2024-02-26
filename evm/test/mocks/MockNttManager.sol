@@ -2,7 +2,7 @@
 
 pragma solidity >=0.8.8 <0.9.0;
 
-import "../../src/NttManager.sol";
+import "../../src/NttManager/NttManager.sol";
 
 contract MockNttManagerContract is NttManager {
     constructor(

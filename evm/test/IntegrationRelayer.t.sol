@@ -4,16 +4,17 @@ pragma solidity 0.8.19;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import "../src/NttManager.sol";
-import "../src/Transceiver.sol";
+import "../src/NttManager/NttManager.sol";
+import "../src/Transceiver/Transceiver.sol";
 import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
 import "../src/interfaces/INttManagerEvents.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
 import "../src/interfaces/IWormholeTransceiver.sol";
+import "../src/interfaces/IWormholeTransceiverState.sol";
 import {Utils} from "./libraries/Utils.sol";
 import {DummyToken, DummyTokenMintAndBurn} from "./mocks/DummyToken.sol";
-import {WormholeTransceiver} from "../src/WormholeTransceiver.sol";
+import {WormholeTransceiver} from "../src/Transceiver/WormholeTransceiver/WormholeTransceiver.sol";
 import "../src/libraries/TransceiverStructs.sol";
 import "./mocks/MockNttManager.sol";
 import "./mocks/MockTransceivers.sol";
@@ -35,7 +36,7 @@ contract TestEndToEndRelayerBase is Test {
         returns (TransceiverStructs.TransceiverInstruction memory)
     {
         WormholeTransceiver.WormholeTransceiverInstruction memory instruction =
-            WormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
+            IWormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
 
         bytes memory encodedInstructionWormhole;
         // Source fork has id 0 and corresponds to chain 1
@@ -97,7 +98,7 @@ contract TestEndToEndRelayer is
         DummyToken t1 = new DummyToken();
 
         NttManager implementation =
-            new MockNttManagerContract(address(t1), NttManager.Mode.LOCKING, chainId1, 1 days);
+            new MockNttManagerContract(address(t1), INttManager.Mode.LOCKING, chainId1, 1 days);
 
         nttManagerChain1 =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
@@ -129,7 +130,7 @@ contract TestEndToEndRelayer is
         // Chain 2 setup
         DummyToken t2 = new DummyTokenMintAndBurn();
         NttManager implementationChain2 =
-            new MockNttManagerContract(address(t2), NttManager.Mode.BURNING, chainId2, 1 days);
+            new MockNttManagerContract(address(t2), INttManager.Mode.BURNING, chainId2, 1 days);
 
         nttManagerChain2 =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
@@ -440,7 +441,7 @@ contract TestRelayerEndToEndManual is
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
         NttManager implementation =
-            new MockNttManagerContract(address(t1), NttManager.Mode.LOCKING, chainId1, 1 days);
+            new MockNttManagerContract(address(t1), INttManager.Mode.LOCKING, chainId1, 1 days);
 
         nttManagerChain1 =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
@@ -466,7 +467,7 @@ contract TestRelayerEndToEndManual is
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
         NttManager implementationChain2 =
-            new MockNttManagerContract(address(t2), NttManager.Mode.BURNING, chainId2, 1 days);
+            new MockNttManagerContract(address(t2), INttManager.Mode.BURNING, chainId2, 1 days);
 
         nttManagerChain2 =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
@@ -560,7 +561,7 @@ contract TestRelayerEndToEndManual is
         nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
         vm.prank(userD);
         vm.expectRevert(
-            abi.encodeWithSelector(IWormholeTransceiver.CallerNotRelayer.selector, userD)
+            abi.encodeWithSelector(IWormholeTransceiverState.CallerNotRelayer.selector, userD)
         );
         wormholeTransceiverChain2.receiveWormholeMessages(
             vaa.payload,
