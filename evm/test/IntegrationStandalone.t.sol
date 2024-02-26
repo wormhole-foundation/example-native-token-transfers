@@ -35,6 +35,7 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
     uint16 constant chainId1 = 7;
     uint16 constant chainId2 = 100;
     uint8 constant FAST_CONSISTENCY_LEVEL = 200;
+    uint256 constant GAS_LIMIT = 500000;
 
     uint16 constant SENDING_CHAIN_ID = 1;
     uint256 constant DEVNET_GUARDIAN_PK =
@@ -73,7 +74,8 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
             address(wormhole),
             address(relayer),
             address(0x0),
-            FAST_CONSISTENCY_LEVEL
+            FAST_CONSISTENCY_LEVEL,
+            GAS_LIMIT
         );
         wormholeTransceiverChain1 = MockWormholeTransceiverContract(
             address(new ERC1967Proxy(address(wormholeTransceiverChain1Implementation), ""))
@@ -99,7 +101,8 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
             address(wormhole),
             address(relayer),
             address(0x0),
-            FAST_CONSISTENCY_LEVEL
+            FAST_CONSISTENCY_LEVEL,
+            GAS_LIMIT
         );
         wormholeTransceiverChain2 = MockWormholeTransceiverContract(
             address(new ERC1967Proxy(address(wormholeTransceiverChain2Implementation), ""))
@@ -420,7 +423,8 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
             address(wormhole),
             address(relayer),
             address(0x0),
-            FAST_CONSISTENCY_LEVEL
+            FAST_CONSISTENCY_LEVEL,
+            GAS_LIMIT
         );
 
         wormholeTransceiverChain1_2 = MockWormholeTransceiverContract(
@@ -437,7 +441,8 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
             address(wormhole),
             address(relayer),
             address(0x0),
-            FAST_CONSISTENCY_LEVEL
+            FAST_CONSISTENCY_LEVEL,
+            GAS_LIMIT
         );
 
         wormholeTransceiverChain2_2 = MockWormholeTransceiverContract(

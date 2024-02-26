@@ -24,9 +24,9 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     IWormholeRelayer public immutable wormholeRelayer;
     ISpecialRelayer public immutable specialRelayer;
     uint256 immutable wormholeTransceiver_evmChainId;
+    uint256 public immutable gasLimit;
 
     // ==================== Constants ================================================
-    uint256 public constant GAS_LIMIT = 500000;
 
     /// @dev Prefix for all TransceiverMessage payloads
     ///      This is 0x99'E''W''H'
@@ -47,13 +47,15 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
         address specialRelayerAddr,
-        uint8 _consistencyLevel
+        uint8 _consistencyLevel,
+        uint256 _gasLimit
     ) Transceiver(nttManager) {
         wormhole = IWormhole(wormholeCoreBridge);
         wormholeRelayer = IWormholeRelayer(wormholeRelayerAddr);
         specialRelayer = ISpecialRelayer(specialRelayerAddr);
         wormholeTransceiver_evmChainId = block.chainid;
         consistencyLevel = _consistencyLevel;
+        gasLimit = _gasLimit;
     }
 
     enum RelayingType {
