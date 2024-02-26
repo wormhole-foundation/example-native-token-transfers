@@ -1,24 +1,40 @@
-import { BytesLike, Wallet, getDefaultProvider, utils } from "ethers";
+import {
+  Wallet,
+  getDefaultProvider,
+  BytesLike,
+  utils,
+  providers,
+  BigNumber,
+} from "ethers";
 
-import { DummyTokenMintAndBurn__factory } from "../evm_binding/factories/DummyToken.sol/DummyTokenMintAndBurn__factory";
-import { DummyToken__factory } from "../evm_binding/factories/DummyToken.sol/DummyToken__factory";
-import { ERC1967Proxy__factory } from "../evm_binding/factories/ERC1967Proxy__factory";
-import { TrimmedAmountLib__factory } from "../evm_binding/factories/TrimmedAmount.sol/TrimmedAmountLib__factory";
 import { NttManager__factory } from "../evm_binding/factories/NttManager__factory";
 import { TransceiverStructs__factory } from "../evm_binding/factories/TransceiverStructs__factory";
+import { TrimmedAmountLib__factory } from "../evm_binding/factories/TrimmedAmount.sol/TrimmedAmountLib__factory";
+import { ERC1967Proxy__factory } from "../evm_binding/factories/ERC1967Proxy__factory";
 import { WormholeTransceiver__factory } from "../evm_binding/factories/WormholeTransceiver__factory";
+import { DummyTokenMintAndBurn__factory } from "../evm_binding/factories/DummyToken.sol/DummyTokenMintAndBurn__factory";
+import { DummyToken__factory } from "../evm_binding/factories/DummyToken.sol/DummyToken__factory";
 
-import { Networkish } from "@ethersproject/networks";
+import { writeFileSync, readFileSync, existsSync } from "fs";
+import { Network, Networkish } from "@ethersproject/networks";
 import { NodeHttpTransport } from "@improbable-eng/grpc-web-node-http-transport";
-import { existsSync, readFileSync, writeFileSync } from "fs";
 
 // https://github.com/wormhole-foundation/wormhole/blob/main/sdk/js/src/token_bridge/__tests__/eth-integration.ts#L135
 import {
+  approveEth,
+  attestFromEth,
+  CHAIN_ID_ETH,
+  CHAIN_ID_SOLANA,
   CONTRACTS,
-  ChainId,
+  createWrappedOnSolana,
   getEmitterAddressEth,
-  getSignedVAAWithRetry,
+  getForeignAssetSolana,
+  getIsTransferCompletedSolana,
   parseSequenceFromLogEth,
+  postVaaSolana,
+  redeemOnSolana,
+  getSignedVAAWithRetry,
+  ChainId,
 } from "@certusone/wormhole-sdk";
 
 //import {NFTBridge__factory} from "@certusone/wormhole-sdk/lib/cjs/ethers-contracts/factories/";
@@ -50,16 +66,14 @@ async function deployEth(
   const signer = new Wallet(ETH_PRIVATE_KEY, provider); // Ganache default private key
 
   // Deploy libraries used by various things
-  console.log(
-    "Deploying libraries of transceiverStructs and normalizedAmounts"
-  );
+  console.log("Deploying libraries of transceiverStructs and trimmedAmounts");
   const transceiverStructsFactory = new TransceiverStructs__factory(signer);
   const transceiverStructsContract = await transceiverStructsFactory.deploy();
   //result = await transceiverStructsContract.waitForDeployment();
 
   const trimmedAmountFactory = new TrimmedAmountLib__factory(signer);
   const trimmedAmountContract = await trimmedAmountFactory.deploy();
-  //result = await normalizedAmountContract.waitForDeployment();
+  //result = await trimmedAmountContract.waitForDeployment();
 
   // Deploy the NTT token
   var NTTAddress;
@@ -72,7 +86,7 @@ async function deployEth(
     //result = await NTTAddress.waitForDeployment();
     tokenSetting = 0; // Lock
   } else {
-    console.log("Deploy locking NTT token");
+    console.log("Deploy burning NTT token");
     const ERC20BurningFactory = new DummyTokenMintAndBurn__factory(signer);
     NTTAddress = await ERC20BurningFactory.deploy();
     //result = await NTTAddress.waitForDeployment();
@@ -125,7 +139,7 @@ async function deployEth(
     // List of useful wormhole contracts - https://github.com/wormhole-foundation/wormhole/blob/00f504ef452ae2d94fa0024c026be2d8cf903ad5/ethereum/ts-scripts/relayer/config/ci/contracts.json
     await manager.address,
     "0xC89Ce4735882C9F0f0FE26686c53074E09B0D550", // Core wormhole contract - https://docs.wormhole.com/wormhole/blockchain-environments/evm#local-network-contract -- may need to be changed to support other chains
-    "0x53855d4b64E9A3CF59A84bc768adA716B5536BC5", //"0xE66C1Bc1b369EF4F376b84373E3Aa004E8F4C083", // Relayer contract -- double check these...
+    "0x53855d4b64E9A3CF59A84bc768adA716B5536BC5", //"0xE66C1Bc1b369EF4F376b84373E3Aa004E8F4C083", // Relayer contract -- double check these...https://github.com/wormhole-foundation/wormhole/blob/main/sdk/js/src/relayer/__tests__/wormhole_relayer.ts
     "0x0000000000000000000000000000000000000000", // TODO - Specialized relayer??????
     200, // Consistency level
     500000 // Gas limit
@@ -271,6 +285,8 @@ async function link(chain1: ChainDetails, chain2: ChainDetails) {
   );
   result.wait();
   console.log("Finished linking!");
+
+  // TODO - add Solana and other contracts in here
 }
 
 // Wormhole format means that addresses are bytes32 instead of addresses when using them to support other chains.
@@ -320,7 +336,39 @@ async function test(chain1: ChainDetails, chain2: ChainDetails) {
   console.log("Starting tests");
   console.log("========================");
 
+  await BackAndForthBaseTest(chain1, chain2);
+  await BackAndForthBaseRelayertest(chain1, chain2);
+}
+
+async function BackAndForthBaseTest(
+  chain1: ChainDetails,
+  chain2: ChainDetails
+) {
   console.log("Basic back and forth");
+  var result;
+  const provider1 = getDefaultProvider(chain1.rpcEndpoint);
+  const signer1 = new Wallet(ETH_PRIVATE_KEY, provider1); // Ganache default private key
+
+  const provider2 = getDefaultProvider(chain2.rpcEndpoint);
+  const signer2 = new Wallet(ETH_PRIVATE_KEY, provider2); // Ganache default private key
+
+  const manager1 = NttManager__factory.connect(
+    <string>chain1.managerAddress,
+    signer1
+  );
+  const manager2 = NttManager__factory.connect(
+    <string>chain2.managerAddress,
+    signer2
+  );
+
+  const token1 = DummyToken__factory.connect(
+    <string>chain1.NTTTokenAddress,
+    signer1
+  );
+  const token2 = DummyTokenMintAndBurn__factory.connect(
+    <string>chain2.NTTTokenAddress,
+    signer2
+  );
 
   var amount = utils.parseEther("1");
   result = await token1.mintDummy(
@@ -333,6 +381,7 @@ async function test(chain1: ChainDetails, chain2: ChainDetails) {
   await token1.approve(chain1.managerAddress, amount);
   result.wait();
 
+  // cast call --rpc-url ws://eth-devnet2:8545 0x80EaE59c5f92F9f65338bba4F26FFC8Ca2b6224A "transfer(uint256,uint16,bytes32,bool,bytes)"  1000000000000000000 4 0x000000000000000000000000467fD9FEA4e77AC79504a23B45631D29e42eaa4A false 0x01000101 --from 0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1
   var balanceManagerBeforeSend1 = await token1.balanceOf(chain1.managerAddress);
   var balanceUserBeforeSend1 = await token1.balanceOf(
     "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
@@ -360,38 +409,12 @@ async function test(chain1: ChainDetails, chain2: ChainDetails) {
     console.log("User amount 1 incorrect");
   }
 
-  //cast call --rpc-url ws://eth-devnet:8545 0xFD3C3E25E7E30921Bf1B4D1D55fbb97Bc43Ac8B8 "transfer(uint256,uint16,bytes32,bool,bytes)"  1000000000000000000 1397 0x000000000000000000000000467fD9FEA4e77AC79504a23B45631D29e42eaa4A true 0x01000100 --from 0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1
-  // result = await manager1["transfer(uint256,uint16,bytes32,bool,bytes)"](amount, chain2.chainId, <BytesLike>addressToBytes(<string>chain2.managerAddress), false, "0x01000100", {value: utils.parseEther('1')}); // with relayer
+  console.log("Finish initial transfer");
 
-  var sequence = await parseSequenceFromLogEth(
-    txResponse,
-    CONTRACTS.DEVNET.ethereum.core
-  );
-
-  // Turn into bytes32 from standard ETH address I'm guessing
-  var emitterAddress = getEmitterAddressEth(chain1.transceiverAddress);
-
-  // poll until the guardian(s) witness and sign the vaa
-  var { vaaBytes: signedVAA } = await getSignedVAAWithRetry(
-    ["http://guardian:7071"], // HTTP host for the Guardian
-    <ChainId>chain1.chainId,
-    emitterAddress,
-    sequence,
-    {
-      transport: NodeHttpTransport(),
-    }
-  );
-
-  // Perform the transfer of the token to the other chain
-  const transceiver2 = WormholeTransceiver__factory.connect(
-    <string>chain2.transceiverAddress,
-    signer2
-  );
   var balanceBeforeRecv = await token2.balanceOf(
     "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
   );
-  result = await transceiver2.receiveMessage(signedVAA);
-  result.wait();
+  await receive(txResponse, chain1, chain2);
 
   var balanceAfterRecv = await token2.balanceOf(
     "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
@@ -399,17 +422,19 @@ async function test(chain1: ChainDetails, chain2: ChainDetails) {
   if (!balanceAfterRecv.eq(balanceBeforeRecv.add(amount))) {
     console.log("User amount 1 receieve incorrect");
   }
+  console.log("Finish initial receieve");
 
-  // Send the crosschain call
+  ///
+  // Send the crosschain call back to the original
+  ///
   await token2.approve(chain2.managerAddress, amount);
-  result.wait();
+  await result.wait();
+  await delay(1000); // Slow down the race condition here to actually transfer for the funds
 
   var balanceManagerBeforeSend2 = await token2.balanceOf(chain1.managerAddress);
   var balanceUserBeforeSend2 = await token2.balanceOf(
     "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
   );
-  console.log("Signer amounts...", await token2.balanceOf(signer2.address));
-  console.log(balanceManagerBeforeSend2, balanceUserBeforeSend2);
   result = await manager2["transfer(uint256,uint16,bytes32,bool,bytes)"](
     amount,
     chain1.chainId,
@@ -418,9 +443,37 @@ async function test(chain1: ChainDetails, chain2: ChainDetails) {
     ),
     false,
     "0x01000101"
-  ); // No relayer - actually works but don't know how to get info from the spy.
+  );
   var txResponse = await result.wait();
-  console.log(txResponse);
+  await delay(5000);
+  console.log("Finish second transfer");
+
+  var balanceManagerAfterSend2 = await token2.balanceOf(chain1.managerAddress);
+  var balanceUserAfterSend2 = await token2.balanceOf(
+    "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
+  );
+  if (!balanceManagerAfterSend2.eq(0) || !balanceManagerBeforeSend2.eq(0)) {
+    console.log("Manager on burn chain has funds");
+  }
+
+  if (!balanceUserBeforeSend2.sub(amount).eq(balanceUserAfterSend2)) {
+    console.log("User didn't transfer proper amount of funds on burn chain");
+  }
+
+  // Received the sent funds
+  var balanceBeforeRecv = await token1.balanceOf(
+    "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
+  );
+  await receive(txResponse, chain2, chain1);
+  console.log("Finish second receieve");
+
+  await delay(500);
+  var balanceAfterRecv = await token1.balanceOf(
+    "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
+  );
+  if (!balanceBeforeRecv.add(amount).eq(balanceAfterRecv)) {
+    console.log("ReceiveMessage on back length failed");
+  }
 
   /*
     Sanity checks
@@ -435,6 +488,141 @@ async function test(chain1: ChainDetails, chain2: ChainDetails) {
     - According to the docs, Ganache returns the error slightly different than everything else. So, ethers.js doesn't know how to see the errors.
     - https://ethereum.stackexchange.com/questions/60731/assertionerror-error-message-must-contain-revert
     */
+}
+
+// Relayer base calls
+async function BackAndForthBaseRelayertest(
+  chain1: ChainDetails,
+  chain2: ChainDetails
+) {
+  console.log("Basic back and forth on relayer");
+  var result;
+  const provider1 = getDefaultProvider(chain1.rpcEndpoint);
+  const signer1 = new Wallet(ETH_PRIVATE_KEY, provider1); // Ganache default private key
+
+  const provider2 = getDefaultProvider(chain2.rpcEndpoint);
+  const signer2 = new Wallet(ETH_PRIVATE_KEY, provider2); // Ganache default private key
+
+  const manager1 = NttManager__factory.connect(
+    <string>chain1.managerAddress,
+    signer1
+  );
+  const manager2 = NttManager__factory.connect(
+    <string>chain2.managerAddress,
+    signer2
+  );
+
+  const token1 = DummyToken__factory.connect(
+    <string>chain1.NTTTokenAddress,
+    signer1
+  );
+  const token2 = DummyTokenMintAndBurn__factory.connect(
+    <string>chain2.NTTTokenAddress,
+    signer2
+  );
+
+  var amount = utils.parseEther("1");
+  result = await token1.mintDummy(
+    "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1",
+    amount
+  );
+  result.wait();
+
+  // Send the crosschain call
+  await token1.approve(chain1.managerAddress, amount);
+  result.wait();
+
+  await delay(5000);
+  console.log("Transfer with relayer from 2 to 4");
+  var balanceUserBeforeSend = await token2.balanceOf(
+    "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
+  );
+  result = await manager1["transfer(uint256,uint16,bytes32,bool,bytes)"](
+    amount,
+    chain2.chainId,
+    <BytesLike>addressToBytes("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"),
+    false,
+    "0x01000100",
+    { value: utils.parseEther("1") }
+  ); // with relayer
+  result.wait();
+  // Wait for the relaying and VAA process to pick this up and transmit it.
+  await delay(10000);
+
+  var balanceUserAfterSend = await token2.balanceOf(
+    "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
+  );
+  if (!balanceUserBeforeSend.add(amount).eq(balanceUserAfterSend)) {
+    console.log("User received a funky balance");
+  }
+
+  ///
+  // Send the crosschain call back
+  ///
+  await token2.approve(chain2.managerAddress, amount);
+  await delay(5000);
+
+  console.log("Transfer with relayer from 4 to 2");
+
+  var balanceUserBeforeSend = await token1.balanceOf(
+    "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
+  );
+  result = await manager2["transfer(uint256,uint16,bytes32,bool,bytes)"](
+    amount,
+    chain1.chainId,
+    <BytesLike>addressToBytes("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"),
+    false,
+    "0x01000100",
+    { value: utils.parseEther("1") }
+  ); // with relayer
+
+  // Wait for the relaying and VAA process to pick this up and transmit it.
+  await delay(10000);
+
+  var balanceUserAfterSend = await token1.balanceOf(
+    "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1"
+  );
+  if (!balanceUserBeforeSend.add(amount).eq(balanceUserAfterSend)) {
+    console.log("User received a funky balance when relayed back");
+  }
+
+  console.log("Finished basic relayer call test");
+}
+
+/*
+Receive funds via collecting and submitting the VAA that we need to the endpoint to recvMessage.
+*/
+async function receive(txResponse, chainSend, chainDest) {
+  const provider = getDefaultProvider(chainDest.rpcEndpoint);
+  const signer = new Wallet(ETH_PRIVATE_KEY, provider); // Ganache default private key
+
+  var sequence = await parseSequenceFromLogEth(
+    txResponse,
+    CONTRACTS.DEVNET.ethereum.core
+  );
+
+  // Turn into bytes32 from standard ETH address I'm guessing
+  var emitterAddress = getEmitterAddressEth(chainSend.transceiverAddress);
+
+  // poll until the guardian(s) witness and sign the vaa
+  var { vaaBytes: signedVAA } = await getSignedVAAWithRetry(
+    ["http://guardian:7071"], // HTTP host for the Guardian
+    <ChainId>chainSend.chainId,
+    emitterAddress,
+    sequence,
+    {
+      transport: NodeHttpTransport(),
+    }
+  );
+
+  // Send the VAA to the transceiver that needs it
+  const transceiver = WormholeTransceiver__factory.connect(
+    <string>chainDest.transceiverAddress,
+    signer
+  );
+  var result = await transceiver.receiveMessage(signedVAA);
+  await result.wait();
+  delay(1000);
 }
 
 function toHexString(byteArray) {
@@ -482,10 +670,7 @@ async function run() {
     await link(infoChain1, infoChain2);
   }
 
-  // TODO - call interactive tests
-  // Maybe have a flag to turn this on or off for a DEBUG env?
   await test(infoChain1, infoChain2);
-  console.log("success!");
 }
 
 // Main function
