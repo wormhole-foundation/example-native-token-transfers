@@ -114,8 +114,16 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
         nttManagerChain2.setInboundLimit(type(uint64).max, chainId1);
 
         // Register peer contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of peers here.
-        nttManagerChain1.setPeer(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))));
-        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
+        nttManagerChain1.setPeer(
+            chainId2,
+            bytes32(uint256(uint160(address(nttManagerChain2)))),
+            DummyToken(nttManagerChain2.token()).decimals()
+        );
+        nttManagerChain2.setPeer(
+            chainId1,
+            bytes32(uint256(uint160(address(nttManagerChain1)))),
+            DummyToken(nttManagerChain1.token()).decimals()
+        );
 
         wormholeTransceiverChain1.setWormholePeer(
             chainId2, bytes32(uint256(uint160((address(wormholeTransceiverChain2)))))

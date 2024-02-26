@@ -21,6 +21,9 @@ interface INttManagerState {
     /// @notice Peer cannot be the zero address.
     error InvalidPeerZeroAddress();
 
+    /// @notice Peer cannot have zero decimals.
+    error InvalidPeerDecimals();
+
     /// @notice The number of thresholds should not be zero.
     error ZeroThreshold();
 
@@ -29,6 +32,12 @@ interface INttManagerState {
     /// @param transceivers The number of transceivers.
     error ThresholdTooHigh(uint256 threshold, uint256 transceivers);
     error RetrievedIncorrectRegisteredTransceivers(uint256 retrieved, uint256 registered);
+
+    /// @dev The peer on another chain.
+    struct NttManagerPeer {
+        bytes32 peerAddress;
+        uint8 tokenDecimals;
+    }
 
     /// @notice Sets the transceiver for the given chain.
     /// @param transceiver The address of the transceiver.
@@ -48,13 +57,14 @@ interface INttManagerState {
 
     /// @notice Returns registered peer contract for a given chain.
     /// @param chainId_ chain ID.
-    function getPeer(uint16 chainId_) external view returns (bytes32);
+    function getPeer(uint16 chainId_) external view returns (NttManagerPeer memory);
 
     /// @notice Sets the corresponding peer.
     /// @dev The nttManager that executes the message sets the source nttManager as the peer.
     /// @param peerChainId The chain ID of the peer.
     /// @param peerContract The address of the peer nttManager contract.
-    function setPeer(uint16 peerChainId, bytes32 peerContract) external;
+    /// @param decimals The number of decimals of the token on the peer chain.
+    function setPeer(uint16 peerChainId, bytes32 peerContract, uint8 decimals) external;
 
     /// @notice Checks if a message has been approved. The message should have at least
     /// the minimum threshold of attestations from distinct endpoints.

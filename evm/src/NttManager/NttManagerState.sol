@@ -121,7 +121,11 @@ abstract contract NttManagerState is
         }
     }
 
-    function _getPeersStorage() internal pure returns (mapping(uint16 => bytes32) storage $) {
+    function _getPeersStorage()
+        internal
+        pure
+        returns (mapping(uint16 => NttManagerPeer) storage $)
+    {
         uint256 slot = uint256(PEERS_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
@@ -157,7 +161,7 @@ abstract contract NttManagerState is
     }
 
     /// @inheritdoc INttManagerState
-    function getPeer(uint16 chainId_) public view returns (bytes32) {
+    function getPeer(uint16 chainId_) external view returns (NttManagerPeer memory) {
         return _getPeersStorage()[chainId_];
     }
 
@@ -251,29 +255,35 @@ abstract contract NttManagerState is
     }
 
     /// @inheritdoc INttManagerState
-    function setPeer(uint16 peerChainId, bytes32 peerContract) public onlyOwner {
+    function setPeer(uint16 peerChainId, bytes32 peerContract, uint8 decimals) public onlyOwner {
         if (peerChainId == 0) {
             revert InvalidPeerChainIdZero();
         }
         if (peerContract == bytes32(0)) {
             revert InvalidPeerZeroAddress();
         }
+        if (decimals == 0) {
+            revert InvalidPeerDecimals();
+        }
 
-        bytes32 oldPeerContract = _getPeersStorage()[peerChainId];
+        NttManagerPeer memory oldPeer = _getPeersStorage()[peerChainId];
 
-        _getPeersStorage()[peerChainId] = peerContract;
+        _getPeersStorage()[peerChainId].peerAddress = peerContract;
+        _getPeersStorage()[peerChainId].tokenDecimals = decimals;
 
-        emit PeerUpdated(peerChainId, oldPeerContract, peerContract);
+        emit PeerUpdated(
+            peerChainId, oldPeer.peerAddress, oldPeer.tokenDecimals, peerContract, decimals
+        );
     }
 
     /// @inheritdoc INttManagerState
     function setOutboundLimit(uint256 limit) external onlyOwner {
-        _setOutboundLimit(limit.trim(tokenDecimals_));
+        _setOutboundLimit(limit.trim(tokenDecimals_, tokenDecimals_));
     }
 
     /// @inheritdoc INttManagerState
     function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
-        _setInboundLimit(limit.trim(tokenDecimals_), chainId_);
+        _setInboundLimit(limit.trim(tokenDecimals_, tokenDecimals_), chainId_);
     }
 
     // =============== Internal ==============================================================
@@ -306,7 +316,7 @@ abstract contract NttManagerState is
 
     /// @dev Verify that the peer address saved for `sourceChainId` matches the `peerAddress`.
     function _verifyPeer(uint16 sourceChainId, bytes32 peerAddress) internal view {
-        if (getPeer(sourceChainId) != peerAddress) {
+        if (_getPeersStorage()[sourceChainId].peerAddress != peerAddress) {
             revert InvalidPeer(sourceChainId, peerAddress);
         }
     }

@@ -138,7 +138,7 @@ contract NttManager is INttManager, NttManagerState {
             revert InvalidTargetChain(nativeTokenTransfer.toChain, chainId);
         }
         TrimmedAmount memory nativeTransferAmount =
-            (nativeTokenTransfer.amount.untrim(tokenDecimals_)).trim(tokenDecimals_);
+            (nativeTokenTransfer.amount.untrim(tokenDecimals_)).trim(tokenDecimals_, tokenDecimals_);
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
@@ -227,6 +227,7 @@ contract NttManager is INttManager, NttManagerState {
     ) internal {
         uint256 numEnabledTransceivers = enabledTransceivers.length;
         mapping(address => TransceiverInfo) storage transceiverInfos = _getTransceiverInfosStorage();
+        bytes32 peerAddress = _getPeersStorage()[recipientChain].peerAddress;
         // call into transceiver contracts to send the message
         for (uint256 i = 0; i < numEnabledTransceivers; i++) {
             address transceiverAddr = enabledTransceivers[i];
@@ -235,7 +236,7 @@ contract NttManager is INttManager, NttManagerState {
                 recipientChain,
                 transceiverInstructions[transceiverInfos[transceiverAddr].index],
                 nttManagerMessage,
-                getPeer(recipientChain)
+                peerAddress
             );
         }
     }
@@ -305,14 +306,15 @@ contract NttManager is INttManager, NttManagerState {
         }
 
         // trim amount after burning to ensure transfer amount matches (amount - fee)
-        TrimmedAmount memory trimmedAmount = _trimTransferAmount(amount);
+        TrimmedAmount memory trimmedAmount = _trimTransferAmount(amount, recipientChain);
+        TrimmedAmount memory internalAmount = trimmedAmount.shift(tokenDecimals_);
 
         // get the sequence for this transfer
         uint64 sequence = _useMessageSequence();
 
         {
             // now check rate limits
-            bool isAmountRateLimited = _isOutboundAmountRateLimited(trimmedAmount);
+            bool isAmountRateLimited = _isOutboundAmountRateLimited(internalAmount);
             if (!shouldQueue && isAmountRateLimited) {
                 revert NotEnoughCapacity(getCurrentOutboundCapacity(), amount);
             }
@@ -341,10 +343,10 @@ contract NttManager is INttManager, NttManagerState {
         }
 
         // otherwise, consume the outbound amount
-        _consumeOutboundAmount(trimmedAmount);
+        _consumeOutboundAmount(internalAmount);
         // When sending a transfer, we refill the inbound rate limit for
         // that chain by the same amount (we call this "backflow")
-        _backfillInboundAmount(trimmedAmount, recipientChain);
+        _backfillInboundAmount(internalAmount, recipientChain);
 
         return _transfer(
             sequence, trimmedAmount, recipientChain, recipient, msg.sender, transceiverInstructions
@@ -448,10 +450,19 @@ contract NttManager is INttManager, NttManagerState {
         }
     }
 
-    function _trimTransferAmount(uint256 amount) internal view returns (TrimmedAmount memory) {
+    function _trimTransferAmount(
+        uint256 amount,
+        uint16 toChain
+    ) internal view returns (TrimmedAmount memory) {
+        uint8 toDecimals = _getPeersStorage()[toChain].tokenDecimals;
+
+        if (toDecimals == 0) {
+            revert InvalidPeerDecimals();
+        }
+
         TrimmedAmount memory trimmedAmount;
         {
-            trimmedAmount = amount.trim(tokenDecimals_);
+            trimmedAmount = amount.trim(tokenDecimals_, toDecimals);
             // don't deposit dust that can not be bridged due to the decimal shift
             uint256 newAmount = trimmedAmount.untrim(tokenDecimals_);
             if (amount != newAmount) {

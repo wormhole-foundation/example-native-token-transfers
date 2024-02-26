@@ -167,7 +167,7 @@ contract TestEndToEndRelayer is
         wormholeTransceiverChain2.setWormholePeer(
             chainId1, bytes32(uint256(uint160(address(wormholeTransceiverChain1))))
         );
-        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
+        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))), 9);
         DummyToken token2 = DummyTokenMintAndBurn(nttManagerChain2.token());
         wormholeTransceiverChain2.setIsWormholeRelayingEnabled(chainId1, true);
         wormholeTransceiverChain2.setIsWormholeEvmChain(chainId1);
@@ -178,7 +178,7 @@ contract TestEndToEndRelayer is
         wormholeTransceiverChain1.setWormholePeer(
             chainId2, bytes32(uint256(uint160((address(wormholeTransceiverChain2)))))
         );
-        nttManagerChain1.setPeer(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))));
+        nttManagerChain1.setPeer(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))), 7);
 
         // Enable general relaying on the chain to transfer for the funds.
         wormholeTransceiverChain1.setIsWormholeRelayingEnabled(chainId2, true);
@@ -265,14 +265,14 @@ contract TestEndToEndRelayer is
         wormholeTransceiverChain2.setWormholePeer(
             chainId1, bytes32(uint256(uint160(address(wormholeTransceiverChain1))))
         );
-        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
+        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))), 9);
         DummyToken token2 = DummyTokenMintAndBurn(nttManagerChain2.token());
         wormholeTransceiverChain2.setIsWormholeRelayingEnabled(chainId1, true);
         wormholeTransceiverChain2.setIsWormholeEvmChain(chainId1);
 
         // Register peer contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of peers here.
         vm.selectFork(sourceFork);
-        nttManagerChain1.setPeer(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))));
+        nttManagerChain1.setPeer(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))), 7);
         wormholeTransceiverChain1.setWormholePeer(
             chainId2, bytes32(uint256(uint160((address(wormholeTransceiverChain2)))))
         );
@@ -495,8 +495,8 @@ contract TestRelayerEndToEndManual is
         nttManagerChain2.setInboundLimit(type(uint64).max, chainId1);
 
         // Register peer contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of peers here.
-        nttManagerChain1.setPeer(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))));
-        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
+        nttManagerChain1.setPeer(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))), 9);
+        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))), 7);
     }
 
     function test_relayerTransceiverAuth() public {
@@ -551,7 +551,7 @@ contract TestRelayerEndToEndManual is
 
         bytes[] memory a;
 
-        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(0x1)))));
+        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(0x1)))), 9);
         vm.startPrank(relayer);
         vm.expectRevert(); // bad nttManager peer
         wormholeTransceiverChain2.receiveWormholeMessages(
@@ -564,7 +564,7 @@ contract TestRelayerEndToEndManual is
         vm.stopPrank();
 
         // Wrong caller - aka not relayer contract
-        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))));
+        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))), 9);
         vm.prank(userD);
         vm.expectRevert(
             abi.encodeWithSelector(IWormholeTransceiverState.CallerNotRelayer.selector, userD)
