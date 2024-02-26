@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_arguments)]
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
 use ntt_messages::{chain_id::ChainId, trimmed_amount::TrimmedAmount};
@@ -110,14 +111,18 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
 
     let accs = ctx.accounts;
     let TransferArgs {
-        amount,
+        mut amount,
         recipient_chain,
         recipient_address,
         should_queue,
     } = args;
 
     // TODO: should we revert if we have dust?
-    let amount = TrimmedAmount::remove_dust(amount, accs.common.mint.decimals);
+    let trimmed_amount = TrimmedAmount::remove_dust(
+        &mut amount,
+        accs.common.mint.decimals,
+        accs.peer.token_decimals,
+    );
 
     token_interface::burn(
         CpiContext::new_with_signer(
@@ -141,6 +146,7 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
         &mut accs.common,
         &mut accs.inbox_rate_limit,
         amount,
+        trimmed_amount,
         recipient_chain,
         recipient_ntt_manager,
         recipient_address,
@@ -189,14 +195,18 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
 
     let accs = ctx.accounts;
     let TransferArgs {
-        amount,
+        mut amount,
         recipient_chain,
         recipient_address,
         should_queue,
     } = args;
 
     // TODO: should we revert if we have dust?
-    let amount = TrimmedAmount::remove_dust(amount, accs.common.mint.decimals);
+    let trimmed_amount = TrimmedAmount::remove_dust(
+        &mut amount,
+        accs.common.mint.decimals,
+        accs.peer.token_decimals,
+    );
 
     token_interface::transfer_checked(
         CpiContext::new_with_signer(
@@ -222,6 +232,7 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
         &mut accs.common,
         &mut accs.inbox_rate_limit,
         amount,
+        trimmed_amount,
         recipient_chain,
         recipient_ntt_manager,
         recipient_address,
@@ -233,6 +244,7 @@ fn insert_into_outbox(
     common: &mut Transfer<'_>,
     inbox_rate_limit: &mut InboxRateLimit,
     amount: u64,
+    trimmed_amount: TrimmedAmount,
     recipient_chain: ChainId,
     recipient_ntt_manager: [u8; 32],
     recipient_address: [u8; 32],
@@ -258,7 +270,7 @@ fn insert_into_outbox(
 
     common.outbox_item.set_inner(OutboxItem {
         sequence,
-        amount: TrimmedAmount::trim(amount, common.mint.decimals),
+        amount: trimmed_amount,
         sender: common.sender.key(),
         recipient_chain,
         recipient_ntt_manager,

@@ -170,12 +170,15 @@ pub struct SetPeerArgs {
     pub chain_id: ChainId,
     pub address: [u8; 32],
     pub limit: u64,
+    /// The token decimals on the peer chain.
+    pub token_decimals: u8,
 }
 
 pub fn set_peer(ctx: Context<SetPeer>, args: SetPeerArgs) -> Result<()> {
     ctx.accounts.peer.set_inner(NttManagerPeer {
         bump: ctx.bumps.peer,
         address: args.address,
+        token_decimals: args.token_decimals,
     });
 
     ctx.accounts.inbox_rate_limit.set_inner(InboxRateLimit {

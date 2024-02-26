@@ -61,8 +61,8 @@ impl TrimmedAmount {
         }
     }
 
-    pub fn trim(amount: u64, from_decimals: u8) -> TrimmedAmount {
-        let to_decimals = TRIMMED_DECIMALS.min(from_decimals);
+    pub fn trim(amount: u64, from_decimals: u8, to_decimals: u8) -> TrimmedAmount {
+        let to_decimals = TRIMMED_DECIMALS.min(from_decimals).min(to_decimals);
         Self {
             amount: Self::scale(amount, from_decimals, to_decimals),
             decimals: to_decimals,
@@ -73,8 +73,14 @@ impl TrimmedAmount {
         Self::scale(self.amount, self.decimals, to_decimals)
     }
 
-    pub fn remove_dust(amount: u64, from_decimals: u8) -> u64 {
-        Self::trim(amount, from_decimals).untrim(from_decimals)
+    /// Removes dust from an amount, returning the the amount with the removed
+    /// dust (expressed in the original decimals) and the trimmed amount.
+    /// The two amounts returned are equivalent, but (potentially) expressed in
+    /// different decimals.
+    pub fn remove_dust(amount: &mut u64, from_decimals: u8, to_decimals: u8) -> TrimmedAmount {
+        let trimmed = Self::trim(*amount, from_decimals, to_decimals);
+        *amount = trimmed.untrim(from_decimals);
+        trimmed
     }
 
     pub fn amount(&self) -> u64 {
@@ -121,18 +127,31 @@ mod test {
     #[test]
     fn test_trim() {
         assert_eq!(
-            TrimmedAmount::trim(100_000_000_000_000_000, 18).amount(),
+            TrimmedAmount::trim(100_000_000_000_000_000, 18, 13).amount(),
             10_000_000
         );
 
         assert_eq!(
-            TrimmedAmount::trim(100_000_000_000_000_000, 7).amount(),
+            TrimmedAmount::trim(100_000_000_000_000_000, 7, 11).amount(),
             100_000_000_000_000_000
         );
 
         assert_eq!(
-            TrimmedAmount::trim(100_555_555_555_555_555, 18).untrim(18),
+            TrimmedAmount::trim(100_555_555_555_555_555, 18, 9).untrim(18),
             100_555_550_000_000_000
+        );
+
+        assert_eq!(
+            TrimmedAmount::trim(100_555_555_555_555_555, 18, 1).untrim(18),
+            100_000_000_000_000_000
+        );
+
+        assert_eq!(
+            TrimmedAmount::trim(158434, 6, 3),
+            TrimmedAmount {
+                amount: 158,
+                decimals: 3
+            }
         );
 
         assert_eq!(
