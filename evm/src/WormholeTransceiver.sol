@@ -41,6 +41,12 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
         bool shouldSkipRelayerSend;
     }
 
+    enum RelayingType {
+        Standard,
+        Special,
+        Manual
+    }
+
     /// =============== STORAGE ===============================================
 
     bytes32 private constant WORMHOLE_CONSUMED_VAAS_SLOT =
@@ -216,14 +222,19 @@ contract WormholeTransceiver is Transceiver, IWormholeTransceiver, IWormholeRece
                 0,
                 GAS_LIMIT
             );
+
+            emit RelayingInfo(uint8(RelayingType.Standard), deliveryPayment);
         } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
             uint64 sequence =
                 wormhole.publishMessage(0, encodedTransceiverPayload, consistencyLevel);
             specialRelayer.requestDelivery{value: deliveryPayment}(
                 getNttManagerToken(), recipientChain, 0, sequence
             );
+
+            emit RelayingInfo(uint8(RelayingType.Special), deliveryPayment);
         } else {
             wormhole.publishMessage(0, encodedTransceiverPayload, consistencyLevel);
+            emit RelayingInfo(uint8(RelayingType.Manual), deliveryPayment);
         }
 
         emit SendTransceiverMessage(recipientChain, transceiverMessage);

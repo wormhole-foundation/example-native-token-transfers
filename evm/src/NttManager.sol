@@ -557,7 +557,7 @@ contract NttManager is
             recipientChain, priceQuotes, instructions, enabledTransceivers, encodedNttManagerPayload
         );
 
-        emit TransferSent(recipient, _nttUntrim(amount), recipientChain, seq);
+        emit TransferSent(recipient, _nttUntrim(amount), msg.value, recipientChain, seq);
 
         // return the sequence number
         return sequence;
