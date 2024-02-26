@@ -22,10 +22,12 @@ abstract contract Transceiver is
     /// contract address and then add the new one.
     address public immutable nttManager;
     address public immutable nttManagerToken;
+    address immutable deployer;
 
     constructor(address _nttManager) {
         nttManager = _nttManager;
         nttManagerToken = INttManager(nttManager).token();
+        deployer = msg.sender;
     }
 
     /// =============== MODIFIERS ===============================================
@@ -40,6 +42,11 @@ abstract contract Transceiver is
     /// =============== ADMIN ===============================================
 
     function _initialize() internal virtual override {
+        // check if the owner is the deployer of this contract
+        if (msg.sender != deployer) {
+            revert UnexpectedDeployer(deployer, msg.sender);
+        }
+
         __ReentrancyGuard_init();
         // owner of the transceiver is set to the owner of the nttManager
         __PausedOwnable_init(msg.sender, getNttManagerOwner());

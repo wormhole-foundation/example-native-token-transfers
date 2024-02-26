@@ -8,6 +8,7 @@ import "../src/NttManager/NttManager.sol";
 import "../src/Transceiver/Transceiver.sol";
 import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
+import "../src/interfaces/ITransceiver.sol";
 import "../src/interfaces/INttManagerEvents.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
 import {Utils} from "./libraries/Utils.sol";
@@ -80,6 +81,15 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
         wormholeTransceiverChain1 = MockWormholeTransceiverContract(
             address(new ERC1967Proxy(address(wormholeTransceiverChain1Implementation), ""))
         );
+
+        // Only the deployer should be able to initialize
+        vm.prank(userA);
+        vm.expectRevert(
+            abi.encodeWithSelector(ITransceiver.UnexpectedDeployer.selector, address(this), userA)
+        );
+        wormholeTransceiverChain1.initialize();
+
+        // Actually initialize properly now
         wormholeTransceiverChain1.initialize();
 
         nttManagerChain1.setTransceiver(address(wormholeTransceiverChain1));
