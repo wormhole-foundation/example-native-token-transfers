@@ -64,7 +64,7 @@ abstract contract Transceiver is
 
     // @define This method checks that the the referecnes to the nttManager and its corresponding function
     // are correct When new immutable variables are added, this function should be updated.
-    function _checkImmutables() internal view override {
+    function _checkImmutables() internal view virtual override {
         assert(this.nttManager() == nttManager);
         assert(this.nttManagerToken() == nttManagerToken);
     }

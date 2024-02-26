@@ -78,6 +78,16 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
         wormhole.publishMessage(0, TransceiverStructs.encodeTransceiverInit(init), consistencyLevel);
     }
 
+    function _checkImmutables() internal view override {
+        assert(this.nttManager() == nttManager);
+        assert(this.nttManagerToken() == nttManagerToken);
+        assert(this.wormhole() == wormhole);
+        assert(this.wormholeRelayer() == wormholeRelayer);
+        assert(this.specialRelayer() == specialRelayer);
+        assert(this.wormholeTransceiver_evmChainId() == wormholeTransceiver_evmChainId);
+        assert(this.consistencyLevel() == consistencyLevel);
+    }
+
     // =============== Storage ===============================================
 
     bytes32 private constant WORMHOLE_CONSUMED_VAAS_SLOT =
