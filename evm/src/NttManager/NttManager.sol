@@ -433,9 +433,9 @@ contract NttManager is INttManager, NttManagerState {
 
     /// @inheritdoc INttManager
     function tokenDecimals() public view override(INttManager, RateLimiter) returns (uint8) {
-        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
-        return abi.decode(queriedDecimals, (uint8));
+        return tokenDecimals_;
     }
+
     // ==================== Internal Helpers ===============================================
 
     function _refundToSender(uint256 refundAmount) internal {
