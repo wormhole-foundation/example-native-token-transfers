@@ -6,13 +6,14 @@ import "../libraries/TrimmedAmount.sol";
 interface INttManagerEvents {
     /// @notice Emitted when a message is sent from the nttManager.
     /// @dev Topic0
-    ///      0x71ec1d4b53baa86365b6523ea136c9fe0f72c36c721e7e28e9efac2c23b39d98.
+    ///      0x9716fe52fe4e02cf924ae28f19f5748ef59877c6496041b986fbad3dae6a8ecf
     /// @param recipient The recipient of the message.
     /// @param amount The amount transferred.
+    /// @param fee The amount of ether sent along with the tx to cover the delivery fee.
     /// @param recipientChain The chain ID of the recipient.
     /// @param msgSequence The unique sequence ID of the message.
     event TransferSent(
-        bytes32 recipient, uint256 amount, uint16 recipientChain, uint64 msgSequence
+        bytes32 recipient, uint256 amount, uint256 fee, uint16 recipientChain, uint64 msgSequence
     );
 
     /// @notice Emitted when the peer contract is updated.
@@ -66,5 +67,5 @@ interface INttManagerEvents {
     /// @dev Topic0
     ///      0x504e6efe18ab9eed10dc6501a417f5b12a2f7f2b1593aed9b89f9bce3cf29a91.
     /// @param digest The digest of the message.
-    event TransferRedeemed(bytes32 digest);
+    event TransferRedeemed(bytes32 indexed digest);
 }

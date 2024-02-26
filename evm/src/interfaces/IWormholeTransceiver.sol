@@ -12,6 +12,7 @@ interface IWormholeTransceiver {
     event SendTransceiverMessage(
         uint16 recipientChain, TransceiverStructs.TransceiverMessage message
     );
+    event RelayingInfo(uint8 relayingType, uint256 deliveryPayment);
     event SetWormholePeer(uint16 chainId, bytes32 peerContract);
     event SetIsWormholeRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
     event SetIsSpecialRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
