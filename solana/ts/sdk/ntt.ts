@@ -648,6 +648,39 @@ export class NTT {
       this.program.provider.connection, new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage])
   }
 
+  async setOutboundLimit(args: {
+    owner: Keypair
+    chain: ChainName
+    limit: BN
+  }) {
+    const ix = await this.program.methods.setOutboundLimit({
+      limit: args.limit
+    })
+      .accounts({
+        owner: args.owner.publicKey,
+        config: this.configAccountAddress(),
+        rateLimit: this.outboxRateLimitAccountAddress(),
+      }).instruction();
+    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.owner]);
+  }
+
+  async setInboundLimit(args: {
+    owner: Keypair
+    chain: ChainName
+    limit: BN
+  }) {
+    const ix = await this.program.methods.setInboundLimit({
+      chainId: { id: toChainId(args.chain) },
+      limit: args.limit
+    })
+      .accounts({
+        owner: args.owner.publicKey,
+        config: this.configAccountAddress(),
+        rateLimit: this.inboxRateLimitAccountAddress(args.chain),
+      }).instruction();
+    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.owner]);
+  }
+
   async createReceiveWormholeMessageInstruction(args: {
     payer: PublicKey
     vaa: SignedVaa
