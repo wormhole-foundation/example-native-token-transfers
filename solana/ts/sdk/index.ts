@@ -534,13 +534,15 @@ export class NTT {
     owner: Keypair
     chain: ChainName
     address: ArrayLike<number>
-    limit: BN
+    limit: BN,
+    tokenDecimals: number
     config?: Config
   }) {
     const ix = await this.program.methods.setPeer({
       chainId: { id: toChainId(args.chain) },
       address: Array.from(args.address),
-      limit: args.limit
+      limit: args.limit,
+      tokenDecimals: args.tokenDecimals
     })
       .accounts({
         payer: args.payer.publicKey,

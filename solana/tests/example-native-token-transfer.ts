@@ -1,7 +1,6 @@
 import * as anchor from '@coral-xyz/anchor'
-import { BN, type Program } from '@coral-xyz/anchor'
+import { BN } from '@coral-xyz/anchor'
 import * as spl from '@solana/spl-token'
-import { type ExampleNativeTokenTransfers } from '../ts/sdk'
 import { PostedMessageData } from '@certusone/wormhole-sdk/lib/cjs/solana/wormhole'
 import { expect } from 'chai'
 import { toChainId } from '@certusone/wormhole-sdk'
@@ -13,13 +12,9 @@ import { type TransceiverMessage, NttManagerMessage, NativeTokenTransfer, Trimme
 export const GUARDIAN_KEY = 'cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0'
 
 describe('example-native-token-transfers', () => {
-  // Configure the client to use the local cluster.
-  //anchor.setProvider(anchor.AnchorProvider.env())
-
   const payerSecretKey = Uint8Array.from(JSON.parse(fs.readFileSync(`${__dirname}/../keys/test.json`, { encoding: "utf-8" })));
   const payer = anchor.web3.Keypair.fromSecretKey(payerSecretKey);
 
-  //const program = anchor.workspace.ExampleNativeTokenTransfers as Program<ExampleNativeTokenTransfers>
   const owner = anchor.web3.Keypair.generate()
   const connection = new anchor.web3.Connection('http://localhost:8899', 'confirmed');
   const ntt = new NTT(connection, {
@@ -84,7 +79,8 @@ describe('example-native-token-transfers', () => {
         owner: payer,
         chain: 'ethereum',
         address: Buffer.from('ntt_manager'.padStart(32, '\0')),
-        limit: new BN(1000000)
+        limit: new BN(1000000),
+        tokenDecimals: 18
       })
 
     });

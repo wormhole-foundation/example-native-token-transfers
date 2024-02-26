@@ -9,6 +9,15 @@ Wormhole’s Native Token Transfers (NTT) is an open, flexible, and composable f
 
  - NttManager: The NttManager contract is responsible for managing the token and the transceivers. It also handles the rate limiting and the message attestation logic. Note that each NTTManager corresponds to a single token. However, a single NTTManager can manager can control multiple transceivers.
 
+### Amount trimming
+
+In the payload, amounts are encoded as unsigned 64 bit integers, and capped at 8 decimals.
+This means that if on the sending chain, the token has more than 8 decimals, then the amount is trimmed.
+The amount that's removed during trimming is referred to as "dust". The contracts make sure to never destroy dust.
+The NTT manager contracts additionally keep track of the token decimals of the other connected chains. When sending to a chain whose token decimals are less than 8, the amount is instead truncated to those decimals, in order to ensure that the recipient contract can handle the amount without destroying dust.
+
+The payload includes the trimmed amount, together with the decimals that trimmed amount is expressed in. This number is the minimum of (8, source token decimals, destination token decimals).
+
 ### NTT Message Lifecycle
 
 ### EVM

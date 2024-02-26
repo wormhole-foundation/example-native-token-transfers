@@ -205,6 +205,7 @@ pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
             chain_id: ChainId { id: OTHER_CHAIN },
             address: OTHER_MANAGER,
             limit: INBOUND_LIMIT,
+            token_decimals: 7,
         },
     )
     .submit_with_signers(&[&test_data.program_owner], ctx)

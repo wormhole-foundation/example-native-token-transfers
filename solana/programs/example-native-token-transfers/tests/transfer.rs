@@ -104,7 +104,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
 
     let sequence: Sequence = ctx.get_account_data_anchor(test_data.ntt.sequence()).await;
 
-    let (accs, args) = init_accs_args(ctx, test_data, outbox_item.pubkey(), 100, false);
+    let (accs, args) = init_accs_args(ctx, test_data, outbox_item.pubkey(), 154, false);
 
     approve_token_authority(
         &test_data.ntt,
@@ -127,8 +127,8 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
         OutboxItem {
             sequence: sequence.sequence,
             amount: TrimmedAmount {
-                amount: 10,
-                decimals: 8
+                amount: 1,
+                decimals: 7
             },
             sender: test_data.user.pubkey(),
             recipient_chain: ChainId { id: 2 },
@@ -187,8 +187,8 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
                 sender: test_data.user.pubkey().to_bytes(),
                 payload: NativeTokenTransfer {
                     amount: TrimmedAmount {
-                        amount: 10,
-                        decimals: 8
+                        amount: 1,
+                        decimals: 7
                     },
                     source_token: test_data.mint.to_bytes(),
                     to: [1u8; 32],
@@ -253,7 +253,7 @@ async fn locking_mode_locks_tokens() {
 
     let outbox_item = Keypair::new();
 
-    let (accs, args) = init_accs_args(&mut ctx, &test_data, outbox_item.pubkey(), 105, false);
+    let (accs, args) = init_accs_args(&mut ctx, &test_data, outbox_item.pubkey(), 1050, false);
 
     let token_account_before: TokenAccount = ctx
         .get_account_data_anchor(test_data.user_token_account)
@@ -289,16 +289,16 @@ async fn locking_mode_locks_tokens() {
 
     let mint_after: Mint = ctx.get_account_data_anchor(test_data.mint).await;
 
-    // NOTE: we transfer 105, but only 100 gets locked (token is 9 decimals, and
-    // gets trimmed to 8)
+    // NOTE: we transfer 1050, but only 1000 gets locked (token is 9 decimals, and
+    // gets trimmed to 7 because of the target chain's decimals)
 
     assert_eq!(
-        token_account_before.amount - 100,
+        token_account_before.amount - 1000,
         token_account_after.amount
     );
 
     assert_eq!(
-        custody_account_before.amount + 100,
+        custody_account_before.amount + 1000,
         custody_account_after.amount
     );
 
