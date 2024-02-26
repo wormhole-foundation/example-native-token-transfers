@@ -335,6 +335,7 @@ abstract contract NttManagerState is
     /// @dev When we add new immutables, this function should be updated
     function _checkImmutables() internal view override {
         assert(this.token() == token);
+        assert(this.tokenDecimals_() == tokenDecimals_);
         assert(this.mode() == mode);
         assert(this.chainId() == chainId);
         assert(this.rateLimitDuration() == rateLimitDuration);
