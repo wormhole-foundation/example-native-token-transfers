@@ -18,11 +18,19 @@ interface INttManagerEvents {
 
     /// @notice Emitted when the peer contract is updated.
     /// @dev Topic0
-    ///      0x51b8437a7e22240c473f4cbdb4ed3a4f4bf5a9e7b3c511d7cfe0197325735700.
+    ///      0x1456404e7f41f35c3daac941bb50bad417a66275c3040061b4287d787719599d.
     /// @param chainId_ The chain ID of the peer contract.
     /// @param oldPeerContract The old peer contract address.
+    /// @param oldPeerDecimals The old peer contract decimals.
     /// @param peerContract The new peer contract address.
-    event PeerUpdated(uint16 indexed chainId_, bytes32 oldPeerContract, bytes32 peerContract);
+    /// @param peerDecimals The new peer contract decimals.
+    event PeerUpdated(
+        uint16 indexed chainId_,
+        bytes32 oldPeerContract,
+        uint8 oldPeerDecimals,
+        bytes32 peerContract,
+        uint8 peerDecimals
+    );
 
     /// @notice Emitted when a message has been attested to.
     /// @dev Topic0

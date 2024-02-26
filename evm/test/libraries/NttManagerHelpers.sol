@@ -16,7 +16,12 @@ library NttManagerHelpersLib {
         NttManager recipientNttManager,
         uint8 decimals
     ) internal {
-        recipientNttManager.setPeer(SENDING_CHAIN_ID, toWormholeFormat(address(nttManager)));
+        (, bytes memory queriedDecimals) =
+            address(nttManager.token()).staticcall(abi.encodeWithSignature("decimals()"));
+        uint8 tokenDecimals = abi.decode(queriedDecimals, (uint8));
+        recipientNttManager.setPeer(
+            SENDING_CHAIN_ID, toWormholeFormat(address(nttManager)), tokenDecimals
+        );
         recipientNttManager.setInboundLimit(inboundLimit.untrim(decimals), SENDING_CHAIN_ID);
     }
 }

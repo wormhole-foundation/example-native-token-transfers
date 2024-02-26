@@ -65,6 +65,7 @@ library TrimmedAmountLib {
         return a.amount < b.amount;
     }
 
+    // TODO: is this needed? let's remove it
     function isZero(TrimmedAmount memory a) internal pure returns (bool) {
         return (a.amount == 0 && a.decimals == 0);
     }
@@ -140,16 +141,38 @@ library TrimmedAmountLib {
         }
     }
 
-    function trim(uint256 amt, uint8 fromDecimals) internal pure returns (TrimmedAmount memory) {
-        uint8 toDecimals = minUint8(TRIMMED_DECIMALS, fromDecimals);
-        uint256 amountScaled = scale(amt, fromDecimals, toDecimals);
+    function shift(
+        TrimmedAmount memory amount,
+        uint8 toDecimals
+    ) internal pure returns (TrimmedAmount memory) {
+        uint8 actualToDecimals = minUint8(TRIMMED_DECIMALS, toDecimals);
+        return TrimmedAmount(
+            uint64(scale(amount.amount, amount.decimals, actualToDecimals)), actualToDecimals
+        );
+    }
+
+    /// @dev trim the amount to target decimals.
+    ///      The actual resulting decimals is the minimum of TRIMMED_DECIMALS,
+    ///      fromDecimals, and toDecimals. This ensures that no dust is
+    ///      destroyed on either side of the transfer.
+    /// @param amt the amount to be trimmed
+    /// @param fromDecimals the original decimals of the amount
+    /// @param toDecimals the target decimals of the amount
+    ///
+    function trim(
+        uint256 amt,
+        uint8 fromDecimals,
+        uint8 toDecimals
+    ) internal pure returns (TrimmedAmount memory) {
+        uint8 actualToDecimals = minUint8(minUint8(TRIMMED_DECIMALS, fromDecimals), toDecimals);
+        uint256 amountScaled = scale(amt, fromDecimals, actualToDecimals);
 
         // NOTE: amt after trimming must fit into uint64 (that's the point of
         // trimming, as Solana only supports uint64 for token amts)
         if (amountScaled > type(uint64).max) {
             revert AmountTooLarge(amt);
         }
-        return TrimmedAmount(uint64(amountScaled), toDecimals);
+        return TrimmedAmount(uint64(amountScaled), actualToDecimals);
     }
 
     function untrim(TrimmedAmount memory amt, uint8 toDecimals) internal pure returns (uint256) {

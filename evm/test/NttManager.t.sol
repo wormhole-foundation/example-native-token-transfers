@@ -200,7 +200,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(nttManagerOther);
         nttManagerOther.removeTransceiver(address(e1));
         bytes32 peer = toWormholeFormat(address(nttManager));
-        nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer);
+        nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9);
 
         bytes memory transceiverMessage;
         (, transceiverMessage) = TransceiverHelpersLib.buildTransceiverMessageWithNttManagerPayload(
@@ -238,7 +238,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         // register nttManager peer
         bytes32 peer = toWormholeFormat(address(nttManager));
-        nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer);
+        nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9);
 
         TransceiverStructs.NttManagerMessage memory nttManagerMessage;
         bytes memory transceiverMessage;
@@ -261,7 +261,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         // register nttManager peer
         bytes32 peer = toWormholeFormat(address(nttManager));
-        nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer);
+        nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9);
 
         TransceiverStructs.NttManagerMessage memory nttManagerMessage;
         bytes memory transceiverMessage;
@@ -289,7 +289,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         nttManagerOther.setThreshold(2);
 
         bytes32 peer = toWormholeFormat(address(nttManager));
-        nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer);
+        nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9);
 
         ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](1);
         transceivers[0] = e1;
@@ -326,6 +326,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         uint8 decimals = token.decimals();
 
+        nttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 9);
         nttManager.setOutboundLimit(TrimmedAmount(type(uint64).max, 8).untrim(decimals));
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
@@ -444,6 +445,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         uint256 maxAmount = 5 * 10 ** decimals;
         token.mintDummy(from, maxAmount);
+        nttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 9);
         nttManager.setOutboundLimit(TrimmedAmount(type(uint64).max, 8).untrim(decimals));
         nttManager.setInboundLimit(
             TrimmedAmount(type(uint64).max, 8).untrim(decimals),
