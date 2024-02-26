@@ -23,7 +23,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     IWormhole public immutable wormhole;
     IWormholeRelayer public immutable wormholeRelayer;
     ISpecialRelayer public immutable specialRelayer;
-    uint256 public immutable wormholeTransceiver_evmChainId;
+    uint256 immutable wormholeTransceiver_evmChainId;
 
     // ==================== Constants ================================================
     uint256 public constant GAS_LIMIT = 500000;
@@ -79,12 +79,10 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     }
 
     function _checkImmutables() internal view override {
-        assert(this.nttManager() == nttManager);
-        assert(this.nttManagerToken() == nttManagerToken);
+        super._checkImmutables();
         assert(this.wormhole() == wormhole);
         assert(this.wormholeRelayer() == wormholeRelayer);
         assert(this.specialRelayer() == specialRelayer);
-        assert(this.wormholeTransceiver_evmChainId() == wormholeTransceiver_evmChainId);
         assert(this.consistencyLevel() == consistencyLevel);
     }
 
