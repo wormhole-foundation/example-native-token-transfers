@@ -138,7 +138,7 @@ contract NttManager is INttManager, NttManagerState {
             revert InvalidTargetChain(nativeTokenTransfer.toChain, chainId);
         }
         TrimmedAmount memory nativeTransferAmount =
-            nativeTokenTransfer.amount.untrim(tokenDecimals()).trim(tokenDecimals());
+            (nativeTokenTransfer.amount.untrim(tokenDecimals_)).trim(tokenDecimals_);
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
@@ -416,7 +416,7 @@ contract NttManager is INttManager, NttManagerState {
     ) internal {
         // calculate proper amount of tokens to unlock/mint to recipient
         // untrim the amount
-        uint256 untrimmedAmount = amount.untrim(tokenDecimals());
+        uint256 untrimmedAmount = amount.untrim(tokenDecimals_);
 
         emit TransferRedeemed(digest);
 
