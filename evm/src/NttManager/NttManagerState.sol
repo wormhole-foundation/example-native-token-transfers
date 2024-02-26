@@ -54,7 +54,7 @@ abstract contract NttManagerState is
         uint64 _rateLimitDuration
     ) RateLimiter(_rateLimitDuration) {
         token = _token;
-        tokenDecimals_ = tokenDecimals();
+        tokenDecimals_ = _initializeTokenDecimals();
         mode = _mode;
         chainId = _chainId;
         evmChainId = block.chainid;
@@ -328,6 +328,11 @@ abstract contract NttManagerState is
     function _useMessageSequence() internal returns (uint64 currentSequence) {
         currentSequence = _getMessageSequenceStorage().num;
         _getMessageSequenceStorage().num++;
+    }
+
+    function _initializeTokenDecimals() internal view returns (uint8) {
+        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
+        return abi.decode(queriedDecimals, (uint8));
     }
 
     /// ============== Invariants =============================================
