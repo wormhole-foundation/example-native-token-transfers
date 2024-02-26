@@ -26,14 +26,16 @@ contract WormholeTransceiver is
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
         address specialRelayerAddr,
-        uint8 _consistencyLevel
+        uint8 _consistencyLevel,
+        uint256 _gasLimit
     )
         WormholeTransceiverState(
             nttManager,
             wormholeCoreBridge,
             wormholeRelayerAddr,
             specialRelayerAddr,
-            _consistencyLevel
+            _consistencyLevel,
+            _gasLimit
         )
     {}
 
@@ -146,7 +148,7 @@ contract WormholeTransceiver is
         }
 
         if (_shouldRelayViaStandardRelaying(targetChain)) {
-            (uint256 cost,) = wormholeRelayer.quoteEVMDeliveryPrice(targetChain, 0, GAS_LIMIT);
+            (uint256 cost,) = wormholeRelayer.quoteEVMDeliveryPrice(targetChain, 0, gasLimit);
             return cost;
         } else if (isSpecialRelayingEnabled(targetChain)) {
             uint256 cost = specialRelayer.quoteDeliveryPrice(getNttManagerToken(), targetChain, 0);
@@ -184,7 +186,7 @@ contract WormholeTransceiver is
                 fromWormholeFormat(getWormholePeer(recipientChain)),
                 encodedTransceiverPayload,
                 0,
-                GAS_LIMIT
+                gasLimit
             );
         } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
             uint64 sequence =

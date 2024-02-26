@@ -10,14 +10,16 @@ contract MockWormholeTransceiverContract is WormholeTransceiver {
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
         address specialRelayerAddr,
-        uint8 _consistencyLevel
+        uint8 _consistencyLevel,
+        uint256 _gasLimit
     )
         WormholeTransceiver(
             nttManager,
             wormholeCoreBridge,
             wormholeRelayerAddr,
             specialRelayerAddr,
-            _consistencyLevel
+            _consistencyLevel,
+            _gasLimit
         )
     {}
 
@@ -34,14 +36,16 @@ contract MockWormholeTransceiverMigrateBasic is WormholeTransceiver {
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
         address specialRelayerAddr,
-        uint8 _consistencyLevel
+        uint8 _consistencyLevel,
+        uint256 _gasLimit
     )
         WormholeTransceiver(
             nttManager,
             wormholeCoreBridge,
             wormholeRelayerAddr,
             specialRelayerAddr,
-            _consistencyLevel
+            _consistencyLevel,
+            _gasLimit
         )
     {}
 
@@ -56,14 +60,16 @@ contract MockWormholeTransceiverImmutableAllow is WormholeTransceiver {
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
         address specialRelayerAddr,
-        uint8 _consistencyLevel
+        uint8 _consistencyLevel,
+        uint256 _gasLimit
     )
         WormholeTransceiver(
             nttManager,
             wormholeCoreBridge,
             wormholeRelayerAddr,
             specialRelayerAddr,
-            _consistencyLevel
+            _consistencyLevel,
+            _gasLimit
         )
     {}
 
@@ -84,14 +90,16 @@ contract MockWormholeTransceiverLayoutChange is WormholeTransceiver {
         address wormholeCoreBridge,
         address wormholeRelayerAddr,
         address specialRelayerAddr,
-        uint8 _consistencyLevel
+        uint8 _consistencyLevel,
+        uint256 _gasLimit
     )
         WormholeTransceiver(
             nttManager,
             wormholeCoreBridge,
             wormholeRelayerAddr,
             specialRelayerAddr,
-            _consistencyLevel
+            _consistencyLevel,
+            _gasLimit
         )
     {}
 

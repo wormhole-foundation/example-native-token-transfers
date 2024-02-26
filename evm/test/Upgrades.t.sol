@@ -41,6 +41,7 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
     WormholeSimulator guardian;
     uint256 initialBlockTimestamp;
     uint8 constant FAST_CONSISTENCY_LEVEL = 200;
+    uint256 constant GAS_LIMIT = 500000;
 
     WormholeTransceiver wormholeTransceiverChain1;
     WormholeTransceiver wormholeTransceiverChain2;
@@ -73,7 +74,8 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
             address(wormhole),
             address(relayer),
             address(0x0),
-            FAST_CONSISTENCY_LEVEL
+            FAST_CONSISTENCY_LEVEL,
+            GAS_LIMIT
         );
         wormholeTransceiverChain1 = MockWormholeTransceiverContract(
             address(new ERC1967Proxy(address(wormholeTransceiverChain1Implementation), ""))
@@ -99,7 +101,8 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
             address(wormhole),
             address(relayer),
             address(0x0),
-            FAST_CONSISTENCY_LEVEL
+            FAST_CONSISTENCY_LEVEL,
+            GAS_LIMIT
         );
         wormholeTransceiverChain2 = MockWormholeTransceiverContract(
             address(new ERC1967Proxy(address(wormholeTransceiverChain2Implementation), ""))
@@ -144,7 +147,8 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
             address(wormhole),
             address(relayer),
             address(0x0),
-            FAST_CONSISTENCY_LEVEL
+            FAST_CONSISTENCY_LEVEL,
+            GAS_LIMIT
         );
         wormholeTransceiverChain1.upgrade(address(wormholeTransceiverChain1Implementation));
 
@@ -176,7 +180,8 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
             address(wormhole),
             address(relayer),
             address(0x0),
-            FAST_CONSISTENCY_LEVEL
+            FAST_CONSISTENCY_LEVEL,
+            GAS_LIMIT
         );
         wormholeTransceiverChain1.upgrade(address(wormholeTransceiverChain1Implementation));
 
@@ -211,7 +216,8 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
             address(wormhole),
             address(relayer),
             address(0x0),
-            FAST_CONSISTENCY_LEVEL
+            FAST_CONSISTENCY_LEVEL,
+            GAS_LIMIT
         );
         wormholeTransceiverChain1.upgrade(address(newImplementation));
 
@@ -244,7 +250,8 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
             address(wormhole),
             address(relayer),
             address(0x0),
-            FAST_CONSISTENCY_LEVEL
+            FAST_CONSISTENCY_LEVEL,
+            GAS_LIMIT
         );
 
         vm.expectRevert("Proper migrate called");
@@ -278,7 +285,8 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
             address(wormhole),
             address(relayer),
             address(0x0),
-            FAST_CONSISTENCY_LEVEL
+            FAST_CONSISTENCY_LEVEL,
+            GAS_LIMIT
         );
 
         vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
@@ -311,7 +319,8 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
             address(wormhole),
             address(relayer),
             address(0x0),
-            FAST_CONSISTENCY_LEVEL
+            FAST_CONSISTENCY_LEVEL,
+            GAS_LIMIT
         );
 
         //vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
@@ -377,7 +386,8 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
             address(wormhole),
             address(relayer),
             address(0x0),
-            FAST_CONSISTENCY_LEVEL
+            FAST_CONSISTENCY_LEVEL,
+            GAS_LIMIT
         );
         wormholeTransceiverChain1.upgrade(address(wormholeTransceiverChain1Implementation));
         basicFunctionality(); // Ensure that the upgrade was proper
