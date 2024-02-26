@@ -23,13 +23,13 @@ import "../interfaces/INTTToken.sol";
 import "../interfaces/ITransceiver.sol";
 
 import "./TransceiverRegistry.sol";
-import "./NttNormalizer.sol";
+import "./../NttTrimmer.sol";
 
 abstract contract NttManagerState is
     INttManagerState,
     INttManagerEvents,
     RateLimiter,
-    NttNormalizer,
+    NttTrimmer,
     TransceiverRegistry,
     PausableOwnable,
     ReentrancyGuardUpgradeable,
@@ -50,7 +50,7 @@ abstract contract NttManagerState is
         INttManager.Mode _mode,
         uint16 _chainId,
         uint64 _rateLimitDuration
-    ) RateLimiter(_rateLimitDuration) NttNormalizer(_token) {
+    ) RateLimiter(_rateLimitDuration) NttTrimmer(_token) {
         token = _token;
         mode = _mode;
         chainId = _chainId;
@@ -265,12 +265,12 @@ abstract contract NttManagerState is
 
     /// @inheritdoc INttManagerState
     function setOutboundLimit(uint256 limit) external onlyOwner {
-        _setOutboundLimit(_nttNormalize(limit));
+        _setOutboundLimit(_nttTrimmer(limit));
     }
 
     /// @inheritdoc INttManagerState
     function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
-        _setInboundLimit(_nttNormalize(limit), chainId_);
+        _setInboundLimit(_nttTrimmer(limit), chainId_);
     }
 
     // =============== Internal ==============================================================

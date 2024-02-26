@@ -307,15 +307,15 @@ contract NttManager is INttManager, NttManagerState {
             }
         }
 
-        // normalize amount after burning to ensure transfer amount matches (amount - fee)
-        NormalizedAmount memory normalizedAmount = _normalizeTransferAmount(amount);
+        // trim amount after burning to ensure transfer amount matches (amount - fee)
+        TrimmedAmount memory trimmedAmount = _trimTransferAmount(amount);
 
         // get the sequence for this transfer
         uint64 sequence = _useMessageSequence();
 
         {
             // now check rate limits
-            bool isAmountRateLimited = _isOutboundAmountRateLimited(normalizedAmount);
+            bool isAmountRateLimited = _isOutboundAmountRateLimited(trimmedAmount);
             if (!shouldQueue && isAmountRateLimited) {
                 revert NotEnoughCapacity(getCurrentOutboundCapacity(), amount);
             }
@@ -328,7 +328,7 @@ contract NttManager is INttManager, NttManagerState {
                 // queue up and return
                 _enqueueOutboundTransfer(
                     sequence,
-                    normalizedAmount,
+                    trimmedAmount,
                     recipientChain,
                     recipient,
                     msg.sender,
@@ -344,24 +344,19 @@ contract NttManager is INttManager, NttManagerState {
         }
 
         // otherwise, consume the outbound amount
-        _consumeOutboundAmount(normalizedAmount);
+        _consumeOutboundAmount(trimmedAmount);
         // When sending a transfer, we refill the inbound rate limit for
         // that chain by the same amount (we call this "backflow")
-        _backfillInboundAmount(normalizedAmount, recipientChain);
+        _backfillInboundAmount(trimmedAmount, recipientChain);
 
         return _transfer(
-            sequence,
-            normalizedAmount,
-            recipientChain,
-            recipient,
-            msg.sender,
-            transceiverInstructions
+            sequence, trimmedAmount, recipientChain, recipient, msg.sender, transceiverInstructions
         );
     }
 
     function _transfer(
         uint64 sequence,
-        NormalizedAmount memory amount,
+        TrimmedAmount memory amount,
         uint16 recipientChain,
         bytes32 recipient,
         address sender,
@@ -407,7 +402,7 @@ contract NttManager is INttManager, NttManagerState {
             recipientChain, priceQuotes, instructions, enabledTransceivers, encodedNttManagerPayload
         );
 
-        emit TransferSent(recipient, _nttDenormalize(amount), recipientChain, seq);
+        emit TransferSent(recipient, _nttUntrim(amount), msg.value, recipientChain, seq);
 
         // return the sequence number
         return sequence;
@@ -447,22 +442,18 @@ contract NttManager is INttManager, NttManagerState {
         }
     }
 
-    function _normalizeTransferAmount(uint256 amount)
-        internal
-        view
-        returns (NormalizedAmount memory)
-    {
-        NormalizedAmount memory normalizedAmount;
+    function _trimTransferAmount(uint256 amount) internal view returns (TrimmedAmount memory) {
+        TrimmedAmount memory trimmedAmount;
         {
-            normalizedAmount = _nttNormalize(amount);
+            trimmedAmount = _nttTrimmer(amount);
             // don't deposit dust that can not be bridged due to the decimal shift
-            uint256 newAmount = _nttDenormalize(normalizedAmount);
+            uint256 newAmount = _nttUntrim(trimmedAmount);
             if (amount != newAmount) {
                 revert TransferAmountHasDust(amount, amount - newAmount);
             }
         }
 
-        return normalizedAmount;
+        return trimmedAmount;
     }
 
     function _getTokenBalanceOf(
