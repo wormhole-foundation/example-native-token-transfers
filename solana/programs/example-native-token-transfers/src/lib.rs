@@ -1,5 +1,16 @@
 use anchor_lang::prelude::*;
 
+// TODO: is there a more elegant way of checking that these 3 features are mutually exclusive?
+
+#[cfg(all(feature = "mainnet", feature = "solana-devnet"))]
+compile_error!("Cannot enable both mainnet and solana-devnet features at the same time");
+
+#[cfg(all(feature = "mainnet", feature = "tilt-devnet"))]
+compile_error!("Cannot enable both mainnet and tilt-devnet features at the same time");
+
+#[cfg(all(feature = "solana-devnet", feature = "tilt-devnet"))]
+compile_error!("Cannot enable both solana-devnet and tilt-devnet features at the same time");
+
 pub mod bitmap;
 pub mod clock;
 pub mod config;
