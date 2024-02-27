@@ -4,7 +4,6 @@ import { BN, translateError, type IdlAccounts, Program } from '@coral-xyz/anchor
 import { associatedAddress } from '@coral-xyz/anchor/dist/cjs/utils/token'
 import { getAssociatedTokenAddressSync } from '@solana/spl-token'
 import {
-  type PublicKeyInitData,
   PublicKey, Keypair,
   type TransactionInstruction,
   Transaction,
@@ -378,10 +377,12 @@ export class NTT {
         wormholeMessage: this.wormholeMessageAccountAddress(args.outboxItem),
         emitter: whAccs.wormholeEmitter,
         transceiver: this.registeredTransceiverAddress(this.program.programId),
-        wormholeBridge: whAccs.wormholeBridge,
-        wormholeFeeCollector: whAccs.wormholeFeeCollector,
-        wormholeSequence: whAccs.wormholeSequence,
-        wormholeProgram: this.wormholeId
+        wormhole: {
+          bridge: whAccs.wormholeBridge,
+          feeCollector: whAccs.wormholeFeeCollector,
+          sequence: whAccs.wormholeSequence,
+          program: this.wormholeId
+        }
       })
       .instruction()
   }
