@@ -1,5 +1,5 @@
 # This file is based on: https://github.com/wormhole-foundation/wormhole/blob/wen/solana-rewrite/solana/Dockerfile.ci
-FROM ubuntu:24.04
+FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -9,8 +9,8 @@ RUN if [ -z "$SOLANA_CLI" ]; then echo 'Environment variable SOLANA_CLI must be 
 ARG ANCHOR_CLI
 RUN if [ -z "$ANCHOR_CLI" ]; then echo 'Environment variable ANCHOR_CLI must be specified. Exiting.'; exit 1; fi
 
-# TODO: Check against max's version
-ARG NODE_VERSION="v18.16.0"
+# Compare with EVM Dockerfile
+ARG NODE_VERSION="v20.11.1"
 
 ENV HOME="/root"
 ENV PATH="${HOME}/.cargo/bin:${PATH}"
@@ -23,17 +23,10 @@ RUN mkdir -p /workdir && \
     build-essential git curl wget jq pkg-config python3-pip \
     libssl-dev libudev-dev
 
-#RUN wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.19_amd64.deb
-#RUN dpkg -i libssl1.1_1.1.1f-1ubuntu2.19_amd64.deb
-
-RUN wget http://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.21_amd64.deb
-RUN dpkg -i libssl1.1_1.1.1f-1ubuntu2.21_amd64.deb
-
 # Install rust.
 # TODO: we can consider removing rustfmt and clippy here. this container does integration tests, not linting
 RUN curl "https://sh.rustup.rs" -sfo rustup.sh && \
-    sh rustup.sh -y && \
-    rustup component add rustfmt clippy
+    sh rustup.sh -y 
 
 # Install node / npm / yarn.
 RUN curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh | bash
@@ -51,18 +44,13 @@ RUN sh -c "$(curl -sSfL https://release.solana.com/${SOLANA_CLI}/install)"
 # Install anchor.
 RUN cargo install --git https://github.com/coral-xyz/anchor --tag ${ANCHOR_CLI} anchor-cli --locked
 
-# TODO can this be done more efficiently? Also, refer to .dockerignore
-COPY . /workdir
+COPY . /ci_tests_solana
 
-WORKDIR /workdir
+COPY package.json package-lock.json ./ci_tests_solana
 
-# the anchor build target (currently) has an underscore
+WORKDIR /ci_tests_solana
+
+# the anchor build target has an underscore
 RUN make _anchor-build
 
-# NTT things
-# Currently this npm ci step is part of the `make anchor-test` target
-RUN npm ci
-
-
 RUN make anchor-test
-
