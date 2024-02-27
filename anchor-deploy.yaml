@@ -1,0 +1,29 @@
+kind: Job
+apiVersion: batch/v1
+metadata:
+  name: anchor-deploy
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: anchor-deploy
+          image: anchor-deploy
+          command:
+            # TODO: Test this
+            # - /bin/sh
+            # - -c
+            # - 'solana program deploy -u http://solana-devnet:8889 -k solana/keys/solana-devnet.json'
+          readinessProbe:
+            # TODO: How should we check that the program has been deployed? In the mono repo, there is a healthcheck
+            # against the solana test validator, but that's not what we want
+            # exec:
+            #   command:
+            #     - test
+            #     - -e
+            #     - "/success"
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+

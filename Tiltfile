@@ -12,6 +12,15 @@ docker_build(
     dockerfile = "Dockerfile",
 )
 
+#docker_build(
+#    ref = "anchor-programs",
+#    context = ".",
+#    only = ["./solana/"],
+#    dockerfile = "./solana/Dockerfile",
+#)
+
+#k8s_yaml_with_ns("anchor-deploy.yaml") 
+
 k8s_yaml_with_ns("ci.yaml") 
 
 k8s_resource(
