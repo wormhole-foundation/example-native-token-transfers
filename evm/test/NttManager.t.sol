@@ -27,6 +27,7 @@ import "./mocks/MockNttManager.sol";
 contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
     MockNttManagerContract nttManager;
     MockNttManagerContract nttManagerOther;
+    MockNttManagerContract nttManagerZeroRateLimiter;
 
     using TrimmedAmountLib for uint256;
     using TrimmedAmountLib for TrimmedAmount;
@@ -69,6 +70,45 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         assertEq(countSetBits(15), 4);
         assertEq(countSetBits(16), 1);
         assertEq(countSetBits(65535), 16);
+    }
+
+    // === Deployments with rate limiter disabled
+
+    function test_disabledRateLimiter() public {
+        DummyToken t = new DummyToken();
+        NttManager implementation =
+            new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, chainId, 0);
+
+        nttManagerZeroRateLimiter =
+            MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
+        nttManagerZeroRateLimiter.initialize();
+
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        uint8 decimals = t.decimals();
+
+        nttManagerZeroRateLimiter.setPeer(chainId, toWormholeFormat(address(0x1)), 9);
+
+        t.mintDummy(address(user_A), 5 * 10 ** decimals);
+
+        vm.startPrank(user_A);
+
+        t.approve(address(nttManagerZeroRateLimiter), 3 * 10 ** decimals);
+
+        uint64 s1 = nttManagerZeroRateLimiter.transfer(
+            1 * 10 ** decimals, chainId, toWormholeFormat(user_B)
+        );
+        uint64 s2 = nttManagerZeroRateLimiter.transfer(
+            1 * 10 ** decimals, chainId, toWormholeFormat(user_B)
+        );
+        uint64 s3 = nttManagerZeroRateLimiter.transfer(
+            1 * 10 ** decimals, chainId, toWormholeFormat(user_B)
+        );
+
+        assertEq(s1, 0);
+        assertEq(s2, 1);
+        assertEq(s3, 2);
     }
 
     // === ownership
