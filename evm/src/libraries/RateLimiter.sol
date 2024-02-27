@@ -143,6 +143,11 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         view
         returns (TrimmedAmount memory capacity)
     {
+        // If the rate limit duration is 0 then the rate limiter is skipped
+        if (rateLimitDuration == 0) {
+            return TrimmedAmount(type(uint64).max, rateLimitParams.currentCapacity.getDecimals());
+        }
+
         // The capacity and rate limit are expressed as trimmed amounts, i.e.
         // 64-bit unsigned integers. The following operations upcast the 64-bit
         // unsigned integers to 256-bit unsigned integers to avoid overflow.
@@ -196,18 +201,21 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     }
 
     function _consumeOutboundAmount(TrimmedAmount memory amount) internal {
+        if (rateLimitDuration == 0) return;
         _consumeRateLimitAmount(
             amount, _getCurrentCapacity(_getOutboundLimitParams()), _getOutboundLimitParamsStorage()
         );
     }
 
     function _backfillOutboundAmount(TrimmedAmount memory amount) internal {
+        if (rateLimitDuration == 0) return;
         _backfillRateLimitAmount(
             amount, _getCurrentCapacity(_getOutboundLimitParams()), _getOutboundLimitParamsStorage()
         );
     }
 
     function _consumeInboundAmount(TrimmedAmount memory amount, uint16 chainId_) internal {
+        if (rateLimitDuration == 0) return;
         _consumeRateLimitAmount(
             amount,
             _getCurrentCapacity(_getInboundLimitParams(chainId_)),
@@ -216,6 +224,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     }
 
     function _backfillInboundAmount(TrimmedAmount memory amount, uint16 chainId_) internal {
+        if (rateLimitDuration == 0) return;
         _backfillRateLimitAmount(
             amount,
             _getCurrentCapacity(_getInboundLimitParams(chainId_)),
@@ -248,14 +257,18 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         view
         returns (bool)
     {
-        return _isAmountRateLimited(_getCurrentCapacity(_getOutboundLimitParams()), amount);
+        return rateLimitDuration != 0
+            ? _isAmountRateLimited(_getCurrentCapacity(_getOutboundLimitParams()), amount)
+            : false;
     }
 
     function _isInboundAmountRateLimited(
         TrimmedAmount memory amount,
         uint16 chainId_
     ) internal view returns (bool) {
-        return _isAmountRateLimited(_getCurrentCapacity(_getInboundLimitParams(chainId_)), amount);
+        return rateLimitDuration != 0
+            ? _isAmountRateLimited(_getCurrentCapacity(_getInboundLimitParams(chainId_)), amount)
+            : false;
     }
 
     function _isAmountRateLimited(
