@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 use wormhole_anchor_sdk::wormhole;
 use wormhole_io::TypePrefixedPayload;
 
+// TODO: should we add emitter in here too?
 #[derive(Accounts)]
 pub struct WormholeAccounts<'info> {
     // wormhole stuff

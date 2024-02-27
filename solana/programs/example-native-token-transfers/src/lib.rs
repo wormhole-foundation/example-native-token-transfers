@@ -119,4 +119,15 @@ pub mod example_native_token_transfers {
     ) -> Result<()> {
         transceivers::wormhole::instructions::release_outbound(ctx, args)
     }
+
+    pub fn broadcast_wormhole_id(ctx: Context<BroadcastId>) -> Result<()> {
+        transceivers::wormhole::instructions::broadcast_id(ctx)
+    }
+
+    pub fn broadcast_wormhole_peer(
+        ctx: Context<BroadcastPeer>,
+        args: BroadcastPeerArgs,
+    ) -> Result<()> {
+        transceivers::wormhole::instructions::broadcast_peer(ctx, args)
+    }
 }
