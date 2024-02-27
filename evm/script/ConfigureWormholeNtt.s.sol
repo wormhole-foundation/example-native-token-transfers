@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.19;
 
 import {Script, console2} from "forge-std/Script.sol";
 import {stdJson} from "forge-std/StdJson.sol";
@@ -101,7 +101,7 @@ contract ConfigureWormholeNtt is Script {
                 );
                 console2.log("Wormhole peer set for chain", targetConfig.chainId);
 
-                // Set EVM chain. 
+                // Set EVM chain.
                 if (targetConfig.isEvmChain) {
                     wormholeTransceiver.setIsWormholeEvmChain(targetConfig.chainId);
                     console2.log("EVM chain set for chain", targetConfig.chainId);
@@ -118,13 +118,13 @@ contract ConfigureWormholeNtt is Script {
             if (targetConfig.chainId == params.wormholeChainId) {
                 continue;
             } else {
-                // Set peer. 
+                // Set peer.
                 nttManager.setPeer(
                     targetConfig.chainId, toUniversalAddress(targetConfig.nttManager), targetConfig.decimals
                 );
                 console2.log("Peer set for chain", targetConfig.chainId);
 
-                // Configure the inbound limit. 
+                // Configure the inbound limit.
                 nttManager.setInboundLimit(targetConfig.inboundLimit, targetConfig.chainId);
                 console2.log("Inbound limit set for chain ", targetConfig.chainId);
             }
