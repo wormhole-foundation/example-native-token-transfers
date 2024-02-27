@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token_interface};
-use ntt_messages::chain_id::ChainId;
+use ntt_messages::{chain_id::ChainId, mode::Mode};
 use wormhole_solana_utils::cpi::bpf_loader_upgradeable::BpfLoaderUpgradeable;
 
 #[cfg(feature = "idl-build")]
@@ -41,7 +41,7 @@ pub struct Initialize<'info> {
 
     #[account(
         constraint =
-            args.mode == crate::config::Mode::Locking
+            args.mode == Mode::Locking
             || mint.mint_authority.unwrap() == token_authority.key()
             @ NTTError::InvalidMintAuthority,
     )]
@@ -95,7 +95,7 @@ pub struct Initialize<'info> {
 pub struct InitializeArgs {
     pub chain_id: u16,
     pub limit: u64,
-    pub mode: crate::config::Mode,
+    pub mode: ntt_messages::mode::Mode,
 }
 
 pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> {

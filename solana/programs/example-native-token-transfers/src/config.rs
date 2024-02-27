@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use anchor_lang::prelude::*;
-use ntt_messages::chain_id::ChainId;
+use ntt_messages::{chain_id::ChainId, mode::Mode};
 
 use crate::bitmap::Bitmap;
 
@@ -60,20 +60,5 @@ impl<'info> Deref for NotPausedConfig<'info> {
 impl<'info> DerefMut for NotPausedConfig<'info> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.config
-    }
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, InitSpace, Clone, PartialEq, Eq, Copy)]
-pub enum Mode {
-    Burning,
-    Locking,
-}
-
-impl std::fmt::Display for Mode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Mode::Burning => write!(f, "Burning"),
-            Mode::Locking => write!(f, "Locking"),
-        }
     }
 }

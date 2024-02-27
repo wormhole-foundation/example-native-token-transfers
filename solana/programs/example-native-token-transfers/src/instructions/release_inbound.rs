@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
+use ntt_messages::mode::Mode;
 
 use crate::{
     config::*,

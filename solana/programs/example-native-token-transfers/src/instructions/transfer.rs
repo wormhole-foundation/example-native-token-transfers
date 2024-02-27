@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
-use ntt_messages::{chain_id::ChainId, trimmed_amount::TrimmedAmount};
+use ntt_messages::{chain_id::ChainId, mode::Mode, trimmed_amount::TrimmedAmount};
 
 use crate::{
     bitmap::Bitmap,
