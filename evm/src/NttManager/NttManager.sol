@@ -405,7 +405,9 @@ contract NttManager is INttManager, NttManagerState {
         TrimmedAmount memory amt = amount;
         uint16 destinationChain = recipientChain;
 
-        emit TransferSent(recipient, amt.untrim(tokenDecimals_), msg.value, destinationChain, seq);
+        emit TransferSent(
+            recipient, amt.untrim(tokenDecimals_), totalPriceQuote, destinationChain, seq
+        );
 
         // return the sequence number
         return sequence;
