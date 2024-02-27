@@ -11,6 +11,7 @@ fs_permissions = [{ access = "read", path = "./test/payloads"}]
 
 [profile.prod]
 via_ir = true
+fs_permissions = [{access = "read", path = "./cfg/"}]
 
 [fmt]
 line_length = 100

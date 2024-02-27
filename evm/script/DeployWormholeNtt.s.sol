@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import {Script, console2} from "forge-std/Script.sol";
 
 import "../src/interfaces/INttManager.sol";
+import "../src/interfaces/IWormholeTransceiver.sol";
 
 import {NttManager} from "../src/NttManager/NttManager.sol";
 import {WormholeTransceiver} from "../src/Transceiver/WormholeTransceiver/WormholeTransceiver.sol";
@@ -23,13 +24,10 @@ contract DeployWormholeNtt is Script {
         uint64 outboundLimit;
     }
 
-    function setUp() public {}
-
     // The minimum gas limit to verify a message on mainnet. If you're worried about saving
     // gas on testnet, pick up the phone and start dialing!
     uint256 constant MIN_WORMHOLE_GAS_LIMIT = 150000;
 
-    /// @notice Deploys the NttManager Proxy contract and initializes the implementation.
     function deployNttManager(DeploymentParams memory params) internal returns (address) {
         // Deploy the Manager Implementation.
         NttManager implementation = new NttManager(
@@ -47,13 +45,12 @@ contract DeployWormholeNtt is Script {
         return address(nttManagerProxy);
     }
 
-    /// @notice Deploys the Wormhole Transceiver Proxy contract and initializes the implementation.
     function deployWormholeTransceiver(
         DeploymentParams memory params,
         address nttManager
     ) public returns (address) {
         // Deploy the Wormhole Transceiver.
-        WormholeTransceiver wormholeTransceiver = new WormholeTransceiver(
+        WormholeTransceiver implementation = new WormholeTransceiver(
             nttManager,
             params.wormholeCoreBridge,
             params.wormholeRelayerAddr,
@@ -62,23 +59,29 @@ contract DeployWormholeNtt is Script {
             params.gasLimit
         );
 
-        ERC1967Proxy transceiver = new ERC1967Proxy(address(wormholeTransceiver), "");
-        WormholeTransceiver(address(transceiver)).initialize();
+        WormholeTransceiver transceiverProxy =
+            WormholeTransceiver(address(new ERC1967Proxy(address(implementation), "")));
 
-        console2.log("Wormhole Transceiver deployed at: ", address(wormholeTransceiver));
+        transceiverProxy.initialize();
 
-        return address(transceiver);
+        console2.log("Wormhole Transceiver deployed at: ", address(transceiverProxy));
+
+        return address(transceiverProxy);
     }
 
-    /// @notice Sets the Wormhole Transceiver address and outbound rate limiter limit on the NttManager.
     function configureNttManger(
         address nttManager,
         address transceiver,
         uint64 outboundLimit
     ) public {
         INttManager(nttManager).setTransceiver(transceiver);
+        console2.log("Transceiver address set on NttManager: ", transceiver);
+
         INttManager(nttManager).setOutboundLimit(outboundLimit);
+        console2.log("Outbound rate limit set on NttManager: ", outboundLimit);
+
         INttManager(nttManager).setThreshold(1);
+        console2.log("Threshold set on NttManager: %d", uint256(1));
     }
 
     function _readEnvVariables() internal view returns (DeploymentParams memory params) {
@@ -120,7 +123,7 @@ contract DeployWormholeNtt is Script {
     }
 
     function run() public {
-        vm.startBroadcast(vm.envUint("k"));
+        vm.startBroadcast();
 
         // Sanity check deployment parameters.
         DeploymentParams memory params = _readEnvVariables();
