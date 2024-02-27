@@ -9,8 +9,9 @@ contract MockNttManagerContract is NttManager {
         address token,
         Mode mode,
         uint16 chainId,
-        uint64 rateLimitDuration
-    ) NttManager(token, mode, chainId, rateLimitDuration) {}
+        uint64 rateLimitDuration,
+        bool skipRateLimiting
+    ) NttManager(token, mode, chainId, rateLimitDuration, skipRateLimiting) {}
 
     /// We create a dummy storage variable here with standard solidity slot assignment.
     /// Then we check that its assigned slot is 0, i.e. that the super contract doesn't
@@ -39,8 +40,9 @@ contract MockNttManagerMigrateBasic is NttManager {
         address token,
         Mode mode,
         uint16 chainId,
-        uint64 rateLimitDuration
-    ) NttManager(token, mode, chainId, rateLimitDuration) {}
+        uint64 rateLimitDuration,
+        bool skipRateLimiting
+    ) NttManager(token, mode, chainId, rateLimitDuration, skipRateLimiting) {}
 
     function _migrate() internal view override {
         _checkThresholdInvariants();
@@ -55,8 +57,9 @@ contract MockNttManagerImmutableCheck is NttManager {
         address token,
         Mode mode,
         uint16 chainId,
-        uint64 rateLimitDuration
-    ) NttManager(token, mode, chainId, rateLimitDuration) {}
+        uint64 rateLimitDuration,
+        bool skipRateLimiting
+    ) NttManager(token, mode, chainId, rateLimitDuration, skipRateLimiting) {}
 }
 
 contract MockNttManagerImmutableRemoveCheck is NttManager {
@@ -65,8 +68,9 @@ contract MockNttManagerImmutableRemoveCheck is NttManager {
         address token,
         Mode mode,
         uint16 chainId,
-        uint64 rateLimitDuration
-    ) NttManager(token, mode, chainId, rateLimitDuration) {}
+        uint64 rateLimitDuration,
+        bool skipRateLimiting
+    ) NttManager(token, mode, chainId, rateLimitDuration, skipRateLimiting) {}
 
     // Turns on the capability to EDIT the immutables
     function _migrate() internal override {
@@ -84,8 +88,9 @@ contract MockNttManagerStorageLayoutChange is NttManager {
         address token,
         Mode mode,
         uint16 chainId,
-        uint64 rateLimitDuration
-    ) NttManager(token, mode, chainId, rateLimitDuration) {}
+        uint64 rateLimitDuration,
+        bool skipRateLimiting
+    ) NttManager(token, mode, chainId, rateLimitDuration, skipRateLimiting) {}
 
     function setData() public {
         a = address(0x1);

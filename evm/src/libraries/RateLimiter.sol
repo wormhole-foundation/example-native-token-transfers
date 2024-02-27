@@ -69,7 +69,14 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         }
     }
 
-    constructor(uint64 _rateLimitDuration) {
+    constructor(uint64 _rateLimitDuration, bool _skipRateLimiting) {
+        if (
+            _rateLimitDuration == 0 && !_skipRateLimiting
+                || _rateLimitDuration != 0 && _skipRateLimiting
+        ) {
+            revert UndefinedRateLimiting();
+        }
+
         rateLimitDuration = _rateLimitDuration;
     }
 
