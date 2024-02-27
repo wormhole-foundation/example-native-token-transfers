@@ -1,4 +1,5 @@
 pub mod chain_id;
+pub mod mode;
 pub mod ntt;
 pub mod ntt_manager;
 pub mod transceiver;

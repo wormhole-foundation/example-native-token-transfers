@@ -3,11 +3,10 @@ use std::path::PathBuf;
 use anchor_lang::prelude::{Error, Id, Pubkey};
 use anchor_spl::token::{Mint, Token};
 use example_native_token_transfers::{
-    config::Mode,
     instructions::{InitializeArgs, SetPeerArgs},
     transceivers::wormhole::SetTransceiverPeerArgs,
 };
-use ntt_messages::chain_id::ChainId;
+use ntt_messages::{chain_id::ChainId, mode::Mode};
 use solana_program::{bpf_loader_upgradeable::UpgradeableLoaderState, rent::Rent};
 use solana_program_runtime::{
     invoke_context::ProcessInstructionWithContext,

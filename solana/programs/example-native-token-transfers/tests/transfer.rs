@@ -6,7 +6,6 @@ use anchor_spl::token::{Mint, TokenAccount};
 use common::setup::{TestData, OTHER_CHAIN};
 use example_native_token_transfers::{
     bitmap::Bitmap,
-    config::Mode,
     error::NTTError,
     instructions::TransferArgs,
     queue::outbox::{OutboxItem, OutboxRateLimit},
@@ -14,7 +13,7 @@ use example_native_token_transfers::{
     transceivers::wormhole::ReleaseOutboundArgs,
 };
 use ntt_messages::{
-    chain_id::ChainId, ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage,
+    chain_id::ChainId, mode::Mode, ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage,
     transceiver::TransceiverMessage, transceivers::wormhole::WormholeTransceiver,
     trimmed_amount::TrimmedAmount,
 };

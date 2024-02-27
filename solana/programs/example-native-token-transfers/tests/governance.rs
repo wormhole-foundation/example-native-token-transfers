@@ -2,7 +2,8 @@
 #![feature(type_changing_struct_update)]
 
 use anchor_lang::{prelude::*, InstructionData};
-use example_native_token_transfers::config::{Config, Mode};
+use example_native_token_transfers::config::Config;
+use ntt_messages::mode::Mode;
 use sdk::accounts::{Governance, Wormhole};
 use solana_program::instruction::{Instruction, InstructionError};
 use solana_program_test::*;

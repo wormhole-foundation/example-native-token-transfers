@@ -4,13 +4,12 @@
 use anchor_lang::prelude::*;
 use common::setup::{TestData, OTHER_CHAIN, OTHER_MANAGER, OTHER_TRANSCEIVER, THIS_CHAIN};
 use example_native_token_transfers::{
-    config::Mode,
     error::NTTError,
     instructions::{RedeemArgs, TransferArgs},
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit},
 };
 use ntt_messages::{
-    chain_id::ChainId, ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage,
+    chain_id::ChainId, mode::Mode, ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage,
     transceiver::TransceiverMessage, transceivers::wormhole::WormholeTransceiver,
     trimmed_amount::TrimmedAmount,
 };
