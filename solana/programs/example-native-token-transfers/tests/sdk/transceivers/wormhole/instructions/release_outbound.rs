@@ -1,11 +1,10 @@
 use anchor_lang::{prelude::*, InstructionData};
 use example_native_token_transfers::{
-    accounts::{NotPausedConfig, WormholeAccounts},
-    transceivers::wormhole::ReleaseOutboundArgs,
+    accounts::NotPausedConfig, transceivers::wormhole::ReleaseOutboundArgs,
 };
-use solana_sdk::{instruction::Instruction, sysvar::SysvarId};
+use solana_sdk::instruction::Instruction;
 
-use crate::sdk::accounts::NTT;
+use crate::sdk::{accounts::NTT, transceivers::wormhole::accounts::wormhole::wormhole_accounts};
 
 pub struct ReleaseOutbound {
     pub payer: Pubkey,
@@ -27,15 +26,7 @@ pub fn release_outbound(
         wormhole_message: ntt.wormhole_message(&release_outbound.outbox_item),
         emitter: ntt.emitter(),
         transceiver: ntt.registered_transceiver(&ntt.program),
-        wormhole: WormholeAccounts {
-            bridge: ntt.wormhole.bridge(),
-            fee_collector: ntt.wormhole.fee_collector(),
-            sequence: ntt.wormhole_sequence(),
-            program: ntt.wormhole.program,
-            system_program: System::id(),
-            clock: Clock::id(),
-            rent: Rent::id(),
-        },
+        wormhole: wormhole_accounts(ntt),
     };
     Instruction {
         program_id: example_native_token_transfers::ID,

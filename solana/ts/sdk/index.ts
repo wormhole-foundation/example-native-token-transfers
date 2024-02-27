@@ -573,7 +573,24 @@ export class NTT {
         config: this.configAccountAddress(),
         peer: this.transceiverPeerAccountAddress(args.chain),
       }).instruction();
-    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner]);
+
+    let wormholeMessage = Keypair.generate()
+    const whAccs = getWormholeDerivedAccounts(this.program.programId, this.wormholeId)
+    const broadcastIx = await this.program.methods.broadcastWormholePeer({ chainId: toChainId(args.chain) })
+      .accounts({
+        payer: args.payer.publicKey,
+        config: this.configAccountAddress(),
+        peer: this.transceiverPeerAccountAddress(args.chain),
+        wormholeMessage: wormholeMessage.publicKey,
+        emitter: this.emitterAccountAddress(),
+        wormhole: {
+          bridge: whAccs.wormholeBridge,
+          feeCollector: whAccs.wormholeFeeCollector,
+          sequence: whAccs.wormholeSequence,
+          program: this.wormholeId
+        }
+      }).instruction();
+    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage]);
   }
 
   async registerTransceiver(args: {
@@ -589,7 +606,25 @@ export class NTT {
         transceiver: args.transceiver,
         registeredTransceiver: this.registeredTransceiverAddress(args.transceiver),
       }).instruction();
-    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner]);
+
+    let wormholeMessage = Keypair.generate()
+    const whAccs = getWormholeDerivedAccounts(this.program.programId, this.wormholeId)
+    const broadcastIx = await this.program.methods.broadcastWormholeId()
+      .accounts({
+        payer: args.payer.publicKey,
+        config: this.configAccountAddress(),
+        mint: await this.mintAccountAddress(),
+        wormholeMessage: wormholeMessage.publicKey,
+        emitter: this.emitterAccountAddress(),
+        wormhole: {
+          bridge: whAccs.wormholeBridge,
+          feeCollector: whAccs.wormholeFeeCollector,
+          sequence: whAccs.wormholeSequence,
+          program: this.wormholeId
+        }
+      }).instruction();
+    return sendAndConfirmTransaction(
+      this.program.provider.connection, new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage]);
   }
 
   async createReceiveWormholeMessageInstruction(args: {
