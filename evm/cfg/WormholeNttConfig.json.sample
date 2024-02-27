@@ -1,0 +1,24 @@
+{
+    "contracts": [
+        {
+            "chainId": 10002,
+            "decimals": 6,
+            "inboundLimit": 18446744073709551614,
+            "isEvmChain": true,
+            "isWormholeRelayingEnabled": true,
+            "isSpecialRelayingEnabled": false,
+            "nttManager": "",
+            "wormholeTransceiver": ""
+        },
+        {
+            "chainId": 16,
+            "decimals": 6,
+            "inboundLimit": 18446744073709551614,
+            "isEvmChain": true,
+            "isWormholeRelayingEnabled": true,
+            "isSpecialRelayingEnabled": false,
+            "nttManager": "",
+            "wormholeTransceiver": ""
+        }
+    ]
+}
