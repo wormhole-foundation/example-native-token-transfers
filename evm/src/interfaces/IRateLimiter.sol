@@ -39,6 +39,10 @@ interface IRateLimiter {
     /// @param newLimit The new limit.
     error CapacityCannotExceedLimit(TrimmedAmount newCurrentCapacity, TrimmedAmount newLimit);
 
+    /// @notice If the rate limiting behaviour isn't explicitly defined in the constructor.
+    /// @dev Selector 0xe543ef05.
+    error UndefinedRateLimiting();
+
     /// @notice Parameters used in determining rate limits and queuing.
     /// @dev
     ///    - limit: current rate limit value.

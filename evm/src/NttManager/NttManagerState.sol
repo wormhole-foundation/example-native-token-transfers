@@ -51,8 +51,9 @@ abstract contract NttManagerState is
         address _token,
         INttManager.Mode _mode,
         uint16 _chainId,
-        uint64 _rateLimitDuration
-    ) RateLimiter(_rateLimitDuration) {
+        uint64 _rateLimitDuration,
+        bool _skipRateLimiting
+    ) RateLimiter(_rateLimitDuration, _skipRateLimiting) {
         token = _token;
         tokenDecimals_ = _initializeTokenDecimals();
         mode = _mode;

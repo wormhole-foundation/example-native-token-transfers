@@ -27,8 +27,9 @@ contract NttManager is INttManager, NttManagerState {
         address _token,
         Mode _mode,
         uint16 _chainId,
-        uint64 _rateLimitDuration
-    ) NttManagerState(_token, _mode, _chainId, _rateLimitDuration) {}
+        uint64 _rateLimitDuration,
+        bool _skipRateLimiting
+    ) NttManagerState(_token, _mode, _chainId, _rateLimitDuration, _skipRateLimiting) {}
 
     // ==================== External Interface ===============================================
 
