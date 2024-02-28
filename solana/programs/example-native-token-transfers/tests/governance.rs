@@ -4,6 +4,7 @@
 use std::sync::atomic::AtomicU64;
 
 use anchor_lang::{prelude::*, InstructionData};
+use common::setup::TestData;
 use example_native_token_transfers::config::Config;
 use ntt_messages::mode::Mode;
 use sdk::accounts::{Governance, Wormhole};
@@ -22,9 +23,12 @@ use wormhole_solana_utils::cpi::bpf_loader_upgradeable;
 
 use crate::{
     common::{query::GetAccountDataAnchor, setup::setup, submit::Submittable},
-    sdk::instructions::{
-        admin::{set_paused, SetPaused},
-        post_vaa::post_vaa,
+    sdk::{
+        accounts::{good_ntt, NTTAccounts},
+        instructions::{
+            admin::{set_paused, SetPaused},
+            post_vaa::post_vaa,
+        },
     },
 };
 
@@ -59,30 +63,32 @@ async fn post_governance_vaa<A: Clone + AnchorSerialize>(
     (post_vaa(wormhole, ctx, vaa.clone()).await, vaa)
 }
 
-#[tokio::test]
-async fn test_governance() {
-    let (mut ctx, test_data) = setup(Mode::Locking).await;
-
+/// Helper function to transfer ownership to the governance program.
+/// Returns the VAA that was used to claim ownership.
+async fn transfer_ownership_to_gov_program(
+    ctx: &mut ProgramTestContext,
+    test_data: &TestData,
+) -> (Vaa<GovernanceMessage>, Instruction) {
     let governance_pda = test_data.governance.governance();
 
     // step 1. transfer ownership to governance
     let ix = example_native_token_transfers::instruction::TransferOwnership;
 
     let accs = example_native_token_transfers::accounts::TransferOwnership {
-        config: test_data.ntt.config(),
+        config: good_ntt.config(),
         owner: test_data.program_owner.pubkey(),
         new_owner: governance_pda,
-        upgrade_lock: test_data.ntt.upgrade_lock(),
-        program_data: test_data.ntt.program_data(),
+        upgrade_lock: good_ntt.upgrade_lock(),
+        program_data: good_ntt.program_data(),
         bpf_loader_upgradeable_program: bpf_loader_upgradeable::id(),
     };
 
     Instruction {
-        program_id: test_data.ntt.program,
+        program_id: good_ntt.program(),
         accounts: accs.to_account_metas(None),
         data: ix.data(),
     }
-    .submit_with_signers(&[&test_data.program_owner], &mut ctx)
+    .submit_with_signers(&[&test_data.program_owner], ctx)
     .await
     .unwrap();
 
@@ -90,42 +96,51 @@ async fn test_governance() {
     let inner_ix_data = example_native_token_transfers::instruction::ClaimOwnership {};
     let inner_ix_accs = example_native_token_transfers::accounts::ClaimOwnership {
         new_owner: OWNER,
-        config: test_data.ntt.config(),
-        upgrade_lock: test_data.ntt.upgrade_lock(),
-        program_data: test_data.ntt.program_data(),
+        config: good_ntt.config(),
+        upgrade_lock: good_ntt.upgrade_lock(),
+        program_data: good_ntt.program_data(),
         bpf_loader_upgradeable_program: bpf_loader_upgradeable::id(),
     };
 
     let inner_ix: Instruction = Instruction {
-        program_id: test_data.ntt.program,
+        program_id: good_ntt.program(),
         accounts: inner_ix_accs.to_account_metas(None),
         data: inner_ix_data.data(),
     };
 
-    wrap_governance(
-        &mut ctx,
+    let vaa = wrap_governance(
+        ctx,
         &test_data.governance,
-        &test_data.ntt.wormhole,
-        inner_ix,
+        &good_ntt.wormhole(),
+        inner_ix.clone(),
         None,
         None,
     )
     .await
     .unwrap();
 
-    // step 3. set paused
+    (vaa, inner_ix)
+}
+
+
+#[tokio::test]
+async fn test_governance() {
+    let (mut ctx, test_data) = setup(Mode::Locking).await;
+
+    transfer_ownership_to_gov_program(&mut ctx, &test_data).await;
+
     wrap_governance(
         &mut ctx,
         &test_data.governance,
-        &test_data.ntt.wormhole,
-        set_paused(&test_data.ntt, SetPaused { owner: OWNER }, true),
+        &good_ntt.wormhole(),
+        set_paused(&good_ntt, SetPaused { owner: OWNER }, true),
         None,
         None,
     )
     .await
     .unwrap();
 
-    let config_account: Config = ctx.get_account_data_anchor(test_data.ntt.config()).await;
+    let config_account: Config = ctx.get_account_data_anchor(good_ntt.config()).await;
     assert!(config_account.paused);
 }
 
@@ -136,8 +151,8 @@ async fn test_governance_bad_emitter() {
     let err = wrap_governance(
         &mut ctx,
         &test_data.governance,
-        &test_data.ntt.wormhole,
-        set_paused(&test_data.ntt, SetPaused { owner: OWNER }, true),
+        &good_ntt.wormhole(),
+        set_paused(&good_ntt, SetPaused { owner: OWNER }, true),
         Some(Address::default()),
         None,
     )
@@ -157,61 +172,12 @@ async fn test_governance_bad_emitter() {
 async fn test_governance_replay() {
     let (mut ctx, test_data) = setup(Mode::Locking).await;
 
-    let governance_pda = test_data.governance.governance();
+    let (vaa, inner_ix) = transfer_ownership_to_gov_program(&mut ctx, &test_data).await;
 
-    // step 1. transfer ownership to governance
-    let ix = example_native_token_transfers::instruction::TransferOwnership;
-
-    let accs = example_native_token_transfers::accounts::TransferOwnership {
-        config: test_data.ntt.config(),
-        owner: test_data.program_owner.pubkey(),
-        new_owner: governance_pda,
-        upgrade_lock: test_data.ntt.upgrade_lock(),
-        program_data: test_data.ntt.program_data(),
-        bpf_loader_upgradeable_program: bpf_loader_upgradeable::id(),
-    };
-
-    Instruction {
-        program_id: test_data.ntt.program,
-        accounts: accs.to_account_metas(None),
-        data: ix.data(),
-    }
-    .submit_with_signers(&[&test_data.program_owner], &mut ctx)
-    .await
-    .unwrap();
-
-    // step 2. claim ownership
-    let inner_ix_data = example_native_token_transfers::instruction::ClaimOwnership {};
-    let inner_ix_accs = example_native_token_transfers::accounts::ClaimOwnership {
-        new_owner: OWNER,
-        config: test_data.ntt.config(),
-        upgrade_lock: test_data.ntt.upgrade_lock(),
-        program_data: test_data.ntt.program_data(),
-        bpf_loader_upgradeable_program: bpf_loader_upgradeable::id(),
-    };
-
-    let inner_ix: Instruction = Instruction {
-        program_id: test_data.ntt.program,
-        accounts: inner_ix_accs.to_account_metas(None),
-        data: inner_ix_data.data(),
-    };
-
-    let vaa = wrap_governance(
-        &mut ctx,
-        &test_data.governance,
-        &test_data.ntt.wormhole,
-        inner_ix.clone(),
-        None,
-        None,
-    )
-    .await
-    .unwrap();
-
-    // step 3. replay
     let err = wrap_governance(
         &mut ctx,
         &test_data.governance,
-        &test_data.ntt.wormhole,
+        &good_ntt.wormhole(),
         inner_ix,
         None,
         Some(vaa),

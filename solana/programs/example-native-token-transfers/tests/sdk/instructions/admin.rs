@@ -68,7 +68,7 @@ pub fn register_transceiver(ntt: &NTT, accounts: RegisterTransceiver) -> Instruc
     };
 
     Instruction {
-        program_id: ntt.program,
+        program_id: ntt.program(),
         accounts: accounts.to_account_metas(None),
         data: data.data(),
     }
