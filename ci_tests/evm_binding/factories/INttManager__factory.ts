@@ -49,6 +49,19 @@ const _abi = [
   },
   {
     type: "function",
+    name: "chainId",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint16",
+        internalType: "uint16",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "completeInboundQueuedTransfer",
     inputs: [
       {
@@ -81,6 +94,46 @@ const _abi = [
   },
   {
     type: "function",
+    name: "executeMsg",
+    inputs: [
+      {
+        name: "sourceChainId",
+        type: "uint16",
+        internalType: "uint16",
+      },
+      {
+        name: "sourceNttManagerAddress",
+        type: "bytes32",
+        internalType: "bytes32",
+      },
+      {
+        name: "message",
+        type: "tuple",
+        internalType: "struct TransceiverStructs.NttManagerMessage",
+        components: [
+          {
+            name: "sequence",
+            type: "uint64",
+            internalType: "uint64",
+          },
+          {
+            name: "sender",
+            type: "bytes32",
+            internalType: "bytes32",
+          },
+          {
+            name: "payload",
+            type: "bytes",
+            internalType: "bytes",
+          },
+        ],
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
     name: "getMode",
     inputs: [],
     outputs: [
@@ -105,8 +158,33 @@ const _abi = [
     outputs: [
       {
         name: "",
-        type: "bytes32",
-        internalType: "bytes32",
+        type: "tuple",
+        internalType: "struct INttManagerState.NttManagerPeer",
+        components: [
+          {
+            name: "peerAddress",
+            type: "bytes32",
+            internalType: "bytes32",
+          },
+          {
+            name: "tokenDecimals",
+            type: "uint8",
+            internalType: "uint8",
+          },
+        ],
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getThreshold",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
     ],
     stateMutability: "view",
@@ -151,6 +229,25 @@ const _abi = [
   },
   {
     type: "function",
+    name: "messageAttestations",
+    inputs: [
+      {
+        name: "digest",
+        type: "bytes32",
+        internalType: "bytes32",
+      },
+    ],
+    outputs: [
+      {
+        name: "count",
+        type: "uint8",
+        internalType: "uint8",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "nextMessageSequence",
     inputs: [],
     outputs: [
@@ -161,6 +258,13 @@ const _abi = [
       },
     ],
     stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "pause",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
     type: "function",
@@ -210,6 +314,19 @@ const _abi = [
   },
   {
     type: "function",
+    name: "removeTransceiver",
+    inputs: [
+      {
+        name: "transceiver",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
     name: "setInboundLimit",
     inputs: [
       {
@@ -253,6 +370,37 @@ const _abi = [
         type: "bytes32",
         internalType: "bytes32",
       },
+      {
+        name: "decimals",
+        type: "uint8",
+        internalType: "uint8",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "setThreshold",
+    inputs: [
+      {
+        name: "threshold",
+        type: "uint8",
+        internalType: "uint8",
+      },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "setTransceiver",
+    inputs: [
+      {
+        name: "transceiver",
+        type: "address",
+        internalType: "address",
+      },
     ],
     outputs: [],
     stateMutability: "nonpayable",
@@ -282,6 +430,59 @@ const _abi = [
       },
     ],
     stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "transceiverAttestedToMessage",
+    inputs: [
+      {
+        name: "digest",
+        type: "bytes32",
+        internalType: "bytes32",
+      },
+      {
+        name: "index",
+        type: "uint8",
+        internalType: "uint8",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "bool",
+        internalType: "bool",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "transfer",
+    inputs: [
+      {
+        name: "amount",
+        type: "uint256",
+        internalType: "uint256",
+      },
+      {
+        name: "recipientChain",
+        type: "uint16",
+        internalType: "uint16",
+      },
+      {
+        name: "recipient",
+        type: "bytes32",
+        internalType: "bytes32",
+      },
+    ],
+    outputs: [
+      {
+        name: "msgId",
+        type: "uint64",
+        internalType: "uint64",
+      },
+    ],
+    stateMutability: "payable",
   },
   {
     type: "function",
@@ -401,6 +602,11 @@ const _abi = [
   },
   {
     type: "error",
+    name: "InvalidPeerDecimals",
+    inputs: [],
+  },
+  {
+    type: "error",
     name: "InvalidPeerZeroAddress",
     inputs: [],
   },
@@ -438,6 +644,17 @@ const _abi = [
   },
   {
     type: "error",
+    name: "RefundFailed",
+    inputs: [
+      {
+        name: "refundAmount",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+  },
+  {
+    type: "error",
     name: "RetrievedIncorrectRegisteredTransceivers",
     inputs: [
       {
@@ -470,6 +687,17 @@ const _abi = [
   },
   {
     type: "error",
+    name: "TransceiverAlreadyAttestedToMessage",
+    inputs: [
+      {
+        name: "nttManagerMessageHash",
+        type: "bytes32",
+        internalType: "bytes32",
+      },
+    ],
+  },
+  {
+    type: "error",
     name: "TransferAmountHasDust",
     inputs: [
       {
@@ -481,6 +709,22 @@ const _abi = [
         name: "dust",
         type: "uint256",
         internalType: "uint256",
+      },
+    ],
+  },
+  {
+    type: "error",
+    name: "UnexpectedDeployer",
+    inputs: [
+      {
+        name: "expectedOwner",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "owner",
+        type: "address",
+        internalType: "address",
       },
     ],
   },

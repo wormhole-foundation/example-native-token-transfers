@@ -62,6 +62,7 @@ export interface TrimmingTestInterface extends utils.Interface {
     "testSubOperatorNonZero()": FunctionFragment;
     "testSubOperatorOverflow()": FunctionFragment;
     "testSubOperatorZero()": FunctionFragment;
+    "testTrimLessThan8()": FunctionFragment;
     "testTrimmingRoundTrip()": FunctionFragment;
   };
 
@@ -86,6 +87,7 @@ export interface TrimmingTestInterface extends utils.Interface {
       | "testSubOperatorNonZero"
       | "testSubOperatorOverflow"
       | "testSubOperatorZero"
+      | "testTrimLessThan8"
       | "testTrimmingRoundTrip"
   ): FunctionFragment;
 
@@ -157,6 +159,10 @@ export interface TrimmingTestInterface extends utils.Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "testSubOperatorZero",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "testTrimLessThan8",
     values?: undefined
   ): string;
   encodeFunctionData(
@@ -232,6 +238,10 @@ export interface TrimmingTestInterface extends utils.Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "testSubOperatorZero",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "testTrimLessThan8",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -619,6 +629,10 @@ export interface TrimmingTest extends BaseContract {
 
     testSubOperatorZero(overrides?: CallOverrides): Promise<[void]>;
 
+    testTrimLessThan8(
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
     testTrimmingRoundTrip(
       overrides?: Overrides & { from?: string }
     ): Promise<ContractTransaction>;
@@ -678,6 +692,10 @@ export interface TrimmingTest extends BaseContract {
 
   testSubOperatorZero(overrides?: CallOverrides): Promise<void>;
 
+  testTrimLessThan8(
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
   testTrimmingRoundTrip(
     overrides?: Overrides & { from?: string }
   ): Promise<ContractTransaction>;
@@ -730,6 +748,8 @@ export interface TrimmingTest extends BaseContract {
     testSubOperatorOverflow(overrides?: CallOverrides): Promise<void>;
 
     testSubOperatorZero(overrides?: CallOverrides): Promise<void>;
+
+    testTrimLessThan8(overrides?: CallOverrides): Promise<void>;
 
     testTrimmingRoundTrip(overrides?: CallOverrides): Promise<void>;
   };
@@ -882,6 +902,10 @@ export interface TrimmingTest extends BaseContract {
 
     testSubOperatorZero(overrides?: CallOverrides): Promise<BigNumber>;
 
+    testTrimLessThan8(
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
     testTrimmingRoundTrip(
       overrides?: Overrides & { from?: string }
     ): Promise<BigNumber>;
@@ -944,6 +968,10 @@ export interface TrimmingTest extends BaseContract {
 
     testSubOperatorZero(
       overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    testTrimLessThan8(
+      overrides?: Overrides & { from?: string }
     ): Promise<PopulatedTransaction>;
 
     testTrimmingRoundTrip(

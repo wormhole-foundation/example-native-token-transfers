@@ -5,38 +5,11 @@
 import { Contract, Signer, utils } from "ethers";
 import type { Provider } from "@ethersproject/providers";
 import type {
-  IWormholeTransceiver,
-  IWormholeTransceiverInterface,
-} from "../IWormholeTransceiver";
+  IWormholeTransceiverState,
+  IWormholeTransceiverStateInterface,
+} from "../IWormholeTransceiverState";
 
 const _abi = [
-  {
-    type: "function",
-    name: "encodeWormholeTransceiverInstruction",
-    inputs: [
-      {
-        name: "instruction",
-        type: "tuple",
-        internalType:
-          "struct IWormholeTransceiver.WormholeTransceiverInstruction",
-        components: [
-          {
-            name: "shouldSkipRelayerSend",
-            type: "bool",
-            internalType: "bool",
-          },
-        ],
-      },
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "bytes",
-        internalType: "bytes",
-      },
-    ],
-    stateMutability: "pure",
-  },
   {
     type: "function",
     name: "getWormholePeer",
@@ -134,46 +107,6 @@ const _abi = [
   },
   {
     type: "function",
-    name: "parseWormholeTransceiverInstruction",
-    inputs: [
-      {
-        name: "encoded",
-        type: "bytes",
-        internalType: "bytes",
-      },
-    ],
-    outputs: [
-      {
-        name: "instruction",
-        type: "tuple",
-        internalType:
-          "struct IWormholeTransceiver.WormholeTransceiverInstruction",
-        components: [
-          {
-            name: "shouldSkipRelayerSend",
-            type: "bool",
-            internalType: "bool",
-          },
-        ],
-      },
-    ],
-    stateMutability: "pure",
-  },
-  {
-    type: "function",
-    name: "receiveMessage",
-    inputs: [
-      {
-        name: "encodedMessage",
-        type: "bytes",
-        internalType: "bytes",
-      },
-    ],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  {
-    type: "function",
     name: "setIsSpecialRelayingEnabled",
     inputs: [
       {
@@ -241,62 +174,6 @@ const _abi = [
   },
   {
     type: "event",
-    name: "ReceivedMessage",
-    inputs: [
-      {
-        name: "digest",
-        type: "bytes32",
-        indexed: false,
-        internalType: "bytes32",
-      },
-      {
-        name: "emitterChainId",
-        type: "uint16",
-        indexed: false,
-        internalType: "uint16",
-      },
-      {
-        name: "emitterAddress",
-        type: "bytes32",
-        indexed: false,
-        internalType: "bytes32",
-      },
-      {
-        name: "sequence",
-        type: "uint64",
-        indexed: false,
-        internalType: "uint64",
-      },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "ReceivedRelayedMessage",
-    inputs: [
-      {
-        name: "digest",
-        type: "bytes32",
-        indexed: false,
-        internalType: "bytes32",
-      },
-      {
-        name: "emitterChainId",
-        type: "uint16",
-        indexed: false,
-        internalType: "uint16",
-      },
-      {
-        name: "emitterAddress",
-        type: "bytes32",
-        indexed: false,
-        internalType: "bytes32",
-      },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "event",
     name: "RelayingInfo",
     inputs: [
       {
@@ -310,47 +187,6 @@ const _abi = [
         type: "uint256",
         indexed: false,
         internalType: "uint256",
-      },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "SendTransceiverMessage",
-    inputs: [
-      {
-        name: "recipientChain",
-        type: "uint16",
-        indexed: false,
-        internalType: "uint16",
-      },
-      {
-        name: "message",
-        type: "tuple",
-        indexed: false,
-        internalType: "struct TransceiverStructs.TransceiverMessage",
-        components: [
-          {
-            name: "sourceNttManagerAddress",
-            type: "bytes32",
-            internalType: "bytes32",
-          },
-          {
-            name: "recipientNttManagerAddress",
-            type: "bytes32",
-            internalType: "bytes32",
-          },
-          {
-            name: "nttManagerPayload",
-            type: "bytes",
-            internalType: "bytes",
-          },
-          {
-            name: "transceiverPayload",
-            type: "bytes",
-            internalType: "bytes",
-          },
-        ],
       },
     ],
     anonymous: false,
@@ -438,17 +274,6 @@ const _abi = [
   },
   {
     type: "error",
-    name: "InvalidRelayingConfig",
-    inputs: [
-      {
-        name: "chainId",
-        type: "uint16",
-        internalType: "uint16",
-      },
-    ],
-  },
-  {
-    type: "error",
     name: "InvalidVaa",
     inputs: [
       {
@@ -462,22 +287,6 @@ const _abi = [
     type: "error",
     name: "InvalidWormholeChainIdZero",
     inputs: [],
-  },
-  {
-    type: "error",
-    name: "InvalidWormholePeer",
-    inputs: [
-      {
-        name: "chainId",
-        type: "uint16",
-        internalType: "uint16",
-      },
-      {
-        name: "peerAddress",
-        type: "bytes32",
-        internalType: "bytes32",
-      },
-    ],
   },
   {
     type: "error",
@@ -502,35 +311,24 @@ const _abi = [
   },
   {
     type: "error",
-    name: "TransferAlreadyCompleted",
-    inputs: [
-      {
-        name: "vaaHash",
-        type: "bytes32",
-        internalType: "bytes32",
-      },
-    ],
-  },
-  {
-    type: "error",
     name: "UnexpectedAdditionalMessages",
     inputs: [],
   },
 ] as const;
 
-export class IWormholeTransceiver__factory {
+export class IWormholeTransceiverState__factory {
   static readonly abi = _abi;
-  static createInterface(): IWormholeTransceiverInterface {
-    return new utils.Interface(_abi) as IWormholeTransceiverInterface;
+  static createInterface(): IWormholeTransceiverStateInterface {
+    return new utils.Interface(_abi) as IWormholeTransceiverStateInterface;
   }
   static connect(
     address: string,
     signerOrProvider: Signer | Provider
-  ): IWormholeTransceiver {
+  ): IWormholeTransceiverState {
     return new Contract(
       address,
       _abi,
       signerOrProvider
-    ) as IWormholeTransceiver;
+    ) as IWormholeTransceiverState;
   }
 }

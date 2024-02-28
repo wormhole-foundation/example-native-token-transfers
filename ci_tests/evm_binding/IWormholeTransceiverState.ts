@@ -26,47 +26,13 @@ import type {
   OnEvent,
 } from "./common";
 
-export declare namespace IWormholeTransceiver {
-  export type WormholeTransceiverInstructionStruct = {
-    shouldSkipRelayerSend: boolean;
-  };
-
-  export type WormholeTransceiverInstructionStructOutput = [boolean] & {
-    shouldSkipRelayerSend: boolean;
-  };
-}
-
-export declare namespace TransceiverStructs {
-  export type TransceiverMessageStruct = {
-    sourceNttManagerAddress: BytesLike;
-    recipientNttManagerAddress: BytesLike;
-    nttManagerPayload: BytesLike;
-    transceiverPayload: BytesLike;
-  };
-
-  export type TransceiverMessageStructOutput = [
-    string,
-    string,
-    string,
-    string
-  ] & {
-    sourceNttManagerAddress: string;
-    recipientNttManagerAddress: string;
-    nttManagerPayload: string;
-    transceiverPayload: string;
-  };
-}
-
-export interface IWormholeTransceiverInterface extends utils.Interface {
+export interface IWormholeTransceiverStateInterface extends utils.Interface {
   functions: {
-    "encodeWormholeTransceiverInstruction((bool))": FunctionFragment;
     "getWormholePeer(uint16)": FunctionFragment;
     "isSpecialRelayingEnabled(uint16)": FunctionFragment;
     "isVAAConsumed(bytes32)": FunctionFragment;
     "isWormholeEvmChain(uint16)": FunctionFragment;
     "isWormholeRelayingEnabled(uint16)": FunctionFragment;
-    "parseWormholeTransceiverInstruction(bytes)": FunctionFragment;
-    "receiveMessage(bytes)": FunctionFragment;
     "setIsSpecialRelayingEnabled(uint16,bool)": FunctionFragment;
     "setIsWormholeEvmChain(uint16)": FunctionFragment;
     "setIsWormholeRelayingEnabled(uint16,bool)": FunctionFragment;
@@ -75,24 +41,17 @@ export interface IWormholeTransceiverInterface extends utils.Interface {
 
   getFunction(
     nameOrSignatureOrTopic:
-      | "encodeWormholeTransceiverInstruction"
       | "getWormholePeer"
       | "isSpecialRelayingEnabled"
       | "isVAAConsumed"
       | "isWormholeEvmChain"
       | "isWormholeRelayingEnabled"
-      | "parseWormholeTransceiverInstruction"
-      | "receiveMessage"
       | "setIsSpecialRelayingEnabled"
       | "setIsWormholeEvmChain"
       | "setIsWormholeRelayingEnabled"
       | "setWormholePeer"
   ): FunctionFragment;
 
-  encodeFunctionData(
-    functionFragment: "encodeWormholeTransceiverInstruction",
-    values: [IWormholeTransceiver.WormholeTransceiverInstructionStruct]
-  ): string;
   encodeFunctionData(
     functionFragment: "getWormholePeer",
     values: [BigNumberish]
@@ -112,14 +71,6 @@ export interface IWormholeTransceiverInterface extends utils.Interface {
   encodeFunctionData(
     functionFragment: "isWormholeRelayingEnabled",
     values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "parseWormholeTransceiverInstruction",
-    values: [BytesLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "receiveMessage",
-    values: [BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "setIsSpecialRelayingEnabled",
@@ -139,10 +90,6 @@ export interface IWormholeTransceiverInterface extends utils.Interface {
   ): string;
 
   decodeFunctionResult(
-    functionFragment: "encodeWormholeTransceiverInstruction",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
     functionFragment: "getWormholePeer",
     data: BytesLike
   ): Result;
@@ -160,14 +107,6 @@ export interface IWormholeTransceiverInterface extends utils.Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "isWormholeRelayingEnabled",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "parseWormholeTransceiverInstruction",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "receiveMessage",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -188,20 +127,14 @@ export interface IWormholeTransceiverInterface extends utils.Interface {
   ): Result;
 
   events: {
-    "ReceivedMessage(bytes32,uint16,bytes32,uint64)": EventFragment;
-    "ReceivedRelayedMessage(bytes32,uint16,bytes32)": EventFragment;
     "RelayingInfo(uint8,uint256)": EventFragment;
-    "SendTransceiverMessage(uint16,(bytes32,bytes32,bytes,bytes))": EventFragment;
     "SetIsSpecialRelayingEnabled(uint16,bool)": EventFragment;
     "SetIsWormholeEvmChain(uint16)": EventFragment;
     "SetIsWormholeRelayingEnabled(uint16,bool)": EventFragment;
     "SetWormholePeer(uint16,bytes32)": EventFragment;
   };
 
-  getEvent(nameOrSignatureOrTopic: "ReceivedMessage"): EventFragment;
-  getEvent(nameOrSignatureOrTopic: "ReceivedRelayedMessage"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "RelayingInfo"): EventFragment;
-  getEvent(nameOrSignatureOrTopic: "SendTransceiverMessage"): EventFragment;
   getEvent(
     nameOrSignatureOrTopic: "SetIsSpecialRelayingEnabled"
   ): EventFragment;
@@ -211,32 +144,6 @@ export interface IWormholeTransceiverInterface extends utils.Interface {
   ): EventFragment;
   getEvent(nameOrSignatureOrTopic: "SetWormholePeer"): EventFragment;
 }
-
-export interface ReceivedMessageEventObject {
-  digest: string;
-  emitterChainId: number;
-  emitterAddress: string;
-  sequence: BigNumber;
-}
-export type ReceivedMessageEvent = TypedEvent<
-  [string, number, string, BigNumber],
-  ReceivedMessageEventObject
->;
-
-export type ReceivedMessageEventFilter = TypedEventFilter<ReceivedMessageEvent>;
-
-export interface ReceivedRelayedMessageEventObject {
-  digest: string;
-  emitterChainId: number;
-  emitterAddress: string;
-}
-export type ReceivedRelayedMessageEvent = TypedEvent<
-  [string, number, string],
-  ReceivedRelayedMessageEventObject
->;
-
-export type ReceivedRelayedMessageEventFilter =
-  TypedEventFilter<ReceivedRelayedMessageEvent>;
 
 export interface RelayingInfoEventObject {
   relayingType: number;
@@ -248,18 +155,6 @@ export type RelayingInfoEvent = TypedEvent<
 >;
 
 export type RelayingInfoEventFilter = TypedEventFilter<RelayingInfoEvent>;
-
-export interface SendTransceiverMessageEventObject {
-  recipientChain: number;
-  message: TransceiverStructs.TransceiverMessageStructOutput;
-}
-export type SendTransceiverMessageEvent = TypedEvent<
-  [number, TransceiverStructs.TransceiverMessageStructOutput],
-  SendTransceiverMessageEventObject
->;
-
-export type SendTransceiverMessageEventFilter =
-  TypedEventFilter<SendTransceiverMessageEvent>;
 
 export interface SetIsSpecialRelayingEnabledEventObject {
   chainId: number;
@@ -307,12 +202,12 @@ export type SetWormholePeerEvent = TypedEvent<
 
 export type SetWormholePeerEventFilter = TypedEventFilter<SetWormholePeerEvent>;
 
-export interface IWormholeTransceiver extends BaseContract {
+export interface IWormholeTransceiverState extends BaseContract {
   connect(signerOrProvider: Signer | Provider | string): this;
   attach(addressOrName: string): this;
   deployed(): Promise<this>;
 
-  interface: IWormholeTransceiverInterface;
+  interface: IWormholeTransceiverStateInterface;
 
   queryFilter<TEvent extends TypedEvent>(
     event: TypedEventFilter<TEvent>,
@@ -334,11 +229,6 @@ export interface IWormholeTransceiver extends BaseContract {
   removeListener: OnEvent<this>;
 
   functions: {
-    encodeWormholeTransceiverInstruction(
-      instruction: IWormholeTransceiver.WormholeTransceiverInstructionStruct,
-      overrides?: CallOverrides
-    ): Promise<[string]>;
-
     getWormholePeer(
       chainId: BigNumberish,
       overrides?: CallOverrides
@@ -364,20 +254,6 @@ export interface IWormholeTransceiver extends BaseContract {
       overrides?: CallOverrides
     ): Promise<[boolean]>;
 
-    parseWormholeTransceiverInstruction(
-      encoded: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<
-      [IWormholeTransceiver.WormholeTransceiverInstructionStructOutput] & {
-        instruction: IWormholeTransceiver.WormholeTransceiverInstructionStructOutput;
-      }
-    >;
-
-    receiveMessage(
-      encodedMessage: BytesLike,
-      overrides?: Overrides & { from?: string }
-    ): Promise<ContractTransaction>;
-
     setIsSpecialRelayingEnabled(
       chainId: BigNumberish,
       isRelayingEnabled: boolean,
@@ -402,11 +278,6 @@ export interface IWormholeTransceiver extends BaseContract {
     ): Promise<ContractTransaction>;
   };
 
-  encodeWormholeTransceiverInstruction(
-    instruction: IWormholeTransceiver.WormholeTransceiverInstructionStruct,
-    overrides?: CallOverrides
-  ): Promise<string>;
-
   getWormholePeer(
     chainId: BigNumberish,
     overrides?: CallOverrides
@@ -428,16 +299,6 @@ export interface IWormholeTransceiver extends BaseContract {
     chainId: BigNumberish,
     overrides?: CallOverrides
   ): Promise<boolean>;
-
-  parseWormholeTransceiverInstruction(
-    encoded: BytesLike,
-    overrides?: CallOverrides
-  ): Promise<IWormholeTransceiver.WormholeTransceiverInstructionStructOutput>;
-
-  receiveMessage(
-    encodedMessage: BytesLike,
-    overrides?: Overrides & { from?: string }
-  ): Promise<ContractTransaction>;
 
   setIsSpecialRelayingEnabled(
     chainId: BigNumberish,
@@ -463,11 +324,6 @@ export interface IWormholeTransceiver extends BaseContract {
   ): Promise<ContractTransaction>;
 
   callStatic: {
-    encodeWormholeTransceiverInstruction(
-      instruction: IWormholeTransceiver.WormholeTransceiverInstructionStruct,
-      overrides?: CallOverrides
-    ): Promise<string>;
-
     getWormholePeer(
       chainId: BigNumberish,
       overrides?: CallOverrides
@@ -489,16 +345,6 @@ export interface IWormholeTransceiver extends BaseContract {
       chainId: BigNumberish,
       overrides?: CallOverrides
     ): Promise<boolean>;
-
-    parseWormholeTransceiverInstruction(
-      encoded: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<IWormholeTransceiver.WormholeTransceiverInstructionStructOutput>;
-
-    receiveMessage(
-      encodedMessage: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<void>;
 
     setIsSpecialRelayingEnabled(
       chainId: BigNumberish,
@@ -525,30 +371,6 @@ export interface IWormholeTransceiver extends BaseContract {
   };
 
   filters: {
-    "ReceivedMessage(bytes32,uint16,bytes32,uint64)"(
-      digest?: null,
-      emitterChainId?: null,
-      emitterAddress?: null,
-      sequence?: null
-    ): ReceivedMessageEventFilter;
-    ReceivedMessage(
-      digest?: null,
-      emitterChainId?: null,
-      emitterAddress?: null,
-      sequence?: null
-    ): ReceivedMessageEventFilter;
-
-    "ReceivedRelayedMessage(bytes32,uint16,bytes32)"(
-      digest?: null,
-      emitterChainId?: null,
-      emitterAddress?: null
-    ): ReceivedRelayedMessageEventFilter;
-    ReceivedRelayedMessage(
-      digest?: null,
-      emitterChainId?: null,
-      emitterAddress?: null
-    ): ReceivedRelayedMessageEventFilter;
-
     "RelayingInfo(uint8,uint256)"(
       relayingType?: null,
       deliveryPayment?: null
@@ -557,15 +379,6 @@ export interface IWormholeTransceiver extends BaseContract {
       relayingType?: null,
       deliveryPayment?: null
     ): RelayingInfoEventFilter;
-
-    "SendTransceiverMessage(uint16,(bytes32,bytes32,bytes,bytes))"(
-      recipientChain?: null,
-      message?: null
-    ): SendTransceiverMessageEventFilter;
-    SendTransceiverMessage(
-      recipientChain?: null,
-      message?: null
-    ): SendTransceiverMessageEventFilter;
 
     "SetIsSpecialRelayingEnabled(uint16,bool)"(
       chainId?: null,
@@ -601,11 +414,6 @@ export interface IWormholeTransceiver extends BaseContract {
   };
 
   estimateGas: {
-    encodeWormholeTransceiverInstruction(
-      instruction: IWormholeTransceiver.WormholeTransceiverInstructionStruct,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
     getWormholePeer(
       chainId: BigNumberish,
       overrides?: CallOverrides
@@ -629,16 +437,6 @@ export interface IWormholeTransceiver extends BaseContract {
     isWormholeRelayingEnabled(
       chainId: BigNumberish,
       overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    parseWormholeTransceiverInstruction(
-      encoded: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    receiveMessage(
-      encodedMessage: BytesLike,
-      overrides?: Overrides & { from?: string }
     ): Promise<BigNumber>;
 
     setIsSpecialRelayingEnabled(
@@ -666,11 +464,6 @@ export interface IWormholeTransceiver extends BaseContract {
   };
 
   populateTransaction: {
-    encodeWormholeTransceiverInstruction(
-      instruction: IWormholeTransceiver.WormholeTransceiverInstructionStruct,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
     getWormholePeer(
       chainId: BigNumberish,
       overrides?: CallOverrides
@@ -694,16 +487,6 @@ export interface IWormholeTransceiver extends BaseContract {
     isWormholeRelayingEnabled(
       chainId: BigNumberish,
       overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    parseWormholeTransceiverInstruction(
-      encoded: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    receiveMessage(
-      encodedMessage: BytesLike,
-      overrides?: Overrides & { from?: string }
     ): Promise<PopulatedTransaction>;
 
     setIsSpecialRelayingEnabled(
