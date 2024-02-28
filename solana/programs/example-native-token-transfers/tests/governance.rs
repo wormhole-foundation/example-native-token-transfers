@@ -122,7 +122,6 @@ async fn transfer_ownership_to_gov_program(
     (vaa, inner_ix)
 }
 
-
 #[tokio::test]
 async fn test_governance() {
     let (mut ctx, test_data) = setup(Mode::Locking).await;

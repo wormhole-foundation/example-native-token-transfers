@@ -215,7 +215,7 @@ pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
     .unwrap();
 
     set_peer(
-        &GoodNTT {},
+        &good_ntt,
         SetPeer {
             payer: ctx.payer.pubkey(),
             owner: test_data.program_owner.pubkey(),
@@ -268,8 +268,11 @@ pub async fn setup_accounts(ctx: &mut ProgramTestContext, program_owner: Keypair
     .await
     .unwrap();
 
-    let bad_user_token_account =
-        get_associated_token_address_with_program_id(&user.pubkey(), &bad_mint.pubkey(), &Token::id());
+    let bad_user_token_account = get_associated_token_address_with_program_id(
+        &user.pubkey(),
+        &bad_mint.pubkey(),
+        &Token::id(),
+    );
 
     spl_associated_token_account::instruction::create_associated_token_account(
         &payer,
@@ -280,7 +283,6 @@ pub async fn setup_accounts(ctx: &mut ProgramTestContext, program_owner: Keypair
     .submit(ctx)
     .await
     .unwrap();
-
 
     spl_token::instruction::mint_to(
         &Token::id(),
