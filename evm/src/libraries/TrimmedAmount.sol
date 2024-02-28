@@ -105,6 +105,31 @@ library TrimmedAmountLib {
         return TrimmedAmount(a.amount + b.amount, a.decimals);
     }
 
+    function saturatingAdd(
+        TrimmedAmount memory a,
+        TrimmedAmount memory b
+    ) internal pure returns (TrimmedAmount memory) {
+        // on initialization
+        if (isZero(a)) {
+            return b;
+        }
+
+        if (isZero(b)) {
+            return a;
+        }
+
+        if (a.decimals != b.decimals) {
+            revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
+        }
+
+        uint256 saturatedSum;
+        unchecked {
+            saturatedSum = uint256(a.amount) + uint256(b.amount);
+            saturatedSum = saturatedSum > type(uint64).max ? type(uint64).max : saturatedSum;
+        }
+        return TrimmedAmount(uint64(saturatedSum), a.decimals);
+    }
+
     function min(
         TrimmedAmount memory a,
         TrimmedAmount memory b
