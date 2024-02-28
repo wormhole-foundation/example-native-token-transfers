@@ -12,14 +12,18 @@ docker_build(
     dockerfile = "Dockerfile",
 )
 
-#docker_build(
-#    ref = "anchor-programs",
-#    context = ".",
-#    only = ["./solana/"],
-#    dockerfile = "./solana/Dockerfile",
-#)
+docker_build(
+    ref = "anchor-deploy",
+    context = "./solana/",
+    dockerfile = "./solana/Dockerfile",
+)
 
-#k8s_yaml_with_ns("anchor-deploy.yaml") 
+k8s_resource(
+    "anchor-deploy",
+    labels = ["anchor-ntt"],
+)
+
+k8s_yaml("anchor-deploy.yaml") 
 
 k8s_yaml_with_ns("ci.yaml") 
 
@@ -28,3 +32,4 @@ k8s_resource(
     labels = ["ntt"],
     resource_deps = ["eth-devnet2", "guardian"],
 )
+
