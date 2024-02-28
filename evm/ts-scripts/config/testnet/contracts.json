@@ -1,0 +1,13 @@
+{
+  "WormholeCoreContracts": [],
+  "WormholeRelayers": [],
+  "SpecializedRelayers": [],
+
+  "NttManagerProxies": [],
+  "NttManagerSetups": [],
+  "NttManagerImplementations": [],
+
+  "NttEndpointProxies": [],
+  "NttEndpointSetups": [],
+  "NttEndpointImplementations": []
+}
