@@ -70,6 +70,7 @@ abstract contract NttManagerState is
         }
         __PausedOwnable_init(msg.sender, msg.sender);
         __ReentrancyGuard_init();
+        _setOutboundLimit(TrimmedAmountLib.max(tokenDecimals_));
     }
 
     function _initialize() internal virtual override {
@@ -271,6 +272,8 @@ abstract contract NttManagerState is
 
         _getPeersStorage()[peerChainId].peerAddress = peerContract;
         _getPeersStorage()[peerChainId].tokenDecimals = decimals;
+
+        _setInboundLimit(TrimmedAmountLib.max(tokenDecimals_), peerChainId);
 
         emit PeerUpdated(
             peerChainId, oldPeer.peerAddress, oldPeer.tokenDecimals, peerContract, decimals

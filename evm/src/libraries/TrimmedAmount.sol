@@ -34,14 +34,6 @@ library TrimmedAmountLib {
     }
 
     function gt(TrimmedAmount memory a, TrimmedAmount memory b) internal pure returns (bool) {
-        // on initialization
-        if (isZero(b) && !isZero(a)) {
-            return true;
-        }
-        if (isZero(a) && !isZero(b)) {
-            return false;
-        }
-
         if (a.decimals != b.decimals) {
             revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
         }
@@ -50,14 +42,6 @@ library TrimmedAmountLib {
     }
 
     function lt(TrimmedAmount memory a, TrimmedAmount memory b) internal pure returns (bool) {
-        // on initialization
-        if (isZero(b) && !isZero(a)) {
-            return false;
-        }
-        if (isZero(a) && !isZero(b)) {
-            return true;
-        }
-
         if (a.decimals != b.decimals) {
             revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
         }
@@ -74,11 +58,6 @@ library TrimmedAmountLib {
         TrimmedAmount memory a,
         TrimmedAmount memory b
     ) internal pure returns (TrimmedAmount memory) {
-        // on initialization
-        if (isZero(b)) {
-            return a;
-        }
-
         if (a.decimals != b.decimals) {
             revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
         }
@@ -90,15 +69,6 @@ library TrimmedAmountLib {
         TrimmedAmount memory a,
         TrimmedAmount memory b
     ) internal pure returns (TrimmedAmount memory) {
-        // on initialization
-        if (isZero(a)) {
-            return b;
-        }
-
-        if (isZero(b)) {
-            return a;
-        }
-
         if (a.decimals != b.decimals) {
             revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
         }
@@ -134,14 +104,6 @@ library TrimmedAmountLib {
         TrimmedAmount memory a,
         TrimmedAmount memory b
     ) public pure returns (TrimmedAmount memory) {
-        // on initialization
-        if (isZero(a) && !isZero(b)) {
-            return a;
-        }
-        if (isZero(b) && !isZero(a)) {
-            return b;
-        }
-
         if (a.decimals != b.decimals) {
             revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
         }
@@ -174,6 +136,11 @@ library TrimmedAmountLib {
         return TrimmedAmount(
             uint64(scale(amount.amount, amount.decimals, actualToDecimals)), actualToDecimals
         );
+    }
+
+    function max(uint8 decimals) internal pure returns (TrimmedAmount memory) {
+        uint8 actualDecimals = minUint8(TRIMMED_DECIMALS, decimals);
+        return TrimmedAmount(type(uint64).max, actualDecimals);
     }
 
     /// @dev trim the amount to target decimals.
