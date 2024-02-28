@@ -188,14 +188,20 @@ contract WormholeTransceiver is
                 0,
                 gasLimit
             );
+
+            emit RelayingInfo(uint8(RelayingType.Standard), deliveryPayment);
         } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
             uint64 sequence =
                 wormhole.publishMessage(0, encodedTransceiverPayload, consistencyLevel);
             specialRelayer.requestDelivery{value: deliveryPayment}(
                 getNttManagerToken(), recipientChain, 0, sequence
             );
+
+            emit RelayingInfo(uint8(RelayingType.Special), deliveryPayment);
         } else {
             wormhole.publishMessage(0, encodedTransceiverPayload, consistencyLevel);
+
+            emit RelayingInfo(uint8(RelayingType.Manual), deliveryPayment);
         }
 
         emit SendTransceiverMessage(recipientChain, transceiverMessage);
