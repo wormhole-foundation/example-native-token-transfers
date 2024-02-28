@@ -19,11 +19,6 @@ RUN --mount=type=cache,target=/opt/solana/deps/target,id=build_anchor_ntt_target
     --mount=type=cache,target=.anchor,id=anchor_cache \
     anchor build --arch sbf
 
-# DEBUG
-# RUN ls /workdir
-# RUN pwd
-# RUN ls
-
 RUN cp ./target/sbf-solana-solana/release/example_native_token_transfers.so /opt/solana/deps/example_native_token_transfers.so
 RUN cp ./target/sbf-solana-solana/release/wormhole_governance.so /opt/solana/deps/wormhole_governance.so
 
