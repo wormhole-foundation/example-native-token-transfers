@@ -16,7 +16,6 @@ spec:
             - deploy 
             - /opt/solana/deps/example_native_token_transfers.so'
             - -u 
-            - http://solana-devnet:8889 
+            - http://solana-devnet:8899 
             - -k 
             - /opt/solana/deps/solana-devnet.json 
-
