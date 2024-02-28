@@ -9,7 +9,6 @@ import type {
   CallOverrides,
   ContractTransaction,
   Overrides,
-  PayableOverrides,
   PopulatedTransaction,
   Signer,
   utils,
@@ -25,7 +24,7 @@ import type {
   TypedEvent,
   TypedListener,
   OnEvent,
-} from "../common";
+} from "./common";
 
 export type TrimmedAmountStruct = {
   amount: BigNumberish;
@@ -36,30 +35,6 @@ export type TrimmedAmountStructOutput = [BigNumber, number] & {
   amount: BigNumber;
   decimals: number;
 };
-
-export declare namespace TransceiverStructs {
-  export type NttManagerMessageStruct = {
-    sequence: BigNumberish;
-    sender: BytesLike;
-    payload: BytesLike;
-  };
-
-  export type NttManagerMessageStructOutput = [BigNumber, string, string] & {
-    sequence: BigNumber;
-    sender: string;
-    payload: string;
-  };
-
-  export type TransceiverInstructionStruct = {
-    index: BigNumberish;
-    payload: BytesLike;
-  };
-
-  export type TransceiverInstructionStructOutput = [number, string] & {
-    index: number;
-    payload: string;
-  };
-}
 
 export declare namespace IRateLimiter {
   export type InboundQueuedTransferStruct = {
@@ -116,13 +91,9 @@ export declare namespace INttManagerState {
   };
 }
 
-export interface MockNttManagerImmutableCheckInterface extends utils.Interface {
+export interface NttManagerStateInterface extends utils.Interface {
   functions: {
-    "attestationReceived(uint16,bytes32,(uint64,bytes32,bytes))": FunctionFragment;
     "chainId()": FunctionFragment;
-    "completeInboundQueuedTransfer(bytes32)": FunctionFragment;
-    "completeOutboundQueuedTransfer(uint64)": FunctionFragment;
-    "executeMsg(uint16,bytes32,(uint64,bytes32,bytes))": FunctionFragment;
     "getCurrentInboundCapacity(uint16)": FunctionFragment;
     "getCurrentOutboundCapacity()": FunctionFragment;
     "getInboundQueuedTransfer(bytes32)": FunctionFragment;
@@ -143,7 +114,6 @@ export interface MockNttManagerImmutableCheckInterface extends utils.Interface {
     "owner()": FunctionFragment;
     "pause()": FunctionFragment;
     "pauser()": FunctionFragment;
-    "quoteDeliveryPrice(uint16,(uint8,bytes)[],address[])": FunctionFragment;
     "rateLimitDuration()": FunctionFragment;
     "removeTransceiver(address)": FunctionFragment;
     "setInboundLimit(uint256,uint16)": FunctionFragment;
@@ -155,8 +125,6 @@ export interface MockNttManagerImmutableCheckInterface extends utils.Interface {
     "tokenDecimals()": FunctionFragment;
     "tokenDecimals_()": FunctionFragment;
     "transceiverAttestedToMessage(bytes32,uint8)": FunctionFragment;
-    "transfer(uint256,uint16,bytes32)": FunctionFragment;
-    "transfer(uint256,uint16,bytes32,bool,bytes)": FunctionFragment;
     "transferOwnership(address)": FunctionFragment;
     "transferPauserCapability(address)": FunctionFragment;
     "upgrade(address)": FunctionFragment;
@@ -164,11 +132,7 @@ export interface MockNttManagerImmutableCheckInterface extends utils.Interface {
 
   getFunction(
     nameOrSignatureOrTopic:
-      | "attestationReceived"
       | "chainId"
-      | "completeInboundQueuedTransfer"
-      | "completeOutboundQueuedTransfer"
-      | "executeMsg"
       | "getCurrentInboundCapacity"
       | "getCurrentOutboundCapacity"
       | "getInboundQueuedTransfer"
@@ -189,7 +153,6 @@ export interface MockNttManagerImmutableCheckInterface extends utils.Interface {
       | "owner"
       | "pause"
       | "pauser"
-      | "quoteDeliveryPrice"
       | "rateLimitDuration"
       | "removeTransceiver"
       | "setInboundLimit"
@@ -201,38 +164,12 @@ export interface MockNttManagerImmutableCheckInterface extends utils.Interface {
       | "tokenDecimals"
       | "tokenDecimals_"
       | "transceiverAttestedToMessage"
-      | "transfer(uint256,uint16,bytes32)"
-      | "transfer(uint256,uint16,bytes32,bool,bytes)"
       | "transferOwnership"
       | "transferPauserCapability"
       | "upgrade"
   ): FunctionFragment;
 
-  encodeFunctionData(
-    functionFragment: "attestationReceived",
-    values: [
-      BigNumberish,
-      BytesLike,
-      TransceiverStructs.NttManagerMessageStruct
-    ]
-  ): string;
   encodeFunctionData(functionFragment: "chainId", values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: "completeInboundQueuedTransfer",
-    values: [BytesLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "completeOutboundQueuedTransfer",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "executeMsg",
-    values: [
-      BigNumberish,
-      BytesLike,
-      TransceiverStructs.NttManagerMessageStruct
-    ]
-  ): string;
   encodeFunctionData(
     functionFragment: "getCurrentInboundCapacity",
     values: [BigNumberish]
@@ -293,14 +230,6 @@ export interface MockNttManagerImmutableCheckInterface extends utils.Interface {
   encodeFunctionData(functionFragment: "pause", values?: undefined): string;
   encodeFunctionData(functionFragment: "pauser", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "quoteDeliveryPrice",
-    values: [
-      BigNumberish,
-      TransceiverStructs.TransceiverInstructionStruct[],
-      string[]
-    ]
-  ): string;
-  encodeFunctionData(
     functionFragment: "rateLimitDuration",
     values?: undefined
   ): string;
@@ -342,14 +271,6 @@ export interface MockNttManagerImmutableCheckInterface extends utils.Interface {
     values: [BytesLike, BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: "transfer(uint256,uint16,bytes32)",
-    values: [BigNumberish, BigNumberish, BytesLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "transfer(uint256,uint16,bytes32,bool,bytes)",
-    values: [BigNumberish, BigNumberish, BytesLike, boolean, BytesLike]
-  ): string;
-  encodeFunctionData(
     functionFragment: "transferOwnership",
     values: [string]
   ): string;
@@ -359,20 +280,7 @@ export interface MockNttManagerImmutableCheckInterface extends utils.Interface {
   ): string;
   encodeFunctionData(functionFragment: "upgrade", values: [string]): string;
 
-  decodeFunctionResult(
-    functionFragment: "attestationReceived",
-    data: BytesLike
-  ): Result;
   decodeFunctionResult(functionFragment: "chainId", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "completeInboundQueuedTransfer",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "completeOutboundQueuedTransfer",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: "executeMsg", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "getCurrentInboundCapacity",
     data: BytesLike
@@ -427,10 +335,6 @@ export interface MockNttManagerImmutableCheckInterface extends utils.Interface {
   decodeFunctionResult(functionFragment: "pause", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "pauser", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "quoteDeliveryPrice",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
     functionFragment: "rateLimitDuration",
     data: BytesLike
   ): Result;
@@ -466,14 +370,6 @@ export interface MockNttManagerImmutableCheckInterface extends utils.Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "transceiverAttestedToMessage",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "transfer(uint256,uint16,bytes32)",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "transfer(uint256,uint16,bytes32,bool,bytes)",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -773,12 +669,12 @@ export type UpgradedEvent = TypedEvent<[string], UpgradedEventObject>;
 
 export type UpgradedEventFilter = TypedEventFilter<UpgradedEvent>;
 
-export interface MockNttManagerImmutableCheck extends BaseContract {
+export interface NttManagerState extends BaseContract {
   connect(signerOrProvider: Signer | Provider | string): this;
   attach(addressOrName: string): this;
   deployed(): Promise<this>;
 
-  interface: MockNttManagerImmutableCheckInterface;
+  interface: NttManagerStateInterface;
 
   queryFilter<TEvent extends TypedEvent>(
     event: TypedEventFilter<TEvent>,
@@ -800,31 +696,7 @@ export interface MockNttManagerImmutableCheck extends BaseContract {
   removeListener: OnEvent<this>;
 
   functions: {
-    attestationReceived(
-      sourceChainId: BigNumberish,
-      sourceNttManagerAddress: BytesLike,
-      payload: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: Overrides & { from?: string }
-    ): Promise<ContractTransaction>;
-
     chainId(overrides?: CallOverrides): Promise<[number]>;
-
-    completeInboundQueuedTransfer(
-      digest: BytesLike,
-      overrides?: Overrides & { from?: string }
-    ): Promise<ContractTransaction>;
-
-    completeOutboundQueuedTransfer(
-      messageSequence: BigNumberish,
-      overrides?: PayableOverrides & { from?: string }
-    ): Promise<ContractTransaction>;
-
-    executeMsg(
-      sourceChainId: BigNumberish,
-      sourceNttManagerAddress: BytesLike,
-      message: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: Overrides & { from?: string }
-    ): Promise<ContractTransaction>;
 
     getCurrentInboundCapacity(
       chainId_: BigNumberish,
@@ -895,13 +767,6 @@ export interface MockNttManagerImmutableCheck extends BaseContract {
 
     pauser(overrides?: CallOverrides): Promise<[string]>;
 
-    quoteDeliveryPrice(
-      recipientChain: BigNumberish,
-      transceiverInstructions: TransceiverStructs.TransceiverInstructionStruct[],
-      enabledTransceivers: string[],
-      overrides?: CallOverrides
-    ): Promise<[BigNumber[], BigNumber]>;
-
     rateLimitDuration(overrides?: CallOverrides): Promise<[BigNumber]>;
 
     removeTransceiver(
@@ -949,22 +814,6 @@ export interface MockNttManagerImmutableCheck extends BaseContract {
       overrides?: CallOverrides
     ): Promise<[boolean]>;
 
-    "transfer(uint256,uint16,bytes32)"(
-      amount: BigNumberish,
-      recipientChain: BigNumberish,
-      recipient: BytesLike,
-      overrides?: PayableOverrides & { from?: string }
-    ): Promise<ContractTransaction>;
-
-    "transfer(uint256,uint16,bytes32,bool,bytes)"(
-      amount: BigNumberish,
-      recipientChain: BigNumberish,
-      recipient: BytesLike,
-      shouldQueue: boolean,
-      transceiverInstructions: BytesLike,
-      overrides?: PayableOverrides & { from?: string }
-    ): Promise<ContractTransaction>;
-
     transferOwnership(
       newOwner: string,
       overrides?: Overrides & { from?: string }
@@ -981,31 +830,7 @@ export interface MockNttManagerImmutableCheck extends BaseContract {
     ): Promise<ContractTransaction>;
   };
 
-  attestationReceived(
-    sourceChainId: BigNumberish,
-    sourceNttManagerAddress: BytesLike,
-    payload: TransceiverStructs.NttManagerMessageStruct,
-    overrides?: Overrides & { from?: string }
-  ): Promise<ContractTransaction>;
-
   chainId(overrides?: CallOverrides): Promise<number>;
-
-  completeInboundQueuedTransfer(
-    digest: BytesLike,
-    overrides?: Overrides & { from?: string }
-  ): Promise<ContractTransaction>;
-
-  completeOutboundQueuedTransfer(
-    messageSequence: BigNumberish,
-    overrides?: PayableOverrides & { from?: string }
-  ): Promise<ContractTransaction>;
-
-  executeMsg(
-    sourceChainId: BigNumberish,
-    sourceNttManagerAddress: BytesLike,
-    message: TransceiverStructs.NttManagerMessageStruct,
-    overrides?: Overrides & { from?: string }
-  ): Promise<ContractTransaction>;
 
   getCurrentInboundCapacity(
     chainId_: BigNumberish,
@@ -1074,13 +899,6 @@ export interface MockNttManagerImmutableCheck extends BaseContract {
 
   pauser(overrides?: CallOverrides): Promise<string>;
 
-  quoteDeliveryPrice(
-    recipientChain: BigNumberish,
-    transceiverInstructions: TransceiverStructs.TransceiverInstructionStruct[],
-    enabledTransceivers: string[],
-    overrides?: CallOverrides
-  ): Promise<[BigNumber[], BigNumber]>;
-
   rateLimitDuration(overrides?: CallOverrides): Promise<BigNumber>;
 
   removeTransceiver(
@@ -1128,22 +946,6 @@ export interface MockNttManagerImmutableCheck extends BaseContract {
     overrides?: CallOverrides
   ): Promise<boolean>;
 
-  "transfer(uint256,uint16,bytes32)"(
-    amount: BigNumberish,
-    recipientChain: BigNumberish,
-    recipient: BytesLike,
-    overrides?: PayableOverrides & { from?: string }
-  ): Promise<ContractTransaction>;
-
-  "transfer(uint256,uint16,bytes32,bool,bytes)"(
-    amount: BigNumberish,
-    recipientChain: BigNumberish,
-    recipient: BytesLike,
-    shouldQueue: boolean,
-    transceiverInstructions: BytesLike,
-    overrides?: PayableOverrides & { from?: string }
-  ): Promise<ContractTransaction>;
-
   transferOwnership(
     newOwner: string,
     overrides?: Overrides & { from?: string }
@@ -1160,31 +962,7 @@ export interface MockNttManagerImmutableCheck extends BaseContract {
   ): Promise<ContractTransaction>;
 
   callStatic: {
-    attestationReceived(
-      sourceChainId: BigNumberish,
-      sourceNttManagerAddress: BytesLike,
-      payload: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: CallOverrides
-    ): Promise<void>;
-
     chainId(overrides?: CallOverrides): Promise<number>;
-
-    completeInboundQueuedTransfer(
-      digest: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<void>;
-
-    completeOutboundQueuedTransfer(
-      messageSequence: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    executeMsg(
-      sourceChainId: BigNumberish,
-      sourceNttManagerAddress: BytesLike,
-      message: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: CallOverrides
-    ): Promise<void>;
 
     getCurrentInboundCapacity(
       chainId_: BigNumberish,
@@ -1247,13 +1025,6 @@ export interface MockNttManagerImmutableCheck extends BaseContract {
 
     pauser(overrides?: CallOverrides): Promise<string>;
 
-    quoteDeliveryPrice(
-      recipientChain: BigNumberish,
-      transceiverInstructions: TransceiverStructs.TransceiverInstructionStruct[],
-      enabledTransceivers: string[],
-      overrides?: CallOverrides
-    ): Promise<[BigNumber[], BigNumber]>;
-
     rateLimitDuration(overrides?: CallOverrides): Promise<BigNumber>;
 
     removeTransceiver(
@@ -1300,22 +1071,6 @@ export interface MockNttManagerImmutableCheck extends BaseContract {
       index: BigNumberish,
       overrides?: CallOverrides
     ): Promise<boolean>;
-
-    "transfer(uint256,uint16,bytes32)"(
-      amount: BigNumberish,
-      recipientChain: BigNumberish,
-      recipient: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    "transfer(uint256,uint16,bytes32,bool,bytes)"(
-      amount: BigNumberish,
-      recipientChain: BigNumberish,
-      recipient: BytesLike,
-      shouldQueue: boolean,
-      transceiverInstructions: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
 
     transferOwnership(
       newOwner: string,
@@ -1485,31 +1240,7 @@ export interface MockNttManagerImmutableCheck extends BaseContract {
   };
 
   estimateGas: {
-    attestationReceived(
-      sourceChainId: BigNumberish,
-      sourceNttManagerAddress: BytesLike,
-      payload: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: Overrides & { from?: string }
-    ): Promise<BigNumber>;
-
     chainId(overrides?: CallOverrides): Promise<BigNumber>;
-
-    completeInboundQueuedTransfer(
-      digest: BytesLike,
-      overrides?: Overrides & { from?: string }
-    ): Promise<BigNumber>;
-
-    completeOutboundQueuedTransfer(
-      messageSequence: BigNumberish,
-      overrides?: PayableOverrides & { from?: string }
-    ): Promise<BigNumber>;
-
-    executeMsg(
-      sourceChainId: BigNumberish,
-      sourceNttManagerAddress: BytesLike,
-      message: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: Overrides & { from?: string }
-    ): Promise<BigNumber>;
 
     getCurrentInboundCapacity(
       chainId_: BigNumberish,
@@ -1572,13 +1303,6 @@ export interface MockNttManagerImmutableCheck extends BaseContract {
 
     pauser(overrides?: CallOverrides): Promise<BigNumber>;
 
-    quoteDeliveryPrice(
-      recipientChain: BigNumberish,
-      transceiverInstructions: TransceiverStructs.TransceiverInstructionStruct[],
-      enabledTransceivers: string[],
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
     rateLimitDuration(overrides?: CallOverrides): Promise<BigNumber>;
 
     removeTransceiver(
@@ -1626,22 +1350,6 @@ export interface MockNttManagerImmutableCheck extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
-    "transfer(uint256,uint16,bytes32)"(
-      amount: BigNumberish,
-      recipientChain: BigNumberish,
-      recipient: BytesLike,
-      overrides?: PayableOverrides & { from?: string }
-    ): Promise<BigNumber>;
-
-    "transfer(uint256,uint16,bytes32,bool,bytes)"(
-      amount: BigNumberish,
-      recipientChain: BigNumberish,
-      recipient: BytesLike,
-      shouldQueue: boolean,
-      transceiverInstructions: BytesLike,
-      overrides?: PayableOverrides & { from?: string }
-    ): Promise<BigNumber>;
-
     transferOwnership(
       newOwner: string,
       overrides?: Overrides & { from?: string }
@@ -1659,31 +1367,7 @@ export interface MockNttManagerImmutableCheck extends BaseContract {
   };
 
   populateTransaction: {
-    attestationReceived(
-      sourceChainId: BigNumberish,
-      sourceNttManagerAddress: BytesLike,
-      payload: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: Overrides & { from?: string }
-    ): Promise<PopulatedTransaction>;
-
     chainId(overrides?: CallOverrides): Promise<PopulatedTransaction>;
-
-    completeInboundQueuedTransfer(
-      digest: BytesLike,
-      overrides?: Overrides & { from?: string }
-    ): Promise<PopulatedTransaction>;
-
-    completeOutboundQueuedTransfer(
-      messageSequence: BigNumberish,
-      overrides?: PayableOverrides & { from?: string }
-    ): Promise<PopulatedTransaction>;
-
-    executeMsg(
-      sourceChainId: BigNumberish,
-      sourceNttManagerAddress: BytesLike,
-      message: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: Overrides & { from?: string }
-    ): Promise<PopulatedTransaction>;
 
     getCurrentInboundCapacity(
       chainId_: BigNumberish,
@@ -1758,13 +1442,6 @@ export interface MockNttManagerImmutableCheck extends BaseContract {
 
     pauser(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
-    quoteDeliveryPrice(
-      recipientChain: BigNumberish,
-      transceiverInstructions: TransceiverStructs.TransceiverInstructionStruct[],
-      enabledTransceivers: string[],
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
     rateLimitDuration(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     removeTransceiver(
@@ -1810,22 +1487,6 @@ export interface MockNttManagerImmutableCheck extends BaseContract {
       digest: BytesLike,
       index: BigNumberish,
       overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    "transfer(uint256,uint16,bytes32)"(
-      amount: BigNumberish,
-      recipientChain: BigNumberish,
-      recipient: BytesLike,
-      overrides?: PayableOverrides & { from?: string }
-    ): Promise<PopulatedTransaction>;
-
-    "transfer(uint256,uint16,bytes32,bool,bytes)"(
-      amount: BigNumberish,
-      recipientChain: BigNumberish,
-      recipient: BytesLike,
-      shouldQueue: boolean,
-      transceiverInstructions: BytesLike,
-      overrides?: PayableOverrides & { from?: string }
     ): Promise<PopulatedTransaction>;
 
     transferOwnership(

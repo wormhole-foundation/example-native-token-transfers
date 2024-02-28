@@ -25,17 +25,7 @@ import type {
   TypedEvent,
   TypedListener,
   OnEvent,
-} from "../common";
-
-export declare namespace IWormholeTransceiver {
-  export type WormholeTransceiverInstructionStruct = {
-    shouldSkipRelayerSend: boolean;
-  };
-
-  export type WormholeTransceiverInstructionStructOutput = [boolean] & {
-    shouldSkipRelayerSend: boolean;
-  };
-}
+} from "./common";
 
 export declare namespace TransceiverStructs {
   export type TransceiverInstructionStruct = {
@@ -47,32 +37,11 @@ export declare namespace TransceiverStructs {
     index: number;
     payload: string;
   };
-
-  export type TransceiverMessageStruct = {
-    sourceNttManagerAddress: BytesLike;
-    recipientNttManagerAddress: BytesLike;
-    nttManagerPayload: BytesLike;
-    transceiverPayload: BytesLike;
-  };
-
-  export type TransceiverMessageStructOutput = [
-    string,
-    string,
-    string,
-    string
-  ] & {
-    sourceNttManagerAddress: string;
-    recipientNttManagerAddress: string;
-    nttManagerPayload: string;
-    transceiverPayload: string;
-  };
 }
 
-export interface MockWormholeTransceiverMigrateBasicInterface
-  extends utils.Interface {
+export interface WormholeTransceiverStateInterface extends utils.Interface {
   functions: {
     "consistencyLevel()": FunctionFragment;
-    "encodeWormholeTransceiverInstruction((bool))": FunctionFragment;
     "gasLimit()": FunctionFragment;
     "getMigratesImmutables()": FunctionFragment;
     "getNttManagerOwner()": FunctionFragment;
@@ -88,11 +57,8 @@ export interface MockWormholeTransceiverMigrateBasicInterface
     "nttManager()": FunctionFragment;
     "nttManagerToken()": FunctionFragment;
     "owner()": FunctionFragment;
-    "parseWormholeTransceiverInstruction(bytes)": FunctionFragment;
     "pauser()": FunctionFragment;
     "quoteDeliveryPrice(uint16,(uint8,bytes))": FunctionFragment;
-    "receiveMessage(bytes)": FunctionFragment;
-    "receiveWormholeMessages(bytes,bytes[],bytes32,uint16,bytes32)": FunctionFragment;
     "sendMessage(uint16,(uint8,bytes),bytes,bytes32)": FunctionFragment;
     "setIsSpecialRelayingEnabled(uint16,bool)": FunctionFragment;
     "setIsWormholeEvmChain(uint16)": FunctionFragment;
@@ -110,7 +76,6 @@ export interface MockWormholeTransceiverMigrateBasicInterface
   getFunction(
     nameOrSignatureOrTopic:
       | "consistencyLevel"
-      | "encodeWormholeTransceiverInstruction"
       | "gasLimit"
       | "getMigratesImmutables"
       | "getNttManagerOwner"
@@ -126,11 +91,8 @@ export interface MockWormholeTransceiverMigrateBasicInterface
       | "nttManager"
       | "nttManagerToken"
       | "owner"
-      | "parseWormholeTransceiverInstruction"
       | "pauser"
       | "quoteDeliveryPrice"
-      | "receiveMessage"
-      | "receiveWormholeMessages"
       | "sendMessage"
       | "setIsSpecialRelayingEnabled"
       | "setIsWormholeEvmChain"
@@ -148,10 +110,6 @@ export interface MockWormholeTransceiverMigrateBasicInterface
   encodeFunctionData(
     functionFragment: "consistencyLevel",
     values?: undefined
-  ): string;
-  encodeFunctionData(
-    functionFragment: "encodeWormholeTransceiverInstruction",
-    values: [IWormholeTransceiver.WormholeTransceiverInstructionStruct]
   ): string;
   encodeFunctionData(functionFragment: "gasLimit", values?: undefined): string;
   encodeFunctionData(
@@ -201,22 +159,10 @@ export interface MockWormholeTransceiverMigrateBasicInterface
     values?: undefined
   ): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: "parseWormholeTransceiverInstruction",
-    values: [BytesLike]
-  ): string;
   encodeFunctionData(functionFragment: "pauser", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "quoteDeliveryPrice",
     values: [BigNumberish, TransceiverStructs.TransceiverInstructionStruct]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "receiveMessage",
-    values: [BytesLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "receiveWormholeMessages",
-    values: [BytesLike, BytesLike[], BytesLike, BigNumberish, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "sendMessage",
@@ -270,10 +216,6 @@ export interface MockWormholeTransceiverMigrateBasicInterface
     functionFragment: "consistencyLevel",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(
-    functionFragment: "encodeWormholeTransceiverInstruction",
-    data: BytesLike
-  ): Result;
   decodeFunctionResult(functionFragment: "gasLimit", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "getMigratesImmutables",
@@ -316,21 +258,9 @@ export interface MockWormholeTransceiverMigrateBasicInterface
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "parseWormholeTransceiverInstruction",
-    data: BytesLike
-  ): Result;
   decodeFunctionResult(functionFragment: "pauser", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "quoteDeliveryPrice",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "receiveMessage",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "receiveWormholeMessages",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -384,10 +314,7 @@ export interface MockWormholeTransceiverMigrateBasicInterface
     "OwnershipTransferred(address,address)": EventFragment;
     "Paused(bool)": EventFragment;
     "PauserTransferred(address,address)": EventFragment;
-    "ReceivedMessage(bytes32,uint16,bytes32,uint64)": EventFragment;
-    "ReceivedRelayedMessage(bytes32,uint16,bytes32)": EventFragment;
     "RelayingInfo(uint8,uint256)": EventFragment;
-    "SendTransceiverMessage(uint16,(bytes32,bytes32,bytes,bytes))": EventFragment;
     "SetIsSpecialRelayingEnabled(uint16,bool)": EventFragment;
     "SetIsWormholeEvmChain(uint16)": EventFragment;
     "SetIsWormholeRelayingEnabled(uint16,bool)": EventFragment;
@@ -402,10 +329,7 @@ export interface MockWormholeTransceiverMigrateBasicInterface
   getEvent(nameOrSignatureOrTopic: "OwnershipTransferred"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "Paused"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "PauserTransferred"): EventFragment;
-  getEvent(nameOrSignatureOrTopic: "ReceivedMessage"): EventFragment;
-  getEvent(nameOrSignatureOrTopic: "ReceivedRelayedMessage"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "RelayingInfo"): EventFragment;
-  getEvent(nameOrSignatureOrTopic: "SendTransceiverMessage"): EventFragment;
   getEvent(
     nameOrSignatureOrTopic: "SetIsSpecialRelayingEnabled"
   ): EventFragment;
@@ -483,32 +407,6 @@ export type PauserTransferredEvent = TypedEvent<
 export type PauserTransferredEventFilter =
   TypedEventFilter<PauserTransferredEvent>;
 
-export interface ReceivedMessageEventObject {
-  digest: string;
-  emitterChainId: number;
-  emitterAddress: string;
-  sequence: BigNumber;
-}
-export type ReceivedMessageEvent = TypedEvent<
-  [string, number, string, BigNumber],
-  ReceivedMessageEventObject
->;
-
-export type ReceivedMessageEventFilter = TypedEventFilter<ReceivedMessageEvent>;
-
-export interface ReceivedRelayedMessageEventObject {
-  digest: string;
-  emitterChainId: number;
-  emitterAddress: string;
-}
-export type ReceivedRelayedMessageEvent = TypedEvent<
-  [string, number, string],
-  ReceivedRelayedMessageEventObject
->;
-
-export type ReceivedRelayedMessageEventFilter =
-  TypedEventFilter<ReceivedRelayedMessageEvent>;
-
 export interface RelayingInfoEventObject {
   relayingType: number;
   deliveryPayment: BigNumber;
@@ -519,18 +417,6 @@ export type RelayingInfoEvent = TypedEvent<
 >;
 
 export type RelayingInfoEventFilter = TypedEventFilter<RelayingInfoEvent>;
-
-export interface SendTransceiverMessageEventObject {
-  recipientChain: number;
-  message: TransceiverStructs.TransceiverMessageStructOutput;
-}
-export type SendTransceiverMessageEvent = TypedEvent<
-  [number, TransceiverStructs.TransceiverMessageStructOutput],
-  SendTransceiverMessageEventObject
->;
-
-export type SendTransceiverMessageEventFilter =
-  TypedEventFilter<SendTransceiverMessageEvent>;
 
 export interface SetIsSpecialRelayingEnabledEventObject {
   chainId: number;
@@ -585,12 +471,12 @@ export type UpgradedEvent = TypedEvent<[string], UpgradedEventObject>;
 
 export type UpgradedEventFilter = TypedEventFilter<UpgradedEvent>;
 
-export interface MockWormholeTransceiverMigrateBasic extends BaseContract {
+export interface WormholeTransceiverState extends BaseContract {
   connect(signerOrProvider: Signer | Provider | string): this;
   attach(addressOrName: string): this;
   deployed(): Promise<this>;
 
-  interface: MockWormholeTransceiverMigrateBasicInterface;
+  interface: WormholeTransceiverStateInterface;
 
   queryFilter<TEvent extends TypedEvent>(
     event: TypedEventFilter<TEvent>,
@@ -613,11 +499,6 @@ export interface MockWormholeTransceiverMigrateBasic extends BaseContract {
 
   functions: {
     consistencyLevel(overrides?: CallOverrides): Promise<[number]>;
-
-    encodeWormholeTransceiverInstruction(
-      instruction: IWormholeTransceiver.WormholeTransceiverInstructionStruct,
-      overrides?: CallOverrides
-    ): Promise<[string]>;
 
     gasLimit(overrides?: CallOverrides): Promise<[BigNumber]>;
 
@@ -668,15 +549,6 @@ export interface MockWormholeTransceiverMigrateBasic extends BaseContract {
 
     owner(overrides?: CallOverrides): Promise<[string]>;
 
-    parseWormholeTransceiverInstruction(
-      encoded: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<
-      [IWormholeTransceiver.WormholeTransceiverInstructionStructOutput] & {
-        instruction: IWormholeTransceiver.WormholeTransceiverInstructionStructOutput;
-      }
-    >;
-
     pauser(overrides?: CallOverrides): Promise<[string]>;
 
     quoteDeliveryPrice(
@@ -684,20 +556,6 @@ export interface MockWormholeTransceiverMigrateBasic extends BaseContract {
       instruction: TransceiverStructs.TransceiverInstructionStruct,
       overrides?: CallOverrides
     ): Promise<[BigNumber]>;
-
-    receiveMessage(
-      encodedMessage: BytesLike,
-      overrides?: Overrides & { from?: string }
-    ): Promise<ContractTransaction>;
-
-    receiveWormholeMessages(
-      payload: BytesLike,
-      additionalMessages: BytesLike[],
-      sourceAddress: BytesLike,
-      sourceChain: BigNumberish,
-      deliveryHash: BytesLike,
-      overrides?: PayableOverrides & { from?: string }
-    ): Promise<ContractTransaction>;
 
     sendMessage(
       recipientChain: BigNumberish,
@@ -759,11 +617,6 @@ export interface MockWormholeTransceiverMigrateBasic extends BaseContract {
 
   consistencyLevel(overrides?: CallOverrides): Promise<number>;
 
-  encodeWormholeTransceiverInstruction(
-    instruction: IWormholeTransceiver.WormholeTransceiverInstructionStruct,
-    overrides?: CallOverrides
-  ): Promise<string>;
-
   gasLimit(overrides?: CallOverrides): Promise<BigNumber>;
 
   getMigratesImmutables(overrides?: CallOverrides): Promise<boolean>;
@@ -810,11 +663,6 @@ export interface MockWormholeTransceiverMigrateBasic extends BaseContract {
 
   owner(overrides?: CallOverrides): Promise<string>;
 
-  parseWormholeTransceiverInstruction(
-    encoded: BytesLike,
-    overrides?: CallOverrides
-  ): Promise<IWormholeTransceiver.WormholeTransceiverInstructionStructOutput>;
-
   pauser(overrides?: CallOverrides): Promise<string>;
 
   quoteDeliveryPrice(
@@ -822,20 +670,6 @@ export interface MockWormholeTransceiverMigrateBasic extends BaseContract {
     instruction: TransceiverStructs.TransceiverInstructionStruct,
     overrides?: CallOverrides
   ): Promise<BigNumber>;
-
-  receiveMessage(
-    encodedMessage: BytesLike,
-    overrides?: Overrides & { from?: string }
-  ): Promise<ContractTransaction>;
-
-  receiveWormholeMessages(
-    payload: BytesLike,
-    additionalMessages: BytesLike[],
-    sourceAddress: BytesLike,
-    sourceChain: BigNumberish,
-    deliveryHash: BytesLike,
-    overrides?: PayableOverrides & { from?: string }
-  ): Promise<ContractTransaction>;
 
   sendMessage(
     recipientChain: BigNumberish,
@@ -897,11 +731,6 @@ export interface MockWormholeTransceiverMigrateBasic extends BaseContract {
   callStatic: {
     consistencyLevel(overrides?: CallOverrides): Promise<number>;
 
-    encodeWormholeTransceiverInstruction(
-      instruction: IWormholeTransceiver.WormholeTransceiverInstructionStruct,
-      overrides?: CallOverrides
-    ): Promise<string>;
-
     gasLimit(overrides?: CallOverrides): Promise<BigNumber>;
 
     getMigratesImmutables(overrides?: CallOverrides): Promise<boolean>;
@@ -944,11 +773,6 @@ export interface MockWormholeTransceiverMigrateBasic extends BaseContract {
 
     owner(overrides?: CallOverrides): Promise<string>;
 
-    parseWormholeTransceiverInstruction(
-      encoded: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<IWormholeTransceiver.WormholeTransceiverInstructionStructOutput>;
-
     pauser(overrides?: CallOverrides): Promise<string>;
 
     quoteDeliveryPrice(
@@ -956,20 +780,6 @@ export interface MockWormholeTransceiverMigrateBasic extends BaseContract {
       instruction: TransceiverStructs.TransceiverInstructionStruct,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
-
-    receiveMessage(
-      encodedMessage: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<void>;
-
-    receiveWormholeMessages(
-      payload: BytesLike,
-      additionalMessages: BytesLike[],
-      sourceAddress: BytesLike,
-      sourceChain: BigNumberish,
-      deliveryHash: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<void>;
 
     sendMessage(
       recipientChain: BigNumberish,
@@ -1071,30 +881,6 @@ export interface MockWormholeTransceiverMigrateBasic extends BaseContract {
       newPauser?: string | null
     ): PauserTransferredEventFilter;
 
-    "ReceivedMessage(bytes32,uint16,bytes32,uint64)"(
-      digest?: null,
-      emitterChainId?: null,
-      emitterAddress?: null,
-      sequence?: null
-    ): ReceivedMessageEventFilter;
-    ReceivedMessage(
-      digest?: null,
-      emitterChainId?: null,
-      emitterAddress?: null,
-      sequence?: null
-    ): ReceivedMessageEventFilter;
-
-    "ReceivedRelayedMessage(bytes32,uint16,bytes32)"(
-      digest?: null,
-      emitterChainId?: null,
-      emitterAddress?: null
-    ): ReceivedRelayedMessageEventFilter;
-    ReceivedRelayedMessage(
-      digest?: null,
-      emitterChainId?: null,
-      emitterAddress?: null
-    ): ReceivedRelayedMessageEventFilter;
-
     "RelayingInfo(uint8,uint256)"(
       relayingType?: null,
       deliveryPayment?: null
@@ -1103,15 +889,6 @@ export interface MockWormholeTransceiverMigrateBasic extends BaseContract {
       relayingType?: null,
       deliveryPayment?: null
     ): RelayingInfoEventFilter;
-
-    "SendTransceiverMessage(uint16,(bytes32,bytes32,bytes,bytes))"(
-      recipientChain?: null,
-      message?: null
-    ): SendTransceiverMessageEventFilter;
-    SendTransceiverMessage(
-      recipientChain?: null,
-      message?: null
-    ): SendTransceiverMessageEventFilter;
 
     "SetIsSpecialRelayingEnabled(uint16,bool)"(
       chainId?: null,
@@ -1151,11 +928,6 @@ export interface MockWormholeTransceiverMigrateBasic extends BaseContract {
 
   estimateGas: {
     consistencyLevel(overrides?: CallOverrides): Promise<BigNumber>;
-
-    encodeWormholeTransceiverInstruction(
-      instruction: IWormholeTransceiver.WormholeTransceiverInstructionStruct,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
 
     gasLimit(overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -1202,31 +974,12 @@ export interface MockWormholeTransceiverMigrateBasic extends BaseContract {
 
     owner(overrides?: CallOverrides): Promise<BigNumber>;
 
-    parseWormholeTransceiverInstruction(
-      encoded: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
     pauser(overrides?: CallOverrides): Promise<BigNumber>;
 
     quoteDeliveryPrice(
       targetChain: BigNumberish,
       instruction: TransceiverStructs.TransceiverInstructionStruct,
       overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    receiveMessage(
-      encodedMessage: BytesLike,
-      overrides?: Overrides & { from?: string }
-    ): Promise<BigNumber>;
-
-    receiveWormholeMessages(
-      payload: BytesLike,
-      additionalMessages: BytesLike[],
-      sourceAddress: BytesLike,
-      sourceChain: BigNumberish,
-      deliveryHash: BytesLike,
-      overrides?: PayableOverrides & { from?: string }
     ): Promise<BigNumber>;
 
     sendMessage(
@@ -1290,11 +1043,6 @@ export interface MockWormholeTransceiverMigrateBasic extends BaseContract {
   populateTransaction: {
     consistencyLevel(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
-    encodeWormholeTransceiverInstruction(
-      instruction: IWormholeTransceiver.WormholeTransceiverInstructionStruct,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
     gasLimit(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     getMigratesImmutables(
@@ -1350,31 +1098,12 @@ export interface MockWormholeTransceiverMigrateBasic extends BaseContract {
 
     owner(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
-    parseWormholeTransceiverInstruction(
-      encoded: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
     pauser(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     quoteDeliveryPrice(
       targetChain: BigNumberish,
       instruction: TransceiverStructs.TransceiverInstructionStruct,
       overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    receiveMessage(
-      encodedMessage: BytesLike,
-      overrides?: Overrides & { from?: string }
-    ): Promise<PopulatedTransaction>;
-
-    receiveWormholeMessages(
-      payload: BytesLike,
-      additionalMessages: BytesLike[],
-      sourceAddress: BytesLike,
-      sourceChain: BigNumberish,
-      deliveryHash: BytesLike,
-      overrides?: PayableOverrides & { from?: string }
     ): Promise<PopulatedTransaction>;
 
     sendMessage(

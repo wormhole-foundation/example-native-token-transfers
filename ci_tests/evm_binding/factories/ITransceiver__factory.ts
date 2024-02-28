@@ -149,6 +149,22 @@ const _abi = [
   },
   {
     type: "error",
+    name: "UnexpectedDeployer",
+    inputs: [
+      {
+        name: "deployer",
+        type: "address",
+        internalType: "address",
+      },
+      {
+        name: "caller",
+        type: "address",
+        internalType: "address",
+      },
+    ],
+  },
+  {
+    type: "error",
     name: "UnexpectedRecipientNttManagerAddress",
     inputs: [
       {

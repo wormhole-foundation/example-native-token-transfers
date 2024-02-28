@@ -652,12 +652,12 @@ export interface TestEndToEndRelayerInterface extends utils.Interface {
     "MessageAttestedTo(bytes32,address,uint8)": EventFragment;
     "OutboundTransferQueued(uint64)": EventFragment;
     "OutboundTransferRateLimited(address,uint64,uint256,uint256)": EventFragment;
-    "PeerUpdated(uint16,bytes32,bytes32)": EventFragment;
+    "PeerUpdated(uint16,bytes32,uint8,bytes32,uint8)": EventFragment;
     "ThresholdChanged(uint8,uint8)": EventFragment;
     "TransceiverAdded(address,uint256,uint8)": EventFragment;
     "TransceiverRemoved(address,uint8)": EventFragment;
     "TransferRedeemed(bytes32)": EventFragment;
-    "TransferSent(bytes32,uint256,uint16,uint64)": EventFragment;
+    "TransferSent(bytes32,uint256,uint256,uint16,uint64)": EventFragment;
     "log(string)": EventFragment;
     "log_address(address)": EventFragment;
     "log_array(uint256[])": EventFragment;
@@ -789,10 +789,12 @@ export type OutboundTransferRateLimitedEventFilter =
 export interface PeerUpdatedEventObject {
   chainId_: number;
   oldPeerContract: string;
+  oldPeerDecimals: number;
   peerContract: string;
+  peerDecimals: number;
 }
 export type PeerUpdatedEvent = TypedEvent<
-  [number, string, string],
+  [number, string, number, string, number],
   PeerUpdatedEventObject
 >;
 
@@ -849,11 +851,12 @@ export type TransferRedeemedEventFilter =
 export interface TransferSentEventObject {
   recipient: string;
   amount: BigNumber;
+  fee: BigNumber;
   recipientChain: number;
   msgSequence: BigNumber;
 }
 export type TransferSentEvent = TypedEvent<
-  [string, BigNumber, number, BigNumber],
+  [string, BigNumber, BigNumber, number, BigNumber],
   TransferSentEventObject
 >;
 
@@ -2038,15 +2041,19 @@ export interface TestEndToEndRelayer extends BaseContract {
       currentCapacity?: null
     ): OutboundTransferRateLimitedEventFilter;
 
-    "PeerUpdated(uint16,bytes32,bytes32)"(
+    "PeerUpdated(uint16,bytes32,uint8,bytes32,uint8)"(
       chainId_?: BigNumberish | null,
       oldPeerContract?: null,
-      peerContract?: null
+      oldPeerDecimals?: null,
+      peerContract?: null,
+      peerDecimals?: null
     ): PeerUpdatedEventFilter;
     PeerUpdated(
       chainId_?: BigNumberish | null,
       oldPeerContract?: null,
-      peerContract?: null
+      oldPeerDecimals?: null,
+      peerContract?: null,
+      peerDecimals?: null
     ): PeerUpdatedEventFilter;
 
     "ThresholdChanged(uint8,uint8)"(
@@ -2078,18 +2085,22 @@ export interface TestEndToEndRelayer extends BaseContract {
       threshold?: null
     ): TransceiverRemovedEventFilter;
 
-    "TransferRedeemed(bytes32)"(digest?: null): TransferRedeemedEventFilter;
-    TransferRedeemed(digest?: null): TransferRedeemedEventFilter;
+    "TransferRedeemed(bytes32)"(
+      digest?: BytesLike | null
+    ): TransferRedeemedEventFilter;
+    TransferRedeemed(digest?: BytesLike | null): TransferRedeemedEventFilter;
 
-    "TransferSent(bytes32,uint256,uint16,uint64)"(
+    "TransferSent(bytes32,uint256,uint256,uint16,uint64)"(
       recipient?: null,
       amount?: null,
+      fee?: null,
       recipientChain?: null,
       msgSequence?: null
     ): TransferSentEventFilter;
     TransferSent(
       recipient?: null,
       amount?: null,
+      fee?: null,
       recipientChain?: null,
       msgSequence?: null
     ): TransferSentEventFilter;

@@ -104,6 +104,18 @@ export declare namespace IRateLimiter {
   };
 }
 
+export declare namespace INttManagerState {
+  export type NttManagerPeerStruct = {
+    peerAddress: BytesLike;
+    tokenDecimals: BigNumberish;
+  };
+
+  export type NttManagerPeerStructOutput = [string, number] & {
+    peerAddress: string;
+    tokenDecimals: number;
+  };
+}
+
 export interface MockNttManagerStorageLayoutChangeInterface
   extends utils.Interface {
   functions: {
@@ -138,11 +150,12 @@ export interface MockNttManagerStorageLayoutChangeInterface
     "setData()": FunctionFragment;
     "setInboundLimit(uint256,uint16)": FunctionFragment;
     "setOutboundLimit(uint256)": FunctionFragment;
-    "setPeer(uint16,bytes32)": FunctionFragment;
+    "setPeer(uint16,bytes32,uint8)": FunctionFragment;
     "setThreshold(uint8)": FunctionFragment;
     "setTransceiver(address)": FunctionFragment;
     "token()": FunctionFragment;
     "tokenDecimals()": FunctionFragment;
+    "tokenDecimals_()": FunctionFragment;
     "transceiverAttestedToMessage(bytes32,uint8)": FunctionFragment;
     "transfer(uint256,uint16,bytes32)": FunctionFragment;
     "transfer(uint256,uint16,bytes32,bool,bytes)": FunctionFragment;
@@ -189,6 +202,7 @@ export interface MockNttManagerStorageLayoutChangeInterface
       | "setTransceiver"
       | "token"
       | "tokenDecimals"
+      | "tokenDecimals_"
       | "transceiverAttestedToMessage"
       | "transfer(uint256,uint16,bytes32)"
       | "transfer(uint256,uint16,bytes32,bool,bytes)"
@@ -308,7 +322,7 @@ export interface MockNttManagerStorageLayoutChangeInterface
   ): string;
   encodeFunctionData(
     functionFragment: "setPeer",
-    values: [BigNumberish, BytesLike]
+    values: [BigNumberish, BytesLike, BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "setThreshold",
@@ -321,6 +335,10 @@ export interface MockNttManagerStorageLayoutChangeInterface
   encodeFunctionData(functionFragment: "token", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "tokenDecimals",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "tokenDecimals_",
     values?: undefined
   ): string;
   encodeFunctionData(
@@ -448,6 +466,10 @@ export interface MockNttManagerStorageLayoutChangeInterface
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "tokenDecimals_",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "transceiverAttestedToMessage",
     data: BytesLike
   ): Result;
@@ -482,14 +504,14 @@ export interface MockNttManagerStorageLayoutChangeInterface
     "OwnershipTransferred(address,address)": EventFragment;
     "Paused(bool)": EventFragment;
     "PauserTransferred(address,address)": EventFragment;
-    "PeerUpdated(uint16,bytes32,bytes32)": EventFragment;
+    "PeerUpdated(uint16,bytes32,uint8,bytes32,uint8)": EventFragment;
     "ThresholdChanged(uint8,uint8)": EventFragment;
     "TransceiverAdded(address)": EventFragment;
     "TransceiverAdded(address,uint256,uint8)": EventFragment;
     "TransceiverRemoved(address)": EventFragment;
     "TransceiverRemoved(address,uint8)": EventFragment;
     "TransferRedeemed(bytes32)": EventFragment;
-    "TransferSent(bytes32,uint256,uint16,uint64)": EventFragment;
+    "TransferSent(bytes32,uint256,uint256,uint16,uint64)": EventFragment;
     "Upgraded(address)": EventFragment;
   };
 
@@ -654,10 +676,12 @@ export type PauserTransferredEventFilter =
 export interface PeerUpdatedEventObject {
   chainId_: number;
   oldPeerContract: string;
+  oldPeerDecimals: number;
   peerContract: string;
+  peerDecimals: number;
 }
 export type PeerUpdatedEvent = TypedEvent<
-  [number, string, string],
+  [number, string, number, string, number],
   PeerUpdatedEventObject
 >;
 
@@ -736,11 +760,12 @@ export type TransferRedeemedEventFilter =
 export interface TransferSentEventObject {
   recipient: string;
   amount: BigNumber;
+  fee: BigNumber;
   recipientChain: number;
   msgSequence: BigNumber;
 }
 export type TransferSentEvent = TypedEvent<
-  [string, BigNumber, number, BigNumber],
+  [string, BigNumber, BigNumber, number, BigNumber],
   TransferSentEventObject
 >;
 
@@ -830,7 +855,7 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
     getPeer(
       chainId_: BigNumberish,
       overrides?: CallOverrides
-    ): Promise<[string]>;
+    ): Promise<[INttManagerState.NttManagerPeerStructOutput]>;
 
     getThreshold(overrides?: CallOverrides): Promise<[number]>;
 
@@ -907,6 +932,7 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
     setPeer(
       peerChainId: BigNumberish,
       peerContract: BytesLike,
+      decimals: BigNumberish,
       overrides?: Overrides & { from?: string }
     ): Promise<ContractTransaction>;
 
@@ -923,6 +949,8 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
     token(overrides?: CallOverrides): Promise<[string]>;
 
     tokenDecimals(overrides?: CallOverrides): Promise<[number]>;
+
+    tokenDecimals_(overrides?: CallOverrides): Promise<[number]>;
 
     transceiverAttestedToMessage(
       digest: BytesLike,
@@ -1009,7 +1037,10 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
     overrides?: CallOverrides
   ): Promise<IRateLimiter.OutboundQueuedTransferStructOutput>;
 
-  getPeer(chainId_: BigNumberish, overrides?: CallOverrides): Promise<string>;
+  getPeer(
+    chainId_: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<INttManagerState.NttManagerPeerStructOutput>;
 
   getThreshold(overrides?: CallOverrides): Promise<number>;
 
@@ -1084,6 +1115,7 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
   setPeer(
     peerChainId: BigNumberish,
     peerContract: BytesLike,
+    decimals: BigNumberish,
     overrides?: Overrides & { from?: string }
   ): Promise<ContractTransaction>;
 
@@ -1100,6 +1132,8 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
   token(overrides?: CallOverrides): Promise<string>;
 
   tokenDecimals(overrides?: CallOverrides): Promise<number>;
+
+  tokenDecimals_(overrides?: CallOverrides): Promise<number>;
 
   transceiverAttestedToMessage(
     digest: BytesLike,
@@ -1186,7 +1220,10 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
       overrides?: CallOverrides
     ): Promise<IRateLimiter.OutboundQueuedTransferStructOutput>;
 
-    getPeer(chainId_: BigNumberish, overrides?: CallOverrides): Promise<string>;
+    getPeer(
+      chainId_: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<INttManagerState.NttManagerPeerStructOutput>;
 
     getThreshold(overrides?: CallOverrides): Promise<number>;
 
@@ -1253,6 +1290,7 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
     setPeer(
       peerChainId: BigNumberish,
       peerContract: BytesLike,
+      decimals: BigNumberish,
       overrides?: CallOverrides
     ): Promise<void>;
 
@@ -1269,6 +1307,8 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
     token(overrides?: CallOverrides): Promise<string>;
 
     tokenDecimals(overrides?: CallOverrides): Promise<number>;
+
+    tokenDecimals_(overrides?: CallOverrides): Promise<number>;
 
     transceiverAttestedToMessage(
       digest: BytesLike,
@@ -1395,15 +1435,19 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
       newPauser?: string | null
     ): PauserTransferredEventFilter;
 
-    "PeerUpdated(uint16,bytes32,bytes32)"(
+    "PeerUpdated(uint16,bytes32,uint8,bytes32,uint8)"(
       chainId_?: BigNumberish | null,
       oldPeerContract?: null,
-      peerContract?: null
+      oldPeerDecimals?: null,
+      peerContract?: null,
+      peerDecimals?: null
     ): PeerUpdatedEventFilter;
     PeerUpdated(
       chainId_?: BigNumberish | null,
       oldPeerContract?: null,
-      peerContract?: null
+      oldPeerDecimals?: null,
+      peerContract?: null,
+      peerDecimals?: null
     ): PeerUpdatedEventFilter;
 
     "ThresholdChanged(uint8,uint8)"(
@@ -1431,18 +1475,22 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
       threshold?: null
     ): TransceiverRemoved_address_uint8_EventFilter;
 
-    "TransferRedeemed(bytes32)"(digest?: null): TransferRedeemedEventFilter;
-    TransferRedeemed(digest?: null): TransferRedeemedEventFilter;
+    "TransferRedeemed(bytes32)"(
+      digest?: BytesLike | null
+    ): TransferRedeemedEventFilter;
+    TransferRedeemed(digest?: BytesLike | null): TransferRedeemedEventFilter;
 
-    "TransferSent(bytes32,uint256,uint16,uint64)"(
+    "TransferSent(bytes32,uint256,uint256,uint16,uint64)"(
       recipient?: null,
       amount?: null,
+      fee?: null,
       recipientChain?: null,
       msgSequence?: null
     ): TransferSentEventFilter;
     TransferSent(
       recipient?: null,
       amount?: null,
+      fee?: null,
       recipientChain?: null,
       msgSequence?: null
     ): TransferSentEventFilter;
@@ -1569,6 +1617,7 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
     setPeer(
       peerChainId: BigNumberish,
       peerContract: BytesLike,
+      decimals: BigNumberish,
       overrides?: Overrides & { from?: string }
     ): Promise<BigNumber>;
 
@@ -1585,6 +1634,8 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
     token(overrides?: CallOverrides): Promise<BigNumber>;
 
     tokenDecimals(overrides?: CallOverrides): Promise<BigNumber>;
+
+    tokenDecimals_(overrides?: CallOverrides): Promise<BigNumber>;
 
     transceiverAttestedToMessage(
       digest: BytesLike,
@@ -1756,6 +1807,7 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
     setPeer(
       peerChainId: BigNumberish,
       peerContract: BytesLike,
+      decimals: BigNumberish,
       overrides?: Overrides & { from?: string }
     ): Promise<PopulatedTransaction>;
 
@@ -1772,6 +1824,8 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
     token(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     tokenDecimals(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    tokenDecimals_(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     transceiverAttestedToMessage(
       digest: BytesLike,

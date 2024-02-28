@@ -9,7 +9,6 @@ import type {
   CallOverrides,
   ContractTransaction,
   Overrides,
-  PayableOverrides,
   PopulatedTransaction,
   Signer,
   utils,
@@ -23,30 +22,6 @@ import type {
   OnEvent,
 } from "./common";
 
-export declare namespace TransceiverStructs {
-  export type NttManagerMessageStruct = {
-    sequence: BigNumberish;
-    sender: BytesLike;
-    payload: BytesLike;
-  };
-
-  export type NttManagerMessageStructOutput = [BigNumber, string, string] & {
-    sequence: BigNumber;
-    sender: string;
-    payload: string;
-  };
-
-  export type TransceiverInstructionStruct = {
-    index: BigNumberish;
-    payload: BytesLike;
-  };
-
-  export type TransceiverInstructionStructOutput = [number, string] & {
-    index: number;
-    payload: string;
-  };
-}
-
 export declare namespace INttManagerState {
   export type NttManagerPeerStruct = {
     peerAddress: BytesLike;
@@ -59,13 +34,9 @@ export declare namespace INttManagerState {
   };
 }
 
-export interface INttManagerInterface extends utils.Interface {
+export interface INttManagerStateInterface extends utils.Interface {
   functions: {
-    "attestationReceived(uint16,bytes32,(uint64,bytes32,bytes))": FunctionFragment;
     "chainId()": FunctionFragment;
-    "completeInboundQueuedTransfer(bytes32)": FunctionFragment;
-    "completeOutboundQueuedTransfer(uint64)": FunctionFragment;
-    "executeMsg(uint16,bytes32,(uint64,bytes32,bytes))": FunctionFragment;
     "getMode()": FunctionFragment;
     "getPeer(uint16)": FunctionFragment;
     "getThreshold()": FunctionFragment;
@@ -74,7 +45,6 @@ export interface INttManagerInterface extends utils.Interface {
     "messageAttestations(bytes32)": FunctionFragment;
     "nextMessageSequence()": FunctionFragment;
     "pause()": FunctionFragment;
-    "quoteDeliveryPrice(uint16,(uint8,bytes)[],address[])": FunctionFragment;
     "removeTransceiver(address)": FunctionFragment;
     "setInboundLimit(uint256,uint16)": FunctionFragment;
     "setOutboundLimit(uint256)": FunctionFragment;
@@ -82,20 +52,13 @@ export interface INttManagerInterface extends utils.Interface {
     "setThreshold(uint8)": FunctionFragment;
     "setTransceiver(address)": FunctionFragment;
     "token()": FunctionFragment;
-    "tokenDecimals()": FunctionFragment;
     "transceiverAttestedToMessage(bytes32,uint8)": FunctionFragment;
-    "transfer(uint256,uint16,bytes32)": FunctionFragment;
-    "transfer(uint256,uint16,bytes32,bool,bytes)": FunctionFragment;
     "upgrade(address)": FunctionFragment;
   };
 
   getFunction(
     nameOrSignatureOrTopic:
-      | "attestationReceived"
       | "chainId"
-      | "completeInboundQueuedTransfer"
-      | "completeOutboundQueuedTransfer"
-      | "executeMsg"
       | "getMode"
       | "getPeer"
       | "getThreshold"
@@ -104,7 +67,6 @@ export interface INttManagerInterface extends utils.Interface {
       | "messageAttestations"
       | "nextMessageSequence"
       | "pause"
-      | "quoteDeliveryPrice"
       | "removeTransceiver"
       | "setInboundLimit"
       | "setOutboundLimit"
@@ -112,38 +74,11 @@ export interface INttManagerInterface extends utils.Interface {
       | "setThreshold"
       | "setTransceiver"
       | "token"
-      | "tokenDecimals"
       | "transceiverAttestedToMessage"
-      | "transfer(uint256,uint16,bytes32)"
-      | "transfer(uint256,uint16,bytes32,bool,bytes)"
       | "upgrade"
   ): FunctionFragment;
 
-  encodeFunctionData(
-    functionFragment: "attestationReceived",
-    values: [
-      BigNumberish,
-      BytesLike,
-      TransceiverStructs.NttManagerMessageStruct
-    ]
-  ): string;
   encodeFunctionData(functionFragment: "chainId", values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: "completeInboundQueuedTransfer",
-    values: [BytesLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "completeOutboundQueuedTransfer",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "executeMsg",
-    values: [
-      BigNumberish,
-      BytesLike,
-      TransceiverStructs.NttManagerMessageStruct
-    ]
-  ): string;
   encodeFunctionData(functionFragment: "getMode", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "getPeer",
@@ -171,14 +106,6 @@ export interface INttManagerInterface extends utils.Interface {
   ): string;
   encodeFunctionData(functionFragment: "pause", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "quoteDeliveryPrice",
-    values: [
-      BigNumberish,
-      TransceiverStructs.TransceiverInstructionStruct[],
-      string[]
-    ]
-  ): string;
-  encodeFunctionData(
     functionFragment: "removeTransceiver",
     values: [string]
   ): string;
@@ -204,37 +131,12 @@ export interface INttManagerInterface extends utils.Interface {
   ): string;
   encodeFunctionData(functionFragment: "token", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "tokenDecimals",
-    values?: undefined
-  ): string;
-  encodeFunctionData(
     functionFragment: "transceiverAttestedToMessage",
     values: [BytesLike, BigNumberish]
   ): string;
-  encodeFunctionData(
-    functionFragment: "transfer(uint256,uint16,bytes32)",
-    values: [BigNumberish, BigNumberish, BytesLike]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "transfer(uint256,uint16,bytes32,bool,bytes)",
-    values: [BigNumberish, BigNumberish, BytesLike, boolean, BytesLike]
-  ): string;
   encodeFunctionData(functionFragment: "upgrade", values: [string]): string;
 
-  decodeFunctionResult(
-    functionFragment: "attestationReceived",
-    data: BytesLike
-  ): Result;
   decodeFunctionResult(functionFragment: "chainId", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "completeInboundQueuedTransfer",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "completeOutboundQueuedTransfer",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: "executeMsg", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "getMode", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "getPeer", data: BytesLike): Result;
   decodeFunctionResult(
@@ -259,10 +161,6 @@ export interface INttManagerInterface extends utils.Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "pause", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "quoteDeliveryPrice",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
     functionFragment: "removeTransceiver",
     data: BytesLike
   ): Result;
@@ -285,19 +183,7 @@ export interface INttManagerInterface extends utils.Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "token", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "tokenDecimals",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
     functionFragment: "transceiverAttestedToMessage",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "transfer(uint256,uint16,bytes32)",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "transfer(uint256,uint16,bytes32,bool,bytes)",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "upgrade", data: BytesLike): Result;
@@ -305,12 +191,12 @@ export interface INttManagerInterface extends utils.Interface {
   events: {};
 }
 
-export interface INttManager extends BaseContract {
+export interface INttManagerState extends BaseContract {
   connect(signerOrProvider: Signer | Provider | string): this;
   attach(addressOrName: string): this;
   deployed(): Promise<this>;
 
-  interface: INttManagerInterface;
+  interface: INttManagerStateInterface;
 
   queryFilter<TEvent extends TypedEvent>(
     event: TypedEventFilter<TEvent>,
@@ -332,31 +218,7 @@ export interface INttManager extends BaseContract {
   removeListener: OnEvent<this>;
 
   functions: {
-    attestationReceived(
-      sourceChainId: BigNumberish,
-      sourceNttManagerAddress: BytesLike,
-      payload: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: Overrides & { from?: string }
-    ): Promise<ContractTransaction>;
-
     chainId(overrides?: CallOverrides): Promise<[number]>;
-
-    completeInboundQueuedTransfer(
-      digest: BytesLike,
-      overrides?: Overrides & { from?: string }
-    ): Promise<ContractTransaction>;
-
-    completeOutboundQueuedTransfer(
-      queueSequence: BigNumberish,
-      overrides?: PayableOverrides & { from?: string }
-    ): Promise<ContractTransaction>;
-
-    executeMsg(
-      sourceChainId: BigNumberish,
-      sourceNttManagerAddress: BytesLike,
-      message: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: Overrides & { from?: string }
-    ): Promise<ContractTransaction>;
 
     getMode(overrides?: CallOverrides): Promise<[number]>;
 
@@ -387,13 +249,6 @@ export interface INttManager extends BaseContract {
     pause(
       overrides?: Overrides & { from?: string }
     ): Promise<ContractTransaction>;
-
-    quoteDeliveryPrice(
-      recipientChain: BigNumberish,
-      transceiverInstructions: TransceiverStructs.TransceiverInstructionStruct[],
-      enabledTransceivers: string[],
-      overrides?: CallOverrides
-    ): Promise<[BigNumber[], BigNumber]>;
 
     removeTransceiver(
       transceiver: string,
@@ -430,29 +285,11 @@ export interface INttManager extends BaseContract {
 
     token(overrides?: CallOverrides): Promise<[string]>;
 
-    tokenDecimals(overrides?: CallOverrides): Promise<[number]>;
-
     transceiverAttestedToMessage(
       digest: BytesLike,
       index: BigNumberish,
       overrides?: CallOverrides
     ): Promise<[boolean]>;
-
-    "transfer(uint256,uint16,bytes32)"(
-      amount: BigNumberish,
-      recipientChain: BigNumberish,
-      recipient: BytesLike,
-      overrides?: PayableOverrides & { from?: string }
-    ): Promise<ContractTransaction>;
-
-    "transfer(uint256,uint16,bytes32,bool,bytes)"(
-      amount: BigNumberish,
-      recipientChain: BigNumberish,
-      recipient: BytesLike,
-      shouldQueue: boolean,
-      encodedInstructions: BytesLike,
-      overrides?: PayableOverrides & { from?: string }
-    ): Promise<ContractTransaction>;
 
     upgrade(
       newImplementation: string,
@@ -460,31 +297,7 @@ export interface INttManager extends BaseContract {
     ): Promise<ContractTransaction>;
   };
 
-  attestationReceived(
-    sourceChainId: BigNumberish,
-    sourceNttManagerAddress: BytesLike,
-    payload: TransceiverStructs.NttManagerMessageStruct,
-    overrides?: Overrides & { from?: string }
-  ): Promise<ContractTransaction>;
-
   chainId(overrides?: CallOverrides): Promise<number>;
-
-  completeInboundQueuedTransfer(
-    digest: BytesLike,
-    overrides?: Overrides & { from?: string }
-  ): Promise<ContractTransaction>;
-
-  completeOutboundQueuedTransfer(
-    queueSequence: BigNumberish,
-    overrides?: PayableOverrides & { from?: string }
-  ): Promise<ContractTransaction>;
-
-  executeMsg(
-    sourceChainId: BigNumberish,
-    sourceNttManagerAddress: BytesLike,
-    message: TransceiverStructs.NttManagerMessageStruct,
-    overrides?: Overrides & { from?: string }
-  ): Promise<ContractTransaction>;
 
   getMode(overrides?: CallOverrides): Promise<number>;
 
@@ -515,13 +328,6 @@ export interface INttManager extends BaseContract {
   pause(
     overrides?: Overrides & { from?: string }
   ): Promise<ContractTransaction>;
-
-  quoteDeliveryPrice(
-    recipientChain: BigNumberish,
-    transceiverInstructions: TransceiverStructs.TransceiverInstructionStruct[],
-    enabledTransceivers: string[],
-    overrides?: CallOverrides
-  ): Promise<[BigNumber[], BigNumber]>;
 
   removeTransceiver(
     transceiver: string,
@@ -558,29 +364,11 @@ export interface INttManager extends BaseContract {
 
   token(overrides?: CallOverrides): Promise<string>;
 
-  tokenDecimals(overrides?: CallOverrides): Promise<number>;
-
   transceiverAttestedToMessage(
     digest: BytesLike,
     index: BigNumberish,
     overrides?: CallOverrides
   ): Promise<boolean>;
-
-  "transfer(uint256,uint16,bytes32)"(
-    amount: BigNumberish,
-    recipientChain: BigNumberish,
-    recipient: BytesLike,
-    overrides?: PayableOverrides & { from?: string }
-  ): Promise<ContractTransaction>;
-
-  "transfer(uint256,uint16,bytes32,bool,bytes)"(
-    amount: BigNumberish,
-    recipientChain: BigNumberish,
-    recipient: BytesLike,
-    shouldQueue: boolean,
-    encodedInstructions: BytesLike,
-    overrides?: PayableOverrides & { from?: string }
-  ): Promise<ContractTransaction>;
 
   upgrade(
     newImplementation: string,
@@ -588,31 +376,7 @@ export interface INttManager extends BaseContract {
   ): Promise<ContractTransaction>;
 
   callStatic: {
-    attestationReceived(
-      sourceChainId: BigNumberish,
-      sourceNttManagerAddress: BytesLike,
-      payload: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: CallOverrides
-    ): Promise<void>;
-
     chainId(overrides?: CallOverrides): Promise<number>;
-
-    completeInboundQueuedTransfer(
-      digest: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<void>;
-
-    completeOutboundQueuedTransfer(
-      queueSequence: BigNumberish,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    executeMsg(
-      sourceChainId: BigNumberish,
-      sourceNttManagerAddress: BytesLike,
-      message: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: CallOverrides
-    ): Promise<void>;
 
     getMode(overrides?: CallOverrides): Promise<number>;
 
@@ -641,13 +405,6 @@ export interface INttManager extends BaseContract {
     nextMessageSequence(overrides?: CallOverrides): Promise<BigNumber>;
 
     pause(overrides?: CallOverrides): Promise<void>;
-
-    quoteDeliveryPrice(
-      recipientChain: BigNumberish,
-      transceiverInstructions: TransceiverStructs.TransceiverInstructionStruct[],
-      enabledTransceivers: string[],
-      overrides?: CallOverrides
-    ): Promise<[BigNumber[], BigNumber]>;
 
     removeTransceiver(
       transceiver: string,
@@ -684,29 +441,11 @@ export interface INttManager extends BaseContract {
 
     token(overrides?: CallOverrides): Promise<string>;
 
-    tokenDecimals(overrides?: CallOverrides): Promise<number>;
-
     transceiverAttestedToMessage(
       digest: BytesLike,
       index: BigNumberish,
       overrides?: CallOverrides
     ): Promise<boolean>;
-
-    "transfer(uint256,uint16,bytes32)"(
-      amount: BigNumberish,
-      recipientChain: BigNumberish,
-      recipient: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    "transfer(uint256,uint16,bytes32,bool,bytes)"(
-      amount: BigNumberish,
-      recipientChain: BigNumberish,
-      recipient: BytesLike,
-      shouldQueue: boolean,
-      encodedInstructions: BytesLike,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
 
     upgrade(
       newImplementation: string,
@@ -717,31 +456,7 @@ export interface INttManager extends BaseContract {
   filters: {};
 
   estimateGas: {
-    attestationReceived(
-      sourceChainId: BigNumberish,
-      sourceNttManagerAddress: BytesLike,
-      payload: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: Overrides & { from?: string }
-    ): Promise<BigNumber>;
-
     chainId(overrides?: CallOverrides): Promise<BigNumber>;
-
-    completeInboundQueuedTransfer(
-      digest: BytesLike,
-      overrides?: Overrides & { from?: string }
-    ): Promise<BigNumber>;
-
-    completeOutboundQueuedTransfer(
-      queueSequence: BigNumberish,
-      overrides?: PayableOverrides & { from?: string }
-    ): Promise<BigNumber>;
-
-    executeMsg(
-      sourceChainId: BigNumberish,
-      sourceNttManagerAddress: BytesLike,
-      message: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: Overrides & { from?: string }
-    ): Promise<BigNumber>;
 
     getMode(overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -770,13 +485,6 @@ export interface INttManager extends BaseContract {
     nextMessageSequence(overrides?: CallOverrides): Promise<BigNumber>;
 
     pause(overrides?: Overrides & { from?: string }): Promise<BigNumber>;
-
-    quoteDeliveryPrice(
-      recipientChain: BigNumberish,
-      transceiverInstructions: TransceiverStructs.TransceiverInstructionStruct[],
-      enabledTransceivers: string[],
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
 
     removeTransceiver(
       transceiver: string,
@@ -813,28 +521,10 @@ export interface INttManager extends BaseContract {
 
     token(overrides?: CallOverrides): Promise<BigNumber>;
 
-    tokenDecimals(overrides?: CallOverrides): Promise<BigNumber>;
-
     transceiverAttestedToMessage(
       digest: BytesLike,
       index: BigNumberish,
       overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    "transfer(uint256,uint16,bytes32)"(
-      amount: BigNumberish,
-      recipientChain: BigNumberish,
-      recipient: BytesLike,
-      overrides?: PayableOverrides & { from?: string }
-    ): Promise<BigNumber>;
-
-    "transfer(uint256,uint16,bytes32,bool,bytes)"(
-      amount: BigNumberish,
-      recipientChain: BigNumberish,
-      recipient: BytesLike,
-      shouldQueue: boolean,
-      encodedInstructions: BytesLike,
-      overrides?: PayableOverrides & { from?: string }
     ): Promise<BigNumber>;
 
     upgrade(
@@ -844,31 +534,7 @@ export interface INttManager extends BaseContract {
   };
 
   populateTransaction: {
-    attestationReceived(
-      sourceChainId: BigNumberish,
-      sourceNttManagerAddress: BytesLike,
-      payload: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: Overrides & { from?: string }
-    ): Promise<PopulatedTransaction>;
-
     chainId(overrides?: CallOverrides): Promise<PopulatedTransaction>;
-
-    completeInboundQueuedTransfer(
-      digest: BytesLike,
-      overrides?: Overrides & { from?: string }
-    ): Promise<PopulatedTransaction>;
-
-    completeOutboundQueuedTransfer(
-      queueSequence: BigNumberish,
-      overrides?: PayableOverrides & { from?: string }
-    ): Promise<PopulatedTransaction>;
-
-    executeMsg(
-      sourceChainId: BigNumberish,
-      sourceNttManagerAddress: BytesLike,
-      message: TransceiverStructs.NttManagerMessageStruct,
-      overrides?: Overrides & { from?: string }
-    ): Promise<PopulatedTransaction>;
 
     getMode(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
@@ -900,13 +566,6 @@ export interface INttManager extends BaseContract {
 
     pause(
       overrides?: Overrides & { from?: string }
-    ): Promise<PopulatedTransaction>;
-
-    quoteDeliveryPrice(
-      recipientChain: BigNumberish,
-      transceiverInstructions: TransceiverStructs.TransceiverInstructionStruct[],
-      enabledTransceivers: string[],
-      overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
     removeTransceiver(
@@ -944,28 +603,10 @@ export interface INttManager extends BaseContract {
 
     token(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
-    tokenDecimals(overrides?: CallOverrides): Promise<PopulatedTransaction>;
-
     transceiverAttestedToMessage(
       digest: BytesLike,
       index: BigNumberish,
       overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>;
-
-    "transfer(uint256,uint16,bytes32)"(
-      amount: BigNumberish,
-      recipientChain: BigNumberish,
-      recipient: BytesLike,
-      overrides?: PayableOverrides & { from?: string }
-    ): Promise<PopulatedTransaction>;
-
-    "transfer(uint256,uint16,bytes32,bool,bytes)"(
-      amount: BigNumberish,
-      recipientChain: BigNumberish,
-      recipient: BytesLike,
-      shouldQueue: boolean,
-      encodedInstructions: BytesLike,
-      overrides?: PayableOverrides & { from?: string }
     ): Promise<PopulatedTransaction>;
 
     upgrade(

@@ -71,10 +71,22 @@ const _abi = [
         internalType: "bytes32",
       },
       {
+        name: "oldPeerDecimals",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
+      },
+      {
         name: "peerContract",
         type: "bytes32",
         indexed: false,
         internalType: "bytes32",
+      },
+      {
+        name: "peerDecimals",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
     ],
     anonymous: false,
@@ -149,7 +161,7 @@ const _abi = [
       {
         name: "digest",
         type: "bytes32",
-        indexed: false,
+        indexed: true,
         internalType: "bytes32",
       },
     ],
@@ -167,6 +179,12 @@ const _abi = [
       },
       {
         name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
+      {
+        name: "fee",
         type: "uint256",
         indexed: false,
         internalType: "uint256",

@@ -3,7 +3,7 @@ import { BytesLike, Wallet, getDefaultProvider, utils } from "ethers";
 import { DummyTokenMintAndBurn__factory } from "../evm_binding/factories/DummyToken.sol/DummyTokenMintAndBurn__factory";
 import { DummyToken__factory } from "../evm_binding/factories/DummyToken.sol/DummyToken__factory";
 import { ERC1967Proxy__factory } from "../evm_binding/factories/ERC1967Proxy__factory";
-import { NormalizedAmountLib__factory } from "../evm_binding/factories/NormalizedAmount.sol/NormalizedAmountLib__factory";
+import { TrimmedAmountLib__factory } from "../evm_binding/factories/TrimmedAmount.sol/TrimmedAmountLib__factory";
 import { NttManager__factory } from "../evm_binding/factories/NttManager__factory";
 import { TransceiverStructs__factory } from "../evm_binding/factories/TransceiverStructs__factory";
 import { WormholeTransceiver__factory } from "../evm_binding/factories/WormholeTransceiver__factory";
@@ -57,8 +57,8 @@ async function deployEth(
   const transceiverStructsContract = await transceiverStructsFactory.deploy();
   //result = await transceiverStructsContract.waitForDeployment();
 
-  const normalizedAmountFactory = new NormalizedAmountLib__factory(signer);
-  const normalizedAmountContract = await normalizedAmountFactory.deploy();
+  const trimmedAmountFactory = new TrimmedAmountLib__factory(signer);
+  const trimmedAmountContract = await trimmedAmountFactory.deploy();
   //result = await normalizedAmountContract.waitForDeployment();
 
   // Deploy the NTT token
@@ -80,14 +80,13 @@ async function deployEth(
   }
 
   const transceiverStructsAddress = await transceiverStructsContract.address;
-  const normalizedAmountAddress = await normalizedAmountContract.address;
+  const trimmedAmountAddress = await trimmedAmountContract.address;
   const ERC20NTTAddress = await NTTAddress.address;
 
   let myObj = {
     "src/libraries/TransceiverStructs.sol:TransceiverStructs":
       transceiverStructsAddress,
-    "src/libraries/NormalizedAmount.sol:NormalizedAmountLib":
-      normalizedAmountAddress,
+    "src/libraries/TrimmedAmount.sol:TrimmedAmountLib": trimmedAmountAddress,
   };
 
   // https://github.com/search?q=repo%3Awormhole-foundation%2Fwormhole-connect%20__factory&type=code
@@ -128,7 +127,8 @@ async function deployEth(
     "0xC89Ce4735882C9F0f0FE26686c53074E09B0D550", // Core wormhole contract - https://docs.wormhole.com/wormhole/blockchain-environments/evm#local-network-contract -- may need to be changed to support other chains
     "0x53855d4b64E9A3CF59A84bc768adA716B5536BC5", //"0xE66C1Bc1b369EF4F376b84373E3Aa004E8F4C083", // Relayer contract -- double check these...
     "0x0000000000000000000000000000000000000000", // TODO - Specialized relayer??????
-    200 // Consistency level
+    200, // Consistency level
+    500000 // Gas limit
   );
   //result = await WormholetransceiverAddress.waitForDeployment();
 
@@ -213,13 +213,15 @@ async function link(chain1: ChainDetails, chain2: ChainDetails) {
   console.log("Set manager peers");
   result = await manager1.setPeer(
     chain2.chainId,
-    <BytesLike>addressToBytes(<string>chain2.managerAddress)
+    <BytesLike>addressToBytes(<string>chain2.managerAddress),
+    18 // decimals
   );
   result.wait();
   await delay(2000); // Fixing race condition on nonce. Need to figure out why 'waitForDeployment()' does this?
   result = await manager2.setPeer(
     chain1.chainId,
-    <BytesLike>addressToBytes(<string>chain1.managerAddress)
+    <BytesLike>addressToBytes(<string>chain1.managerAddress),
+    18 // decimals
   );
   result.wait();
 
