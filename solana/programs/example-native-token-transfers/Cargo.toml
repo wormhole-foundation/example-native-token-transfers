@@ -26,8 +26,6 @@ solana-devnet = [ "wormhole-anchor-sdk/solana-devnet" ]
 tilt-devnet = [ "wormhole-anchor-sdk/tilt-devnet" ]
 
 [dependencies]
-ahash = "=0.8.5"
-
 ntt-messages = { path = "../../modules/ntt-messages", features = ["anchor", "hash"] }
 anchor-lang = { workspace = true, features = ["init-if-needed"] }
 anchor-spl.workspace = true
@@ -52,5 +50,5 @@ wormhole-raw-vaas = "0.2.0-alpha.2"
 libsecp256k1 = "=0.6.0"
 wormhole-sdk.workspace = true
 serde_wormhole.workspace = true
-solana-program-runtime = "1.17.2"
+solana-program-runtime = "1.17.22"
 bincode = "1.3.3"
