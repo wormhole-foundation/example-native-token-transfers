@@ -92,8 +92,8 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         t.mintDummy(address(user_A), 5 * 10 ** decimals);
 
+        // Test outgoing transfers complete successfully with rate limit disabled
         vm.startPrank(user_A);
-
         t.approve(address(nttManagerZeroRateLimiter), 3 * 10 ** decimals);
 
         uint64 s1 = nttManagerZeroRateLimiter.transfer(
@@ -105,10 +105,37 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         uint64 s3 = nttManagerZeroRateLimiter.transfer(
             1 * 10 ** decimals, chainId, toWormholeFormat(user_B)
         );
+        vm.stopPrank();
 
         assertEq(s1, 0);
         assertEq(s2, 1);
         assertEq(s3, 2);
+
+        // Test incoming transfer completes successfully with rate limit disabled
+        (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(nttManagerZeroRateLimiter);
+        nttManagerZeroRateLimiter.setThreshold(2);
+
+        // register nttManager peer
+        bytes32 peer = toWormholeFormat(address(nttManager));
+        nttManagerZeroRateLimiter.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9);
+
+        TransceiverStructs.NttManagerMessage memory nttManagerMessage;
+        bytes memory transceiverMessage;
+        (nttManagerMessage, transceiverMessage) = TransceiverHelpersLib
+            .buildTransceiverMessageWithNttManagerPayload(
+            0,
+            bytes32(0),
+            peer,
+            toWormholeFormat(address(nttManagerZeroRateLimiter)),
+            abi.encode("payload")
+        );
+
+        e1.receiveMessage(transceiverMessage);
+
+        bytes32 hash = TransceiverStructs.nttManagerMessageDigest(
+            TransceiverHelpersLib.SENDING_CHAIN_ID, nttManagerMessage
+        );
+        assertEq(nttManagerZeroRateLimiter.messageAttestations(hash), 1);
     }
 
     // === ownership
