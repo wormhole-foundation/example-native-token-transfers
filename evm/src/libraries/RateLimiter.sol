@@ -240,7 +240,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         RateLimitParams storage rateLimitParams
     ) internal {
         rateLimitParams.lastTxTimestamp = uint64(block.timestamp);
-        rateLimitParams.currentCapacity = capacity.add(amount).min(rateLimitParams.limit);
+        rateLimitParams.currentCapacity = capacity.saturatingAdd(amount).min(rateLimitParams.limit);
     }
 
     function _isOutboundAmountRateLimited(TrimmedAmount memory amount)
