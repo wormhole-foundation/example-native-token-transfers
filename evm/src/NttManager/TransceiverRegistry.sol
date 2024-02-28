@@ -40,9 +40,6 @@ abstract contract TransceiverRegistry {
     error NonRegisteredTransceiver(address transceiver);
     error TransceiverAlreadyEnabled(address transceiver);
 
-    event TransceiverAdded(address transceiver);
-    event TransceiverRemoved(address transceiver);
-
     modifier onlyTransceiver() {
         if (!_getTransceiverInfosStorage()[msg.sender].enabled) {
             revert CallerNotTransceiver(msg.sender);
@@ -150,8 +147,6 @@ abstract contract TransceiverRegistry {
         }
         _enabledTransceiverBitmap.bitmap = updatedEnabledTransceiverBitmap;
 
-        emit TransceiverAdded(transceiver);
-
         _checkTransceiversInvariants();
 
         return transceiverInfos[transceiver].index;
@@ -195,8 +190,6 @@ abstract contract TransceiverRegistry {
             }
         }
         assert(removed);
-
-        emit TransceiverRemoved(transceiver);
 
         _checkTransceiversInvariants();
         // we call the invariant check on the transceiver here as well, since
