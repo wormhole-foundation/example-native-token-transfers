@@ -11,10 +11,12 @@ spec:
         - name: anchor-deploy
           image: anchor-deploy
           command:
-            # TODO: Test this
-             - /bin/sh
-             - -c
-             - 'echo "test"'
-             # - 'solana program deploy -u http://solana-devnet:8889 -k solana/keys/solana-devnet.json'
----
+            - /root/.local/share/solana/install/active_release/bin/solana
+            - program 
+            - deploy 
+            - /opt/solana/deps/example_native_token_transfers.so'
+            - -u 
+            - http://solana-devnet:8889 
+            - -k 
+            - /opt/solana/deps/solana-devnet.json 
 

@@ -6,26 +6,27 @@ git_checkout('https://github.com/wormhole-foundation/wormhole.git#main', '.wormh
 load(".wormhole/Tiltfile", "namespace", "k8s_yaml_with_ns")
 
 docker_build(
+    ref = "anchor-deploy",
+    context = "./solana/",
+    dockerfile = "./solana/Dockerfile",
+)
+
+docker_build(
     ref = "ntt-ci",
     context = ".",
     only = ["./ci_tests"],
     dockerfile = "Dockerfile",
 )
 
-docker_build(
-    ref = "anchor-deploy",
-    context = "./solana/",
-    dockerfile = "./solana/Dockerfile",
-)
+k8s_yaml_with_ns("anchor-deploy.yaml") 
+
+k8s_yaml_with_ns("ci.yaml") 
 
 k8s_resource(
     "anchor-deploy",
     labels = ["anchor-ntt"],
+    resource_deps = ["solana"],
 )
-
-k8s_yaml("anchor-deploy.yaml") 
-
-k8s_yaml_with_ns("ci.yaml") 
 
 k8s_resource(
     "ntt-ci-tests",
