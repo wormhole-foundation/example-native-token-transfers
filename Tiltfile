@@ -25,7 +25,7 @@ k8s_yaml_with_ns("ci.yaml")
 k8s_resource(
     "anchor-deploy",
     labels = ["anchor-ntt"],
-    resource_deps = ["solana"],
+    resource_deps = ["solana-devnet"],
 )
 
 k8s_resource(
