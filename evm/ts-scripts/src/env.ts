@@ -14,6 +14,19 @@ export type Deployment = {
   address: string;
 };
 
+export type ContractsJson = {
+  WormholeCore: Deployment[],
+  WormholeRelayers: Deployment[],
+  SpecializedRelayers: Deployment[],
+
+  NttManagerProxies: Deployment[],
+  NttManagerSetups: Deployment[],
+  NttManagerImplementations: Deployment[],
+
+  NttEndpointProxies: Deployment[],
+  NttEndpointSetups: Deployment[],
+  NttEndpointImplementations: Deployment[],
+};
 
 const DEFAULT_ENV = "testnet";
 
@@ -52,7 +65,7 @@ export function loadScriptConfig(processName: string): any {
   return config;
 }
 
-export function loadContracts<T>() {
+export function loadContracts() {
   const contractsFile = fs.readFileSync(
     `./ts-scripts/config/${env}/contracts.json`
   );
@@ -62,7 +75,7 @@ export function loadContracts<T>() {
   }
 
   // NOTE: We assume that the contracts.json file is correctly formed...
-  return JSON.parse(contractsFile.toString()) as T;
+  return JSON.parse(contractsFile.toString()) as ContractsJson;
 }
 
 export function loadOperatingChains(): ChainInfo[] {
