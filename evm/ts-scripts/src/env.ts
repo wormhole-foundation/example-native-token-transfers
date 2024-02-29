@@ -52,15 +52,36 @@ function get_env_var(env: string): string {
   return v || "";
 }
 
+let config: any;
 export function loadScriptConfig(processName: string): any {
+  if (config) {
+    return config;
+  }
   const configFile = fs.readFileSync(
     `./ts-scripts/config/${env}/scriptConfigs/${processName}.json`
   );
-  const config = JSON.parse(configFile.toString());
-  if (!config) {
+  const _config = JSON.parse(configFile.toString());
+  if (!_config) {
     throw Error("Failed to pull config file!");
   }
-  return config;
+  config = _config;
+  return loadScriptConfig(processName);
+}
+
+type ChainConfig = {
+  chainId: ChainId;
+}
+
+export async function getChainConfig<T extends ChainConfig>(processName: string, chain: ChainInfo): Promise<T> {
+  const scriptConfig: T[] = await loadScriptConfig(processName);
+
+  const chainConfig = scriptConfig.find((x) => x.chainId == chain.chainId);
+
+  if (!chainConfig) {
+    throw Error(`Failed to find chain config for chain ${chain.chainId}`);
+  }
+
+  return chainConfig;
 }
 
 
@@ -196,8 +217,9 @@ export function loadContracts() {
 
   return loadContracts();
 }
+type ContractTypes = keyof ContractsJson;
 
-export async function getContractAddres(contractName: string, chainId: ChainId): Promise<string> {
+export async function getContractAddress(contractName: ContractTypes, chainId: ChainId): Promise<string> {
   const contracts = await loadContracts();
 
   const contract = contracts[contractName].find((c) => c.chainId === chainId)?.address;

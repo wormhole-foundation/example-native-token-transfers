@@ -3,10 +3,7 @@ import { ethers } from "ethers";
 import { ChainId } from "@certusone/wormhole-sdk";
 
 import {
-  NttManagerProxy__factory,
-  NttManager__factory,
   TransceiverStructs__factory,
-  Transceiver__factory,
   WormholeTransceiver__factory,
   ERC1967Proxy__factory
 } from "../contract-bindings";
@@ -19,7 +16,7 @@ import {
   Deployment,
   getSigner,
   loadScriptConfig,
-  getContractAddres,
+  getContractAddress,
 } from "./env";
 
 const processName = "deployManagers";
@@ -182,10 +179,10 @@ async function deployTransceiverProxy(
 
 async function getChainContracts(chainId: ChainId): Promise<NttTransceiverDependencies> {
   const [wormhole, wormholeRelayer, specializedRelayer, manager] = await Promise.all([
-    getContractAddres("WormholeCore", chainId),
-    getContractAddres("WormholeRelayers", chainId),
-    getContractAddres("SpecializedRelayers", chainId),
-    getContractAddres("NttManagerProxies", chainId),
+    getContractAddress("WormholeCore", chainId),
+    getContractAddress("WormholeRelayers", chainId),
+    getContractAddress("SpecializedRelayers", chainId),
+    getContractAddress("NttManagerProxies", chainId),
   ]);
 
   return { manager, wormhole, wormholeRelayer, specializedRelayer}
