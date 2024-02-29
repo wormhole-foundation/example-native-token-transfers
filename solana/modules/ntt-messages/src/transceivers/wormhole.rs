@@ -169,7 +169,10 @@ mod test {
 
     #[test]
     fn test_deserialize_transceiver_info() {
-        let data = hex::decode("9c23bd3bbabababababa000000000000000000000000000000000000000000000000000000dedededededede0000000000000000000000000000000000000000000000000010").unwrap();
+        let data = hex::decode(
+            include_str!("../../../../../evm/test/payloads/transceiver_info_1.txt").trim_end(),
+        )
+        .unwrap();
         let mut vec = &data[..];
         let message: WormholeTransceiverInfo = TypePrefixedPayload::read_payload(&mut vec).unwrap();
 
@@ -197,7 +200,8 @@ mod test {
     #[test]
     fn test_deserialize_transceiver_registration() {
         let data = hex::decode(
-            "18fc67c20017bababafefe000000000000000000000000000000000000000000000000000000",
+            include_str!("../../../../../evm/test/payloads/transceiver_registration_1.txt")
+                .trim_end(),
         )
         .unwrap();
         let mut vec = &data[..];

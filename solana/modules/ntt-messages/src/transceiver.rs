@@ -187,7 +187,10 @@ mod test {
     //
     #[test]
     fn test_deserialize_transceiver_message() {
-        let data = hex::decode("9945ff10042942fafabe0000000000000000000000000000000000000000000000000000042942fababe00000000000000000000000000000000000000000000000000000091128434bafe23430000000000000000000000000000000000ce00aa00000000004667921341234300000000000000000000000000000000000000000000000000004f994e545407000000000012d687beefface00000000000000000000000000000000000000000000000000000000feebcafe0000000000000000000000000000000000000000000000000000000000110000").unwrap();
+        let data = hex::decode(
+            include_str!("../../../../evm/test/payloads/transceiver_message_1.txt").trim_end(),
+        )
+        .unwrap();
         let mut vec = &data[..];
         let message: TransceiverMessage<WormholeTransceiver, NativeTokenTransfer> =
             TypePrefixedPayload::read_payload(&mut vec).unwrap();

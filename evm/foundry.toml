@@ -7,6 +7,7 @@ evm_version = "london"
 src = "src"
 out = "out"
 libs = ["lib"]
+fs_permissions = [{ access = "read", path = "./test/payloads"}]
 
 [profile.prod]
 via_ir = true

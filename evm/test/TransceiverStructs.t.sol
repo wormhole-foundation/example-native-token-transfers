@@ -26,7 +26,7 @@ contract TestTransceiverStructs is Test {
         bytes memory encodedTransceiverInit = TransceiverStructs.encodeTransceiverInit(ti);
 
         bytes memory encodedExpected =
-            hex"9c23bd3bbabababababa000000000000000000000000000000000000000000000000000000dedededededede0000000000000000000000000000000000000000000000000010";
+            vm.parseBytes(vm.readLine("./test/payloads/transceiver_info_1.txt"));
         assertEq(encodedTransceiverInit, encodedExpected);
     }
 
@@ -57,7 +57,7 @@ contract TestTransceiverStructs is Test {
             TransceiverStructs.encodeTransceiverRegistration(tr);
 
         bytes memory encodedExpected =
-            hex"18fc67c20017bababafefe000000000000000000000000000000000000000000000000000000";
+            vm.parseBytes(vm.readLine("./test/payloads/transceiver_registration_1.txt"));
         assertEq(encodedTransceiverRegistration, encodedExpected);
     }
 
@@ -101,7 +101,7 @@ contract TestTransceiverStructs is Test {
 
         // this is a useful test case for implementations on other runtimes
         bytes memory encodedExpected =
-            hex"9945ff10042942fafabe0000000000000000000000000000000000000000000000000000042942fababe00000000000000000000000000000000000000000000000000000091128434bafe23430000000000000000000000000000000000ce00aa00000000004667921341234300000000000000000000000000000000000000000000000000004f994e545407000000000012d687beefface00000000000000000000000000000000000000000000000000000000feebcafe0000000000000000000000000000000000000000000000000000000000110000";
+            vm.parseBytes(vm.readLine("./test/payloads/transceiver_message_1.txt"));
         assertEq(encodedTransceiverMessage, encodedExpected);
 
         TransceiverStructs.TransceiverMessage memory emParsed =
