@@ -42,7 +42,6 @@ pub struct Governance<'info> {
         seeds = [b"governance"],
         bump,
     )]
-    /// CHECK: TODO
     pub governance: AccountInfo<'info>,
 
     #[account(
