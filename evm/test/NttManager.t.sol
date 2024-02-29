@@ -453,23 +453,17 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
             assertEq(token.balanceOf(address(user_B)), transferAmount.untrim(token.decimals()));
         }
 
-        // replay protection
+        // replay protection for transceiver
         vm.recordLogs();
-        e2.receiveMessage(encodedEm);
-
-        {
-            Vm.Log[] memory entries = vm.getRecordedLogs();
-            assertEq(entries.length, 2);
-            assertEq(entries[1].topics.length, 3);
-            assertEq(entries[1].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
-            assertEq(entries[1].topics[1], toWormholeFormat(address(nttManager)));
-            assertEq(
-                entries[1].topics[2],
+        vm.expectRevert(
+            abi.encodeWithSignature(
+                "TransceiverAlreadyAttestedToMessage(bytes32)",
                 TransceiverStructs.nttManagerMessageDigest(
                     TransceiverHelpersLib.SENDING_CHAIN_ID, m
                 )
-            );
-        }
+            )
+        );
+        e2.receiveMessage(encodedEm);
     }
 
     // TODO:

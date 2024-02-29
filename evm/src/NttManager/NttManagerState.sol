@@ -170,7 +170,7 @@ abstract contract NttManagerState is
     /// @inheritdoc INttManagerState
     function transceiverAttestedToMessage(bytes32 digest, uint8 index) public view returns (bool) {
         return
-            _getMessageAttestationsStorage()[digest].attestedTransceivers & uint64(1 << index) == 1;
+            _getMessageAttestationsStorage()[digest].attestedTransceivers & uint64(1 << index) > 0;
     }
 
     /// @inheritdoc INttManagerState
