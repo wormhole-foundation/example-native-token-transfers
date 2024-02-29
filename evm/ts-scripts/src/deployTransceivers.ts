@@ -150,7 +150,7 @@ async function deployTransceiverImplementation(
     contracts.wormholeRelayer,
     contracts.specializedRelayer,
     config.consistencyLevel,
-    config.gasLimit
+    config.gasLimit,
   );
 
   return await transceiver.deployed().then((result) => {
