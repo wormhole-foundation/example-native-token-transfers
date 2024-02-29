@@ -26,13 +26,15 @@ library TransceiverStructs {
 
     /// @dev Message emitted and received by the nttManager contract.
     ///      The wire format is as follows:
-    ///      - sequence - 8 bytes
+    ///      - id - 32 bytes
     ///      - sender - 32 bytes
     ///      - payloadLength - 2 bytes
     ///      - payload - `payloadLength` bytes
     struct NttManagerMessage {
-        /// @notice unique sequence number
-        uint64 sequence;
+        /// @notice unique message identifier
+        /// @dev This is incrementally assigned on EVM chains, but this is not
+        /// guaranteed on other runtimes.
+        bytes32 id;
         /// @notice original message sender address.
         bytes32 sender;
         /// @notice payload that corresponds to the type.
@@ -55,7 +57,7 @@ library TransceiverStructs {
             revert PayloadTooLong(m.payload.length);
         }
         uint16 payloadLength = uint16(m.payload.length);
-        return abi.encodePacked(m.sequence, m.sender, payloadLength, m.payload);
+        return abi.encodePacked(m.id, m.sender, payloadLength, m.payload);
     }
 
     /// @notice Parse a NttManagerMessage.
@@ -67,7 +69,7 @@ library TransceiverStructs {
         returns (NttManagerMessage memory nttManagerMessage)
     {
         uint256 offset = 0;
-        (nttManagerMessage.sequence, offset) = encoded.asUint64Unchecked(offset);
+        (nttManagerMessage.id, offset) = encoded.asBytes32Unchecked(offset);
         (nttManagerMessage.sender, offset) = encoded.asBytes32Unchecked(offset);
         uint256 payloadLength;
         (payloadLength, offset) = encoded.asUint16Unchecked(offset);

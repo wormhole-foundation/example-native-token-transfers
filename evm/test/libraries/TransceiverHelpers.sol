@@ -29,7 +29,7 @@ library TransceiverHelpersLib {
 
     function attestTransceiversHelper(
         address to,
-        uint64 sequence,
+        bytes32 id,
         uint16 toChain,
         NttManager nttManager,
         NttManager recipientNttManager,
@@ -44,7 +44,7 @@ library TransceiverHelpersLib {
         )
     {
         TransceiverStructs.NttManagerMessage memory m =
-            buildNttManagerMessage(to, sequence, toChain, nttManager, amount);
+            buildNttManagerMessage(to, id, toChain, nttManager, amount);
         bytes memory encodedM = TransceiverStructs.encodeNttManagerMessage(m);
 
         prepTokenReceive(nttManager, recipientNttManager, amount, inboundLimit);
@@ -69,7 +69,7 @@ library TransceiverHelpersLib {
 
     function buildNttManagerMessage(
         address to,
-        uint64 sequence,
+        bytes32 id,
         uint16 toChain,
         NttManager nttManager,
         TrimmedAmount memory amount
@@ -77,7 +77,7 @@ library TransceiverHelpersLib {
         DummyToken token = DummyToken(nttManager.token());
 
         return TransceiverStructs.NttManagerMessage(
-            sequence,
+            id,
             bytes32(0),
             TransceiverStructs.encodeNativeTokenTransfer(
                 TransceiverStructs.NativeTokenTransfer({
@@ -104,14 +104,14 @@ library TransceiverHelpersLib {
     }
 
     function buildTransceiverMessageWithNttManagerPayload(
-        uint64 sequence,
+        bytes32 id,
         bytes32 sender,
         bytes32 sourceNttManager,
         bytes32 recipientNttManager,
         bytes memory payload
     ) internal pure returns (TransceiverStructs.NttManagerMessage memory, bytes memory) {
         TransceiverStructs.NttManagerMessage memory m =
-            TransceiverStructs.NttManagerMessage(sequence, sender, payload);
+            TransceiverStructs.NttManagerMessage(id, sender, payload);
         bytes memory nttManagerMessage = TransceiverStructs.encodeNttManagerMessage(m);
         bytes memory transceiverMessage;
         (, transceiverMessage) = TransceiverStructs.buildAndEncodeTransceiverMessage(

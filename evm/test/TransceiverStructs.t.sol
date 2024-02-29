@@ -21,7 +21,7 @@ contract TestTransceiverStructs is Test {
         });
 
         TransceiverStructs.NttManagerMessage memory mm = TransceiverStructs.NttManagerMessage({
-            sequence: 233968345345,
+            id: hex"128434bafe23430000000000000000000000000000000000ce00aa0000000000",
             sender: hex"46679213412343",
             payload: TransceiverStructs.encodeNativeTokenTransfer(ntt)
         });
@@ -39,7 +39,7 @@ contract TestTransceiverStructs is Test {
 
         // this is a useful test case for implementations on other runtimes
         bytes memory encodedExpected =
-            hex"9945ff10042942fafabe0000000000000000000000000000000000000000000000000000042942fababe00000000000000000000000000000000000000000000000000000079000000367999a1014667921341234300000000000000000000000000000000000000000000000000004f994e545407000000000012d687beefface00000000000000000000000000000000000000000000000000000000feebcafe0000000000000000000000000000000000000000000000000000000000110000";
+            hex"9945ff10042942fafabe0000000000000000000000000000000000000000000000000000042942fababe00000000000000000000000000000000000000000000000000000091128434bafe23430000000000000000000000000000000000ce00aa00000000004667921341234300000000000000000000000000000000000000000000000000004f994e545407000000000012d687beefface00000000000000000000000000000000000000000000000000000000feebcafe0000000000000000000000000000000000000000000000000000000000110000";
         assertEq(encodedTransceiverMessage, encodedExpected);
 
         TransceiverStructs.TransceiverMessage memory emParsed =
@@ -66,7 +66,7 @@ contract TestTransceiverStructs is Test {
         TransceiverStructs.NttManagerMessage memory parsed =
             TransceiverStructs.parseNttManagerMessage(message);
 
-        assertEq(m.sequence, parsed.sequence);
+        assertEq(m.id, parsed.id);
         assertEq(m.sender, parsed.sender);
         assertEq(m.payload, parsed.payload);
     }
