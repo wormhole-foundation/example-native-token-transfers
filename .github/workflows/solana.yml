@@ -47,6 +47,7 @@ jobs:
           toolchain: ${{ steps.toolchain.outputs.version }}
           components: "clippy,rustfmt"
 
+
       - name: Cache rust packages / build cache
         uses: actions/cache@v3
         env:
@@ -71,6 +72,12 @@ jobs:
 
       - name: Run `cargo clippy`
         run: cargo clippy --workspace --tests --manifest-path solana/Cargo.toml
+
+      - name: Install cargo dylint
+        run: cargo install cargo-dylint dylint-link
+          
+      - name: Run `cargo dylint --all --workspace`
+        run: cargo dylint --workspace --all --manifest-path solana/Cargo.toml
 
       - name: Cache solana tools
         id: cache-solana
