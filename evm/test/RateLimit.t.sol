@@ -559,18 +559,18 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         // assert user now has funds
         assertEq(token.balanceOf(address(user_B)), 50 * 10 ** (token.decimals() - 8));
 
-        // replay protection
+        // replay protection on executeMsg
         vm.recordLogs();
-        e2.receiveMessage(encodedEm);
+        nttManager.executeMsg(TransceiverHelpersLib.SENDING_CHAIN_ID, toWormholeFormat(address(nttManager)), m);
 
         {
             Vm.Log[] memory entries = vm.getRecordedLogs();
-            assertEq(entries.length, 2);
-            assertEq(entries[1].topics.length, 3);
-            assertEq(entries[1].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
-            assertEq(entries[1].topics[1], toWormholeFormat(address(nttManager)));
+            assertEq(entries.length, 1);
+            assertEq(entries[0].topics.length, 3);
+            assertEq(entries[0].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
+            assertEq(entries[0].topics[1], toWormholeFormat(address(nttManager)));
             assertEq(
-                entries[1].topics[2],
+                entries[0].topics[2],
                 TransceiverStructs.nttManagerMessageDigest(
                     TransceiverHelpersLib.SENDING_CHAIN_ID, m
                 )
