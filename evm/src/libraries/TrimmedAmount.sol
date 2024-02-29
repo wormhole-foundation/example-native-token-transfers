@@ -79,15 +79,6 @@ library TrimmedAmountLib {
         TrimmedAmount memory a,
         TrimmedAmount memory b
     ) internal pure returns (TrimmedAmount memory) {
-        // on initialization
-        if (isZero(a)) {
-            return b;
-        }
-
-        if (isZero(b)) {
-            return a;
-        }
-
         if (a.decimals != b.decimals) {
             revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
         }
