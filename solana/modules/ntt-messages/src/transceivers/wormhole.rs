@@ -162,3 +162,60 @@ impl Writeable for WormholeTransceiverRegistration {
 impl TypePrefixedPayload for WormholeTransceiverRegistration {
     const TYPE: Option<u8> = None;
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_deserialize_transceiver_info() {
+        let data = hex::decode("9c23bd3bbabababababa000000000000000000000000000000000000000000000000000000dedededededede0000000000000000000000000000000000000000000000000010").unwrap();
+        let mut vec = &data[..];
+        let message: WormholeTransceiverInfo = TypePrefixedPayload::read_payload(&mut vec).unwrap();
+
+        let expected = WormholeTransceiverInfo {
+            manager_address: [
+                0xBA, 0xBA, 0xBA, 0xBA, 0xBA, 0xBA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00,
+            ],
+            manager_mode: Mode::Locking,
+            token_address: [
+                0xDE, 0xDE, 0xDE, 0xDE, 0xDE, 0xDE, 0xDE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00,
+            ],
+            token_decimals: 16,
+        };
+        assert_eq!(message, expected);
+        assert_eq!(vec.len(), 0);
+
+        let encoded = TypePrefixedPayload::to_vec_payload(&expected);
+        assert_eq!(encoded, data);
+    }
+
+    #[test]
+    fn test_deserialize_transceiver_registration() {
+        let data = hex::decode(
+            "18fc67c20017bababafefe000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap();
+        let mut vec = &data[..];
+        let message: WormholeTransceiverRegistration =
+            TypePrefixedPayload::read_payload(&mut vec).unwrap();
+
+        let expected = WormholeTransceiverRegistration {
+            chain_id: ChainId { id: 23 },
+            transceiver_address: [
+                0xBA, 0xBA, 0xBA, 0xFE, 0xFE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00,
+            ],
+        };
+        assert_eq!(message, expected);
+        assert_eq!(vec.len(), 0);
+
+        let encoded = TypePrefixedPayload::to_vec_payload(&expected);
+        assert_eq!(encoded, data);
+    }
+}

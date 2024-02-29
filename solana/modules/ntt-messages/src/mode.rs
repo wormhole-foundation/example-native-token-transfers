@@ -9,8 +9,8 @@ use wormhole_io::{Readable, Writeable};
     derive(AnchorSerialize, AnchorDeserialize, InitSpace)
 )]
 pub enum Mode {
-    Burning,
     Locking,
+    Burning,
 }
 
 impl std::fmt::Display for Mode {
@@ -33,8 +33,8 @@ impl Readable for Mode {
         let b: u8 = u8::read(reader)?;
 
         match b {
-            0 => Ok(Mode::Burning),
-            1 => Ok(Mode::Locking),
+            0 => Ok(Mode::Locking),
+            1 => Ok(Mode::Burning),
             _ => Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
                 "Invalid mode",
@@ -53,8 +53,8 @@ impl Writeable for Mode {
         W: std::io::Write,
     {
         match self {
-            Mode::Burning => 0u8.write(writer),
-            Mode::Locking => 1u8.write(writer),
+            Mode::Locking => 0u8.write(writer),
+            Mode::Burning => 1u8.write(writer),
         }
     }
 }
