@@ -18,18 +18,22 @@ contract DummyToken is ERC20 {
     }
 
     function burnFrom(address, uint256) public virtual {
-        revert("Locking nttManager should not call 'burnFrom()'");
+        revert("No nttManager should call 'burnFrom()'");
+    }
+
+    function burn(address, uint256) public virtual {
+        revert("Locking nttManager should not call 'burn()'");
     }
 }
 
 contract DummyTokenMintAndBurn is DummyToken {
     function mint(address to, uint256 amount) public override {
-        // TODO - add access control here
+        // TODO - add access control here?
         _mint(to, amount);
     }
 
-    function burnFrom(address to, uint256 amount) public override {
-        // TODO - add access control here
-        _burn(to, amount);
+    function burn(uint256 amount) public {
+        // TODO - add access control here?
+        _burn(msg.sender, amount);
     }
 }
