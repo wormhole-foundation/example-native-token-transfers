@@ -7,12 +7,10 @@ import {
   loadOperatingChains,
   init,
   ChainInfo,
-  Deployment,
   getSigner,
   getChainConfig,
   getContractAddress,
 } from "./env";
-import { NttManagerLibraryAddresses } from "../contract-bindings/factories/NttManager__factory";
 
 const processName = "configureManagers";
 
@@ -71,14 +69,14 @@ async function configureManager(chain: ChainInfo, transceiverAddress: string, co
 
   const contract = await getManagerContract(chain);
 
-  log(`Setting transceiver address to: ${transceiverAddress}`);
   await contract.setTransceiver(transceiverAddress);
+  log(`transceiver address set to: ${transceiverAddress}`);
 
-  log(`Setting outbound limit to: ${config.outboundLimit}`);
   await contract.setOutboundLimit(config.outboundLimit);
+  log(`outboundLimit set to: ${config.outboundLimit}`);
 
-  log(`Setting threshold to: ${config.threshold}`);
   await contract.setThreshold(config.threshold);
+  log(`Threshold configured to: ${config.threshold}`);
 
   return { chainId: chain.chainId };
 }
