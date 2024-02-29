@@ -49,8 +49,7 @@ library TrimmedAmountLib {
         return a.amount < b.amount;
     }
 
-    // TODO: is this needed? let's remove it
-    function isZero(TrimmedAmount memory a) internal pure returns (bool) {
+    function isNull(TrimmedAmount memory a) internal pure returns (bool) {
         return (a.amount == 0 && a.decimals == 0);
     }
 

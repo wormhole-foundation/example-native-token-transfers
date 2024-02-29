@@ -85,7 +85,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         RateLimitParams storage rateLimitParams
     ) internal {
         TrimmedAmount memory oldLimit = rateLimitParams.limit;
-        if (oldLimit.isZero()) {
+        if (oldLimit.isNull()) {
             rateLimitParams.currentCapacity = limit;
         } else {
             TrimmedAmount memory currentCapacity = _getCurrentCapacity(rateLimitParams);
