@@ -112,6 +112,9 @@ pub struct TransferBurn<'info> {
     pub session_authority: AccountInfo<'info>,
 }
 
+// TODO: fees for relaying?
+/// Burns tokens and issues a corresponding notification to the outbox of the connected
+/// [`NttManagerPeer`].
 pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<()> {
     require_eq!(
         ctx.accounts.common.config.mode,
@@ -215,6 +218,11 @@ pub struct TransferLock<'info> {
     pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
 }
 
+// TODO: fees for relaying?
+// TODO: factor out common bits
+/// Locks tokens and issues a corresponding notification to the outbox of the connected
+/// [`NttManagerPeer`].
+#[allow(unknown_lints)]
 pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<()> {
     require_eq!(
         ctx.accounts.common.config.mode,
