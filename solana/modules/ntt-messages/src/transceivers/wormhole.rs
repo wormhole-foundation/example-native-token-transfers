@@ -1,3 +1,4 @@
+#[cfg(feature = "anchor")]
 use std::io;
 
 use wormhole_io::{Readable, TypePrefixedPayload, Writeable};

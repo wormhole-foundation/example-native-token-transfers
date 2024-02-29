@@ -11,7 +11,6 @@ use super::rate_limit::RateLimitState;
 #[derive(InitSpace, Debug, PartialEq, Eq)]
 // TODO: generalise this to arbitrary outbound messages (via a generic parameter in place of amount and recipient info)
 pub struct OutboxItem {
-    pub sequence: u64,
     pub amount: TrimmedAmount,
     pub sender: Pubkey,
     pub recipient_chain: ChainId,

@@ -9,7 +9,6 @@ use example_native_token_transfers::{
     error::NTTError,
     instructions::TransferArgs,
     queue::outbox::{OutboxItem, OutboxRateLimit},
-    sequence::Sequence,
     transceivers::wormhole::ReleaseOutboundArgs,
 };
 use ntt_messages::{
@@ -101,8 +100,6 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
 
     let clock: Clock = ctx.banks_client.get_sysvar().await.unwrap();
 
-    let sequence: Sequence = ctx.get_account_data_anchor(test_data.ntt.sequence()).await;
-
     let (accs, args) = init_accs_args(ctx, test_data, outbox_item.pubkey(), 154, false);
 
     approve_token_authority(
@@ -124,7 +121,6 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
     assert_eq!(
         outbox_item_account,
         OutboxItem {
-            sequence: sequence.sequence,
             amount: TrimmedAmount {
                 amount: 1,
                 decimals: 7
@@ -182,7 +178,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
             example_native_token_transfers::ID.to_bytes(),
             OTHER_MANAGER,
             NttManagerMessage {
-                sequence: sequence.sequence,
+                id: outbox_item.pubkey().to_bytes(),
                 sender: test_data.user.pubkey().to_bytes(),
                 payload: NativeTokenTransfer {
                     amount: TrimmedAmount {
@@ -197,9 +193,6 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
             vec![]
         )
     );
-
-    let next_sequence: Sequence = ctx.get_account_data_anchor(test_data.ntt.sequence()).await;
-    assert_eq!(next_sequence.sequence, sequence.sequence + 1);
 }
 
 #[tokio::test]

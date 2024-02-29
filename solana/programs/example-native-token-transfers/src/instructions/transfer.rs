@@ -43,13 +43,6 @@ pub struct Transfer<'info> {
     pub token_program: Interface<'info, token_interface::TokenInterface>,
 
     #[account(
-        mut,
-        seeds = [crate::sequence::Sequence::SEED_PREFIX],
-        bump = seq.bump,
-    )]
-    pub seq: Account<'info, crate::sequence::Sequence>,
-
-    #[account(
         init,
         payer = payer,
         space = 8 + OutboxItem::INIT_SPACE,
@@ -266,10 +259,7 @@ fn insert_into_outbox(
         }
     };
 
-    let sequence = common.seq.next_sequence();
-
     common.outbox_item.set_inner(OutboxItem {
-        sequence,
         amount: trimmed_amount,
         sender: common.sender.key(),
         recipient_chain,

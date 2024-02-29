@@ -47,7 +47,7 @@ pub struct ReceiveMessage<'info> {
         seeds = [
             ValidatedTransceiverMessage::<TransceiverMessageData<NativeTokenTransfer>>::SEED_PREFIX,
             vaa.emitter_chain().to_be_bytes().as_ref(),
-            vaa.message().ntt_manager_payload.sequence.to_be_bytes().as_ref(),
+            vaa.message().ntt_manager_payload.id.as_ref(),
         ],
         bump,
     )]

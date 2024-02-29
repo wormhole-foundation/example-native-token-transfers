@@ -22,7 +22,6 @@ pub fn initialize(ntt: &NTT, accounts: Initialize, args: InitializeArgs) -> Inst
         program_data: ntt.program_data(),
         config: ntt.config(),
         mint: accounts.mint,
-        seq: ntt.sequence(),
         rate_limit: ntt.outbox_rate_limit(),
         token_authority: ntt.token_authority(),
         custody: ntt.custody(&accounts.mint),

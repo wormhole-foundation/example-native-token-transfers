@@ -73,7 +73,7 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, args: ReleaseOutboundArgs
             accs.outbox_item.to_account_info().owner.to_bytes(),
             accs.outbox_item.recipient_ntt_manager,
             NttManagerMessage {
-                sequence: accs.outbox_item.sequence,
+                id: accs.outbox_item.key().to_bytes(),
                 sender: accs.outbox_item.sender.to_bytes(),
                 payload: NativeTokenTransfer {
                     amount: accs.outbox_item.amount,

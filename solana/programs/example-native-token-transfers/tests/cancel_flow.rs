@@ -76,7 +76,7 @@ fn init_redeem_accs(
         transceiver: test_data.ntt.program,
         transceiver_message: test_data
             .ntt
-            .transceiver_message(chain_id, ntt_manager_message.sequence),
+            .transceiver_message(chain_id, ntt_manager_message.id),
         inbox_item: test_data.ntt.inbox_item(chain_id, ntt_manager_message),
         inbox_rate_limit: test_data.ntt.inbox_rate_limit(chain_id),
         mint: test_data.mint,
@@ -88,21 +88,21 @@ fn init_receive_message_accs(
     test_data: &TestData,
     vaa: Pubkey,
     chain_id: u16,
-    sequence: u64,
+    id: [u8; 32],
 ) -> ReceiveMessage {
     ReceiveMessage {
         payer: ctx.payer.pubkey(),
         peer: test_data.ntt.transceiver_peer(chain_id),
         vaa,
         chain_id,
-        sequence,
+        id,
     }
 }
 
 async fn post_transfer_vaa(
     ctx: &mut ProgramTestContext,
     test_data: &TestData,
-    sequence: u64,
+    id: [u8; 32],
     amount: u64,
     // TODO: this is used for a negative testing of the recipient ntt_manager
     // address. this should not be done in the cancel flow tests, but instead a
@@ -111,7 +111,7 @@ async fn post_transfer_vaa(
     recipient: &Keypair,
 ) -> (Pubkey, NttManagerMessage<NativeTokenTransfer>) {
     let ntt_manager_message = NttManagerMessage {
-        sequence,
+        id,
         sender: [4u8; 32],
         payload: NativeTokenTransfer {
             amount: TrimmedAmount {
@@ -175,15 +175,17 @@ async fn test_cancel() {
     let recipient = Keypair::new();
     let (mut ctx, test_data) = setup(Mode::Locking).await;
 
-    let (vaa0, msg0) = post_transfer_vaa(&mut ctx, &test_data, 0, 1000, None, &recipient).await;
-    let (vaa1, msg1) = post_transfer_vaa(&mut ctx, &test_data, 1, 2000, None, &recipient).await;
+    let (vaa0, msg0) =
+        post_transfer_vaa(&mut ctx, &test_data, [0u8; 32], 1000, None, &recipient).await;
+    let (vaa1, msg1) =
+        post_transfer_vaa(&mut ctx, &test_data, [1u8; 32], 2000, None, &recipient).await;
 
     let inbound_limit_before = inbound_capacity(&mut ctx, &test_data).await;
     let outbound_limit_before = outbound_capacity(&mut ctx, &test_data).await;
 
     receive_message(
         &test_data.ntt,
-        init_receive_message_accs(&mut ctx, &test_data, vaa0, OTHER_CHAIN, 0),
+        init_receive_message_accs(&mut ctx, &test_data, vaa0, OTHER_CHAIN, [0u8; 32]),
     )
     .submit(&mut ctx)
     .await
@@ -240,7 +242,7 @@ async fn test_cancel() {
 
     receive_message(
         &test_data.ntt,
-        init_receive_message_accs(&mut ctx, &test_data, vaa1, OTHER_CHAIN, 1),
+        init_receive_message_accs(&mut ctx, &test_data, vaa1, OTHER_CHAIN, [1u8; 32]),
     )
     .submit(&mut ctx)
     .await
@@ -275,7 +277,7 @@ async fn test_wrong_recipient_ntt_manager() {
     let (vaa0, msg0) = post_transfer_vaa(
         &mut ctx,
         &test_data,
-        0,
+        [0u8; 32],
         1000,
         Some(&Pubkey::default()),
         &recipient,
@@ -284,7 +286,7 @@ async fn test_wrong_recipient_ntt_manager() {
 
     receive_message(
         &test_data.ntt,
-        init_receive_message_accs(&mut ctx, &test_data, vaa0, OTHER_CHAIN, 0),
+        init_receive_message_accs(&mut ctx, &test_data, vaa0, OTHER_CHAIN, [0u8; 32]),
     )
     .submit(&mut ctx)
     .await
