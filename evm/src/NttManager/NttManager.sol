@@ -155,8 +155,9 @@ contract NttManager is INttManager, NttManagerState {
         if (nativeTokenTransfer.toChain != chainId) {
             revert InvalidTargetChain(nativeTokenTransfer.toChain, chainId);
         }
-        TrimmedAmount nativeTransferAmount =
-            (nativeTokenTransfer.amount.untrim(tokenDecimals_)).trim(tokenDecimals_, tokenDecimals_);
+        uint8 tokenDecimals = tokenDecimals();
+        TrimmedAmount memory nativeTransferAmount =
+            (nativeTokenTransfer.amount.untrim(tokenDecimals)).trim(tokenDecimals, tokenDecimals);
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
@@ -313,8 +314,8 @@ contract NttManager is INttManager, NttManagerState {
         }
 
         // trim amount after burning to ensure transfer amount matches (amount - fee)
-        TrimmedAmount trimmedAmount = _trimTransferAmount(amount, recipientChain);
-        TrimmedAmount internalAmount = trimmedAmount.shift(tokenDecimals_);
+        TrimmedAmount memory trimmedAmount = _trimTransferAmount(amount, recipientChain);
+        TrimmedAmount memory internalAmount = trimmedAmount.shift(tokenDecimals());
 
         // get the sequence for this transfer
         uint64 sequence = _useMessageSequence();
@@ -415,7 +416,7 @@ contract NttManager is INttManager, NttManagerState {
         uint16 destinationChain = recipientChain;
 
         emit TransferSent(
-            recipient, amt.untrim(tokenDecimals_), totalPriceQuote, destinationChain, seq
+            recipient, amt.untrim(tokenDecimals()), totalPriceQuote, destinationChain, seq
         );
 
         // return the sequence number
@@ -429,7 +430,7 @@ contract NttManager is INttManager, NttManagerState {
     ) internal {
         // calculate proper amount of tokens to unlock/mint to recipient
         // untrim the amount
-        uint256 untrimmedAmount = amount.untrim(tokenDecimals_);
+        uint256 untrimmedAmount = amount.untrim(tokenDecimals());
 
         emit TransferRedeemed(digest);
 
@@ -444,9 +445,9 @@ contract NttManager is INttManager, NttManagerState {
         }
     }
 
-    /// @inheritdoc INttManager
     function tokenDecimals() public view override(INttManager, RateLimiter) returns (uint8) {
-        return tokenDecimals_;
+        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
+        return abi.decode(queriedDecimals, (uint8));
     }
 
     // ==================== Internal Helpers ===============================================
@@ -473,9 +474,10 @@ contract NttManager is INttManager, NttManagerState {
 
         TrimmedAmount trimmedAmount;
         {
-            trimmedAmount = amount.trim(tokenDecimals_, toDecimals);
+            uint8 fromDecimals = tokenDecimals();
+            trimmedAmount = amount.trim(fromDecimals, toDecimals);
             // don't deposit dust that can not be bridged due to the decimal shift
-            uint256 newAmount = trimmedAmount.untrim(tokenDecimals_);
+            uint256 newAmount = trimmedAmount.untrim(fromDecimals);
             if (amount != newAmount) {
                 revert TransferAmountHasDust(amount, amount - newAmount);
             }
