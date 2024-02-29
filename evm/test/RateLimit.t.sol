@@ -561,7 +561,9 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         // replay protection on executeMsg
         vm.recordLogs();
-        nttManager.executeMsg(TransceiverHelpersLib.SENDING_CHAIN_ID, toWormholeFormat(address(nttManager)), m);
+        nttManager.executeMsg(
+            TransceiverHelpersLib.SENDING_CHAIN_ID, toWormholeFormat(address(nttManager)), m
+        );
 
         {
             Vm.Log[] memory entries = vm.getRecordedLogs();

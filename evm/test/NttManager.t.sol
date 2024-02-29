@@ -456,10 +456,14 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         // replay protection for transceiver
         vm.recordLogs();
         vm.expectRevert(
-            abi.encodeWithSignature("TransceiverAlreadyAttestedToMessage(bytes32)", 
-            TransceiverStructs.nttManagerMessageDigest(TransceiverHelpersLib.SENDING_CHAIN_ID, m)));
+            abi.encodeWithSignature(
+                "TransceiverAlreadyAttestedToMessage(bytes32)",
+                TransceiverStructs.nttManagerMessageDigest(
+                    TransceiverHelpersLib.SENDING_CHAIN_ID, m
+                )
+            )
+        );
         e2.receiveMessage(encodedEm);
-
     }
 
     // TODO:
