@@ -24,14 +24,6 @@ contract MockNttManagerContract is NttManager {
             result := my_slot.slot
         }
     }
-
-    function getOutboundLimitParams() public pure returns (RateLimitParams memory) {
-        return _getOutboundLimitParams();
-    }
-
-    function getInboundLimitParams(uint16 chainId_) public view returns (RateLimitParams memory) {
-        return _getInboundLimitParams(chainId_);
-    }
 }
 
 contract MockNttManagerMigrateBasic is NttManager {
