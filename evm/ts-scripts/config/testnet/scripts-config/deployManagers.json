@@ -1,0 +1,26 @@
+[
+  {
+    "token": "",
+    "mode": 1,
+    "chainId": 10002,
+    "rateLimitDuration": 0
+  },
+  {
+    "token": "",
+    "mode": 1,
+    "chainId": 10003,
+    "rateLimitDuration": 0
+  },
+  {
+    "token": "",
+    "mode": 1,
+    "chainId": 10004,
+    "rateLimitDuration": 0
+  },
+  {
+    "token": "",
+    "mode": 1,
+    "chainId": 10005,
+    "rateLimitDuration": 0
+  }
+]
