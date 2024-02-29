@@ -54,7 +54,7 @@ then
     rpc=$RPC
 fi
 
-forge script $FORGE_SCRIPTS/ConfigureWormholeNtt.s.sol \
+forge script $FORGE_SCRIPTS/UpgradeNttManager.s.sol \
     --rpc-url $rpc \
     --broadcast \
     --private-key $private_key \
