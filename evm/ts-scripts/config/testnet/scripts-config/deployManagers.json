@@ -1,26 +1,26 @@
 [
   {
-    "token": "",
+    "token": "0x169D91C797edF56100F1B765268145660503a423",
     "mode": 1,
     "chainId": 10002,
-    "rateLimitDuration": 0
+    "rateLimitDuration": 3600
   },
   {
-    "token": "",
+    "token": "0x169D91C797edF56100F1B765268145660503a423",
     "mode": 1,
     "chainId": 10003,
-    "rateLimitDuration": 0
+    "rateLimitDuration": 3600
   },
   {
-    "token": "",
+    "token": "0x169D91C797edF56100F1B765268145660503a423",
     "mode": 1,
     "chainId": 10004,
-    "rateLimitDuration": 0
+    "rateLimitDuration": 3600
   },
   {
-    "token": "",
+    "token": "0x169D91C797edF56100F1B765268145660503a423",
     "mode": 1,
     "chainId": 10005,
-    "rateLimitDuration": 0
+    "rateLimitDuration": 3600
   }
 ]
