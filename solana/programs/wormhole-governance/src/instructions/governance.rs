@@ -9,7 +9,7 @@
 //! instruction is able to invoke the program's admin instructions.
 //!
 //! The instruction needs to be encoded in the VAA payload, with all the
-//! accounts. These accounts may be in any order and must include two additional placeholder accounts:
+//! accounts. These accounts may be in any order and may include two additional placeholder accounts:
 //! - [`OWNER`]: the program will replace this account with the governance PDA
 //! - [`PAYER`]: the program will replace this account with the payer account
 use anchor_lang::prelude::*;
@@ -154,9 +154,9 @@ impl From<AccountMeta> for Acc {
 /// The VAA's payload contains an instruction and relevant Accounts that it requires. This program
 /// performs verification of the VAA's contents and then performs a Cross Program Invocation if all
 /// verification succeeds.
-/// NOTE: `missing_owner_check` is disabled here: The VAA instruction is expected to contain
-/// placeholder accounts with Pubkeys set to hard-coded values [OWNER] and [PAYER]. These keys are
-/// overwritten. Because they are placeholders, the `owner` field is not important.
+/// NOTE: `missing_owner_check` is disabled here: The VAA instruction may contain
+/// placeholder accounts with Pubkeys set to hard-coded values [OWNER] and [PAYER].
+/// These keys are overwritten. Because they are placeholders, the `owner` field is not important.
 #[allow(unknown_lints)]
 #[allow(missing_owner_check)]
 pub fn governance<'info>(ctx: Context<'_, '_, '_, 'info, Governance<'info>>) -> Result<()> {
