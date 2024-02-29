@@ -444,70 +444,6 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         nttManager.completeOutboundQueuedTransfer(0);
     }
 
-    function testFuzz_outboundRateLimitShouldQueue(uint256 limitAmt, uint256 transferAmt) public {
-        // setup
-        address user_A = address(0x123);
-        address user_B = address(0x456);
-        DummyToken token = DummyToken(nttManager.token());
-        uint8 decimals = token.decimals();
-
-        // inputs
-        uint256 totalAmt = (type(uint64).max) / (10 ** decimals);
-        // avoids the ZeroAmount() error
-        // cannot transfer more than what's available
-        vm.assume(transferAmt > 0 && transferAmt <= totalAmt);
-        // this ensures that the transfer is always queued up
-        vm.assume(limitAmt < transferAmt);
-
-        // mint
-        token.mintDummy(address(user_A), totalAmt * (10 ** decimals));
-        uint256 outboundLimit = limitAmt * (10 ** decimals);
-        nttManager.setOutboundLimit(outboundLimit);
-
-        vm.startPrank(user_A);
-
-        // initiate transfer
-        uint256 transferAmount = transferAmt * (10 ** decimals);
-        token.approve(address(nttManager), transferAmount);
-
-        // shouldQueue == true
-        uint64 qSeq = nttManager.transfer(
-            transferAmount, chainId, toWormholeFormat(user_B), true, new bytes(1)
-        );
-
-        // assert that the transfer got queued up
-        assertEq(qSeq, 0);
-        IRateLimiter.OutboundQueuedTransfer memory qt = nttManager.getOutboundQueuedTransfer(0);
-        assertEq(qt.amount.getAmount(), transferAmount.trim(decimals, decimals).getAmount());
-        assertEq(qt.recipientChain, chainId);
-        assertEq(qt.recipient, toWormholeFormat(user_B));
-        assertEq(qt.txTimestamp, initialBlockTimestamp);
-
-        // assert that the contract also locked funds from the user
-        assertEq(token.balanceOf(address(user_A)), totalAmt * (10 ** decimals) - transferAmount);
-        assertEq(token.balanceOf(address(nttManager)), transferAmount);
-
-        // elapse rate limit duration - 1
-        uint256 durationElapsedTime = initialBlockTimestamp + nttManager.rateLimitDuration();
-        vm.warp(durationElapsedTime - 1);
-
-        // assert that transfer still can't be completed
-        bytes4 stillQueuedSelector =
-            bytes4(keccak256("OutboundQueuedTransferStillQueued(uint64,uint256)"));
-        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, initialBlockTimestamp));
-        nttManager.completeOutboundQueuedTransfer(0);
-
-        // now complete transfer
-        vm.warp(durationElapsedTime);
-        uint64 seq = nttManager.completeOutboundQueuedTransfer(0);
-        assertEq(seq, 0);
-
-        // now ensure transfer was removed from queue
-        bytes4 notFoundSelector = bytes4(keccak256("OutboundQueuedTransferNotFound(uint64)"));
-        vm.expectRevert(abi.encodeWithSelector(notFoundSelector, 0));
-        nttManager.completeOutboundQueuedTransfer(0);
-    }
-
     function test_inboundRateLimit_simple() public {
         address user_B = address(0x456);
 
@@ -765,6 +701,180 @@ contract TestRateLimit is Test, IRateLimiterEvents {
                 inboundLimitParams.currentCapacity.getAmount(), inboundLimitParams.limit.getAmount()
             );
             assertEq(inboundLimitParams.lastTxTimestamp, sendAgainTime);
+        }
+    }
+
+    function testFuzz_outboundRateLimitShouldQueue(uint256 limitAmt, uint256 transferAmt) public {
+        // setup
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+        DummyToken token = DummyToken(nttManager.token());
+        uint8 decimals = token.decimals();
+
+        // inputs
+        uint256 totalAmt = (type(uint64).max) / (10 ** decimals);
+        // avoids the ZeroAmount() error
+        // cannot transfer more than what's available
+        vm.assume(transferAmt > 0 && transferAmt <= totalAmt);
+        // this ensures that the transfer is always queued up
+        vm.assume(limitAmt < transferAmt);
+
+        // mint
+        token.mintDummy(address(user_A), totalAmt * (10 ** decimals));
+        uint256 outboundLimit = limitAmt * (10 ** decimals);
+        nttManager.setOutboundLimit(outboundLimit);
+
+        vm.startPrank(user_A);
+
+        // initiate transfer
+        uint256 transferAmount = transferAmt * (10 ** decimals);
+        token.approve(address(nttManager), transferAmount);
+
+        // shouldQueue == true
+        uint64 qSeq = nttManager.transfer(
+            transferAmount, chainId, toWormholeFormat(user_B), true, new bytes(1)
+        );
+
+        // assert that the transfer got queued up
+        assertEq(qSeq, 0);
+        IRateLimiter.OutboundQueuedTransfer memory qt = nttManager.getOutboundQueuedTransfer(0);
+        assertEq(qt.amount.getAmount(), transferAmount.trim(decimals, decimals).getAmount());
+        assertEq(qt.recipientChain, chainId);
+        assertEq(qt.recipient, toWormholeFormat(user_B));
+        assertEq(qt.txTimestamp, initialBlockTimestamp);
+
+        // assert that the contract also locked funds from the user
+        assertEq(token.balanceOf(address(user_A)), totalAmt * (10 ** decimals) - transferAmount);
+        assertEq(token.balanceOf(address(nttManager)), transferAmount);
+
+        // elapse rate limit duration - 1
+        uint256 durationElapsedTime = initialBlockTimestamp + nttManager.rateLimitDuration();
+        vm.warp(durationElapsedTime - 1);
+
+        // assert that transfer still can't be completed
+        bytes4 stillQueuedSelector =
+            bytes4(keccak256("OutboundQueuedTransferStillQueued(uint64,uint256)"));
+        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, initialBlockTimestamp));
+        nttManager.completeOutboundQueuedTransfer(0);
+
+        // now complete transfer
+        vm.warp(durationElapsedTime);
+        uint64 seq = nttManager.completeOutboundQueuedTransfer(0);
+        assertEq(seq, 0);
+
+        // now ensure transfer was removed from queue
+        bytes4 notFoundSelector = bytes4(keccak256("OutboundQueuedTransferNotFound(uint64)"));
+        vm.expectRevert(abi.encodeWithSelector(notFoundSelector, 0));
+        nttManager.completeOutboundQueuedTransfer(0);
+    }
+
+    function testFuzz_inboundRateLimitShouldQueue(uint256 inboundLimitAmt, uint256 amount) public {
+        vm.assume(amount > 0 && amount <= type(uint64).max);
+        vm.assume(inboundLimitAmt < amount);
+
+        address user_B = address(0x456);
+
+        (DummyTransceiver e1, DummyTransceiver e2) =
+            TransceiverHelpersLib.setup_transceivers(nttManager);
+
+        DummyToken token = DummyToken(nttManager.token());
+
+        ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](1);
+        transceivers[0] = e1;
+
+        TransceiverStructs.NttManagerMessage memory m;
+        bytes memory encodedEm;
+        uint256 inboundLimit = inboundLimitAmt;
+        TrimmedAmount memory trimmedAmount = TrimmedAmount(uint64(amount), 8);
+        {
+            TransceiverStructs.TransceiverMessage memory em;
+            (m, em) = TransceiverHelpersLib.attestTransceiversHelper(
+                user_B,
+                0,
+                chainId,
+                nttManager,
+                nttManager,
+                trimmedAmount,
+                // TrimmedAmount(50, 8),
+                inboundLimit.trim(token.decimals(), token.decimals()),
+                transceivers
+            );
+            encodedEm = TransceiverStructs.encodeTransceiverMessage(
+                TransceiverHelpersLib.TEST_TRANSCEIVER_PAYLOAD_PREFIX, em
+            );
+        }
+
+        bytes32 digest =
+            TransceiverStructs.nttManagerMessageDigest(TransceiverHelpersLib.SENDING_CHAIN_ID, m);
+
+        // no quorum yet
+        assertEq(token.balanceOf(address(user_B)), 0);
+
+        vm.expectEmit(address(nttManager));
+        emit InboundTransferQueued(digest);
+        e2.receiveMessage(encodedEm);
+
+        {
+            // now we have quorum but it'll hit limit
+            IRateLimiter.InboundQueuedTransfer memory qt =
+                nttManager.getInboundQueuedTransfer(digest);
+            assertEq(qt.amount.getAmount(), trimmedAmount.getAmount());
+            assertEq(qt.txTimestamp, initialBlockTimestamp);
+            assertEq(qt.recipient, user_B);
+        }
+
+        // assert that the user doesn't have funds yet
+        assertEq(token.balanceOf(address(user_B)), 0);
+
+        // change block time to (duration - 1) seconds later
+        uint256 durationElapsedTime = initialBlockTimestamp + nttManager.rateLimitDuration();
+        vm.warp(durationElapsedTime - 1);
+
+        {
+            // assert that transfer still can't be completed
+            bytes4 stillQueuedSelector =
+                bytes4(keccak256("InboundQueuedTransferStillQueued(bytes32,uint256)"));
+            vm.expectRevert(
+                abi.encodeWithSelector(stillQueuedSelector, digest, initialBlockTimestamp)
+            );
+            nttManager.completeInboundQueuedTransfer(digest);
+        }
+
+        // now complete transfer
+        vm.warp(durationElapsedTime);
+        nttManager.completeInboundQueuedTransfer(digest);
+
+        {
+            // assert transfer no longer in queue
+            bytes4 notQueuedSelector = bytes4(keccak256("InboundQueuedTransferNotFound(bytes32)"));
+            vm.expectRevert(abi.encodeWithSelector(notQueuedSelector, digest));
+            nttManager.completeInboundQueuedTransfer(digest);
+        }
+
+        // assert user now has funds
+        assertEq(
+            token.balanceOf(address(user_B)),
+            trimmedAmount.getAmount() * 10 ** (token.decimals() - 8)
+        );
+
+        // replay protection on executeMsg
+        vm.recordLogs();
+        nttManager.executeMsg(
+            TransceiverHelpersLib.SENDING_CHAIN_ID, toWormholeFormat(address(nttManager)), m
+        );
+
+        {
+            Vm.Log[] memory entries = vm.getRecordedLogs();
+            assertEq(entries.length, 1);
+            assertEq(entries[0].topics.length, 3);
+            assertEq(entries[0].topics[0], keccak256("MessageAlreadyExecuted(bytes32,bytes32)"));
+            assertEq(entries[0].topics[1], toWormholeFormat(address(nttManager)));
+            assertEq(
+                entries[0].topics[2],
+                TransceiverStructs.nttManagerMessageDigest(
+                    TransceiverHelpersLib.SENDING_CHAIN_ID, m
+                )
+            );
         }
     }
 }
