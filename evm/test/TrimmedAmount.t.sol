@@ -218,4 +218,53 @@ contract TrimmingTest is Test {
 
         assertEq(expectedIsLt, isLt);
     }
+
+    // invariant: forall (x: uint256, y: uint8, z: uint8),
+    //            (x <= type(uint64).max, y <= z)
+    //                    => (x.trim(x, 8).untrim(y) == x)
+    function testFuzz_trimIsLeftInverse(
+        uint256 amount,
+        uint8 fromDecimals,
+        uint8 toDecimals
+    ) public {
+        // this is guaranteed by trimming
+        uint256 amt = bound(amount, 1, type(uint64).max);
+        vm.assume(fromDecimals <= 18);
+        vm.assume(toDecimals <= 18);
+
+        // trimming
+        uint8 initialDecimals = 0;
+        TrimmedAmount memory trimmedAmount = TrimmedAmount(uint64(amt), initialDecimals);
+
+        // trimming is left inverse of trimming
+        uint256 amountUntrimmed = trimmedAmount.untrim(fromDecimals);
+        TrimmedAmount memory amountRoundTrip = amountUntrimmed.trim(fromDecimals, initialDecimals);
+
+        assertEq(trimmedAmount.amount, amountRoundTrip.amount);
+    }
+
+    // invariant: forall (TrimmedAmount a, TrimmedAmount b) a.saturatingAdd(b).amount <= type(uint64).max
+    function testFuzz_saturatingAddDoesNotOverflow(
+        TrimmedAmount memory a,
+        TrimmedAmount memory b
+    ) public {
+        vm.assume(a.decimals == b.decimals);
+
+        // this is guaranteed by trimming
+        a.amount = uint64(bound(a.amount, 0, type(uint64).max));
+        a.decimals = uint8(bound(a.decimals, 0, 8));
+
+        b.amount = uint64(bound(b.amount, 0, type(uint64).max));
+        b.decimals = uint8(bound(b.decimals, 0, 8));
+
+        TrimmedAmount memory c = a.saturatingAdd(b);
+
+        // decimals should always be the same, else revert
+        assertEq(c.decimals, a.decimals);
+
+        // amount should never overflow
+        assertLe(c.amount, type(uint64).max);
+        // amount should never underflow
+        assertGe(c.amount, 0);
+    }
 }
