@@ -90,8 +90,11 @@ contract ConfigureWormholeNtt is ParseNttConfig {
 
         // Sanity check deployment parameters.
         ConfigParams memory params = _readEnvVariables();
-        (ChainConfig[] memory config, INttManager nttManager, IWormholeTransceiver wormholeTransceiver) =
-            _parseAndValidateConfigFile(params.wormholeChainId);
+        (
+            ChainConfig[] memory config,
+            INttManager nttManager,
+            IWormholeTransceiver wormholeTransceiver
+        ) = _parseAndValidateConfigFile(params.wormholeChainId);
 
         configureWormholeTransceiver(wormholeTransceiver, config, params);
         configureNttManager(nttManager, config, params);

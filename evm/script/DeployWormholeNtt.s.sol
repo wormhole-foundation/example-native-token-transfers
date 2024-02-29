@@ -32,7 +32,11 @@ contract DeployWormholeNtt is Script {
     function deployNttManager(DeploymentParams memory params) internal returns (address) {
         // Deploy the Manager Implementation.
         NttManager implementation = new NttManager(
-            params.token, params.mode, params.wormholeChainId, params.rateLimitDuration, params.shouldSkipRatelimiter
+            params.token,
+            params.mode,
+            params.wormholeChainId,
+            params.rateLimitDuration,
+            params.shouldSkipRatelimiter
         );
 
         // NttManager Proxy

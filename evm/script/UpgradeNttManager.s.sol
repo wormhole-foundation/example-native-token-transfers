@@ -25,7 +25,11 @@ contract UpgradeNttManager is ParseNttConfig {
     ) internal {
         // Deploy the Manager Implementation.
         NttManager implementation = new NttManager(
-            params.token, params.mode, params.wormholeChainId, params.rateLimitDuration, params.shouldSkipRatelimiter
+            params.token,
+            params.mode,
+            params.wormholeChainId,
+            params.rateLimitDuration,
+            params.shouldSkipRatelimiter
         );
 
         console2.log("NttManager Implementation deployed at: ", address(implementation));
@@ -67,8 +71,6 @@ contract UpgradeNttManager is ParseNttConfig {
 
         // Deploy NttManager.
         upgradeNttManager(nttManager, params);
-
-        console2.log(nttManager.tokenDecimals());
 
         vm.stopBroadcast();
     }
