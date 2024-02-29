@@ -57,4 +57,5 @@ fi
 forge script $FORGE_SCRIPTS/DeployWormholeNtt.s.sol \
     --rpc-url $rpc \
     --broadcast \
-    --private-key $private_key
+    --private-key $private_key \
+    --slow

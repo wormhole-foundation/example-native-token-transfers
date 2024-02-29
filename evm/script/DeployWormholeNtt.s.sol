@@ -16,6 +16,7 @@ contract DeployWormholeNtt is Script {
         INttManager.Mode mode;
         uint16 wormholeChainId;
         uint64 rateLimitDuration;
+        bool shouldSkipRatelimiter;
         address wormholeCoreBridge;
         address wormholeRelayerAddr;
         address specialRelayerAddr;
@@ -31,7 +32,7 @@ contract DeployWormholeNtt is Script {
     function deployNttManager(DeploymentParams memory params) internal returns (address) {
         // Deploy the Manager Implementation.
         NttManager implementation = new NttManager(
-            params.token, params.mode, params.wormholeChainId, params.rateLimitDuration
+            params.token, params.mode, params.wormholeChainId, params.rateLimitDuration, params.shouldSkipRatelimiter
         );
 
         // NttManager Proxy
@@ -105,6 +106,7 @@ contract DeployWormholeNtt is Script {
 
         // Rate limit duration.
         params.rateLimitDuration = uint64(vm.envUint("RELEASE_RATE_LIMIT_DURATION"));
+        params.shouldSkipRatelimiter = vm.envBool("RELEASE_SKIP_RATE_LIMIT");
 
         // Wormhole Core Bridge address.
         params.wormholeCoreBridge = vm.envAddress("RELEASE_CORE_BRIDGE_ADDRESS");
