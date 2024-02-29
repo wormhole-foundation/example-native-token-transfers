@@ -444,6 +444,70 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         nttManager.completeOutboundQueuedTransfer(0);
     }
 
+    function testFuzz_outboundRateLimitShouldQueue(uint256 limitAmt, uint256 transferAmt) public {
+        // setup
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+        DummyToken token = DummyToken(nttManager.token());
+        uint8 decimals = token.decimals();
+
+        // inputs
+        uint256 totalAmt = (type(uint64).max) / (10 ** decimals);
+        // avoids the ZeroAmount() error
+        // cannot transfer more than what's available
+        vm.assume(transferAmt > 0 && transferAmt <= totalAmt);
+        // this ensures that the transfer is always queued up
+        vm.assume(limitAmt < transferAmt);
+
+        // mint
+        token.mintDummy(address(user_A), totalAmt * (10 ** decimals));
+        uint256 outboundLimit = limitAmt * (10 ** decimals);
+        nttManager.setOutboundLimit(outboundLimit);
+
+        vm.startPrank(user_A);
+
+        // initiate transfer
+        uint256 transferAmount = transferAmt * (10 ** decimals);
+        token.approve(address(nttManager), transferAmount);
+
+        // shouldQueue == true
+        uint64 qSeq = nttManager.transfer(
+            transferAmount, chainId, toWormholeFormat(user_B), true, new bytes(1)
+        );
+
+        // assert that the transfer got queued up
+        assertEq(qSeq, 0);
+        IRateLimiter.OutboundQueuedTransfer memory qt = nttManager.getOutboundQueuedTransfer(0);
+        assertEq(qt.amount.getAmount(), transferAmount.trim(decimals, decimals).getAmount());
+        assertEq(qt.recipientChain, chainId);
+        assertEq(qt.recipient, toWormholeFormat(user_B));
+        assertEq(qt.txTimestamp, initialBlockTimestamp);
+
+        // assert that the contract also locked funds from the user
+        assertEq(token.balanceOf(address(user_A)), totalAmt * (10 ** decimals) - transferAmount);
+        assertEq(token.balanceOf(address(nttManager)), transferAmount);
+
+        // elapse rate limit duration - 1
+        uint256 durationElapsedTime = initialBlockTimestamp + nttManager.rateLimitDuration();
+        vm.warp(durationElapsedTime - 1);
+
+        // assert that transfer still can't be completed
+        bytes4 stillQueuedSelector =
+            bytes4(keccak256("OutboundQueuedTransferStillQueued(uint64,uint256)"));
+        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, initialBlockTimestamp));
+        nttManager.completeOutboundQueuedTransfer(0);
+
+        // now complete transfer
+        vm.warp(durationElapsedTime);
+        uint64 seq = nttManager.completeOutboundQueuedTransfer(0);
+        assertEq(seq, 0);
+
+        // now ensure transfer was removed from queue
+        bytes4 notFoundSelector = bytes4(keccak256("OutboundQueuedTransferNotFound(uint64)"));
+        vm.expectRevert(abi.encodeWithSelector(notFoundSelector, 0));
+        nttManager.completeOutboundQueuedTransfer(0);
+    }
+
     function test_inboundRateLimit_simple() public {
         address user_B = address(0x456);
 
