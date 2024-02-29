@@ -5,12 +5,74 @@ import "forge-std/Test.sol";
 
 import "../src/libraries/TransceiverStructs.sol";
 import "../src/Transceiver/WormholeTransceiver/WormholeTransceiver.sol";
+import "../src/interfaces/INttManager.sol";
 
 contract TestTransceiverStructs is Test {
     using TrimmedAmountLib for uint256;
     using TrimmedAmountLib for TrimmedAmount;
 
     // TODO: add some negative tests for unknown message types etc
+
+    function test_serialize_TransceiverInit() public {
+        bytes4 wh_prefix = 0x9c23bd3b;
+        TransceiverStructs.TransceiverInit memory ti = TransceiverStructs.TransceiverInit({
+            transceiverIdentifier: wh_prefix,
+            nttManagerAddress: hex"BABABABABABA",
+            nttManagerMode: uint8(INttManager.Mode.LOCKING),
+            tokenAddress: hex"DEDEDEDEDEDEDE",
+            tokenDecimals: 16
+        });
+
+        bytes memory encodedTransceiverInit = TransceiverStructs.encodeTransceiverInit(ti);
+
+        bytes memory encodedExpected =
+            hex"9c23bd3bbabababababa000000000000000000000000000000000000000000000000000000dedededededede0000000000000000000000000000000000000000000000000010";
+        assertEq(encodedTransceiverInit, encodedExpected);
+    }
+
+    function test_SerdeRoundtrip_TransceiverInit(TransceiverStructs.TransceiverInit memory ti)
+        public
+    {
+        bytes memory message = TransceiverStructs.encodeTransceiverInit(ti);
+        TransceiverStructs.TransceiverInit memory parsed =
+            TransceiverStructs.decodeTransceiverInit(message);
+
+        assertEq(ti.transceiverIdentifier, parsed.transceiverIdentifier);
+        assertEq(ti.nttManagerAddress, parsed.nttManagerAddress);
+        assertEq(ti.nttManagerMode, parsed.nttManagerMode);
+        assertEq(ti.tokenAddress, parsed.tokenAddress);
+        assertEq(ti.tokenDecimals, parsed.tokenDecimals);
+    }
+
+    function test_serialize_TransceiverRegistration() public {
+        bytes4 wh_prefix = 0x18fc67c2;
+        TransceiverStructs.TransceiverRegistration memory tr = TransceiverStructs
+            .TransceiverRegistration({
+            transceiverIdentifier: wh_prefix,
+            transceiverChainId: 23,
+            transceiverAddress: hex"BABABAFEFE"
+        });
+
+        bytes memory encodedTransceiverRegistration =
+            TransceiverStructs.encodeTransceiverRegistration(tr);
+
+        bytes memory encodedExpected =
+            hex"18fc67c20017bababafefe000000000000000000000000000000000000000000000000000000";
+        assertEq(encodedTransceiverRegistration, encodedExpected);
+    }
+
+    function test_SerdeRoundtrip_TransceiverRegistration(
+        TransceiverStructs.TransceiverRegistration memory tr
+    ) public {
+        bytes memory message = TransceiverStructs.encodeTransceiverRegistration(tr);
+
+        TransceiverStructs.TransceiverRegistration memory parsed =
+            TransceiverStructs.decodeTransceiverRegistration(message);
+
+        assertEq(tr.transceiverIdentifier, parsed.transceiverIdentifier);
+        assertEq(tr.transceiverChainId, parsed.transceiverChainId);
+        assertEq(tr.transceiverAddress, parsed.transceiverAddress);
+    }
 
     function test_serialize_TransceiverMessage() public {
         TransceiverStructs.NativeTokenTransfer memory ntt = TransceiverStructs.NativeTokenTransfer({
