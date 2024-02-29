@@ -20,7 +20,6 @@ pub mod messages;
 pub mod peer;
 pub mod queue;
 pub mod registered_transceiver;
-pub mod sequence;
 pub mod transceivers;
 
 use transceivers::wormhole::instructions::*;

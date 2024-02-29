@@ -150,7 +150,7 @@ describe('example-native-token-transfers', () => {
         sourceNttManager: Buffer.from('ntt_manager'.padStart(32, '\0')),
         recipientNttManager: ntt.program.programId.toBuffer(),
         ntt_managerPayload: new NttManagerMessage(
-          BigInt(0),
+          Buffer.from('sequence1'.padEnd(32, '0'), 'ascii'),
           Buffer.from('FACE'.padStart(64, '0'), 'hex'),
           new NativeTokenTransfer(
             Buffer.from('FAFA'.padStart(64, '0'), 'hex'),

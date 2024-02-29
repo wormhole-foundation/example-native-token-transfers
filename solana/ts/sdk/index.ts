@@ -91,10 +91,6 @@ export class NTT {
     return this.derive_pda(Buffer.from('config'))
   }
 
-  sequenceTrackerAccountAddress(): PublicKey {
-    return this.derive_pda(Buffer.from('sequence'))
-  }
-
   outboxRateLimitAccountAddress(): PublicKey {
     return this.derive_pda(Buffer.from('outbox_rate_limit'))
   }
@@ -140,13 +136,16 @@ export class NTT {
     return this.derive_pda([Buffer.from('transceiver_peer'), new BN(chainId).toBuffer('be', 2)])
   }
 
-  transceiverMessageAccountAddress(chain: ChainName | ChainId, sequence: BN): PublicKey {
+  transceiverMessageAccountAddress(chain: ChainName | ChainId, id: Buffer): PublicKey {
     const chainId = coalesceChainId(chain)
+    if (id.length != 32) {
+      throw new Error('id must be 32 bytes')
+    }
     return this.derive_pda(
       [
         Buffer.from('transceiver_message'),
         new BN(chainId).toBuffer('be', 2),
-        sequence.toBuffer('be', 8)
+        id
       ])
   }
 
@@ -182,7 +181,6 @@ export class NTT {
         programData: programDataAddress(this.program.programId),
         config: this.configAccountAddress(),
         mint: args.mint,
-        seq: this.sequenceTrackerAccountAddress(),
         rateLimit: this.outboxRateLimitAccountAddress(),
         tokenProgram,
         tokenAuthority: this.tokenAuthorityAddress(),
@@ -294,7 +292,6 @@ export class NTT {
           mint,
           from: args.from,
           sender: args.fromAuthority,
-          seq: this.sequenceTrackerAccountAddress(),
           outboxItem: args.outboxItem,
           outboxRateLimit: this.outboxRateLimitAccountAddress(),
           tokenAuthority: this.tokenAuthorityAddress(),
@@ -344,7 +341,6 @@ export class NTT {
           from: args.from,
           sender: args.fromAuthority,
           tokenProgram: await this.tokenProgram(config),
-          seq: this.sequenceTrackerAccountAddress(),
           outboxItem: args.outboxItem,
           outboxRateLimit: this.outboxRateLimitAccountAddress(),
           tokenAuthority: this.tokenAuthorityAddress(),
@@ -656,7 +652,7 @@ export class NTT {
       vaa: derivePostedVaaKey(this.wormholeId, parseVaa(args.vaa).hash),
       transceiverMessage: this.transceiverMessageAccountAddress(
         chainId,
-        new BN(ntt_managerMessage.sequence.toString())
+        ntt_managerMessage.id
       ),
     }).instruction();
   }
@@ -694,7 +690,7 @@ export class NTT {
         payer: args.payer,
         config: this.configAccountAddress(),
         peer: ntt_managerPeer,
-        transceiverMessage: this.transceiverMessageAccountAddress(chainId, new BN(ntt_managerMessage.sequence.toString())),
+        transceiverMessage: this.transceiverMessageAccountAddress(chainId, ntt_managerMessage.id),
         transceiver: this.registeredTransceiverAddress(this.program.programId),
         mint: await this.mintAccountAddress(config),
         inboxItem: this.inboxItemAccountAddress(chainId, ntt_managerMessage),

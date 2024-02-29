@@ -596,7 +596,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         TransceiverHelpersLib.attestTransceiversHelper(
             user_B,
-            1,
+            bytes32(uint256(1)),
             chainId,
             nttManager, // this is the proxy
             nttManagerOther, // this is the proxy

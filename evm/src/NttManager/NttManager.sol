@@ -382,7 +382,9 @@ contract NttManager is INttManager, NttManagerState {
         // construct the NttManagerMessage payload
         bytes memory encodedNttManagerPayload = TransceiverStructs.encodeNttManagerMessage(
             TransceiverStructs.NttManagerMessage(
-                seq, toWormholeFormat(sender), TransceiverStructs.encodeNativeTokenTransfer(ntt)
+                bytes32(uint256(seq)),
+                toWormholeFormat(sender),
+                TransceiverStructs.encodeNativeTokenTransfer(ntt)
             )
         );
 

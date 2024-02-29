@@ -13,7 +13,7 @@ use crate::utils::maybe_space::MaybeSpace;
     derive(AnchorSerialize, AnchorDeserialize, InitSpace)
 )]
 pub struct NttManagerMessage<A: MaybeSpace> {
-    pub sequence: u64,
+    pub id: [u8; 32],
     pub sender: [u8; 32],
     pub payload: A,
 }
@@ -43,14 +43,14 @@ impl<A: TypePrefixedPayload + MaybeSpace> Readable for NttManagerMessage<A> {
         Self: Sized,
         R: io::Read,
     {
-        let sequence = Readable::read(reader)?;
+        let id = Readable::read(reader)?;
         let sender = Readable::read(reader)?;
         // TODO: same as below for ntt_manager payload
         let _payload_len: u16 = Readable::read(reader)?;
         let payload = A::read_payload(reader)?;
 
         Ok(Self {
-            sequence,
+            id,
             sender,
             payload,
         })
@@ -59,7 +59,7 @@ impl<A: TypePrefixedPayload + MaybeSpace> Readable for NttManagerMessage<A> {
 
 impl<A: TypePrefixedPayload + MaybeSpace> Writeable for NttManagerMessage<A> {
     fn written_size(&self) -> usize {
-        u64::SIZE.unwrap()
+        self.id.len()
             + self.sender.len()
             + u16::SIZE.unwrap() // payload length
             + self.payload.written_size()
@@ -70,12 +70,12 @@ impl<A: TypePrefixedPayload + MaybeSpace> Writeable for NttManagerMessage<A> {
         W: io::Write,
     {
         let NttManagerMessage {
-            sequence,
+            id,
             sender,
             payload,
         } = self;
 
-        sequence.write(writer)?;
+        id.write(writer)?;
         writer.write_all(sender)?;
         let len: u16 = u16::try_from(payload.written_size()).expect("u16 overflow");
         len.write(writer)?;

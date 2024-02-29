@@ -9,7 +9,7 @@ pub struct ReceiveMessage {
     pub peer: Pubkey,
     pub vaa: Pubkey,
     pub chain_id: u16,
-    pub sequence: u64,
+    pub id: [u8; 32],
 }
 
 pub fn receive_message(ntt: &NTT, accs: ReceiveMessage) -> Instruction {
@@ -20,7 +20,7 @@ pub fn receive_message(ntt: &NTT, accs: ReceiveMessage) -> Instruction {
         config: ntt.config(),
         peer: accs.peer,
         vaa: accs.vaa,
-        transceiver_message: ntt.transceiver_message(accs.chain_id, accs.sequence),
+        transceiver_message: ntt.transceiver_message(accs.chain_id, accs.id),
         system_program: System::id(),
     };
 

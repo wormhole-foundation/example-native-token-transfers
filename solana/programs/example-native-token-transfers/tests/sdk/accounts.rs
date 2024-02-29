@@ -6,7 +6,6 @@ use example_native_token_transfers::{
         outbox::OutboxRateLimit,
     },
     registered_transceiver::RegisteredTransceiver,
-    sequence::Sequence,
 };
 use ntt_messages::{ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage};
 use sha3::{Digest, Keccak256};
@@ -74,11 +73,6 @@ impl NTT {
     pub fn config(&self) -> Pubkey {
         let (config, _) = Pubkey::find_program_address(&[Config::SEED_PREFIX], &self.program);
         config
-    }
-
-    pub fn sequence(&self) -> Pubkey {
-        let (sequence, _) = Pubkey::find_program_address(&[Sequence::SEED_PREFIX], &self.program);
-        sequence
     }
 
     pub fn outbox_rate_limit(&self) -> Pubkey {
@@ -152,13 +146,9 @@ impl NTT {
         peer
     }
 
-    pub fn transceiver_message(&self, chain: u16, sequence: u64) -> Pubkey {
+    pub fn transceiver_message(&self, chain: u16, id: [u8; 32]) -> Pubkey {
         let (transceiver_message, _) = Pubkey::find_program_address(
-            &[
-                b"transceiver_message".as_ref(),
-                &chain.to_be_bytes(),
-                &sequence.to_be_bytes(),
-            ],
+            &[b"transceiver_message".as_ref(), &chain.to_be_bytes(), &id],
             &self.program,
         );
         transceiver_message

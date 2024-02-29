@@ -84,7 +84,6 @@ fn common(ntt: &NTT, transfer: &Transfer) -> example_native_token_transfers::acc
         mint: transfer.mint,
         from: transfer.from,
         token_program: Token::id(),
-        seq: ntt.sequence(),
         outbox_item: transfer.outbox_item,
         outbox_rate_limit: ntt.outbox_rate_limit(),
         token_authority: ntt.token_authority(),

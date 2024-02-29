@@ -10,7 +10,6 @@ use crate::{
     bitmap::Bitmap,
     error::NTTError,
     queue::{outbox::OutboxRateLimit, rate_limit::RateLimitState},
-    sequence::Sequence,
 };
 
 // TODO: upgradeability
@@ -46,15 +45,6 @@ pub struct Initialize<'info> {
             @ NTTError::InvalidMintAuthority,
     )]
     pub mint: InterfaceAccount<'info, token_interface::Mint>,
-
-    #[account(
-        init,
-        payer = payer,
-        space = 8 + Sequence::INIT_SPACE,
-        seeds = [Sequence::SEED_PREFIX],
-        bump,
-    )]
-    pub seq: Account<'info, Sequence>,
 
     #[account(
         init,
@@ -112,11 +102,6 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
         // NOTE: can't be changed for now
         threshold: 1,
         enabled_transceivers: Bitmap::new(),
-    });
-
-    ctx.accounts.seq.set_inner(Sequence {
-        bump: ctx.bumps.seq,
-        sequence: 0,
     });
 
     ctx.accounts.rate_limit.set_inner(OutboxRateLimit {
