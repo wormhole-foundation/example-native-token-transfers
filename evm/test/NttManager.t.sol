@@ -72,12 +72,20 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
     // === pure unit tests
 
-    function test_countSetBits() public {
-        assertEq(countSetBits(5), 2);
-        assertEq(countSetBits(0), 0);
-        assertEq(countSetBits(15), 4);
-        assertEq(countSetBits(16), 1);
-        assertEq(countSetBits(65535), 16);
+    // naive implementation of countSetBits to test against
+    function simpleCount(uint64 n) public returns (uint8) {
+        uint8 count;
+
+        while (n > 0) {
+            count += uint8(n & 1);
+            n >>= 1;
+        }
+
+        return count;
+    }
+
+    function testFuzz_countSetBits(uint64 n) public {
+        assertEq(simpleCount(n), countSetBits(n));
     }
 
     // === Deployments with rate limiter disabled
