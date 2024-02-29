@@ -4,15 +4,17 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npx typechain --target=ethers-v5 --node16-modules --out-dir=./contract-bindings ../forge-build/*/*.json"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@certusone/wormhole-sdk": "^0.10.11",
+    "@typechain/ethers-v5": "^11.1.2",
     "@types/node": "^20.11.22",
     "@xlabs-xyz/ledger-signer": "^0.0.3",
     "dotenv": "^16.4.5",
-    "ethers": "^5.7.2"
+    "ethers": "^5.7.2",
+    "typechain": "^8.3.2"
   }
 }

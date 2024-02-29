@@ -20,12 +20,10 @@ export type ContractsJson = {
   SpecializedRelayers: Deployment[],
 
   NttManagerProxies: Deployment[],
-  NttManagerSetups: Deployment[],
   NttManagerImplementations: Deployment[],
 
-  NttEndpointProxies: Deployment[],
-  NttEndpointSetups: Deployment[],
-  NttEndpointImplementations: Deployment[],
+  NttTransceiverProxies: Deployment[],
+  NttTransceiverImplementations: Deployment[],
 };
 
 const DEFAULT_ENV = "testnet";
@@ -65,18 +63,6 @@ export function loadScriptConfig(processName: string): any {
   return config;
 }
 
-export function loadContracts() {
-  const contractsFile = fs.readFileSync(
-    `./ts-scripts/config/${env}/contracts.json`
-  );
-
-  if (!contractsFile) {
-    throw Error("Failed to find contracts file for this process!");
-  }
-
-  // NOTE: We assume that the contracts.json file is correctly formed...
-  return JSON.parse(contractsFile.toString()) as ContractsJson;
-}
 
 export function loadOperatingChains(): ChainInfo[] {
   const allChains = loadChains();
@@ -190,3 +176,36 @@ export function getProvider(
 
   return provider;
 }
+
+let contracts: ContractsJson;
+export function loadContracts() {
+  if (contracts) {
+    return contracts;
+  }
+
+  const contractsFile = fs.readFileSync(
+    `./ts-scripts/config/${env}/contracts.json`
+  );
+
+  if (!contractsFile) {
+    throw Error("Failed to find contracts file for this process!");
+  }
+
+  // NOTE: We assume that the contracts.json file is correctly formed...
+  contracts = JSON.parse(contractsFile.toString()) as ContractsJson;
+
+  return loadContracts();
+}
+
+export async function getContractAddres(contractName: string, chainId: ChainId): Promise<string> {
+  const contracts = await loadContracts();
+
+  const contract = contracts[contractName].find((c) => c.chainId === chainId)?.address;
+
+  if (!contract) {
+    throw new Error(`No ${contractName} contract found for chain ${chainId}`);
+  }
+
+  return contract;
+}
+
