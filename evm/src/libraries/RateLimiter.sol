@@ -85,11 +85,14 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         RateLimitParams storage rateLimitParams
     ) internal {
         TrimmedAmount memory oldLimit = rateLimitParams.limit;
-        TrimmedAmount memory currentCapacity = _getCurrentCapacity(rateLimitParams);
+        if (oldLimit.isNull()) {
+            rateLimitParams.currentCapacity = limit;
+        } else {
+            TrimmedAmount memory currentCapacity = _getCurrentCapacity(rateLimitParams);
+            rateLimitParams.currentCapacity =
+                _calculateNewCurrentCapacity(limit, oldLimit, currentCapacity);
+        }
         rateLimitParams.limit = limit;
-
-        rateLimitParams.currentCapacity =
-            _calculateNewCurrentCapacity(limit, oldLimit, currentCapacity);
 
         rateLimitParams.lastTxTimestamp = uint64(block.timestamp);
     }
