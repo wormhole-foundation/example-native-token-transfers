@@ -27,3 +27,9 @@ codegen-units = 1
 opt-level = 3
 incremental = false
 codegen-units = 1
+
+# Linting tool for vulnerable anchor patterns
+[workspace.metadata.dylint]
+libraries = [
+    { git = "https://github.com/crytic/solana-lints", pattern = "lints/*" },
+]

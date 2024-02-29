@@ -22,3 +22,8 @@ node_modules: package-lock.json
 clean:
 	anchor clean
 	rm -rf .anchor node_modules
+
+# To run, install dependencies:  `cargo install cargo-dylint dylint-link`
+.PHONY: lint
+lint:
+	cargo dylint --all --workspace
