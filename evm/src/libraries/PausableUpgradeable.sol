@@ -47,11 +47,6 @@ abstract contract PausableUpgradeable is Initializable {
      */
     error InvalidPauser(address account);
 
-    /**
-     * @dev Cannot renounce the pauser capability when the contract is in the `PAUSED` state
-     */
-    error CannotRenounceWhilePaused(address account);
-
     // @dev Emitted when the contract is paused
     event Paused(bool paused);
     event NotPaused(bool notPaused);
