@@ -49,9 +49,7 @@ async function run() {
         return { chainId: chain.chainId, error: "No configuration found" };
       }
 
-      console.log(`Deploy starting for chain ${chain.chainId}...`);
       const result = await deployManager(chain, chainConfig);
-      console.log(`Deploy finished for chain ${chain.chainId}...`);
       return result;
     })
   );
@@ -60,7 +58,7 @@ async function run() {
     if (result.error) {
       console.error(
         `Error deploying for chain ${result.chainId}: ${inspect(
-          result.error.reason
+          result.error
         )}`
       );
       continue;
@@ -88,12 +86,14 @@ async function deployManager(chain: ChainInfo, config: NttManagerDeploymentConfi
   log("Deploying implementation");
   try {
     implementation = await deployManagerImplementation(chain, config, libraries);
+    log("Implementation deployed to ", implementation.address)
   } catch (error) {
     return { chainId: chain.chainId, error };
   }
 
   log("Deploying proxy");
   proxy = await deployManagerProxy(chain, implementation.address);
+  log("Proxy deployed to ", proxy.address);
 
   return {
     chainId: chain.chainId,
@@ -128,8 +128,7 @@ async function deployManagerImplementation(
 ): Promise<Deployment> {
   const signer = await getSigner(chain);
 
-  const managerFactory = await new NttManager__factory(libraries, signer)
-  
+  const managerFactory = await new NttManager__factory(libraries, signer);
   const manager = await managerFactory.deploy(
     config.token,
     config.mode,

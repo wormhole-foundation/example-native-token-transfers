@@ -19,7 +19,7 @@ import {
   getContractAddress,
 } from "./env";
 
-const processName = "deployManagers";
+const processName = "deployTransceivers";
 
 type NttTransceiverDeploymentConfig = {
   chainId: ChainId;
@@ -44,8 +44,8 @@ async function run() {
   console.log(`Start ${processName}!`);
 
   const output: any = {
-    NttManagerImplementations: [],
-    NttManagerProxies: [],
+    NttTransceiverImplementations: [],
+    NttTransceiverProxies: [],
   };
 
   const results = await Promise.all(
@@ -58,9 +58,7 @@ async function run() {
 
       const chainContracts: NttTransceiverDependencies = await getChainContracts(chain.chainId);
 
-      console.log(`[${chain.chainId}] Deploy Starting...`);
       const result = await deployTransceiver(chain, chainConfig, chainContracts);
-      console.log(`[${chain.chainId}] Deploy Finished`);
       return result;
     })
   );
@@ -69,15 +67,14 @@ async function run() {
     if (result.error) {
       console.error(
         `Error deploying for chain ${result.chainId}: ${inspect(
-          result.error.reason
+          result.error
         )}`
       );
       continue;
     }
 
-    console.log(`Deployed succeded for chain ${result.chainId}`);
-    output.NttManagerImplementations.push(result.implementation);
-    output.NttManagerProxies.push(result.proxy);
+    output.NttTransceiverImplementations.push(result.implementation);
+    output.NttTransceiverProxies.push(result.proxy);
   }
 
   writeOutputFiles(output, processName);
@@ -98,6 +95,7 @@ async function deployTransceiver(chain: ChainInfo, config: NttTransceiverDeploym
   log("Deploying implementation");
   try {
     implementation = await deployTransceiverImplementation(chain, config, contracts, libraries);
+    log("Implementation deployed to ", implementation.address);
   } catch (error) {
     return { chainId: chain.chainId, error };
   }
@@ -105,6 +103,7 @@ async function deployTransceiver(chain: ChainInfo, config: NttTransceiverDeploym
   log("Deploying proxy");
   try {
     proxy = await deployTransceiverProxy(chain, implementation.address);
+    log("Proxy deployed to ", proxy.address);
   } catch (error) {
     return { chainId: chain.chainId, error };
   }
@@ -143,14 +142,13 @@ async function deployTransceiverImplementation(
   const signer = await getSigner(chain);
 
   const transceiverFactory = new WormholeTransceiver__factory(libraries, signer);
-  
   const transceiver = await transceiverFactory.deploy(
     contracts.manager,
     contracts.wormhole,
     contracts.wormholeRelayer,
     contracts.specializedRelayer,
-    config.consistencyLevel,
-    config.gasLimit,
+    BigInt(config.consistencyLevel),
+    BigInt(config.gasLimit),
   );
 
   return await transceiver.deployed().then((result) => {
@@ -179,7 +177,7 @@ async function deployTransceiverProxy(
 
 async function getChainContracts(chainId: ChainId): Promise<NttTransceiverDependencies> {
   const [wormhole, wormholeRelayer, specializedRelayer, manager] = await Promise.all([
-    getContractAddress("WormholeCore", chainId),
+    getContractAddress("WormholeCoreContracts", chainId),
     getContractAddress("WormholeRelayers", chainId),
     getContractAddress("SpecializedRelayers", chainId),
     getContractAddress("NttManagerProxies", chainId),

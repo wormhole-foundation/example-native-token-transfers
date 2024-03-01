@@ -43,9 +43,7 @@ async function run() {
         return { chainId: chain.chainId, error: "No transceiver contract address found" };
       }
 
-      console.log(`Deploy starting for chain ${chain.chainId}...`);
       const result = await configureManager(chain, transceiverAddress, config);
-      console.log(`Deploy finished for chain ${chain.chainId}...`);
       return result;
     })
   );
@@ -68,10 +66,10 @@ async function configureManager(chain: ChainInfo, transceiverAddress: string, co
   const log = (...args: any[]) => console.log(`[${chain.chainId}]`, ...args);
 
   const contract = await getManagerContract(chain);
-
+  console.log("setting transceiver", transceiverAddress);
   await contract.setTransceiver(transceiverAddress);
   log(`transceiver address set to: ${transceiverAddress}`);
-
+  console.log("config", config);
   await contract.setOutboundLimit(config.outboundLimit);
   log(`outboundLimit set to: ${config.outboundLimit}`);
 
