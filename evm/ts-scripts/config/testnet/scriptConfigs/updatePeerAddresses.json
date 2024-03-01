@@ -1,0 +1,24 @@
+[
+  {
+    "chainId": 10002,
+    "decimals": 18
+  },
+  {
+    "chainId": 10003,
+    "decimals": 18
+
+  },
+  {
+    "chainId": 10004,
+    "decimals": 18
+  },
+  {
+    "chainId": 10005,
+    "decimals": 18
+  },
+  {
+    "chainId": 1,
+    "decimals": 18,
+    "managerAddress": "SCAmk7zfNKXemDjap14aGJJyQXZXXhq9X2Fs8oVSsdr"
+  }
+]

@@ -72,13 +72,13 @@ type ChainConfig = {
   chainId: ChainId;
 }
 
-export async function getChainConfig<T extends ChainConfig>(processName: string, chain: ChainInfo): Promise<T> {
+export async function getChainConfig<T extends ChainConfig>(processName: string, chainId: ChainId): Promise<T> {
   const scriptConfig: T[] = await loadScriptConfig(processName);
 
-  const chainConfig = scriptConfig.find((x) => x.chainId == chain.chainId);
+  const chainConfig = scriptConfig.find((x) => x.chainId == chainId);
 
   if (!chainConfig) {
-    throw Error(`Failed to find chain config for chain ${chain.chainId}`);
+    throw Error(`Failed to find chain config for chain ${chainId}`);
   }
 
   return chainConfig;
@@ -217,9 +217,12 @@ export function loadContracts() {
 }
 type ContractTypes = keyof ContractsJson;
 
+export async function getAllContracts(contractName: ContractTypes) {
+  return (await loadContracts())[contractName];
+}
+
 export async function getContractAddress(contractName: ContractTypes, chainId: ChainId): Promise<string> {
-  const contracts = await loadContracts();
-  const contract = contracts[contractName]?.find((c) => c.chainId === chainId)?.address;
+  const contract = (await getAllContracts(contractName))?.find((c) => c.chainId === chainId)?.address;
 
   if (!contract) {
     throw new Error(`No ${contractName} contract found for chain ${chainId}`);
