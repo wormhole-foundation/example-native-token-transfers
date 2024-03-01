@@ -10,6 +10,8 @@ import "../../src/interfaces/IWormholeTransceiver.sol";
 contract ParseNttConfig is Script {
     using stdJson for string;
 
+    // NOTE: Forge expects any struct to be defined in alphabetical order if being used
+    // to parse JSON. 
     struct ChainConfig {
         uint16 chainId;
         uint8 decimals;
