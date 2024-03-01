@@ -1,6 +1,6 @@
 [
   {
-    "token": "0x169D91C797edF56100F1B765268145660503a423",
+    "token": "169D91C797edF56100F1B765268145660503a423",
     "mode": 1,
     "chainId": 10002,
     "rateLimitDuration": 3600
