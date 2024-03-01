@@ -27,9 +27,9 @@ const _abi = [
         internalType: "struct TransceiverStructs.NttManagerMessage",
         components: [
           {
-            name: "sequence",
-            type: "uint64",
-            internalType: "uint64",
+            name: "id",
+            type: "bytes32",
+            internalType: "bytes32",
           },
           {
             name: "sender",
@@ -112,9 +112,9 @@ const _abi = [
         internalType: "struct TransceiverStructs.NttManagerMessage",
         components: [
           {
-            name: "sequence",
-            type: "uint64",
-            internalType: "uint64",
+            name: "id",
+            type: "bytes32",
+            internalType: "bytes32",
           },
           {
             name: "sender",

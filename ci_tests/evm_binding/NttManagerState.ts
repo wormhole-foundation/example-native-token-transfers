@@ -397,9 +397,7 @@ export interface NttManagerStateInterface extends utils.Interface {
     "PauserTransferred(address,address)": EventFragment;
     "PeerUpdated(uint16,bytes32,uint8,bytes32,uint8)": EventFragment;
     "ThresholdChanged(uint8,uint8)": EventFragment;
-    "TransceiverAdded(address)": EventFragment;
     "TransceiverAdded(address,uint256,uint8)": EventFragment;
-    "TransceiverRemoved(address)": EventFragment;
     "TransceiverRemoved(address,uint8)": EventFragment;
     "TransferRedeemed(bytes32)": EventFragment;
     "TransferSent(bytes32,uint256,uint256,uint16,uint64)": EventFragment;
@@ -422,16 +420,8 @@ export interface NttManagerStateInterface extends utils.Interface {
   getEvent(nameOrSignatureOrTopic: "PauserTransferred"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "PeerUpdated"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "ThresholdChanged"): EventFragment;
-  getEvent(nameOrSignatureOrTopic: "TransceiverAdded(address)"): EventFragment;
-  getEvent(
-    nameOrSignatureOrTopic: "TransceiverAdded(address,uint256,uint8)"
-  ): EventFragment;
-  getEvent(
-    nameOrSignatureOrTopic: "TransceiverRemoved(address)"
-  ): EventFragment;
-  getEvent(
-    nameOrSignatureOrTopic: "TransceiverRemoved(address,uint8)"
-  ): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "TransceiverAdded"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "TransceiverRemoved"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "TransferRedeemed"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "TransferSent"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "Upgraded"): EventFragment;
@@ -590,52 +580,30 @@ export type ThresholdChangedEvent = TypedEvent<
 export type ThresholdChangedEventFilter =
   TypedEventFilter<ThresholdChangedEvent>;
 
-export interface TransceiverAdded_address_EventObject {
-  transceiver: string;
-}
-export type TransceiverAdded_address_Event = TypedEvent<
-  [string],
-  TransceiverAdded_address_EventObject
->;
-
-export type TransceiverAdded_address_EventFilter =
-  TypedEventFilter<TransceiverAdded_address_Event>;
-
-export interface TransceiverAdded_address_uint256_uint8_EventObject {
+export interface TransceiverAddedEventObject {
   transceiver: string;
   transceiversNum: BigNumber;
   threshold: number;
 }
-export type TransceiverAdded_address_uint256_uint8_Event = TypedEvent<
+export type TransceiverAddedEvent = TypedEvent<
   [string, BigNumber, number],
-  TransceiverAdded_address_uint256_uint8_EventObject
+  TransceiverAddedEventObject
 >;
 
-export type TransceiverAdded_address_uint256_uint8_EventFilter =
-  TypedEventFilter<TransceiverAdded_address_uint256_uint8_Event>;
+export type TransceiverAddedEventFilter =
+  TypedEventFilter<TransceiverAddedEvent>;
 
-export interface TransceiverRemoved_address_EventObject {
-  transceiver: string;
-}
-export type TransceiverRemoved_address_Event = TypedEvent<
-  [string],
-  TransceiverRemoved_address_EventObject
->;
-
-export type TransceiverRemoved_address_EventFilter =
-  TypedEventFilter<TransceiverRemoved_address_Event>;
-
-export interface TransceiverRemoved_address_uint8_EventObject {
+export interface TransceiverRemovedEventObject {
   transceiver: string;
   threshold: number;
 }
-export type TransceiverRemoved_address_uint8_Event = TypedEvent<
+export type TransceiverRemovedEvent = TypedEvent<
   [string, number],
-  TransceiverRemoved_address_uint8_EventObject
+  TransceiverRemovedEventObject
 >;
 
-export type TransceiverRemoved_address_uint8_EventFilter =
-  TypedEventFilter<TransceiverRemoved_address_uint8_Event>;
+export type TransceiverRemovedEventFilter =
+  TypedEventFilter<TransceiverRemovedEvent>;
 
 export interface TransferRedeemedEventObject {
   digest: string;
@@ -1199,21 +1167,25 @@ export interface NttManagerState extends BaseContract {
       threshold?: null
     ): ThresholdChangedEventFilter;
 
-    "TransceiverAdded(address)"(
-      transceiver?: null
-    ): TransceiverAdded_address_EventFilter;
     "TransceiverAdded(address,uint256,uint8)"(
       transceiver?: null,
       transceiversNum?: null,
       threshold?: null
-    ): TransceiverAdded_address_uint256_uint8_EventFilter;
-    "TransceiverRemoved(address)"(
-      transceiver?: null
-    ): TransceiverRemoved_address_EventFilter;
+    ): TransceiverAddedEventFilter;
+    TransceiverAdded(
+      transceiver?: null,
+      transceiversNum?: null,
+      threshold?: null
+    ): TransceiverAddedEventFilter;
+
     "TransceiverRemoved(address,uint8)"(
       transceiver?: null,
       threshold?: null
-    ): TransceiverRemoved_address_uint8_EventFilter;
+    ): TransceiverRemovedEventFilter;
+    TransceiverRemoved(
+      transceiver?: null,
+      threshold?: null
+    ): TransceiverRemovedEventFilter;
 
     "TransferRedeemed(bytes32)"(
       digest?: BytesLike | null

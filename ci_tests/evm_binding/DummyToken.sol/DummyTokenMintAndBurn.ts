@@ -31,6 +31,8 @@ export interface DummyTokenMintAndBurnInterface extends utils.Interface {
     "allowance(address,address)": FunctionFragment;
     "approve(address,uint256)": FunctionFragment;
     "balanceOf(address)": FunctionFragment;
+    "burn(uint256)": FunctionFragment;
+    "burn(address,uint256)": FunctionFragment;
     "burnFrom(address,uint256)": FunctionFragment;
     "decimals()": FunctionFragment;
     "decreaseAllowance(address,uint256)": FunctionFragment;
@@ -49,6 +51,8 @@ export interface DummyTokenMintAndBurnInterface extends utils.Interface {
       | "allowance"
       | "approve"
       | "balanceOf"
+      | "burn(uint256)"
+      | "burn(address,uint256)"
       | "burnFrom"
       | "decimals"
       | "decreaseAllowance"
@@ -71,6 +75,14 @@ export interface DummyTokenMintAndBurnInterface extends utils.Interface {
     values: [string, BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "balanceOf", values: [string]): string;
+  encodeFunctionData(
+    functionFragment: "burn(uint256)",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "burn(address,uint256)",
+    values: [string, BigNumberish]
+  ): string;
   encodeFunctionData(
     functionFragment: "burnFrom",
     values: [string, BigNumberish]
@@ -110,6 +122,14 @@ export interface DummyTokenMintAndBurnInterface extends utils.Interface {
   decodeFunctionResult(functionFragment: "allowance", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "approve", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "burn(uint256)",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "burn(address,uint256)",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "burnFrom", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "decimals", data: BytesLike): Result;
   decodeFunctionResult(
@@ -208,9 +228,20 @@ export interface DummyTokenMintAndBurn extends BaseContract {
 
     balanceOf(account: string, overrides?: CallOverrides): Promise<[BigNumber]>;
 
-    burnFrom(
-      to: string,
+    "burn(uint256)"(
       amount: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
+    "burn(address,uint256)"(
+      arg0: string,
+      arg1: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
+    burnFrom(
+      arg0: string,
+      arg1: BigNumberish,
       overrides?: Overrides & { from?: string }
     ): Promise<ContractTransaction>;
 
@@ -274,9 +305,20 @@ export interface DummyTokenMintAndBurn extends BaseContract {
 
   balanceOf(account: string, overrides?: CallOverrides): Promise<BigNumber>;
 
-  burnFrom(
-    to: string,
+  "burn(uint256)"(
     amount: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  "burn(address,uint256)"(
+    arg0: string,
+    arg1: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  burnFrom(
+    arg0: string,
+    arg1: BigNumberish,
     overrides?: Overrides & { from?: string }
   ): Promise<ContractTransaction>;
 
@@ -340,9 +382,20 @@ export interface DummyTokenMintAndBurn extends BaseContract {
 
     balanceOf(account: string, overrides?: CallOverrides): Promise<BigNumber>;
 
-    burnFrom(
-      to: string,
+    "burn(uint256)"(
       amount: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    "burn(address,uint256)"(
+      arg0: string,
+      arg1: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    burnFrom(
+      arg0: string,
+      arg1: BigNumberish,
       overrides?: CallOverrides
     ): Promise<void>;
 
@@ -431,9 +484,20 @@ export interface DummyTokenMintAndBurn extends BaseContract {
 
     balanceOf(account: string, overrides?: CallOverrides): Promise<BigNumber>;
 
-    burnFrom(
-      to: string,
+    "burn(uint256)"(
       amount: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    "burn(address,uint256)"(
+      arg0: string,
+      arg1: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    burnFrom(
+      arg0: string,
+      arg1: BigNumberish,
       overrides?: Overrides & { from?: string }
     ): Promise<BigNumber>;
 
@@ -501,9 +565,20 @@ export interface DummyTokenMintAndBurn extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
-    burnFrom(
-      to: string,
+    "burn(uint256)"(
       amount: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    "burn(address,uint256)"(
+      arg0: string,
+      arg1: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    burnFrom(
+      arg0: string,
+      arg1: BigNumberish,
       overrides?: Overrides & { from?: string }
     ): Promise<PopulatedTransaction>;
 

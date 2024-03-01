@@ -31,6 +31,7 @@ export interface DummyTokenInterface extends utils.Interface {
     "allowance(address,address)": FunctionFragment;
     "approve(address,uint256)": FunctionFragment;
     "balanceOf(address)": FunctionFragment;
+    "burn(address,uint256)": FunctionFragment;
     "burnFrom(address,uint256)": FunctionFragment;
     "decimals()": FunctionFragment;
     "decreaseAllowance(address,uint256)": FunctionFragment;
@@ -49,6 +50,7 @@ export interface DummyTokenInterface extends utils.Interface {
       | "allowance"
       | "approve"
       | "balanceOf"
+      | "burn"
       | "burnFrom"
       | "decimals"
       | "decreaseAllowance"
@@ -71,6 +73,10 @@ export interface DummyTokenInterface extends utils.Interface {
     values: [string, BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "balanceOf", values: [string]): string;
+  encodeFunctionData(
+    functionFragment: "burn",
+    values: [string, BigNumberish]
+  ): string;
   encodeFunctionData(
     functionFragment: "burnFrom",
     values: [string, BigNumberish]
@@ -110,6 +116,7 @@ export interface DummyTokenInterface extends utils.Interface {
   decodeFunctionResult(functionFragment: "allowance", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "approve", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "burn", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "burnFrom", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "decimals", data: BytesLike): Result;
   decodeFunctionResult(
@@ -208,6 +215,12 @@ export interface DummyToken extends BaseContract {
 
     balanceOf(account: string, overrides?: CallOverrides): Promise<[BigNumber]>;
 
+    burn(
+      arg0: string,
+      arg1: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
     burnFrom(
       arg0: string,
       arg1: BigNumberish,
@@ -274,6 +287,12 @@ export interface DummyToken extends BaseContract {
 
   balanceOf(account: string, overrides?: CallOverrides): Promise<BigNumber>;
 
+  burn(
+    arg0: string,
+    arg1: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
   burnFrom(
     arg0: string,
     arg1: BigNumberish,
@@ -339,6 +358,12 @@ export interface DummyToken extends BaseContract {
     ): Promise<boolean>;
 
     balanceOf(account: string, overrides?: CallOverrides): Promise<BigNumber>;
+
+    burn(
+      arg0: string,
+      arg1: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
 
     burnFrom(
       arg0: string,
@@ -431,6 +456,12 @@ export interface DummyToken extends BaseContract {
 
     balanceOf(account: string, overrides?: CallOverrides): Promise<BigNumber>;
 
+    burn(
+      arg0: string,
+      arg1: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
     burnFrom(
       arg0: string,
       arg1: BigNumberish,
@@ -499,6 +530,12 @@ export interface DummyToken extends BaseContract {
     balanceOf(
       account: string,
       overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    burn(
+      arg0: string,
+      arg1: BigNumberish,
+      overrides?: Overrides & { from?: string }
     ): Promise<PopulatedTransaction>;
 
     burnFrom(

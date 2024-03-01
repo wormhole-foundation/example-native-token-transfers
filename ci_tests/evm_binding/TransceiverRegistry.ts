@@ -10,11 +10,7 @@ import type {
   Signer,
   utils,
 } from "ethers";
-import type {
-  FunctionFragment,
-  Result,
-  EventFragment,
-} from "@ethersproject/abi";
+import type { FunctionFragment, Result } from "@ethersproject/abi";
 import type { Listener, Provider } from "@ethersproject/providers";
 import type {
   TypedEventFilter,
@@ -40,36 +36,8 @@ export interface TransceiverRegistryInterface extends utils.Interface {
     data: BytesLike
   ): Result;
 
-  events: {
-    "TransceiverAdded(address)": EventFragment;
-    "TransceiverRemoved(address)": EventFragment;
-  };
-
-  getEvent(nameOrSignatureOrTopic: "TransceiverAdded"): EventFragment;
-  getEvent(nameOrSignatureOrTopic: "TransceiverRemoved"): EventFragment;
+  events: {};
 }
-
-export interface TransceiverAddedEventObject {
-  transceiver: string;
-}
-export type TransceiverAddedEvent = TypedEvent<
-  [string],
-  TransceiverAddedEventObject
->;
-
-export type TransceiverAddedEventFilter =
-  TypedEventFilter<TransceiverAddedEvent>;
-
-export interface TransceiverRemovedEventObject {
-  transceiver: string;
-}
-export type TransceiverRemovedEvent = TypedEvent<
-  [string],
-  TransceiverRemovedEventObject
->;
-
-export type TransceiverRemovedEventFilter =
-  TypedEventFilter<TransceiverRemovedEvent>;
 
 export interface TransceiverRegistry extends BaseContract {
   connect(signerOrProvider: Signer | Provider | string): this;
@@ -109,17 +77,7 @@ export interface TransceiverRegistry extends BaseContract {
     getTransceivers(overrides?: CallOverrides): Promise<string[]>;
   };
 
-  filters: {
-    "TransceiverAdded(address)"(
-      transceiver?: null
-    ): TransceiverAddedEventFilter;
-    TransceiverAdded(transceiver?: null): TransceiverAddedEventFilter;
-
-    "TransceiverRemoved(address)"(
-      transceiver?: null
-    ): TransceiverRemovedEventFilter;
-    TransceiverRemoved(transceiver?: null): TransceiverRemovedEventFilter;
-  };
+  filters: {};
 
   estimateGas: {
     getTransceivers(overrides?: CallOverrides): Promise<BigNumber>;

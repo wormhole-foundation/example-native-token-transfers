@@ -104,13 +104,13 @@ export declare namespace TransceiverStructs {
   };
 
   export type NttManagerMessageStruct = {
-    sequence: BigNumberish;
+    id: BytesLike;
     sender: BytesLike;
     payload: BytesLike;
   };
 
-  export type NttManagerMessageStructOutput = [BigNumber, string, string] & {
-    sequence: BigNumber;
+  export type NttManagerMessageStructOutput = [string, string, string] & {
+    id: string;
     sender: string;
     payload: string;
   };
@@ -132,13 +132,13 @@ export interface TransceiverStructsInterface extends utils.Interface {
     "decodeTransceiverInit(bytes)": FunctionFragment;
     "decodeTransceiverRegistration(bytes)": FunctionFragment;
     "encodeNativeTokenTransfer(((uint64,uint8),bytes32,bytes32,uint16))": FunctionFragment;
-    "encodeNttManagerMessage((uint64,bytes32,bytes))": FunctionFragment;
+    "encodeNttManagerMessage((bytes32,bytes32,bytes))": FunctionFragment;
     "encodeTransceiverInit((bytes4,bytes32,uint8,bytes32,uint8))": FunctionFragment;
     "encodeTransceiverInstruction((uint8,bytes))": FunctionFragment;
     "encodeTransceiverInstructions((uint8,bytes)[])": FunctionFragment;
     "encodeTransceiverMessage(bytes4,(bytes32,bytes32,bytes,bytes))": FunctionFragment;
     "encodeTransceiverRegistration((bytes4,uint16,bytes32))": FunctionFragment;
-    "nttManagerMessageDigest(uint16,(uint64,bytes32,bytes))": FunctionFragment;
+    "nttManagerMessageDigest(uint16,(bytes32,bytes32,bytes))": FunctionFragment;
     "parseNativeTokenTransfer(bytes)": FunctionFragment;
     "parseNttManagerMessage(bytes)": FunctionFragment;
     "parseTransceiverAndNttManagerMessage(bytes4,bytes)": FunctionFragment;

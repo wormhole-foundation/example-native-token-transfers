@@ -73,15 +73,49 @@ export declare namespace TransceiverStructs {
   };
 
   export type NttManagerMessageStruct = {
-    sequence: BigNumberish;
+    id: BytesLike;
     sender: BytesLike;
     payload: BytesLike;
   };
 
-  export type NttManagerMessageStructOutput = [BigNumber, string, string] & {
-    sequence: BigNumber;
+  export type NttManagerMessageStructOutput = [string, string, string] & {
+    id: string;
     sender: string;
     payload: string;
+  };
+
+  export type TransceiverInitStruct = {
+    transceiverIdentifier: BytesLike;
+    nttManagerAddress: BytesLike;
+    nttManagerMode: BigNumberish;
+    tokenAddress: BytesLike;
+    tokenDecimals: BigNumberish;
+  };
+
+  export type TransceiverInitStructOutput = [
+    string,
+    string,
+    number,
+    string,
+    number
+  ] & {
+    transceiverIdentifier: string;
+    nttManagerAddress: string;
+    nttManagerMode: number;
+    tokenAddress: string;
+    tokenDecimals: number;
+  };
+
+  export type TransceiverRegistrationStruct = {
+    transceiverIdentifier: BytesLike;
+    transceiverChainId: BigNumberish;
+    transceiverAddress: BytesLike;
+  };
+
+  export type TransceiverRegistrationStructOutput = [string, number, string] & {
+    transceiverIdentifier: string;
+    transceiverChainId: number;
+    transceiverAddress: string;
   };
 }
 
@@ -99,10 +133,14 @@ export interface TestTransceiverStructsInterface extends utils.Interface {
     "targetSelectors()": FunctionFragment;
     "targetSenders()": FunctionFragment;
     "test_SerdeJunk_NativeTokenTransfer(((uint64,uint8),bytes32,bytes32,uint16))": FunctionFragment;
-    "test_SerdeJunk_NttManagerMessage((uint64,bytes32,bytes))": FunctionFragment;
+    "test_SerdeJunk_NttManagerMessage((bytes32,bytes32,bytes))": FunctionFragment;
     "test_SerdeRoundtrip_NativeTokenTransfer(((uint64,uint8),bytes32,bytes32,uint16))": FunctionFragment;
-    "test_SerdeRoundtrip_NttManagerMessage((uint64,bytes32,bytes))": FunctionFragment;
+    "test_SerdeRoundtrip_NttManagerMessage((bytes32,bytes32,bytes))": FunctionFragment;
+    "test_SerdeRoundtrip_TransceiverInit((bytes4,bytes32,uint8,bytes32,uint8))": FunctionFragment;
+    "test_SerdeRoundtrip_TransceiverRegistration((bytes4,uint16,bytes32))": FunctionFragment;
+    "test_serialize_TransceiverInit()": FunctionFragment;
     "test_serialize_TransceiverMessage()": FunctionFragment;
+    "test_serialize_TransceiverRegistration()": FunctionFragment;
   };
 
   getFunction(
@@ -122,7 +160,11 @@ export interface TestTransceiverStructsInterface extends utils.Interface {
       | "test_SerdeJunk_NttManagerMessage"
       | "test_SerdeRoundtrip_NativeTokenTransfer"
       | "test_SerdeRoundtrip_NttManagerMessage"
+      | "test_SerdeRoundtrip_TransceiverInit"
+      | "test_SerdeRoundtrip_TransceiverRegistration"
+      | "test_serialize_TransceiverInit"
       | "test_serialize_TransceiverMessage"
+      | "test_serialize_TransceiverRegistration"
   ): FunctionFragment;
 
   encodeFunctionData(functionFragment: "IS_TEST", values?: undefined): string;
@@ -180,7 +222,23 @@ export interface TestTransceiverStructsInterface extends utils.Interface {
     values: [TransceiverStructs.NttManagerMessageStruct]
   ): string;
   encodeFunctionData(
+    functionFragment: "test_SerdeRoundtrip_TransceiverInit",
+    values: [TransceiverStructs.TransceiverInitStruct]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "test_SerdeRoundtrip_TransceiverRegistration",
+    values: [TransceiverStructs.TransceiverRegistrationStruct]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "test_serialize_TransceiverInit",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "test_serialize_TransceiverMessage",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "test_serialize_TransceiverRegistration",
     values?: undefined
   ): string;
 
@@ -239,7 +297,23 @@ export interface TestTransceiverStructsInterface extends utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "test_SerdeRoundtrip_TransceiverInit",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "test_SerdeRoundtrip_TransceiverRegistration",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "test_serialize_TransceiverInit",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "test_serialize_TransceiverMessage",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "test_serialize_TransceiverRegistration",
     data: BytesLike
   ): Result;
 
@@ -619,7 +693,25 @@ export interface TestTransceiverStructs extends BaseContract {
       overrides?: Overrides & { from?: string }
     ): Promise<ContractTransaction>;
 
+    test_SerdeRoundtrip_TransceiverInit(
+      ti: TransceiverStructs.TransceiverInitStruct,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
+    test_SerdeRoundtrip_TransceiverRegistration(
+      tr: TransceiverStructs.TransceiverRegistrationStruct,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
+    test_serialize_TransceiverInit(
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
     test_serialize_TransceiverMessage(
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
+    test_serialize_TransceiverRegistration(
       overrides?: Overrides & { from?: string }
     ): Promise<ContractTransaction>;
   };
@@ -674,7 +766,25 @@ export interface TestTransceiverStructs extends BaseContract {
     overrides?: Overrides & { from?: string }
   ): Promise<ContractTransaction>;
 
+  test_SerdeRoundtrip_TransceiverInit(
+    ti: TransceiverStructs.TransceiverInitStruct,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  test_SerdeRoundtrip_TransceiverRegistration(
+    tr: TransceiverStructs.TransceiverRegistrationStruct,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  test_serialize_TransceiverInit(
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
   test_serialize_TransceiverMessage(
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  test_serialize_TransceiverRegistration(
     overrides?: Overrides & { from?: string }
   ): Promise<ContractTransaction>;
 
@@ -727,7 +837,23 @@ export interface TestTransceiverStructs extends BaseContract {
       overrides?: CallOverrides
     ): Promise<void>;
 
+    test_SerdeRoundtrip_TransceiverInit(
+      ti: TransceiverStructs.TransceiverInitStruct,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    test_SerdeRoundtrip_TransceiverRegistration(
+      tr: TransceiverStructs.TransceiverRegistrationStruct,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    test_serialize_TransceiverInit(overrides?: CallOverrides): Promise<void>;
+
     test_serialize_TransceiverMessage(overrides?: CallOverrides): Promise<void>;
+
+    test_serialize_TransceiverRegistration(
+      overrides?: CallOverrides
+    ): Promise<void>;
   };
 
   filters: {
@@ -874,7 +1000,25 @@ export interface TestTransceiverStructs extends BaseContract {
       overrides?: Overrides & { from?: string }
     ): Promise<BigNumber>;
 
+    test_SerdeRoundtrip_TransceiverInit(
+      ti: TransceiverStructs.TransceiverInitStruct,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    test_SerdeRoundtrip_TransceiverRegistration(
+      tr: TransceiverStructs.TransceiverRegistrationStruct,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    test_serialize_TransceiverInit(
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
     test_serialize_TransceiverMessage(
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    test_serialize_TransceiverRegistration(
       overrides?: Overrides & { from?: string }
     ): Promise<BigNumber>;
   };
@@ -926,7 +1070,25 @@ export interface TestTransceiverStructs extends BaseContract {
       overrides?: Overrides & { from?: string }
     ): Promise<PopulatedTransaction>;
 
+    test_SerdeRoundtrip_TransceiverInit(
+      ti: TransceiverStructs.TransceiverInitStruct,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    test_SerdeRoundtrip_TransceiverRegistration(
+      tr: TransceiverStructs.TransceiverRegistrationStruct,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    test_serialize_TransceiverInit(
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
     test_serialize_TransceiverMessage(
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    test_serialize_TransceiverRegistration(
       overrides?: Overrides & { from?: string }
     ): Promise<PopulatedTransaction>;
   };

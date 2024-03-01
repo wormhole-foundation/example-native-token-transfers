@@ -13,7 +13,7 @@ import {
 import { Networkish } from "@ethersproject/networks";
 import { NodeHttpTransport } from "@improbable-eng/grpc-web-node-http-transport";
 import { Wallet, getDefaultProvider, utils } from "ethers";
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, writeFileSync } from "fs";
 import { DummyTokenMintAndBurn__factory } from "../evm_binding/factories/DummyToken.sol/DummyTokenMintAndBurn__factory";
 import { DummyToken__factory } from "../evm_binding/factories/DummyToken.sol/DummyToken__factory";
 import { ERC1967Proxy__factory } from "../evm_binding/factories/ERC1967Proxy__factory";
@@ -88,7 +88,8 @@ async function deployEth(
     ERC20NTTAddress, // Token address
     tokenSetting, // Lock
     chain_id, // chain id
-    86400 // Locking time
+    0, // Locking time
+    true
   );
 
   console.log("Deploying manager proxy");
