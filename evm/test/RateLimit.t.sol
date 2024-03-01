@@ -603,6 +603,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         TrimmedAmount transferAmount = packTrimmedAmount(10, 8);
         token.approve(address(nttManager), type(uint256).max);
+        // transfer 10 tokens from user_A -> user_B via the nttManager
         nttManager.transfer(
             transferAmount.untrim(decimals), chainId, toWormholeFormat(user_B), false, new bytes(1)
         );
@@ -614,7 +615,8 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         assertEq(token.balanceOf(user_A), (mintAmount - (transferAmount)).untrim(decimals));
 
         {
-            // assert outbound rate limit decreased
+            // consumed capacity on the outbound side
+            // assert outbound capacity decreased
             IRateLimiter.RateLimitParams memory outboundLimitParams =
                 nttManager.getOutboundLimitParams();
             assertEq(
@@ -644,7 +646,151 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         assertEq(token.balanceOf(user_A), mintAmount.untrim(decimals));
 
         {
-            // assert that the inbound limits decreased
+            // consume capacity on the inbound side
+            // assert that the inbound capacity decreased
+            IRateLimiter.RateLimitParams memory inboundLimitParams =
+                nttManager.getInboundLimitParams(TransceiverHelpersLib.SENDING_CHAIN_ID);
+            assertEq(
+                inboundLimitParams.currentCapacity.getAmount(),
+                inboundLimitParams.limit.sub(transferAmount).getAmount()
+            );
+            assertEq(inboundLimitParams.lastTxTimestamp, receiveTime);
+        }
+
+        {
+            // assert that outbound limit is at max again (because of backflow)
+            IRateLimiter.RateLimitParams memory outboundLimitParams =
+                nttManager.getOutboundLimitParams();
+            assertEq(
+                outboundLimitParams.currentCapacity.getAmount(),
+                outboundLimitParams.limit.getAmount()
+            );
+            assertEq(outboundLimitParams.lastTxTimestamp, receiveTime);
+        }
+
+        // go 1 second into the future
+        uint256 sendAgainTime = receiveTime + 1;
+        vm.warp(sendAgainTime);
+
+        // transfer 10 back to the contract
+        vm.startPrank(user_A);
+
+        nttManager.transfer(
+            transferAmount.untrim(decimals),
+            TransceiverHelpersLib.SENDING_CHAIN_ID,
+            toWormholeFormat(user_B),
+            false,
+            new bytes(1)
+        );
+
+        vm.stopPrank();
+
+        {
+            // assert outbound rate limit decreased
+            IRateLimiter.RateLimitParams memory outboundLimitParams =
+                nttManager.getOutboundLimitParams();
+            assertEq(
+                outboundLimitParams.currentCapacity.getAmount(),
+                outboundLimitParams.limit.sub(transferAmount).getAmount()
+            );
+            assertEq(outboundLimitParams.lastTxTimestamp, sendAgainTime);
+        }
+
+        {
+            // assert that the inbound limit is at max again (because of backflow)
+            IRateLimiter.RateLimitParams memory inboundLimitParams =
+                nttManager.getInboundLimitParams(TransceiverHelpersLib.SENDING_CHAIN_ID);
+            assertEq(
+                inboundLimitParams.currentCapacity.getAmount(), inboundLimitParams.limit.getAmount()
+            );
+            assertEq(inboundLimitParams.lastTxTimestamp, sendAgainTime);
+        }
+    }
+
+    // helper functions
+    function setupToken() public returns (address, address, DummyToken, uint8) {
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(nttManager.token());
+
+        uint8 decimals = token.decimals();
+        assertEq(decimals, 18);
+
+        return (user_A, user_B, token, decimals);
+    }
+
+    function initializeTransceivers() public returns (ITransceiverReceiver[] memory) {
+        (DummyTransceiver e1, DummyTransceiver e2) =
+            TransceiverHelpersLib.setup_transceivers(nttManager);
+
+        ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](2);
+        transceivers[0] = e1;
+        transceivers[1] = e2;
+
+        return transceivers;
+    }
+
+    // transfer tokens from user_A to user_B
+    // this consumes capacity on the outbound side
+    // send tokens from user_B to user_A
+    // this consumes capacity on the inbound side
+    // send tokens from user_A to user_B
+    // this should consume capacity on the outbound side
+    // and backfill the inbound side
+    function testFuzz_CircularFlowBackFilling(uint64 mintAmt, uint64 transferAmt) public {
+        vm.assume(transferAmt > 0 && transferAmt < mintAmt);
+
+        (address user_A, address user_B, DummyToken token, uint8 decimals) = setupToken();
+
+        TrimmedAmount memory mintAmount = TrimmedAmount(mintAmt, 8);
+        token.mintDummy(address(user_A), mintAmount.untrim(decimals));
+        nttManager.setOutboundLimit(mintAmount.untrim(decimals));
+
+        // transfer 10 tokens
+        vm.startPrank(user_A);
+
+        TrimmedAmount memory transferAmount = TrimmedAmount(transferAmt, 8);
+        token.approve(address(nttManager), type(uint256).max);
+        // transfer tokens from user_A -> user_B via the nttManager
+        nttManager.transfer(
+            transferAmount.untrim(decimals), chainId, toWormholeFormat(user_B), false, new bytes(1)
+        );
+
+        vm.stopPrank();
+
+        // assert nttManager has 10 tokens and user_A has 10 fewer tokens
+        assertEq(token.balanceOf(address(nttManager)), transferAmount.untrim(decimals));
+        assertEq(token.balanceOf(user_A), mintAmount.sub(transferAmount).untrim(decimals));
+
+        {
+            // consumed capacity on the outbound side
+            // assert outbound capacity decreased
+            IRateLimiter.RateLimitParams memory outboundLimitParams =
+                nttManager.getOutboundLimitParams();
+            assertEq(
+                outboundLimitParams.currentCapacity.getAmount(),
+                outboundLimitParams.limit.sub(transferAmount).getAmount()
+            );
+            assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
+        }
+
+        // go 1 second into the future
+        uint256 receiveTime = initialBlockTimestamp + 1;
+        vm.warp(receiveTime);
+
+        ITransceiverReceiver[] memory transceivers = initializeTransceivers();
+        // now receive tokens from user_B -> user_A
+        TransceiverHelpersLib.attestTransceiversHelper(
+            user_A, 0, chainId, nttManager, nttManager, transferAmount, mintAmount, transceivers
+        );
+
+        // assert that user_A has original amount
+        assertEq(token.balanceOf(user_A), mintAmount.untrim(decimals));
+
+        {
+            // consume capacity on the inbound side
+            // assert that the inbound capacity decreased
             IRateLimiter.RateLimitParams memory inboundLimitParams =
                 nttManager.getInboundLimitParams(TransceiverHelpersLib.SENDING_CHAIN_ID);
             assertEq(
