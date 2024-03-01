@@ -45,7 +45,7 @@ contract ConfigureWormholeNtt is ParseNttConfig {
 
                 // Set peer.
                 wormholeTransceiver.setWormholePeer(
-                    targetConfig.chainId, toUniversalAddress(targetConfig.wormholeTransceiver)
+                    targetConfig.chainId, targetConfig.wormholeTransceiver
                 );
                 console2.log("Wormhole peer set for chain", targetConfig.chainId);
 
@@ -54,7 +54,7 @@ contract ConfigureWormholeNtt is ParseNttConfig {
                     wormholeTransceiver.setIsWormholeEvmChain(targetConfig.chainId);
                     console2.log("EVM chain set for chain", targetConfig.chainId);
                 } else {
-                    revert("Non-EVM chain is not supported yet");
+                    console2.log("This is not an EVM chain, doing nothing");
                 }
             }
         }
@@ -73,7 +73,7 @@ contract ConfigureWormholeNtt is ParseNttConfig {
                 // Set peer.
                 nttManager.setPeer(
                     targetConfig.chainId,
-                    toUniversalAddress(targetConfig.nttManager),
+                    targetConfig.nttManager,
                     targetConfig.decimals
                 );
                 console2.log("Peer set for chain", targetConfig.chainId);

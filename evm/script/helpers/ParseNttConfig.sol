@@ -17,8 +17,8 @@ contract ParseNttConfig is Script {
         bool isEvmChain;
         bool isSpecialRelayingEnabled;
         bool isWormholeRelayingEnabled;
-        address nttManager;
-        address wormholeTransceiver;
+        bytes32 nttManager;
+        bytes32 wormholeTransceiver;
     }
 
     mapping(uint16 => bool) duplicateChainIds;
@@ -26,6 +26,18 @@ contract ParseNttConfig is Script {
     function toUniversalAddress(address evmAddr) internal pure returns (bytes32 converted) {
         assembly ("memory-safe") {
             converted := and(0xffffffffffffffffffffffffffffffffffffffff, evmAddr)
+        }
+    }
+
+    function fromUniversalAddress(bytes32 universalAddr)
+        internal
+        pure
+        returns (address converted)
+    {
+        require(bytes12(universalAddr) == 0, "Address overflow");
+
+        assembly ("memory-safe") {
+            converted := universalAddr
         }
     }
 
@@ -48,11 +60,17 @@ contract ParseNttConfig is Script {
         // Validate values and set the contract addresses for this chain.
         for (uint256 i = 0; i < config.length; i++) {
             require(config[i].chainId != 0, "Invalid chain ID");
-            require(config[i].nttManager != address(0), "Invalid NTT manager address");
+            require(config[i].nttManager != bytes32(0), "Invalid NTT manager address");
             require(
-                config[i].wormholeTransceiver != address(0), "Invalid wormhole transceiver address"
+                config[i].wormholeTransceiver != bytes32(0), "Invalid wormhole transceiver address"
             );
             require(config[i].inboundLimit != 0, "Invalid inbound limit");
+
+            // If this is an evm chain, require a valid EVM address.
+            if (config[i].isEvmChain) {
+                fromUniversalAddress(config[i].nttManager);
+                fromUniversalAddress(config[i].wormholeTransceiver);
+            }
 
             // Make sure we don't configure the same chain twice.
             require(!duplicateChainIds[config[i].chainId], "Duplicate chain ID");
@@ -60,8 +78,9 @@ contract ParseNttConfig is Script {
 
             // Set the contract addresses for this chain.
             if (config[i].chainId == wormholeChainId) {
-                nttManager = INttManager(config[i].nttManager);
-                wormholeTransceiver = IWormholeTransceiver(config[i].wormholeTransceiver);
+                nttManager = INttManager(fromUniversalAddress(config[i].nttManager));
+                wormholeTransceiver =
+                    IWormholeTransceiver(fromUniversalAddress(config[i].wormholeTransceiver));
             }
         }
     }
