@@ -32,7 +32,7 @@ async function run() {
       let config, transceiverAddress;
 
       try {
-        config = getChainConfig<ManagerConfig>(processName, chain);
+        config = await getChainConfig<ManagerConfig>(processName, chain);
       } catch (error) {
         return { chainId: chain.chainId, error: "No configuration found" };
       }
@@ -43,7 +43,13 @@ async function run() {
         return { chainId: chain.chainId, error: "No transceiver contract address found" };
       }
 
-      const result = await configureManager(chain, transceiverAddress, config);
+      let result;
+      try {
+        result = await configureManager(chain, transceiverAddress, config);
+      } catch (error) {
+        return { chainId: chain.chainId, error };
+      }
+
       return result;
     })
   );
@@ -69,8 +75,8 @@ async function configureManager(chain: ChainInfo, transceiverAddress: string, co
   console.log("setting transceiver", transceiverAddress);
   await contract.setTransceiver(transceiverAddress);
   log(`transceiver address set to: ${transceiverAddress}`);
-  console.log("config", config);
-  await contract.setOutboundLimit(config.outboundLimit);
+
+  await contract.setOutboundLimit(BigInt(config.outboundLimit));
   log(`outboundLimit set to: ${config.outboundLimit}`);
 
   await contract.setThreshold(config.threshold);
