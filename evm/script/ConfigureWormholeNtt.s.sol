@@ -72,9 +72,7 @@ contract ConfigureWormholeNtt is ParseNttConfig {
             } else {
                 // Set peer.
                 nttManager.setPeer(
-                    targetConfig.chainId,
-                    targetConfig.nttManager,
-                    targetConfig.decimals
+                    targetConfig.chainId, targetConfig.nttManager, targetConfig.decimals
                 );
                 console2.log("Peer set for chain", targetConfig.chainId);
 
