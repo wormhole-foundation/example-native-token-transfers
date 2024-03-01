@@ -5,7 +5,8 @@
 A client calls on [`transfer`] to initiate an NTT transfer. The client must specify at minimum, the amount of the transfer, the recipient chain, and the recipient address on the recipient chain. [`transfer`] also supports a flag to specify whether the `NttManager` should queue rate-limited transfers or revert. Clients can also include additional instructions to forward along to the Transceiver on the source chain. Depending on mode set in the initial configuration of the `NttManager` contract, transfers are either "locked" or "burned". Once the transfer has been forwarded to the Transceiver, the `NttManager` emits the `TransferSent` event.
 
 _Events_
-``` solidity
+
+```solidity
 /// @notice Emitted when a message is sent from the nttManager.
 /// @dev Topic0
 ///      0x9716fe52fe4e02cf924ae28f19f5748ef59877c6496041b986fbad3dae6a8ecf
@@ -30,7 +31,8 @@ Similarly, transfers that are rate-limited on the destination chain are added to
 If the client attempts to release the transfer from the queue before the expiry of the `rateLimitDuration`, the contract reverts with a `InboundQueuedTransferStillQueued` error.
 
 _Events_
-``` solidity
+
+```solidity
 /// @notice Emitted whenn an outbound transfer is queued.
 /// @dev Topic0
 ///      0x69add1952a6a6b9cb86f04d05f0cb605cbb469a50ae916139d34495a9991481f.
@@ -38,7 +40,7 @@ _Events_
 event OutboundTransferQueued(uint64 queueSequence);
 ```
 
-``` solidity
+```solidity
 /// @notice Emitted when an outbound transfer is rate limited.
 /// @dev Topic0
 ///      0x754d657d1363ee47d967b415652b739bfe96d5729ccf2f26625dcdbc147db68b.
@@ -50,7 +52,7 @@ event OutboundTransferRateLimited(
 );
 ```
 
-``` solidity
+```solidity
 /// @notice Emitted when an inbound transfer is queued
 /// @dev Topic0
 ///      0x7f63c9251d82a933210c2b6d0b0f116252c3c116788120e64e8e8215df6f3162.
@@ -65,7 +67,8 @@ Once the `NttManager` forwards the message to the Transceiver, the message is tr
 Once the message has been transmitted, the contract emits the `SendTransceiverMessage` event.
 
 _Events_
-``` solidity
+
+```solidity
 /// @notice Emitted when a message is sent from the transceiver.
 /// @dev Topic0
 ///      0x53b3e029c5ead7bffc739118953883859d30b1aaa086e0dca4d0a1c99cd9c3f5.
@@ -90,7 +93,8 @@ NTT implements replay protection, so if a given Transceiver attempts to deliver 
 If a message had already been executed, the contract ends execution early and emits the `MessageAlreadyExecuted` event instead of reverting via an error. This mitigates the possibility of race conditions from transceivers attempting to deliver the same message when the threshold is less than the total number of available of Transceivers (i.e. threshold < totalTransceivers) and notifies the client (off-chain process) so they don't attempt redundant message delivery.
 
 _Events_
-``` solidity
+
+```solidity
 /// @notice Emitted when a relayed message is received.
 /// @dev Topic0
 ///      0xf557dbbb087662f52c815f6c7ee350628a37a51eae9608ff840d996b65f87475
@@ -128,6 +132,7 @@ event MessageAlreadyExecuted(bytes32 indexed sourceNttManager, bytes32 indexed m
 Once a transfer has been successfully verified, the tokens can be minted (if the mode is "burning") or unlocked (if the mode is "locking") to the recipient on the destination chain. Note that the source token decimals are bounded betweeen 0 and `TRIMMED_DECIMALS` as enforced in the wire format. The transfer amount is untrimmed (scaled-up) if the destination chain token decimals exceed `TRIMMED_DECIMALS`. Once the approriate number of tokens have been minted or unlocked to the recipient, the `TransferRedeemed` event is emitted.
 
 _Events_
+
 ```solidity
 /// @notice Emitted when a transfer has been redeemed
 ///         (either minted or unlocked on the recipient chain).
@@ -136,26 +141,35 @@ _Events_
 /// @param digest The digest of the message.
 event TransferRedeemed(bytes32 indexed digest);
 ```
+
 ## Prerequisites
 
 ### Installation
+
 Install Foundry tools(https://book.getfoundry.sh/getting-started/installation), which include forge, anvil and cast CLI tools.
 
 ### Build
+
 Run the following command to install necessary dependencies and to build the smart contracts:
+
 ```shell
 $  make build-evm
 ```
 
 ### Test
+
 To run the full evm test-suite run the following command:
+
 ```shell
 $  make test-evm
 ```
+
 The test-suite includes unit tests, along with property-based fuzz tests, and integration-tests.
 
 ### Format
+
 To format the files run this command from the root directory.
+
 ```shell
 $ make fix-fmt
 ```
@@ -166,9 +180,66 @@ $ make fix-fmt
 $ cd evm && forge snapshot
 ```
 
-### Contract Deployment
-TODO
+### Cast
 
-### Initial Contract Configuration
-TODO
+```shell
+$ cast <subcommand>
+```
 
+### Help
+
+```shell
+$ forge --help
+$ anvil --help
+$ cast --help
+```
+
+### Deploy Wormhole NTT
+
+#### Environment Setup
+
+Copy the sample environment file located in `env/` into the target subdirectory of your choice (currently `testnet` or `mainnet`) and prefix the filename with your blockchain of choice:
+
+```
+cp env/.env.sample env/testnet/sepolia.env
+```
+
+Do this for each blockchain network that the `NTTManager` and `WormholeTransceiver` contracts will be deployed to. Then configure each `.env` file and set the `RPC` variables.
+
+#### Config Setup
+
+Before deploying the contracts, navigate to the `cfg` directory and copy the sample file. Make sure to preserve the existing name:
+
+```
+cd cfg
+
+cp WormholeNttConfig.json.sample WormholeNttConfig.json
+```
+
+Configure each network to your liking (including adding/removing networks). We will eventually add the addresses of the deployed contracts to this file.
+
+#### Deploy
+
+Deploy the `NttManager` and `WormholeTransceiver` contracts by running the following command for each target network:
+
+```
+bash sh/deploy_wormhole_ntt.sh -n NETWORK_TYPE -c CHAIN_NAME -k PRIVATE_KEY
+
+# Argument examples
+-n testnet, mainnet
+-c avalanche, ethereum, sepolia
+```
+
+Save the deployed proxy contract addresses in the `WormholeNttConfig.json` file.
+
+#### Configuration
+
+Once all of the contracts have been deployed and the addresses have been saved, run the following command for each target network:
+
+```
+bash sh/configure_wormhole_ntt.sh -n NETWORK_TYPE -c CHAIN_NAME -k PRIVATE_KEY
+
+# Argument examples
+-n testnet, mainnet
+-c avalanche, ethereum, sepolia
+```
