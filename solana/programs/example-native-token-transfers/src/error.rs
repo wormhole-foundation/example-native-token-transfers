@@ -37,4 +37,8 @@ pub enum NTTError {
     DisabledTransceiver,
     #[msg("InvalidDeployer")]
     InvalidDeployer,
+    #[msg("BadAmountAfterTransfer")]
+    BadAmountAfterTransfer,
+    #[msg("BadAmountAfterBurn")]
+    BadAmountAfterBurn,
 }
