@@ -2,15 +2,15 @@
   "WormholeCoreContracts": [
     {
       "chainId": 10002,
-      "address": "0x4a8bc80Ed5a4067f1CCf107057b8270E0cC11A78",
+      "address": "0x4a8bc80Ed5a4067f1CCf107057b8270E0cC11A78"
     },
     {
       "chainId": 10003,
-      "address": "0x6b9C8671cdDC8dEab9c719bB87cBd3e782bA6a35",
+      "address": "0x6b9C8671cdDC8dEab9c719bB87cBd3e782bA6a35"
     },
     {
       "chainId": 10004,
-      "address": "0x79A1027a6A159502049F10906D333EC57E95F083",
+      "address": "0x79A1027a6A159502049F10906D333EC57E95F083"
     },
     {
       "chainId": 10005,
@@ -54,11 +54,77 @@
     }
   ],
 
-  "NttManagerProxies": [],
-  "NttManagerSetups": [],
-  "NttManagerImplementations": [],
+  "NttManagerProxies": [
+    {
+      "address": "0x6B0F87D73C067de54d3E60A3De3434318110b1cb",
+      "chainId": 10002
+    },
+    {
+      "address": "0x83F97c06dD151B0f8A8aB2629dEf30096443114E",
+      "chainId": 10003
+    },
+    {
+      "address": "0x83F97c06dD151B0f8A8aB2629dEf30096443114E",
+      "chainId": 10004
+    },
+    {
+      "address": "0xD1a8AB69e00266e8B791a15BC47514153A5045a6",
+      "chainId": 10005
+    }
+  ],
+  "NttManagerImplementations": [
+    {
+      "address": "0x23DC06bCA918d0bC9Ea425fbC8D40977C66d3Ff6",
+      "chainId": 10002
+    },
+    {
+      "address": "0x5333d0AcA64a450Add6FeF76D6D1375F726CB484",
+      "chainId": 10003
+    },
+    {
+      "address": "0x5333d0AcA64a450Add6FeF76D6D1375F726CB484",
+      "chainId": 10004
+    },
+    {
+      "address": "0x83F97c06dD151B0f8A8aB2629dEf30096443114E",
+      "chainId": 10005
+    }
+  ],
 
-  "NttEndpointProxies": [],
-  "NttEndpointSetups": [],
-  "NttEndpointImplementations": []
+  "NttTransceiverProxies": [
+    {
+      "address": "32bEb19076664f3d22f0D48137627c0f7edA1216",
+      "chainId": 10002
+    },
+    {
+      "address": "0x8B6f9aebE3271C2cA8b78d4A8e6F1B6131E81E3C",
+      "chainId": 10003
+    },
+    {
+      "address": "0x6d4c92CAeFd31C25E88981A7889fCF0ee2801Ed2",
+      "chainId": 10005
+    },
+    {
+      "address": "0x8B6f9aebE3271C2cA8b78d4A8e6F1B6131E81E3C",
+      "chainId": 10004
+    }
+  ],
+  "NttTransceiverImplementations": [
+    {
+      "address": "0x837Fa2217700c34127440de343e7cfF205f3A425",
+      "chainId": 10002
+    },
+    {
+      "address": "0x65eA34a72b13f6C5E2A924ee4FD1f5985EcA29B7",
+      "chainId": 10003
+    },
+    {
+      "address": "0x8F73498Adf83E891360661C7B81a9B61a8A237e9",
+      "chainId": 10005
+    },
+    {
+      "address": "0x65eA34a72b13f6C5E2A924ee4FD1f5985EcA29B7",
+      "chainId": 10004
+    }
+  ]
 }
