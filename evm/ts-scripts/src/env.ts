@@ -15,7 +15,7 @@ export type Deployment = {
 };
 
 export type ContractsJson = {
-  WormholeCore: Deployment[],
+  WormholeCoreContracts: Deployment[],
   WormholeRelayers: Deployment[],
   SpecializedRelayers: Deployment[],
 
@@ -168,13 +168,11 @@ export async function getSigner(chain: ChainInfo): Promise<ethers.Signer> {
   const privateKey = loadPrivateKey();
 
   if (privateKey === "ledger") {
-    console.log("ledger");
     if (process.env.LEDGER_BIP32_PATH === undefined) {
       throw new Error(`Missing BIP32 derivation path.
 With ledger devices the path needs to be specified in env var 'LEDGER_BIP32_PATH'.`);
     }
     const { LedgerSigner } = await import("@xlabs-xyz/ledger-signer");
-    console.log("ledger2", process.env.LEDGER_BIP32_PATH)
     return LedgerSigner.create(provider, process.env.LEDGER_BIP32_PATH);
   }
 
@@ -221,8 +219,7 @@ type ContractTypes = keyof ContractsJson;
 
 export async function getContractAddress(contractName: ContractTypes, chainId: ChainId): Promise<string> {
   const contracts = await loadContracts();
-
-  const contract = contracts[contractName].find((c) => c.chainId === chainId)?.address;
+  const contract = contracts[contractName]?.find((c) => c.chainId === chainId)?.address;
 
   if (!contract) {
     throw new Error(`No ${contractName} contract found for chain ${chainId}`);
