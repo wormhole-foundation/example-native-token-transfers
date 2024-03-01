@@ -96,6 +96,8 @@ impl Readable for TrimmedAmount {
         Self: Sized,
         R: io::Read,
     {
+        // The fields of this struct are intentionally read in reverse order compared to how they are declared in the
+        // `TrimmedAmount` struct. This is consistent with the equivalent code in the EVM NTT implementation.
         let decimals = Readable::read(reader)?;
         let amount = Readable::read(reader)?;
         Ok(Self { amount, decimals })
@@ -108,6 +110,8 @@ impl Writeable for TrimmedAmount {
         W: io::Write,
     {
         let TrimmedAmount { amount, decimals } = self;
+        // The fields of this struct are intentionally written in reverse order compared to how they are declared in the
+        // `TrimmedAmount` struct. This is consistent with the equivalent code in the EVM NTT implementation.
         decimals.write(writer)?;
         amount.write(writer)?;
 
