@@ -53,6 +53,9 @@ pub struct TransferOwnership<'info> {
 }
 
 pub fn transfer_ownership(ctx: Context<TransferOwnership>) -> Result<()> {
+    // Missing ownership check is OK here: new_owner is not expected to interact with this
+    // instruction. Instead, they call [`claim_ownership`]. The whole intention of new_owner
+    // is that it could be an arbitrary account.
     ctx.accounts.config.pending_owner = Some(ctx.accounts.new_owner.key());
 
     // TODO: only transfer authority when the authority is not already the upgrade lock
@@ -218,6 +221,8 @@ pub struct RegisterTransceiver<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[allow(unknown_lints)]
+#[allow(missing_owner_check)]
 pub fn register_transceiver(ctx: Context<RegisterTransceiver>) -> Result<()> {
     let id = ctx.accounts.config.next_transceiver_id;
     ctx.accounts.config.next_transceiver_id += 1;
@@ -226,6 +231,8 @@ pub fn register_transceiver(ctx: Context<RegisterTransceiver>) -> Result<()> {
         .set_inner(RegisteredTransceiver {
             bump: ctx.bumps.registered_transceiver,
             id,
+            // Missing ownership check is OK here: Transceiver is intended to be an arbitrary
+            // program.
             transceiver_address: ctx.accounts.transceiver.key(),
         });
 
