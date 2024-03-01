@@ -7,8 +7,8 @@
             "isEvmChain": true,
             "isWormholeRelayingEnabled": true,
             "isSpecialRelayingEnabled": false,
-            "nttManager": "",
-            "wormholeTransceiver": ""
+            "nttManager": "0x00000000000000000000000000000000000000000000000000000000deadbeef",
+            "wormholeTransceiver": "0x00000000000000000000000000000000000000000000000000000000deadbeef"
         },
         {
             "chainId": 16,
@@ -17,8 +17,8 @@
             "isEvmChain": true,
             "isWormholeRelayingEnabled": true,
             "isSpecialRelayingEnabled": false,
-            "nttManager": "",
-            "wormholeTransceiver": ""
+            "nttManager": "0x00000000000000000000000000000000000000000000000000000000deadbeef",
+            "wormholeTransceiver": "0x00000000000000000000000000000000000000000000000000000000deadbeef"
         }
     ]
 }
