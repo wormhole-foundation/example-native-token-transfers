@@ -101,6 +101,8 @@ library TransceiverStructs {
         pure
         returns (bytes memory encoded)
     {
+        // The `amount` and `decimals` fields are encoded in reverse order compared to how they are declared in the
+        // `TrimmedAmount` type. This is consistent with the Rust NTT implementation.
         TrimmedAmount transferAmount = m.amount;
         return abi.encodePacked(
             NTT_PREFIX,
@@ -127,6 +129,8 @@ library TransceiverStructs {
             revert IncorrectPrefix(prefix);
         }
 
+        // The `amount` and `decimals` fields are parsed in reverse order compared to how they are declared in the
+        // `TrimmedAmount` struct. This is consistent with the Rust NTT implementation.
         uint8 numDecimals;
         (numDecimals, offset) = encoded.asUint8Unchecked(offset);
         uint64 amount;
