@@ -13,7 +13,7 @@ spec:
           command:
             - /bin/sh
             - -c
-            - 'npm run go --prefix ci_tests && echo "done!" && touch /success'
+            - 'npm run go && echo "done!" && touch /success'
           readinessProbe:
             exec:
               command:

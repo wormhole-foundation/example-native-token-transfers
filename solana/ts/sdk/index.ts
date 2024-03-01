@@ -50,6 +50,7 @@ export const NTT_PROGRAM_IDS = [
 export const WORMHOLE_PROGRAM_IDS = [
   "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth", // mainnet
   "3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5", // testnet
+  "Bridge1p5gheXUvJ6jGWGeCsgPKgnE3YgdGKRVCMY9o", // tilt
 ] as const;
 
 export type NttProgramId = (typeof NTT_PROGRAM_IDS)[number];
