@@ -36,12 +36,11 @@ jobs:
       - name: Run Typechain
         run: |
           cd ci_tests
-          rm -r evm_binding
-          npm i -g typechain@8.3.2 @typechain/ethers-v5@11.1.2
-          npx typechain@8.3.2 --target ethers-v5 --out-dir evm_binding/ '../evm/out/*/*.json'
+          npm ci
+          npm run gen-evm-bindings
         id: generate
 
       - name: Diff
         run: |
-          git diff --name-only --exit-code && echo "✅ Generated typechain matches committed typechain" || (echo "❌ Generated typechain differs from committed typechain, run \`cd ci_tests && npx typechain@8.3.2 --target ethers-v5 --out-dir evm_binding/ '../evm/out/*/*.json'\` and commit the result" >&2 && exit 1)
+          git diff --name-only --exit-code && echo "✅ Generated typechain matches committed typechain" || (echo "❌ Generated typechain differs from committed typechain, run \`make gen-evm-bindings\` and commit the result" >&2 && exit 1)
         id: check

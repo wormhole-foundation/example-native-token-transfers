@@ -24,32 +24,6 @@ const _abi = [
     stateMutability: "pure",
   },
   {
-    type: "event",
-    name: "TransceiverAdded",
-    inputs: [
-      {
-        name: "transceiver",
-        type: "address",
-        indexed: false,
-        internalType: "address",
-      },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "TransceiverRemoved",
-    inputs: [
-      {
-        name: "transceiver",
-        type: "address",
-        indexed: false,
-        internalType: "address",
-      },
-    ],
-    anonymous: false,
-  },
-  {
     type: "error",
     name: "CallerNotTransceiver",
     inputs: [

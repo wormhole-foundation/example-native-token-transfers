@@ -399,17 +399,6 @@ const _abi = [
   },
   {
     type: "error",
-    name: "CannotRenounceWhilePaused",
-    inputs: [
-      {
-        name: "account",
-        type: "address",
-        internalType: "address",
-      },
-    ],
-  },
-  {
-    type: "error",
     name: "CannotTransferTransceiverOwnership",
     inputs: [
       {

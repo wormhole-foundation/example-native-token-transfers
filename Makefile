@@ -7,6 +7,18 @@ all: build
 build-evm:
 	cd evm && forge build
 
+.PHONY: clean-evm
+clean-evm:
+	cd evm && forge clean
+
+.PHONY: build-evm-prod
+build-evm-prod: clean-evm
+	cd evm && FOUNDRY_PROFILE=prod forge build
+
+.PHONY: gen-evm-bindings
+gen-evm-bindings: build-evm-prod
+	cd ci_tests && npm ci && npm run gen-evm-bindings
+
 #######################
 ## TESTS
 

@@ -25,13 +25,13 @@ import type {
 
 export declare namespace TransceiverStructs {
   export type NttManagerMessageStruct = {
-    sequence: BigNumberish;
+    id: BytesLike;
     sender: BytesLike;
     payload: BytesLike;
   };
 
-  export type NttManagerMessageStructOutput = [BigNumber, string, string] & {
-    sequence: BigNumber;
+  export type NttManagerMessageStructOutput = [string, string, string] & {
+    id: string;
     sender: string;
     payload: string;
   };
@@ -61,11 +61,11 @@ export declare namespace INttManagerState {
 
 export interface INttManagerInterface extends utils.Interface {
   functions: {
-    "attestationReceived(uint16,bytes32,(uint64,bytes32,bytes))": FunctionFragment;
+    "attestationReceived(uint16,bytes32,(bytes32,bytes32,bytes))": FunctionFragment;
     "chainId()": FunctionFragment;
     "completeInboundQueuedTransfer(bytes32)": FunctionFragment;
     "completeOutboundQueuedTransfer(uint64)": FunctionFragment;
-    "executeMsg(uint16,bytes32,(uint64,bytes32,bytes))": FunctionFragment;
+    "executeMsg(uint16,bytes32,(bytes32,bytes32,bytes))": FunctionFragment;
     "getMode()": FunctionFragment;
     "getPeer(uint16)": FunctionFragment;
     "getThreshold()": FunctionFragment;

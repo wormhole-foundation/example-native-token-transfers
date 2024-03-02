@@ -260,6 +260,11 @@ const _abi = [
       },
     ],
   },
+  {
+    type: "error",
+    name: "UndefinedRateLimiting",
+    inputs: [],
+  },
 ] as const;
 
 export class IRateLimiter__factory {

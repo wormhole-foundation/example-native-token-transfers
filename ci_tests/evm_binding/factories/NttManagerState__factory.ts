@@ -876,19 +876,6 @@ const _abi = [
         indexed: false,
         internalType: "address",
       },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "TransceiverAdded",
-    inputs: [
-      {
-        name: "transceiver",
-        type: "address",
-        indexed: false,
-        internalType: "address",
-      },
       {
         name: "transceiversNum",
         type: "uint256",
@@ -900,19 +887,6 @@ const _abi = [
         type: "uint8",
         indexed: false,
         internalType: "uint8",
-      },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "TransceiverRemoved",
-    inputs: [
-      {
-        name: "transceiver",
-        type: "address",
-        indexed: false,
-        internalType: "address",
       },
     ],
     anonymous: false,
@@ -1016,17 +990,6 @@ const _abi = [
     inputs: [
       {
         name: "caller",
-        type: "address",
-        internalType: "address",
-      },
-    ],
-  },
-  {
-    type: "error",
-    name: "CannotRenounceWhilePaused",
-    inputs: [
-      {
-        name: "account",
         type: "address",
         internalType: "address",
       },
@@ -1331,6 +1294,11 @@ const _abi = [
         internalType: "address",
       },
     ],
+  },
+  {
+    type: "error",
+    name: "UndefinedRateLimiting",
+    inputs: [],
   },
   {
     type: "error",
