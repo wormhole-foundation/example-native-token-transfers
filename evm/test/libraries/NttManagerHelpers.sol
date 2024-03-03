@@ -11,7 +11,7 @@ library NttManagerHelpersLib {
     using TrimmedAmountLib for TrimmedAmount;
 
     function setConfigs(
-        TrimmedAmount memory inboundLimit,
+        TrimmedAmount inboundLimit,
         NttManager nttManager,
         NttManager recipientNttManager,
         uint8 decimals

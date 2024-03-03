@@ -138,7 +138,7 @@ contract NttManager is INttManager, NttManagerState {
         if (nativeTokenTransfer.toChain != chainId) {
             revert InvalidTargetChain(nativeTokenTransfer.toChain, chainId);
         }
-        TrimmedAmount memory nativeTransferAmount =
+        TrimmedAmount nativeTransferAmount =
             (nativeTokenTransfer.amount.untrim(tokenDecimals_)).trim(tokenDecimals_, tokenDecimals_);
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
@@ -296,8 +296,8 @@ contract NttManager is INttManager, NttManagerState {
         }
 
         // trim amount after burning to ensure transfer amount matches (amount - fee)
-        TrimmedAmount memory trimmedAmount = _trimTransferAmount(amount, recipientChain);
-        TrimmedAmount memory internalAmount = trimmedAmount.shift(tokenDecimals_);
+        TrimmedAmount trimmedAmount = _trimTransferAmount(amount, recipientChain);
+        TrimmedAmount internalAmount = trimmedAmount.shift(tokenDecimals_);
 
         // get the sequence for this transfer
         uint64 sequence = _useMessageSequence();
@@ -345,7 +345,7 @@ contract NttManager is INttManager, NttManagerState {
 
     function _transfer(
         uint64 sequence,
-        TrimmedAmount memory amount,
+        TrimmedAmount amount,
         uint16 recipientChain,
         bytes32 recipient,
         address sender,
@@ -394,7 +394,7 @@ contract NttManager is INttManager, NttManagerState {
         );
 
         // push it on the stack again to avoid a stack too deep error
-        TrimmedAmount memory amt = amount;
+        TrimmedAmount amt = amount;
         uint16 destinationChain = recipientChain;
 
         emit TransferSent(
@@ -408,7 +408,7 @@ contract NttManager is INttManager, NttManagerState {
     function _mintOrUnlockToRecipient(
         bytes32 digest,
         address recipient,
-        TrimmedAmount memory amount
+        TrimmedAmount amount
     ) internal {
         // calculate proper amount of tokens to unlock/mint to recipient
         // untrim the amount
@@ -447,14 +447,14 @@ contract NttManager is INttManager, NttManagerState {
     function _trimTransferAmount(
         uint256 amount,
         uint16 toChain
-    ) internal view returns (TrimmedAmount memory) {
+    ) internal view returns (TrimmedAmount) {
         uint8 toDecimals = _getPeersStorage()[toChain].tokenDecimals;
 
         if (toDecimals == 0) {
             revert InvalidPeerDecimals();
         }
 
-        TrimmedAmount memory trimmedAmount;
+        TrimmedAmount trimmedAmount;
         {
             trimmedAmount = amount.trim(tokenDecimals_, toDecimals);
             // don't deposit dust that can not be bridged due to the decimal shift

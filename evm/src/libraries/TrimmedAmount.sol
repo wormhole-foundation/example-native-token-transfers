@@ -2,103 +2,127 @@
 /// @dev TrimmedAmount is a utility library to handle token amounts with different decimals
 pragma solidity >=0.8.8 <0.9.0;
 
-struct TrimmedAmount {
-    uint64 amount;
-    uint8 decimals;
-}
+/// @dev TrimmedAmount is a bit-packed representation of a token amount and its decimals.
+/// @dev 64 bytes: [0 - 64] amount
+/// @dev 8 bytes: [64 - 72] decimals
+type TrimmedAmount is uint72;
+
+using {gt as >, lt as <, sub as -, add as +, eq as ==, min, unwrap} for TrimmedAmount global;
 
 function minUint8(uint8 a, uint8 b) pure returns (uint8) {
     return a < b ? a : b;
 }
 
+/// @notice Error when the decimals of two TrimmedAmounts are not equal
+/// @dev Selector. b9cdb6c2
+/// @param decimals the decimals of the first TrimmedAmount
+/// @param decimalsOther the decimals of the second TrimmedAmount
+error NumberOfDecimalsNotEqual(uint8 decimals, uint8 decimalsOther);
+
+uint8 constant TRIMMED_DECIMALS = 8;
+
+function unwrap(TrimmedAmount a) pure returns (uint72) {
+    return TrimmedAmount.unwrap(a);
+}
+
+function packTrimmedAmount(uint64 amt, uint8 decimals) pure returns (TrimmedAmount) {
+    // cast to u72 first to prevent overflow
+    uint72 amount = uint72(amt);
+    uint72 dec = uint72(decimals);
+
+    // shift the amount to the left 8 bits
+    amount <<= 8;
+
+    return TrimmedAmount.wrap(amount | dec);
+}
+
+function eq(TrimmedAmount a, TrimmedAmount b) pure returns (bool) {
+    return TrimmedAmountLib.getAmount(a) == TrimmedAmountLib.getAmount(b)
+        && TrimmedAmountLib.getDecimals(a) == TrimmedAmountLib.getDecimals(b);
+}
+
+function checkDecimals(TrimmedAmount a, TrimmedAmount b) pure {
+    uint8 aDecimals = TrimmedAmountLib.getDecimals(a);
+    uint8 bDecimals = TrimmedAmountLib.getDecimals(b);
+    if (aDecimals != bDecimals) {
+        revert NumberOfDecimalsNotEqual(aDecimals, bDecimals);
+    }
+}
+
+function gt(TrimmedAmount a, TrimmedAmount b) pure returns (bool) {
+    checkDecimals(a, b);
+
+    return TrimmedAmountLib.getAmount(a) > TrimmedAmountLib.getAmount(b);
+}
+
+function lt(TrimmedAmount a, TrimmedAmount b) pure returns (bool) {
+    checkDecimals(a, b);
+
+    return TrimmedAmountLib.getAmount(a) < TrimmedAmountLib.getAmount(b);
+}
+
+function sub(TrimmedAmount a, TrimmedAmount b) pure returns (TrimmedAmount) {
+    checkDecimals(a, b);
+
+    return packTrimmedAmount(
+        TrimmedAmountLib.getAmount(a) - TrimmedAmountLib.getAmount(b),
+        TrimmedAmountLib.getDecimals(a)
+    );
+}
+
+function add(TrimmedAmount a, TrimmedAmount b) pure returns (TrimmedAmount) {
+    checkDecimals(a, b);
+
+    return packTrimmedAmount(
+        TrimmedAmountLib.getAmount(a) + TrimmedAmountLib.getAmount(b),
+        TrimmedAmountLib.getDecimals(b)
+    );
+}
+
+function min(TrimmedAmount a, TrimmedAmount b) pure returns (TrimmedAmount) {
+    checkDecimals(a, b);
+
+    return TrimmedAmountLib.getAmount(a) < TrimmedAmountLib.getAmount(b) ? a : b;
+}
+
 library TrimmedAmountLib {
-    uint8 constant TRIMMED_DECIMALS = 8;
-
+    /// @notice Error when the amount to be trimmed is greater than u64MAX.
+    /// @dev Selector 0x08083b2a.
+    /// @param amount The amount to be trimmed.
     error AmountTooLarge(uint256 amount);
-    error NumberOfDecimalsNotEqual(uint8 decimals, uint8 decimalsOther);
 
-    function unwrap(TrimmedAmount memory a) internal pure returns (uint64, uint8) {
-        return (a.amount, a.decimals);
+    function getAmount(TrimmedAmount a) internal pure returns (uint64) {
+        // Extract the raw integer value from TrimmedAmount
+        uint72 rawValue = TrimmedAmount.unwrap(a);
+
+        // Right shift to keep only the higher 64 bits
+        uint64 result = uint64(rawValue >> 8);
+        return result;
     }
 
-    function getAmount(TrimmedAmount memory a) internal pure returns (uint64) {
-        return a.amount;
+    function getDecimals(TrimmedAmount a) internal pure returns (uint8) {
+        return uint8(TrimmedAmount.unwrap(a) & 0xFF);
     }
 
-    function getDecimals(TrimmedAmount memory a) internal pure returns (uint8) {
-        return a.decimals;
-    }
-
-    function eq(TrimmedAmount memory a, TrimmedAmount memory b) internal pure returns (bool) {
-        return a.amount == b.amount && a.decimals == b.decimals;
-    }
-
-    function gt(TrimmedAmount memory a, TrimmedAmount memory b) internal pure returns (bool) {
-        if (a.decimals != b.decimals) {
-            revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
-        }
-
-        return a.amount > b.amount;
-    }
-
-    function lt(TrimmedAmount memory a, TrimmedAmount memory b) internal pure returns (bool) {
-        if (a.decimals != b.decimals) {
-            revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
-        }
-
-        return a.amount < b.amount;
-    }
-
-    function isNull(TrimmedAmount memory a) internal pure returns (bool) {
-        return (a.amount == 0 && a.decimals == 0);
-    }
-
-    function sub(
-        TrimmedAmount memory a,
-        TrimmedAmount memory b
-    ) internal pure returns (TrimmedAmount memory) {
-        if (a.decimals != b.decimals) {
-            revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
-        }
-
-        return TrimmedAmount(a.amount - b.amount, a.decimals);
-    }
-
-    function add(
-        TrimmedAmount memory a,
-        TrimmedAmount memory b
-    ) internal pure returns (TrimmedAmount memory) {
-        if (a.decimals != b.decimals) {
-            revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
-        }
-        return TrimmedAmount(a.amount + b.amount, a.decimals);
+    function isNull(TrimmedAmount a) internal pure returns (bool) {
+        return (getAmount(a) == 0 && getDecimals(a) == 0);
     }
 
     function saturatingAdd(
-        TrimmedAmount memory a,
-        TrimmedAmount memory b
-    ) internal pure returns (TrimmedAmount memory) {
-        if (a.decimals != b.decimals) {
-            revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
-        }
+        TrimmedAmount a,
+        TrimmedAmount b
+    ) internal pure returns (TrimmedAmount) {
+        checkDecimals(a, b);
 
         uint256 saturatedSum;
+        uint64 aAmount = getAmount(a);
+        uint64 bAmount = getAmount(b);
         unchecked {
-            saturatedSum = uint256(a.amount) + uint256(b.amount);
+            saturatedSum = uint256(aAmount) + uint256(bAmount);
             saturatedSum = saturatedSum > type(uint64).max ? type(uint64).max : saturatedSum;
         }
-        return TrimmedAmount(uint64(saturatedSum), a.decimals);
-    }
 
-    function min(
-        TrimmedAmount memory a,
-        TrimmedAmount memory b
-    ) public pure returns (TrimmedAmount memory) {
-        if (a.decimals != b.decimals) {
-            revert NumberOfDecimalsNotEqual(a.decimals, b.decimals);
-        }
-
-        return a.amount < b.amount ? a : b;
+        return packTrimmedAmount(uint64(saturatedSum), getDecimals(a));
     }
 
     /// @dev scale the amount from original decimals to target decimals (base 10)
@@ -118,19 +142,17 @@ library TrimmedAmountLib {
         }
     }
 
-    function shift(
-        TrimmedAmount memory amount,
-        uint8 toDecimals
-    ) internal pure returns (TrimmedAmount memory) {
+    function shift(TrimmedAmount amount, uint8 toDecimals) internal pure returns (TrimmedAmount) {
         uint8 actualToDecimals = minUint8(TRIMMED_DECIMALS, toDecimals);
-        return TrimmedAmount(
-            uint64(scale(amount.amount, amount.decimals, actualToDecimals)), actualToDecimals
+        return packTrimmedAmount(
+            uint64(scale(getAmount(amount), getDecimals(amount), actualToDecimals)),
+            actualToDecimals
         );
     }
 
-    function max(uint8 decimals) internal pure returns (TrimmedAmount memory) {
+    function max(uint8 decimals) internal pure returns (TrimmedAmount) {
         uint8 actualDecimals = minUint8(TRIMMED_DECIMALS, decimals);
-        return TrimmedAmount(type(uint64).max, actualDecimals);
+        return packTrimmedAmount(type(uint64).max, actualDecimals);
     }
 
     /// @dev trim the amount to target decimals.
@@ -140,12 +162,12 @@ library TrimmedAmountLib {
     /// @param amt the amount to be trimmed
     /// @param fromDecimals the original decimals of the amount
     /// @param toDecimals the target decimals of the amount
-    ///
+    /// @return TrimmedAmount uint72 value type bit-packed with decimals
     function trim(
         uint256 amt,
         uint8 fromDecimals,
         uint8 toDecimals
-    ) internal pure returns (TrimmedAmount memory) {
+    ) internal pure returns (TrimmedAmount) {
         uint8 actualToDecimals = minUint8(minUint8(TRIMMED_DECIMALS, fromDecimals), toDecimals);
         uint256 amountScaled = scale(amt, fromDecimals, actualToDecimals);
 
@@ -154,11 +176,12 @@ library TrimmedAmountLib {
         if (amountScaled > type(uint64).max) {
             revert AmountTooLarge(amt);
         }
-        return TrimmedAmount(uint64(amountScaled), actualToDecimals);
+        return packTrimmedAmount(uint64(amountScaled), actualToDecimals);
     }
 
-    function untrim(TrimmedAmount memory amt, uint8 toDecimals) internal pure returns (uint256) {
-        (uint256 deNorm, uint8 fromDecimals) = unwrap(amt);
+    function untrim(TrimmedAmount amt, uint8 toDecimals) internal pure returns (uint256) {
+        uint256 deNorm = uint256(getAmount(amt));
+        uint8 fromDecimals = getDecimals(amt);
         uint256 amountScaled = scale(deNorm, fromDecimals, toDecimals);
 
         return amountScaled;

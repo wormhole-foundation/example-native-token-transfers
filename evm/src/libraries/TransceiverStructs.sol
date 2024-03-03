@@ -101,7 +101,7 @@ library TransceiverStructs {
         pure
         returns (bytes memory encoded)
     {
-        TrimmedAmount memory transferAmount = m.amount;
+        TrimmedAmount transferAmount = m.amount;
         return abi.encodePacked(
             NTT_PREFIX,
             transferAmount.getDecimals(),
@@ -131,7 +131,7 @@ library TransceiverStructs {
         (numDecimals, offset) = encoded.asUint8Unchecked(offset);
         uint64 amount;
         (amount, offset) = encoded.asUint64Unchecked(offset);
-        nativeTokenTransfer.amount = TrimmedAmount(amount, numDecimals);
+        nativeTokenTransfer.amount = packTrimmedAmount(amount, numDecimals);
 
         (nativeTokenTransfer.sourceToken, offset) = encoded.asBytes32Unchecked(offset);
         (nativeTokenTransfer.to, offset) = encoded.asBytes32Unchecked(offset);

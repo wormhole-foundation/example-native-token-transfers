@@ -390,8 +390,8 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
             chainId,
             nttManager,
             nttManagerOther,
-            TrimmedAmount(50, 8),
-            TrimmedAmount(type(uint64).max, 8),
+            packTrimmedAmount(50, 8),
+            packTrimmedAmount(type(uint64).max, 8),
             transceivers
         );
 
@@ -416,7 +416,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         uint8 decimals = token.decimals();
 
         nttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 9);
-        nttManager.setOutboundLimit(TrimmedAmount(type(uint64).max, 8).untrim(decimals));
+        nttManager.setOutboundLimit(packTrimmedAmount(type(uint64).max, 8).untrim(decimals));
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
 
@@ -445,7 +445,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         (DummyTransceiver e1, DummyTransceiver e2) =
             TransceiverHelpersLib.setup_transceivers(nttManagerOther);
 
-        TrimmedAmount memory transferAmount = TrimmedAmount(50, 8);
+        TrimmedAmount transferAmount = packTrimmedAmount(50, 8);
 
         TransceiverStructs.NttManagerMessage memory m;
         bytes memory encodedEm;
@@ -462,7 +462,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
                 nttManager,
                 nttManagerOther,
                 transferAmount,
-                TrimmedAmount(type(uint64).max, 8),
+                packTrimmedAmount(type(uint64).max, 8),
                 transceivers
             );
             encodedEm = TransceiverStructs.encodeTransceiverMessage(
@@ -529,9 +529,9 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         uint256 maxAmount = 5 * 10 ** decimals;
         token.mintDummy(from, maxAmount);
         nttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 9);
-        nttManager.setOutboundLimit(TrimmedAmount(type(uint64).max, 8).untrim(decimals));
+        nttManager.setOutboundLimit(packTrimmedAmount(type(uint64).max, 8).untrim(decimals));
         nttManager.setInboundLimit(
-            TrimmedAmount(type(uint64).max, 8).untrim(decimals),
+            packTrimmedAmount(type(uint64).max, 8).untrim(decimals),
             TransceiverHelpersLib.SENDING_CHAIN_ID
         );
 
@@ -580,7 +580,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         address user_B = address(0x456);
         DummyToken token = DummyToken(nttManager.token());
-        TrimmedAmount memory transferAmount = TrimmedAmount(50, 8);
+        TrimmedAmount transferAmount = packTrimmedAmount(50, 8);
         (ITransceiverReceiver e1, ITransceiverReceiver e2) =
             TransceiverHelpersLib.setup_transceivers(nttManagerOther);
 
@@ -600,7 +600,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
                 nttManager,
                 nttManagerOther,
                 transferAmount,
-                TrimmedAmount(type(uint64).max, 8),
+                packTrimmedAmount(type(uint64).max, 8),
                 transceivers
             );
             encodedEm = TransceiverStructs.encodeTransceiverMessage(
@@ -623,7 +623,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
             nttManager, // this is the proxy
             nttManagerOther, // this is the proxy
             transferAmount,
-            TrimmedAmount(type(uint64).max, 8),
+            packTrimmedAmount(type(uint64).max, 8),
             transceivers
         );
 
