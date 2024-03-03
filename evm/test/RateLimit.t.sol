@@ -363,8 +363,8 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         assertEq(token.balanceOf(address(nttManager)), transferAmount);
 
         // assert currentCapacity is updated
-        TrimmedAmount memory newCapacity =
-            outboundLimit.trim(decimals, decimals).sub(transferAmount.trim(decimals, decimals));
+        TrimmedAmount newCapacity =
+            outboundLimit.trim(decimals, decimals) - (transferAmount.trim(decimals, decimals));
         assertEq(nttManager.getCurrentOutboundCapacity(), newCapacity.untrim(decimals));
 
         uint256 badTransferAmount = 2 * 10 ** decimals;
@@ -451,8 +451,8 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         transceivers[0] = e1;
         transceivers[1] = e2;
 
-        TrimmedAmount memory transferAmount = TrimmedAmount(50, 8);
-        TrimmedAmount memory limitAmount = TrimmedAmount(100, 8);
+        TrimmedAmount transferAmount = packTrimmedAmount(50, 8);
+        TrimmedAmount limitAmount = packTrimmedAmount(100, 8);
         TransceiverHelpersLib.attestTransceiversHelper(
             user_B, 0, chainId, nttManager, nttManager, transferAmount, limitAmount, transceivers
         );
@@ -465,7 +465,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
             nttManager.getInboundLimitParams(TransceiverHelpersLib.SENDING_CHAIN_ID);
         assertEq(
             inboundLimitParams.currentCapacity.getAmount(),
-            limitAmount.sub(transferAmount).getAmount()
+            (limitAmount - (transferAmount)).getAmount()
         );
         assertEq(inboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
 
@@ -500,7 +500,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
                 chainId,
                 nttManager,
                 nttManager,
-                TrimmedAmount(50, 8),
+                packTrimmedAmount(50, 8),
                 uint256(5).trim(token.decimals(), token.decimals()),
                 transceivers
             );
@@ -589,14 +589,14 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         uint8 decimals = token.decimals();
         assertEq(decimals, 18);
 
-        TrimmedAmount memory mintAmount = TrimmedAmount(50, 8);
+        TrimmedAmount mintAmount = packTrimmedAmount(50, 8);
         token.mintDummy(address(user_A), mintAmount.untrim(decimals));
         nttManager.setOutboundLimit(mintAmount.untrim(decimals));
 
         // transfer 10 tokens
         vm.startPrank(user_A);
 
-        TrimmedAmount memory transferAmount = TrimmedAmount(10, 8);
+        TrimmedAmount transferAmount = packTrimmedAmount(10, 8);
         token.approve(address(nttManager), type(uint256).max);
         nttManager.transfer(
             transferAmount.untrim(decimals), chainId, toWormholeFormat(user_B), false, new bytes(1)
@@ -606,7 +606,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         // assert nttManager has 10 tokens and user_A has 10 fewer tokens
         assertEq(token.balanceOf(address(nttManager)), transferAmount.untrim(decimals));
-        assertEq(token.balanceOf(user_A), mintAmount.sub(transferAmount).untrim(decimals));
+        assertEq(token.balanceOf(user_A), (mintAmount - (transferAmount)).untrim(decimals));
 
         {
             // assert outbound rate limit decreased
@@ -614,7 +614,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
                 nttManager.getOutboundLimitParams();
             assertEq(
                 outboundLimitParams.currentCapacity.getAmount(),
-                outboundLimitParams.limit.sub(transferAmount).getAmount()
+                (outboundLimitParams.limit - (transferAmount)).getAmount()
             );
             assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
         }
@@ -644,7 +644,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
                 nttManager.getInboundLimitParams(TransceiverHelpersLib.SENDING_CHAIN_ID);
             assertEq(
                 inboundLimitParams.currentCapacity.getAmount(),
-                inboundLimitParams.limit.sub(transferAmount).getAmount()
+                (inboundLimitParams.limit - transferAmount).getAmount()
             );
             assertEq(inboundLimitParams.lastTxTimestamp, receiveTime);
         }
@@ -683,7 +683,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
                 nttManager.getOutboundLimitParams();
             assertEq(
                 outboundLimitParams.currentCapacity.getAmount(),
-                outboundLimitParams.limit.sub(transferAmount).getAmount()
+                (outboundLimitParams.limit - transferAmount).getAmount()
             );
             assertEq(outboundLimitParams.lastTxTimestamp, sendAgainTime);
         }

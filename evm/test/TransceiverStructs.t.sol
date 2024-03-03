@@ -76,7 +76,7 @@ contract TestTransceiverStructs is Test {
 
     function test_serialize_TransceiverMessage() public {
         TransceiverStructs.NativeTokenTransfer memory ntt = TransceiverStructs.NativeTokenTransfer({
-            amount: TrimmedAmount({amount: 1234567, decimals: 7}),
+            amount: packTrimmedAmount(uint64(1234567), 7),
             sourceToken: hex"BEEFFACE",
             to: hex"FEEBCAFE",
             toChain: 17

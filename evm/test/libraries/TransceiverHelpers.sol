@@ -33,8 +33,8 @@ library TransceiverHelpersLib {
         uint16 toChain,
         NttManager nttManager,
         NttManager recipientNttManager,
-        TrimmedAmount memory amount,
-        TrimmedAmount memory inboundLimit,
+        TrimmedAmount amount,
+        TrimmedAmount inboundLimit,
         ITransceiverReceiver[] memory transceivers
     )
         internal
@@ -72,7 +72,7 @@ library TransceiverHelpersLib {
         bytes32 id,
         uint16 toChain,
         NttManager nttManager,
-        TrimmedAmount memory amount
+        TrimmedAmount amount
     ) internal view returns (TransceiverStructs.NttManagerMessage memory) {
         DummyToken token = DummyToken(nttManager.token());
 
@@ -93,8 +93,8 @@ library TransceiverHelpersLib {
     function prepTokenReceive(
         NttManager nttManager,
         NttManager recipientNttManager,
-        TrimmedAmount memory amount,
-        TrimmedAmount memory inboundLimit
+        TrimmedAmount amount,
+        TrimmedAmount inboundLimit
     ) internal {
         DummyToken token = DummyToken(nttManager.token());
         token.mintDummy(address(recipientNttManager), amount.untrim(token.decimals()));
