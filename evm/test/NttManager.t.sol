@@ -9,6 +9,7 @@ import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
 import "../src/interfaces/INttManagerEvents.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
+import "../src/NttManager/TransceiverRegistry.sol";
 import {Utils} from "./libraries/Utils.sol";
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
@@ -224,6 +225,27 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         // TODO: this is accepted currently. should we include a check to ensure
         // only transceivers can be registered? (this would be a convenience check, not a security one)
         nttManager.setTransceiver(address(0x123));
+    }
+
+    function test_maxOutTransceivers() public {
+        // Let's register a transceiver and then disable it
+        DummyTransceiver e = new DummyTransceiver(address(nttManager));
+        nttManager.setTransceiver(address(e));
+        nttManager.removeTransceiver(address(e));
+
+        // We should be able to register 64 transceivers total
+        for (uint256 i = 0; i < 63; ++i) {
+            DummyTransceiver d = new DummyTransceiver(address(nttManager));
+            nttManager.setTransceiver(address(d));
+        }
+
+        // Registering a new transceiver should fail as we've hit the cap
+        DummyTransceiver c = new DummyTransceiver(address(nttManager));
+        vm.expectRevert(TransceiverRegistry.TooManyTransceivers.selector);
+        nttManager.setTransceiver(address(c));
+
+        // We should be able to renable an already registered transceiver at the cap
+        nttManager.setTransceiver(address(e));
     }
 
     // == threshold
