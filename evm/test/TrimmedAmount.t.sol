@@ -227,18 +227,19 @@ contract TrimmingTest is Test {
         uint8 fromDecimals,
         uint8 toDecimals
     ) public {
-        // this is guaranteed by trimming
         uint256 amt = bound(amount, 1, type(uint64).max);
-        vm.assume(fromDecimals <= 18);
-        vm.assume(toDecimals <= 18);
+        vm.assume(fromDecimals <= 50);
+        vm.assume(toDecimals <= 50);
 
-        // trimming
-        uint8 initialDecimals = 0;
-        TrimmedAmount memory trimmedAmount = TrimmedAmount(uint64(amt), initialDecimals);
+        // NOTE: this is guaranteeed by trimming
+        vm.assume(fromDecimals <= 8 && fromDecimals <= toDecimals);
+
+        // initialize TrimmedAmount
+        TrimmedAmount memory trimmedAmount = TrimmedAmount(uint64(amt), fromDecimals);
 
         // trimming is left inverse of trimming
-        uint256 amountUntrimmed = trimmedAmount.untrim(fromDecimals);
-        TrimmedAmount memory amountRoundTrip = amountUntrimmed.trim(fromDecimals, initialDecimals);
+        uint256 amountUntrimmed = trimmedAmount.untrim(toDecimals);
+        TrimmedAmount memory amountRoundTrip = amountUntrimmed.trim(toDecimals, fromDecimals);
 
         assertEq(trimmedAmount.amount, amountRoundTrip.amount);
     }
