@@ -739,7 +739,8 @@ contract TestRateLimit is Test, IRateLimiterEvents {
     // this should consume capacity on the outbound side
     // and backfill the inbound side
     function testFuzz_CircularFlowBackFilling(uint64 mintAmt, uint64 transferAmt) public {
-        vm.assume(transferAmt > 0 && transferAmt < mintAmt);
+        mintAmt = uint64(bound(mintAmt, 2, type(uint64).max));
+        transferAmt = uint64(bound(transferAmt, 1, mintAmt - 1));
 
         (address user_A, address user_B, DummyToken token, uint8 decimals) = setupToken();
 
