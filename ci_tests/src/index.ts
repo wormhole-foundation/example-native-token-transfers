@@ -10,9 +10,8 @@ import {
   getDeliveryHashFromLog,
   getWormholeLog,
 } from "@certusone/wormhole-sdk/lib/cjs/relayer";
-import { Networkish } from "@ethersproject/networks";
 import { NodeHttpTransport } from "@improbable-eng/grpc-web-node-http-transport";
-import { Wallet, getDefaultProvider, utils } from "ethers";
+import { ContractReceipt, Wallet, providers, utils } from "ethers";
 import { existsSync, writeFileSync } from "fs";
 import { DummyTokenMintAndBurn__factory } from "../evm_binding/factories/DummyToken.sol/DummyTokenMintAndBurn__factory";
 import { DummyToken__factory } from "../evm_binding/factories/DummyToken.sol/DummyToken__factory";
@@ -29,21 +28,25 @@ interface ChainDetails {
   managerAddress: string;
   NTTTokenAddress: string;
   wormholeCoreAddress: string;
-  rpcEndpoint: Networkish;
+  signer: Wallet;
 }
 
 const ETH_PRIVATE_KEY =
   "0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"; // Ganache default private key
 const ETH_PUBLIC_KEY = "0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1";
+const ETH_SIGNER = new Wallet(
+  ETH_PRIVATE_KEY,
+  new providers.JsonRpcProvider("http://eth-devnet:8545")
+);
+const BSC_SIGNER = new Wallet(
+  ETH_PRIVATE_KEY,
+  new providers.JsonRpcProvider("http://eth-devnet2:8545")
+);
 const RELAYER_CONTRACT = "0x53855d4b64E9A3CF59A84bc768adA716B5536BC5";
 async function deployEth(
-  rpc_endpoint: string,
+  signer: Wallet,
   chain_id: number
 ): Promise<ChainDetails> {
-  // https://github.com/wormholelabs-xyz/example-queries-solana-stake-pool/blob/2f1199a5a70ecde90e8b8a47a4f9726da249d218/ts-test/mock.ts#L58
-  const provider = getDefaultProvider(rpc_endpoint);
-  const signer = new Wallet(ETH_PRIVATE_KEY, provider);
-
   // Deploy libraries used by various things
   console.log("Deploying libraries of transceiverStructs and trimmedAmounts");
   const transceiverStructsFactory = new TransceiverStructs__factory(signer);
@@ -151,7 +154,7 @@ async function deployEth(
     managerAddress: await managerProxyAddress.address,
     NTTTokenAddress: ERC20NTTAddress,
     wormholeCoreAddress: "0xC89Ce4735882C9F0f0FE26686c53074E09B0D550", // Same on both of the chains
-    rpcEndpoint: rpc_endpoint,
+    signer,
   };
 }
 
@@ -165,28 +168,23 @@ async function link(chain1: ChainDetails, chain2: ChainDetails) {
     */
   console.log("Starting linking process");
   console.log("========================");
-  const provider1 = getDefaultProvider(<Networkish>chain1.rpcEndpoint);
-  const signer1 = new Wallet(ETH_PRIVATE_KEY, provider1); // Ganache default private key
-
-  const provider2 = getDefaultProvider(chain2.rpcEndpoint);
-  const signer2 = new Wallet(ETH_PRIVATE_KEY, provider2); // Ganache default private key
 
   const manager1 = NttManager__factory.connect(
-    <string>chain1.managerAddress,
-    signer1
+    chain1.managerAddress,
+    ETH_SIGNER
   );
   const manager2 = NttManager__factory.connect(
-    <string>chain2.managerAddress,
-    signer2
+    chain2.managerAddress,
+    BSC_SIGNER
   );
 
   const transceiver1 = WormholeTransceiver__factory.connect(
-    <string>chain1.transceiverAddress,
-    signer1
+    chain1.transceiverAddress,
+    ETH_SIGNER
   );
   const transceiver2 = WormholeTransceiver__factory.connect(
-    <string>chain2.transceiverAddress,
-    signer2
+    chain2.transceiverAddress,
+    BSC_SIGNER
   );
 
   // Would make sense to store the 'client' with a generalized interface instead of the
@@ -260,28 +258,23 @@ async function test(chain1: ChainDetails, chain2: ChainDetails) {
     - Corrupted or bad VAA usage
     - Relayer vs non-relayer path
     */
-  const provider1 = getDefaultProvider(chain1.rpcEndpoint);
-  const signer1 = new Wallet(ETH_PRIVATE_KEY, provider1); // Ganache default private key
-
-  const provider2 = getDefaultProvider(chain2.rpcEndpoint);
-  const signer2 = new Wallet(ETH_PRIVATE_KEY, provider2); // Ganache default private key
 
   const manager1 = NttManager__factory.connect(
-    <string>chain1.managerAddress,
-    signer1
+    chain1.managerAddress,
+    ETH_SIGNER
   );
   const manager2 = NttManager__factory.connect(
-    <string>chain2.managerAddress,
-    signer2
+    chain2.managerAddress,
+    BSC_SIGNER
   );
 
   const token1 = DummyToken__factory.connect(
-    <string>chain1.NTTTokenAddress,
-    signer1
+    chain1.NTTTokenAddress,
+    ETH_SIGNER
   );
   const token2 = DummyTokenMintAndBurn__factory.connect(
-    <string>chain2.NTTTokenAddress,
-    signer2
+    chain2.NTTTokenAddress,
+    BSC_SIGNER
   );
 
   console.log("Starting tests");
@@ -296,28 +289,23 @@ async function BackAndForthBaseTest(
   chain2: ChainDetails
 ) {
   console.log("Basic back and forth");
-  const provider1 = getDefaultProvider(chain1.rpcEndpoint);
-  const signer1 = new Wallet(ETH_PRIVATE_KEY, provider1); // Ganache default private key
-
-  const provider2 = getDefaultProvider(chain2.rpcEndpoint);
-  const signer2 = new Wallet(ETH_PRIVATE_KEY, provider2); // Ganache default private key
 
   const manager1 = NttManager__factory.connect(
-    <string>chain1.managerAddress,
-    signer1
+    chain1.managerAddress,
+    ETH_SIGNER
   );
   const manager2 = NttManager__factory.connect(
-    <string>chain2.managerAddress,
-    signer2
+    chain2.managerAddress,
+    BSC_SIGNER
   );
 
   const token1 = DummyToken__factory.connect(
-    <string>chain1.NTTTokenAddress,
-    signer1
+    chain1.NTTTokenAddress,
+    ETH_SIGNER
   );
   const token2 = DummyTokenMintAndBurn__factory.connect(
-    <string>chain2.NTTTokenAddress,
-    signer2
+    chain2.NTTTokenAddress,
+    BSC_SIGNER
   );
 
   const amount = utils.parseEther("1");
@@ -435,28 +423,23 @@ async function BackAndForthBaseRelayertest(
   chain2: ChainDetails
 ) {
   console.log("Basic back and forth on relayer");
-  const provider1 = getDefaultProvider(chain1.rpcEndpoint);
-  const signer1 = new Wallet(ETH_PRIVATE_KEY, provider1); // Ganache default private key
-
-  const provider2 = getDefaultProvider(chain2.rpcEndpoint);
-  const signer2 = new Wallet(ETH_PRIVATE_KEY, provider2); // Ganache default private key
 
   const manager1 = NttManager__factory.connect(
-    <string>chain1.managerAddress,
-    signer1
+    chain1.managerAddress,
+    ETH_SIGNER
   );
   const manager2 = NttManager__factory.connect(
-    <string>chain2.managerAddress,
-    signer2
+    chain2.managerAddress,
+    BSC_SIGNER
   );
 
   const token1 = DummyToken__factory.connect(
-    <string>chain1.NTTTokenAddress,
-    signer1
+    chain1.NTTTokenAddress,
+    ETH_SIGNER
   );
   const token2 = DummyTokenMintAndBurn__factory.connect(
-    <string>chain2.NTTTokenAddress,
-    signer2
+    chain2.NTTTokenAddress,
+    BSC_SIGNER
   );
 
   const amount = utils.parseEther("1");
@@ -493,12 +476,12 @@ async function BackAndForthBaseRelayertest(
     const deliveryHash = await getDeliveryHashFromLog(
       log.log,
       2,
-      provider1,
+      ETH_SIGNER.provider,
       tx.blockHash
     );
     const wormholeRelayer = WormholeRelayer__factory.connect(
       RELAYER_CONTRACT,
-      provider2
+      BSC_SIGNER.provider
     );
     let success = false;
     while (!success) {
@@ -549,12 +532,12 @@ async function BackAndForthBaseRelayertest(
     const deliveryHash = await getDeliveryHashFromLog(
       log.log,
       4,
-      provider2,
+      BSC_SIGNER.provider,
       tx.blockHash
     );
     const wormholeRelayer = WormholeRelayer__factory.connect(
       RELAYER_CONTRACT,
-      provider1
+      ETH_SIGNER.provider
     );
     let success = false;
     while (!success) {
@@ -579,10 +562,11 @@ async function BackAndForthBaseRelayertest(
 /*
 Receive funds via collecting and submitting the VAA that we need to the endpoint to recvMessage.
 */
-async function receive(txResponse, chainSend, chainDest) {
-  const provider = getDefaultProvider(chainDest.rpcEndpoint);
-  const signer = new Wallet(ETH_PRIVATE_KEY, provider); // Ganache default private key
-
+async function receive(
+  txResponse: ContractReceipt,
+  chainSend: ChainDetails,
+  chainDest: ChainDetails
+) {
   const sequence = await parseSequenceFromLogEth(
     txResponse,
     CONTRACTS.DEVNET.ethereum.core
@@ -604,16 +588,13 @@ async function receive(txResponse, chainSend, chainDest) {
 
   // Send the VAA to the transceiver that needs it
   const transceiver = WormholeTransceiver__factory.connect(
-    <string>chainDest.transceiverAddress,
-    signer
+    chainDest.transceiverAddress,
+    chainDest.signer
   );
   return (await transceiver.receiveMessage(signedVAA)).wait();
 }
 
 async function run() {
-  const rpc_endpoint1 = "http://eth-devnet:8545";
-  const rpc_endpoint2 = "http://eth-devnet2:8545";
-
   let infoChain1;
   let infoChain2;
 
@@ -628,12 +609,12 @@ async function run() {
     // Chain 1
     console.log("Deploying on eth-devnet");
     console.log("===============================================");
-    infoChain1 = await deployEth(rpc_endpoint1, 2); // Deploying on ETH
+    infoChain1 = await deployEth(ETH_SIGNER, 2); // Deploying on ETH
 
     // Chain 2
     console.log("Deploying on eth-devnet2");
     console.log("===============================================");
-    infoChain2 = await deployEth(rpc_endpoint2, 4); // Deploying on the other network
+    infoChain2 = await deployEth(BSC_SIGNER, 4); // Deploying on the other network
 
     const cached_entry = { infoChain1: infoChain1, infoChain2: infoChain2 };
 
