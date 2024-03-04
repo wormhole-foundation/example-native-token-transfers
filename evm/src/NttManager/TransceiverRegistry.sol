@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.8 <0.9.0;
 
+import "./../libraries/TransceiverHelpers.sol";
+
 /// @dev This contract is responsible for handling the registration of Transceivers.
 abstract contract TransceiverRegistry {
     constructor() {
@@ -10,9 +12,9 @@ abstract contract TransceiverRegistry {
     /// @dev Information about registered transceivers.
     struct TransceiverInfo {
         // whether this transceiver is registered
-        bool registered;
+        uint256 registered;
         // whether this transceiver is enabled
-        bool enabled;
+        uint256 enabled;
         uint8 index;
     }
 
@@ -41,7 +43,7 @@ abstract contract TransceiverRegistry {
     error TransceiverAlreadyEnabled(address transceiver);
 
     modifier onlyTransceiver() {
-        if (!_getTransceiverInfosStorage()[msg.sender].enabled) {
+        if (!toBool(_getTransceiverInfosStorage()[msg.sender].enabled)) {
             revert CallerNotTransceiver(msg.sender);
         }
         _;
@@ -124,12 +126,12 @@ abstract contract TransceiverRegistry {
             revert TooManyTransceivers();
         }
 
-        if (transceiverInfos[transceiver].registered) {
-            transceiverInfos[transceiver].enabled = true;
+        if (toBool(transceiverInfos[transceiver].registered)) {
+            transceiverInfos[transceiver].enabled = toWord(true);
         } else {
             transceiverInfos[transceiver] = TransceiverInfo({
-                registered: true,
-                enabled: true,
+                registered: toWord(true),
+                enabled: toWord(true),
                 index: _numTransceivers.registered
             });
             _numTransceivers.registered++;
@@ -161,15 +163,15 @@ abstract contract TransceiverRegistry {
             revert InvalidTransceiverZeroAddress();
         }
 
-        if (!transceiverInfos[transceiver].registered) {
+        if (!toBool(transceiverInfos[transceiver].registered)) {
             revert NonRegisteredTransceiver(transceiver);
         }
 
-        if (!transceiverInfos[transceiver].enabled) {
+        if (!toBool(transceiverInfos[transceiver].enabled)) {
             revert DisabledTransceiver(transceiver);
         }
 
-        transceiverInfos[transceiver].enabled = false;
+        transceiverInfos[transceiver].enabled = toWord(false);
         _getNumTransceiversStorage().enabled--;
 
         uint64 updatedEnabledTransceiverBitmap =
@@ -244,12 +246,13 @@ abstract contract TransceiverRegistry {
 
         // if an transceiver is not registered, it should not be enabled
         assert(
-            transceiverInfo.registered || (!transceiverInfo.enabled && transceiverInfo.index == 0)
+            toBool(transceiverInfo.registered)
+                || (!toBool(transceiverInfo.enabled) && transceiverInfo.index == 0)
         );
 
         bool transceiverInEnabledBitmap =
             (_enabledTransceiverBitmap.bitmap & uint64(1 << transceiverInfo.index)) != 0;
-        bool transceiverEnabled = transceiverInfo.enabled;
+        bool transceiverEnabled = toBool(transceiverInfo.enabled);
 
         bool transceiverInEnabledTransceivers = false;
 
