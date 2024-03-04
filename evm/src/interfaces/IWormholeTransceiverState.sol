@@ -8,7 +8,7 @@ interface IWormholeTransceiverState {
     event SetWormholePeer(uint16 chainId, bytes32 peerContract);
     event SetIsWormholeRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
     event SetIsSpecialRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
-    event SetIsWormholeEvmChain(uint16 chainId);
+    event SetIsWormholeEvmChain(uint16 chainId, bool isEvm);
 
     error UnexpectedAdditionalMessages();
     error InvalidVaa(string reason);

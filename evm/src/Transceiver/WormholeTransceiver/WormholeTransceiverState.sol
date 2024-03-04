@@ -232,7 +232,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
         }
         _getWormholeEvmChainIdsStorage()[chainId] = toWord(isEvm);
 
-        emit SetIsWormholeEvmChain(chainId);
+        emit SetIsWormholeEvmChain(chainId, isEvm);
     }
 
     /// @inheritdoc IWormholeTransceiverState
