@@ -174,7 +174,7 @@ contract TestEndToEndRelayer is
         );
         DummyToken token2 = DummyTokenMintAndBurn(nttManagerChain2.token());
         wormholeTransceiverChain2.setIsWormholeRelayingEnabled(chainId1, true);
-        wormholeTransceiverChain2.setIsWormholeEvmChain(chainId1);
+        wormholeTransceiverChain2.setIsWormholeEvmChain(chainId1, true);
 
         // Register peer contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of peers here.
         vm.selectFork(sourceFork);
@@ -188,7 +188,7 @@ contract TestEndToEndRelayer is
 
         // Enable general relaying on the chain to transfer for the funds.
         wormholeTransceiverChain1.setIsWormholeRelayingEnabled(chainId2, true);
-        wormholeTransceiverChain1.setIsWormholeEvmChain(chainId2);
+        wormholeTransceiverChain1.setIsWormholeEvmChain(chainId2, true);
 
         // Setting up the transfer
         uint8 decimals = token1.decimals();
@@ -276,7 +276,7 @@ contract TestEndToEndRelayer is
         );
         DummyToken token2 = DummyTokenMintAndBurn(nttManagerChain2.token());
         wormholeTransceiverChain2.setIsWormholeRelayingEnabled(chainId1, true);
-        wormholeTransceiverChain2.setIsWormholeEvmChain(chainId1);
+        wormholeTransceiverChain2.setIsWormholeEvmChain(chainId1, true);
 
         // Register peer contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of peers here.
         vm.selectFork(sourceFork);
@@ -290,7 +290,7 @@ contract TestEndToEndRelayer is
 
         // Enable general relaying on the chain to transfer for the funds.
         wormholeTransceiverChain1.setIsWormholeRelayingEnabled(chainId2, true);
-        wormholeTransceiverChain1.setIsWormholeEvmChain(chainId2);
+        wormholeTransceiverChain1.setIsWormholeEvmChain(chainId2, true);
 
         // Setting up the transfer
         uint8 decimals = token1.decimals();

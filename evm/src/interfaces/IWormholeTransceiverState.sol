@@ -50,7 +50,8 @@ interface IWormholeTransceiverState {
     /// @notice Set whether the chain is EVM compatible.
     /// @dev This function is only callable by the `owner`.
     /// @param chainId The Wormhole chain ID to set.
-    function setIsWormholeEvmChain(uint16 chainId) external;
+    /// @param isEvm A boolean indicating whether the chain is an EVM chain.
+    function setIsWormholeEvmChain(uint16 chainId, bool isEvm) external;
 
     /// @notice Set whether Wormhole relaying is enabled for the given chain.
     /// @dev This function is only callable by the `owner`.

@@ -226,11 +226,11 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     }
 
     /// @inheritdoc IWormholeTransceiverState
-    function setIsWormholeEvmChain(uint16 chainId) external onlyOwner {
+    function setIsWormholeEvmChain(uint16 chainId, bool isEvm) external onlyOwner {
         if (chainId == 0) {
             revert InvalidWormholeChainIdZero();
         }
-        _getWormholeEvmChainIdsStorage()[chainId] = TRUE;
+        _getWormholeEvmChainIdsStorage()[chainId] = toWord(isEvm);
 
         emit SetIsWormholeEvmChain(chainId);
     }
