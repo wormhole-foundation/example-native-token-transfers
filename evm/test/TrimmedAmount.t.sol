@@ -167,4 +167,54 @@ contract TrimmingTest is Test {
 
         assertEq(expectedRoundTrip, amountRoundTrip);
     }
+
+    function testFuzz_AddOperatorOverload(TrimmedAmount a, TrimmedAmount b) public {
+        vm.assume(a.getDecimals() == b.getDecimals());
+
+        // check if the add operation reverts on an overflow.
+        // if it overflows, discard the input
+        uint256 largeSum = uint256(a.getAmount()) + uint256(b.getAmount());
+        vm.assume(largeSum <= type(uint64).max);
+
+        // check if the sum matches the expected sum if no overflow
+        TrimmedAmount sum = a + b;
+        TrimmedAmount expectedSum = add(a, b);
+
+        assertEq(expectedSum.getAmount(), sum.getAmount());
+        assertEq(expectedSum.getDecimals(), sum.getDecimals());
+    }
+
+    function testFuzz_SubOperatorOverload(TrimmedAmount a, TrimmedAmount b) public {
+        vm.assume(a.getDecimals() == b.getDecimals());
+        vm.assume(a.getAmount() >= b.getAmount());
+
+        TrimmedAmount subAmt = a - b;
+        TrimmedAmount expectedSub = sub(a, b);
+
+        assertEq(expectedSub.getAmount(), subAmt.getAmount());
+        assertEq(expectedSub.getDecimals(), subAmt.getDecimals());
+    }
+
+    function testFuzz_EqOperatorOverload(TrimmedAmount a, TrimmedAmount b) public {
+        bool isEqual = a == b;
+        bool expectedIsEqual = eq(a, b);
+
+        assertEq(expectedIsEqual, isEqual);
+    }
+
+    function testFuzz_GtOperatorOverload(TrimmedAmount a, TrimmedAmount b) public {
+        vm.assume(a.getDecimals() == b.getDecimals());
+        bool isGt = a > b;
+        bool expectedIsGt = gt(a, b);
+
+        assertEq(expectedIsGt, isGt);
+    }
+
+    function testFuzz_LtOperatorOverload(TrimmedAmount a, TrimmedAmount b) public {
+        vm.assume(a.getDecimals() == b.getDecimals());
+        bool isLt = a > b;
+        bool expectedIsLt = gt(a, b);
+
+        assertEq(expectedIsLt, isLt);
+    }
 }
