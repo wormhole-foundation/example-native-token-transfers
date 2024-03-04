@@ -4,17 +4,66 @@ pragma solidity >=0.8.8 <0.9.0;
 import "../libraries/TransceiverStructs.sol";
 
 interface IWormholeTransceiverState {
+    /// @notice Emitted when a message is sent from the transceiver.
+    /// @dev Topic0
+    ///      0x375a56c053c4d19a2e3445e97b7a28bf4e908617ce6d766e1e03a9d3f5276271.
+    /// @param relayingType The type of relaying.
+    /// @param deliveryPayment The amount of ether sent along with the tx to cover the delivery fee.
     event RelayingInfo(uint8 relayingType, uint256 deliveryPayment);
+
+    /// @notice Emitted when a peer transceiver is set.
+    /// @dev Topic0
+    ///      0xa559263ee060c7a2560843b3a064ff0376c9753ae3e2449b595a3b615d326466.
+    /// @param chainId The chain ID of the peer.
+    /// @param peerContract The address of the peer contract.
     event SetWormholePeer(uint16 chainId, bytes32 peerContract);
+
+    /// @notice Emitted when relaying is enabled for the given chain.
+    /// @dev Topic0
+    ///      0x528b18a533e892b5401d1fb63597275df9d2bb45b13e7695c3147cd07b9746c3.
+    /// @param chainId The chain ID to set.
+    /// @param isRelayingEnabled A boolean indicating whether relaying is enabled.
     event SetIsWormholeRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
+
+    /// @notice Emitted when special relaying is enabled for the given chain.
+    /// @dev Topic0
+    ///      0x0fe301480713b2c2072ee91b3bcfcbf2c0014f0447c89046f020f0f80727003c.
+    /// @param chainId The chain ID to set.
     event SetIsSpecialRelayingEnabled(uint16 chainId, bool isRelayingEnabled);
+
+    /// @notice Emitted when the chain is EVM compatible.
+    /// @dev Topic0
+    ///      0x50bbeb4e180e8f9e429f6ef6b53496616c747fe502441c4f423d5fc9ec958d9c.
+    /// @param chainId The chain ID to set.
+    /// @param isEvm A boolean indicating whether relaying is enabled.
     event SetIsWormholeEvmChain(uint16 chainId, bool isEvm);
 
+    /// @notice Additonal messages are not allowed.
+    /// @dev Selector: 0xc504ea29.
     error UnexpectedAdditionalMessages();
+
+    /// @notice Error if the VAA is invalid.
+    /// @dev Selector: 0x8ee2e336.
+    /// @param reason The reason the VAA is invalid.
     error InvalidVaa(string reason);
+
+    /// @notice Error if the peer has already been set.
+    /// @dev Selector: 0xb55eeae9.
+    /// @param chainId The chain ID of the peer.
+    /// @param peerAddress The address of the peer.
     error PeerAlreadySet(uint16 chainId, bytes32 peerAddress);
+
+    /// @notice Error the peer contract cannot be the zero address.
+    /// @dev Selector: 0x26e0c7de.
     error InvalidWormholePeerZeroAddress();
+
+    /// @notice The chain ID cannot be zero.
+    /// @dev Selector: 0x3dd98b24.
     error InvalidWormholeChainIdZero();
+
+    /// @notice The caller is not the relayer.
+    /// @dev Selector: 0x1c269589.
+    /// @param caller The caller.
     error CallerNotRelayer(address caller);
 
     /// @notice Get the corresponding Transceiver contract on other chains that have been registered

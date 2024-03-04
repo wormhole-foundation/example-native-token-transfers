@@ -17,6 +17,22 @@ import "../interfaces/ITransceiver.sol";
 
 import {NttManagerState} from "./NttManagerState.sol";
 
+/// @title NttManager
+/// @notice The NttManager contract is responsible for managing the token
+///         and associated transceivers.
+///
+/// @dev Each NttManager contract is associated with a single token but
+///      can be responsible for multiple transceivers.
+///
+/// @dev When transferring tokens, the NttManager contract will either
+///      lock the tokens or burn them, depending on the mode.
+///
+/// @dev To initiate a transfer, the user calls the transfer function with:
+///  - the amount
+///  - the recipient chain
+///  - the recipient address
+///  - (optional) a flag to indicate whether the transfer should be queued
+///    if the rate limit is exceeded
 contract NttManager is INttManager, NttManagerState {
     using BytesParsing for bytes;
     using SafeERC20 for IERC20;
