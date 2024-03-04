@@ -120,13 +120,13 @@ abstract contract TransceiverRegistry {
             revert InvalidTransceiverZeroAddress();
         }
 
-        if (_numTransceivers.registered >= MAX_TRANSCEIVERS) {
-            revert TooManyTransceivers();
-        }
-
         if (transceiverInfos[transceiver].registered) {
             transceiverInfos[transceiver].enabled = true;
         } else {
+            if (_numTransceivers.registered >= MAX_TRANSCEIVERS) {
+                revert TooManyTransceivers();
+            }
+
             transceiverInfos[transceiver] = TransceiverInfo({
                 registered: true,
                 enabled: true,
