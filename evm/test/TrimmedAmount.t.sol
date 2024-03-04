@@ -245,19 +245,13 @@ contract TrimmingTest is Test {
 
     // FUZZ TESTS
 
-    // invariant: forall (TrimmedAmount a, TrimmedAmount b) a.saturatingAdd(b).amount <= type(uint64).max
+    // invariant: forall (TrimmedAmount a, TrimmedAmount b)
+    //            a.saturatingAdd(b).amount <= type(uint64).max
     function testFuzz_saturatingAddDoesNotOverflow(
         TrimmedAmount memory a,
         TrimmedAmount memory b
     ) public {
         vm.assume(a.decimals == b.decimals);
-
-        // this is guaranteed by trimming
-        a.amount = uint64(bound(a.amount, 0, type(uint64).max));
-        a.decimals = uint8(bound(a.decimals, 0, 8));
-
-        b.amount = uint64(bound(b.amount, 0, type(uint64).max));
-        b.decimals = uint8(bound(b.decimals, 0, 8));
 
         TrimmedAmount memory c = a.saturatingAdd(b);
 
@@ -273,8 +267,8 @@ contract TrimmingTest is Test {
     // NOTE: above the TRIMMED_DECIMALS threshold will always get trimmed to TRIMMED_DECIMALS
     // or trimmed to the number of decimals on the recipient chain.
     // this tests for inputs with decimals > TRIMMED_DECIMALS
-    function testFuzz_SubOperatorZeroAboveThreshold(uint256 amt, uint8 decimals) public {
-        uint8 decimals = uint8(bound(decimals, 8, 18));
+    function testFuzz_SubOperatorZeroAboveThreshold(uint256 amt, uint8 decimals) public pure {
+        decimals = uint8(bound(decimals, 8, 18));
         uint256 maxAmt = (type(uint64).max) / (10 ** decimals);
         vm.assume(amt < maxAmt);
 
@@ -294,7 +288,7 @@ contract TrimmingTest is Test {
         uint256 amtLeft,
         uint256 amtRight
     ) public {
-        uint8 decimals = uint8(bound(decimals, 8, 18));
+        decimals = uint8(bound(decimals, 8, 18));
         uint256 maxAmt = (type(uint64).max) / (10 ** decimals);
         vm.assume(amtRight < maxAmt);
         vm.assume(amtLeft < amtRight);
@@ -311,8 +305,8 @@ contract TrimmingTest is Test {
     // NOTE: above the TRIMMED_DECIMALS threshold will always get trimmed to TRIMMED_DECIMALS
     // or trimmed to the number of decimals on the recipient chain.
     // this tests for inputs with decimals > TRIMMED_DECIMALS
-    function testFuzz_AddOperatorZeroAboveThreshold(uint256 amt, uint8 decimals) public {
-        uint8 decimals = uint8(bound(decimals, 8, 18));
+    function testFuzz_AddOperatorZeroAboveThreshold(uint256 amt, uint8 decimals) public pure {
+        decimals = uint8(bound(decimals, 8, 18));
         uint256 maxAmt = (type(uint64).max) / (10 ** decimals);
         vm.assume(amt < maxAmt);
 
