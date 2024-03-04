@@ -738,8 +738,8 @@ contract TestRateLimit is Test, IRateLimiterEvents {
     // send tokens from user_A to user_B
     // this should consume capacity on the outbound side
     // and backfill the inbound side
-    function testFuzz_CircularFlowBackFilling(uint64 mintAmt, uint64 transferAmt) public {
-        mintAmt = uint64(bound(mintAmt, 2, type(uint64).max));
+    function testFuzz_CircularFlowBackFilling(uint64 mintAmt, uint256 transferAmt) public {
+        mintAmt = uint64(bound(mintAmt, 2, type(uint256).max));
         transferAmt = uint64(bound(transferAmt, 1, mintAmt - 1));
 
         (address user_A, address user_B, DummyToken token, uint8 decimals) = setupToken();
@@ -751,8 +751,45 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         // transfer 10 tokens
         vm.startPrank(user_A);
 
-        TrimmedAmount memory transferAmount = TrimmedAmount(transferAmt, 8);
+        // TrimmedAmount memory transferAmount = TrimmedAmount(transferAmt, 8);
         token.approve(address(nttManager), type(uint256).max);
+
+        // TODO: also fuzz the fromDecimals?
+
+        // allow for amounts greater than uint64 to check if [`transfer`] reverts
+        // on amounts greater than u64 MAX.
+        TrimmedAmount memory transferAmount = transferAmt.trim(decimals, 8);
+
+        // check error conditions
+        if (transferAmount.amount == 0) {
+            vm.expectRevert();
+            // transfer tokens from user_A -> user_B via the nttManager
+            nttManager.transfer(
+                transferAmount.untrim(decimals),
+                chainId,
+                toWormholeFormat(user_B),
+                false,
+                new bytes(1)
+            );
+
+            return;
+        }
+
+        if (transferAmount.amount > type(uint64).max) {
+            bytes4 selector = bytes4(keccak256("AmountTooLarge(uint256)"));
+            vm.expectRevert(abi.encodeWithSelector(selector, transferAmt));
+
+            nttManager.transfer(
+                transferAmount.untrim(decimals),
+                chainId,
+                toWormholeFormat(user_B),
+                false,
+                new bytes(1)
+            );
+
+            return;
+        }
+
         // transfer tokens from user_A -> user_B via the nttManager
         nttManager.transfer(
             transferAmount.untrim(decimals), chainId, toWormholeFormat(user_B), false, new bytes(1)
