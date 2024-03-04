@@ -693,4 +693,119 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         assertEq(token.balanceOf(address(user_B)), transferAmount.untrim(token.decimals()) * 2);
     }
+
+    function test_tokenUpgradedAndDecimalsChanged() public {
+        DummyToken dummy1 = new DummyTokenMintAndBurn();
+
+        // Make the token an upgradeable token
+        DummyTokenMintAndBurn t =
+            DummyTokenMintAndBurn(address(new ERC1967Proxy(address(dummy1), "")));
+
+        NttManager implementation =
+            new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, chainId, 1 days, false);
+
+        MockNttManagerContract newNttManager =
+            MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
+        newNttManager.initialize();
+        // register nttManager peer
+        bytes32 peer = toWormholeFormat(address(nttManager));
+        newNttManager.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9);
+
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+        t.mintDummy(address(user_A), 5 * 10 ** t.decimals());
+
+        // Check that we can initiate a transfer
+        vm.startPrank(user_A);
+        t.approve(address(newNttManager), 3 * 10 ** t.decimals());
+        newNttManager.transfer(
+            1 * 10 ** t.decimals(),
+            TransceiverHelpersLib.SENDING_CHAIN_ID,
+            toWormholeFormat(user_B),
+            false,
+            new bytes(1)
+        );
+        vm.stopPrank();
+
+        // Check that we can receive a transfer
+        (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(newNttManager);
+        newNttManager.setThreshold(1);
+
+        bytes memory transceiverMessage;
+        bytes memory tokenTransferMessage;
+
+        TrimmedAmount memory transferAmount = TrimmedAmount(100, 8);
+
+        tokenTransferMessage = TransceiverStructs.encodeNativeTokenTransfer(
+            TransceiverStructs.NativeTokenTransfer({
+                amount: transferAmount,
+                sourceToken: toWormholeFormat(address(t)),
+                to: toWormholeFormat(user_B),
+                toChain: chainId
+            })
+        );
+
+        (, transceiverMessage) = TransceiverHelpersLib.buildTransceiverMessageWithNttManagerPayload(
+            0, bytes32(0), peer, toWormholeFormat(address(newNttManager)), tokenTransferMessage
+        );
+
+        e1.receiveMessage(transceiverMessage);
+        uint256 userBBalanceBefore = t.balanceOf(address(user_B));
+        assertEq(userBBalanceBefore, transferAmount.untrim(t.decimals()));
+
+        // If the token decimals change to the same trimmed amount, we should safely receive the correct number of tokens
+        DummyTokenDifferentDecimals dummy2 = new DummyTokenDifferentDecimals(10); // 10 gets trimmed to 8
+        t.upgrade(address(dummy2));
+
+        vm.startPrank(user_A);
+        newNttManager.transfer(
+            1 * 10 ** 10,
+            TransceiverHelpersLib.SENDING_CHAIN_ID,
+            toWormholeFormat(user_B),
+            false,
+            new bytes(1)
+        );
+        vm.stopPrank();
+
+        (, transceiverMessage) = TransceiverHelpersLib.buildTransceiverMessageWithNttManagerPayload(
+            bytes32("1"),
+            bytes32(0),
+            peer,
+            toWormholeFormat(address(newNttManager)),
+            tokenTransferMessage
+        );
+        e1.receiveMessage(transceiverMessage);
+        assertEq(
+            t.balanceOf(address(user_B)), userBBalanceBefore + transferAmount.untrim(t.decimals())
+        );
+
+        // Now if the token decimals change to a different trimmed amount, we shouldn't be able to send or receive
+        DummyTokenDifferentDecimals dummy3 = new DummyTokenDifferentDecimals(7); // 7 is 7 trimmed
+        t.upgrade(address(dummy3));
+
+        vm.startPrank(user_A);
+        vm.expectRevert(
+            abi.encodeWithSelector(TrimmedAmountLib.NumberOfDecimalsNotEqual.selector, 8, 7)
+        );
+        newNttManager.transfer(
+            1 * 10 ** 7,
+            TransceiverHelpersLib.SENDING_CHAIN_ID,
+            toWormholeFormat(user_B),
+            false,
+            new bytes(1)
+        );
+        vm.stopPrank();
+
+        (, transceiverMessage) = TransceiverHelpersLib.buildTransceiverMessageWithNttManagerPayload(
+            bytes32("2"),
+            bytes32(0),
+            peer,
+            toWormholeFormat(address(newNttManager)),
+            tokenTransferMessage
+        );
+        vm.expectRevert(
+            abi.encodeWithSelector(TrimmedAmountLib.NumberOfDecimalsNotEqual.selector, 8, 7)
+        );
+        e1.receiveMessage(transceiverMessage);
+    }
 }

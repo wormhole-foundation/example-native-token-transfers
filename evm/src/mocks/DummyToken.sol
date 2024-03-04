@@ -3,8 +3,9 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
 
-contract DummyToken is ERC20 {
+contract DummyToken is ERC20, ERC1967Upgrade {
     constructor() ERC20("DummyToken", "DTKN") {}
 
     // NOTE: this is purposefully not called mint() to so we can test that in
@@ -24,6 +25,10 @@ contract DummyToken is ERC20 {
     function burn(address, uint256) public virtual {
         revert("Locking nttManager should not call 'burn()'");
     }
+
+    function upgrade(address newImplementation) public {
+        _upgradeTo(newImplementation);
+    }
 }
 
 contract DummyTokenMintAndBurn is DummyToken {
@@ -35,5 +40,17 @@ contract DummyTokenMintAndBurn is DummyToken {
     function burn(uint256 amount) public {
         // TODO - add access control here?
         _burn(msg.sender, amount);
+    }
+}
+
+contract DummyTokenDifferentDecimals is DummyTokenMintAndBurn {
+    uint8 private immutable _decimals;
+
+    constructor(uint8 newDecimals) {
+        _decimals = newDecimals;
+    }
+
+    function decimals() public view override returns (uint8) {
+        return _decimals;
     }
 }
