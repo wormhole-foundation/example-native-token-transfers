@@ -14,6 +14,18 @@ import "../../interfaces/INttManager.sol";
 
 import "./WormholeTransceiverState.sol";
 
+/// @title WormholeTransceiver
+/// @author Wormhole Project Contributors.
+/// @notice Transceiver implementation for the Wormhole.
+///
+/// @dev This contract is responsible for sending and receiving NTT messages
+///      that are authenticated through Wormhole Core.
+///
+/// @dev Messages can be delivered either via standard relaying or special relaying, or
+///      manually via the core layer.
+///
+/// @dev Once a message is received, it is delivered to its corresponding
+///      NttManager contract.
 contract WormholeTransceiver is
     IWormholeTransceiver,
     IWormholeReceiver,
