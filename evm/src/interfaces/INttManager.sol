@@ -40,8 +40,8 @@ interface INttManager is INttManagerState {
     error DeliveryPaymentTooLow(uint256 requiredPayment, uint256 providedPayment);
 
     //// @notice The transfer has some dust.
-    //// @dev    This is a security measure to prevent users from losing funds.
-    ////         This is the result of trimming the amount and then untrimming it.
+    //// @dev This is a security measure to prevent users from losing funds.
+    ////      This is the result of trimming the amount and then untrimming it.
     //// @param  amount The amount to transfer.
     error TransferAmountHasDust(uint256 amount, uint256 dust);
 
@@ -87,9 +87,9 @@ interface INttManager is INttManagerState {
     error BurnAmountDifferentThanBalanceDiff(uint256 burnAmount, uint256 balanceDiff);
 
     /// @notice Transfer a given amount to a recipient on a given chain. This function is called
-    /// by the user to send the token cross-chain. This function will either lock or burn the
-    /// sender's tokens. Finally, this function will call into registered `Endpoint` contracts
-    /// to send a message with the incrementing sequence number and the token transfer payload.
+    ///         by the user to send the token cross-chain. This function will either lock or burn the
+    ///         sender's tokens. Finally, this function will call into registered `Endpoint` contracts
+    ///         to send a message with the incrementing sequence number and the token transfer payload.
     /// @param amount The amount to transfer.
     /// @param recipientChain The chain ID for the destination.
     /// @param recipient The recipient address.
@@ -100,9 +100,9 @@ interface INttManager is INttManagerState {
     ) external payable returns (uint64 msgId);
 
     /// @notice Transfer a given amount to a recipient on a given chain. This function is called
-    /// by the user to send the token cross-chain. This function will either lock or burn the
-    /// sender's tokens. Finally, this function will call into registered `Endpoint` contracts
-    /// to send a message with the incrementing sequence number and the token transfer payload.
+    ///         by the user to send the token cross-chain. This function will either lock or burn the
+    ///         sender's tokens. Finally, this function will call into registered `Endpoint` contracts
+    ///         to send a message with the incrementing sequence number and the token transfer payload.
     /// @dev Transfers are queued if the outbound limit is hit and must be completed by the client.
     /// @param amount The amount to transfer.
     /// @param recipientChain The chain ID for the destination.
@@ -141,8 +141,8 @@ interface INttManager is INttManagerState {
 
     /// @notice Called by an Endpoint contract to deliver a verified attestation.
     /// @dev This function enforces attestation threshold and replay logic for messages. Once all
-    /// validations are complete, this function calls `executeMsg` to execute the command specified
-    /// by the message.
+    ///      validations are complete, this function calls `executeMsg` to execute the command specified
+    ///      by the message.
     /// @param sourceChainId The chain id of the sender.
     /// @param sourceNttManagerAddress The address of the sender's nttManager contract.
     /// @param payload The VAA payload.
@@ -152,11 +152,11 @@ interface INttManager is INttManagerState {
         TransceiverStructs.NttManagerMessage memory payload
     ) external;
 
-    /// @notice Called after a message has been sufficiently verified to execute the command in the message.
-    /// This function will decode the payload as an NttManagerMessage to extract the sequence, msgType,
-    /// and other parameters.
+    /// @notice Called after a message has been sufficiently verified to execute
+    ///         the command in the message. This function will decode the payload
+    ///         as an NttManagerMessage to extract the sequence, msgType, and other parameters.
     /// @dev This function is exposed as a fallback for when an `Transceiver` is deregistered
-    /// when a message is in flight.
+    ///      when a message is in flight.
     /// @param sourceChainId The chain id of the sender.
     /// @param sourceNttManagerAddress The address of the sender's nttManager contract.
     /// @param message The message to execute.
