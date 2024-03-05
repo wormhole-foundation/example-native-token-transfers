@@ -20,18 +20,22 @@ import { NttManagerLibraryAddresses } from "../contract-bindings/factories/NttMa
 
 const processName = "deployManagers";
 
-type NttManagerDeploymentConfig = {
+type NttManagerConfig = {
   token: string;
   mode: number;
   chainId: ChainId;
   rateLimitDuration: number;
+  skipRateLimit: boolean;
+  // TODO!!! make sure we can easily configure any configurable property on any of the contraccts. What properties are configurable?
+  threshold: number;
+  outboundLimit: number;
 };
 
 init();
 const chains = loadOperatingChains();
 
 // Warning: we assume that the script configuration file is correctly formed
-const config: NttManagerDeploymentConfig[] = loadScriptConfig(processName);
+const config: NttManagerConfig[] = loadScriptConfig("managers");
 
 async function run() {
   console.log(`Start ${processName}!`);
@@ -72,7 +76,7 @@ async function run() {
   writeOutputFiles(output, processName);
 }
 
-async function deployManager(chain: ChainInfo, config: NttManagerDeploymentConfig) {
+async function deployManager(chain: ChainInfo, config: NttManagerConfig) {
   let libraries, implementation, proxy;
   const log = (...args) => console.log(`[${chain.chainId}]`, ...args);
 
@@ -123,7 +127,7 @@ async function deployManagerLibraries(
 
 async function deployManagerImplementation(
   chain: ChainInfo,
-  config: NttManagerDeploymentConfig,
+  config: NttManagerConfig,
   libraries: NttManagerLibraryAddresses,
 ): Promise<Deployment> {
   const signer = await getSigner(chain);
@@ -134,6 +138,7 @@ async function deployManagerImplementation(
     config.mode,
     config.chainId,
     config.rateLimitDuration,
+    config.skipRateLimit
     // overrides,
   );
 
