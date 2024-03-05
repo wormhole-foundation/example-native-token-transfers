@@ -213,7 +213,7 @@ contract TestEndToEndRelayer is
 
             // config not set correctly
             vm.startPrank(userA);
-            vm.expectRevert();
+            vm.expectRevert(abi.encodeWithSignature("InvalidRelayingConfig(uint16)", chainId2));
             nttManagerChain1.transfer{value: priceQuote1}(
                 sendingAmount, chainId2, bytes32(uint256(uint160(userB))), false, instructions
             );
