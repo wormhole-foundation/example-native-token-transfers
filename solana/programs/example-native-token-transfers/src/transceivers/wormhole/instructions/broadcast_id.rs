@@ -29,6 +29,10 @@ pub struct BroadcastId<'info> {
     pub wormhole: WormholeAccounts<'info>,
 }
 
+/// SECURITY: Owner checks are disabled. [`token_interface::Mint`] performs implicit ownership
+/// checks for token accounts. [`BroadcastId::emitter`] is enforced to be a PDA.
+#[allow(unknown_lints)]
+#[allow(missing_owner_check)]
 pub fn broadcast_id(ctx: Context<BroadcastId>) -> Result<()> {
     let accs = ctx.accounts;
     let message = WormholeTransceiverInfo {

@@ -52,6 +52,8 @@ pub struct TransferOwnership<'info> {
     bpf_loader_upgradeable_program: Program<'info, BpfLoaderUpgradeable>,
 }
 
+#[allow(unknown_lints)]
+#[allow(missing_owner_check)]
 pub fn transfer_ownership(ctx: Context<TransferOwnership>) -> Result<()> {
     // Missing ownership check is OK here: new_owner is not expected to interact with this
     // instruction. Instead, they call [`claim_ownership`]. The whole intention of new_owner
@@ -67,6 +69,7 @@ pub fn transfer_ownership(ctx: Context<TransferOwnership>) -> Result<()> {
             bpf_loader_upgradeable::SetUpgradeAuthorityChecked {
                 program_data: ctx.accounts.program_data.to_account_info(),
                 current_authority: ctx.accounts.owner.to_account_info(),
+                // Missing ownership check is OK here: upgrade_lock is enforced to be a PDA.
                 new_authority: ctx.accounts.upgrade_lock.to_account_info(),
             },
             &[&[b"upgrade_lock", &[ctx.bumps.upgrade_lock]]],
@@ -107,6 +110,8 @@ pub struct ClaimOwnership<'info> {
     bpf_loader_upgradeable_program: Program<'info, BpfLoaderUpgradeable>,
 }
 
+#[allow(unknown_lints)]
+#[allow(missing_owner_check)]
 pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
     ctx.accounts.config.pending_owner = None;
     ctx.accounts.config.owner = ctx.accounts.new_owner.key();
@@ -118,6 +123,7 @@ pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
                 .to_account_info(),
             bpf_loader_upgradeable::SetUpgradeAuthorityChecked {
                 program_data: ctx.accounts.program_data.to_account_info(),
+                // Missing ownership check is OK here: upgrade_lock is enforced to be a PDA.
                 current_authority: ctx.accounts.upgrade_lock.to_account_info(),
                 new_authority: ctx.accounts.new_owner.to_account_info(),
             },
