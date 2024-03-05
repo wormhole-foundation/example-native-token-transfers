@@ -340,28 +340,32 @@ async function link(
     manager1.setPeer(
       bscInfo.chainId,
       addressToBytes32(bscInfo.managerAddress),
-      18 // decimals
+      18, // decimals
+      utils.parseEther("10000")
     )
   );
   await tryAndWaitThrice(() =>
     manager1.setPeer(
       solInfo.chainId,
       `0x${SOL_NTT_CONTRACT.program.programId.toBuffer().toString("hex")}`,
-      9 // decimals
+      9, // decimals
+      utils.parseEther("10000")
     )
   );
   await tryAndWaitThrice(() =>
     manager2.setPeer(
       ethInfo.chainId,
       addressToBytes32(ethInfo.managerAddress),
-      18 // decimals
+      18, // decimals
+      utils.parseEther("10000")
     )
   );
   await tryAndWaitThrice(() =>
     manager2.setPeer(
       solInfo.chainId,
       `0x${SOL_NTT_CONTRACT.program.programId.toBuffer().toString("hex")}`,
-      9 // decimals
+      9, // decimals
+      utils.parseEther("10000")
     )
   );
 
@@ -391,20 +395,12 @@ async function link(
     )
   );
 
-  console.log("Set inbound limits");
-  await tryAndWaitThrice(() =>
-    manager1.setInboundLimit(utils.parseEther("10000"), bscInfo.chainId)
-  );
-  await tryAndWaitThrice(() =>
-    manager2.setInboundLimit(utils.parseEther("10000"), ethInfo.chainId)
-  );
-
   console.log("Setting transceiver to be an EVM transceiver");
   await tryAndWaitThrice(() =>
-    transceiver1.setIsWormholeEvmChain(bscInfo.chainId)
+    transceiver1.setIsWormholeEvmChain(bscInfo.chainId, true)
   );
   await tryAndWaitThrice(() =>
-    transceiver2.setIsWormholeEvmChain(ethInfo.chainId)
+    transceiver2.setIsWormholeEvmChain(ethInfo.chainId, true)
   );
 
   console.log("Enable relaying");

@@ -13,11 +13,11 @@ clean-evm:
 
 .PHONY: build-evm-prod
 build-evm-prod: clean-evm
-	cd evm && FOUNDRY_PROFILE=prod forge build
+	cd evm && docker build --target foundry-export -f Dockerfile -o out .
 
 .PHONY: gen-evm-bindings
 gen-evm-bindings: build-evm-prod
-	cd ci_tests && npm ci && npm run gen-evm-bindings
+	cd ci_tests && rm -rf evm_binding && npm ci && npm run gen-evm-bindings
 
 #######################
 ## TESTS

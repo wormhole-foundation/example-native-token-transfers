@@ -13,7 +13,7 @@ import "../src/interfaces/IRateLimiterEvents.sol";
 import "../src/interfaces/IWormholeTransceiver.sol";
 import "../src/interfaces/IWormholeTransceiverState.sol";
 import {Utils} from "./libraries/Utils.sol";
-import {DummyToken, DummyTokenMintAndBurn} from "./mocks/DummyToken.sol";
+import {DummyToken, DummyTokenMintAndBurn} from "../src/mocks/DummyToken.sol";
 import {WormholeTransceiver} from "../src/Transceiver/WormholeTransceiver/WormholeTransceiver.sol";
 import "../src/libraries/TransceiverStructs.sol";
 import "./mocks/MockNttManager.sol";

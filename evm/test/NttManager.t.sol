@@ -21,7 +21,7 @@ import "./libraries/TransceiverHelpers.sol";
 import "./libraries/NttManagerHelpers.sol";
 import "./interfaces/ITransceiverReceiver.sol";
 import "./mocks/DummyTransceiver.sol";
-import "./mocks/DummyToken.sol";
+import "../src/mocks/DummyToken.sol";
 import "./mocks/MockNttManager.sol";
 
 // TODO: set this up so the common functionality tests can be run against both
