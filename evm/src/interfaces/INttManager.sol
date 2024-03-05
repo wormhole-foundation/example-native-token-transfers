@@ -58,7 +58,7 @@ interface INttManager is INttManagerState {
     ///         To ensure the client does not continue to initiate calls to the ateestationReceived function.
     /// @dev Selector 0x2113894.
     /// @param nttManagerMessageHash The hash of the message.
-    error TrasceiverAlreadyAttestedToMessage(bytes32 nttManagerMessageHash);
+    error TransceiverAlreadyAttestedToMessage(bytes32 nttManagerMessageHash);
 
     /// @notice Error when the message is not approved.
     /// @dev Selector 0x451c4fb0.
@@ -79,7 +79,7 @@ interface INttManager is INttManagerState {
     /// @dev Selector 0x9c8d2cd2.
     error InvalidRecipient();
 
-    /// @@notice Error when the amount burned is different than the balance difference,
+    /// @notice Error when the amount burned is different than the balance difference,
     ///          since NTT does not support burn fees.
     /// @dev Selector 0x02156a8f.
     /// @param burnAmount The amount burned.

@@ -4,9 +4,9 @@ pragma solidity >=0.8.8 <0.9.0;
 /// @title TransceiverRegistry
 /// @author Wormhole Project Contributors.
 /// @notice This contract is responsible for handling the registration of Transceivers.
-/// edev This contract a few critical invariants hold when transceivers are added or removed,
+/// @dev This contract checks that a few critical invariants hold when transceivers are added or removed,
 ///      including:
-///         1. if a transceiver is not registered, it should be enabled.
+///         1. If a transceiver is not registered, it should be enabled.
 ///         2. The value set in the bitmap of trannsceivers
 ///            should directly correspond to the whether the transceiver is enabled
 abstract contract TransceiverRegistry {

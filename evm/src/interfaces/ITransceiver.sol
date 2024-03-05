@@ -20,7 +20,6 @@ interface ITransceiver {
     ///         the owner of the NttManager.
     /// @dev Selector: 0x66791dd6.
     /// @param currentOwner he current owner of the transceiver.
-    /// @param newOwner The new owner of the transceiver.
     error CannotRenounceTransceiverOwnership(address currentOwner);
 
     /// @notice Error when trying to transfer transceiver ownership.
