@@ -53,27 +53,27 @@ function get_env_var(env: string): string {
 }
 
 let config: any;
-export function loadScriptConfig(processName: string): any {
+export function loadScriptConfig(filename: string): any {
   if (config) {
     return config;
   }
   const configFile = fs.readFileSync(
-    `./ts-scripts/config/${env}/scriptConfigs/${processName}.json`
+    `./ts-scripts/config/${env}/${filename}.json`
   );
   const _config = JSON.parse(configFile.toString());
   if (!_config) {
     throw Error("Failed to pull config file!");
   }
   config = _config;
-  return loadScriptConfig(processName);
+  return loadScriptConfig(filename);
 }
 
 type ChainConfig = {
   chainId: ChainId;
 }
 
-export async function getChainConfig<T extends ChainConfig>(processName: string, chainId: ChainId): Promise<T> {
-  const scriptConfig: T[] = await loadScriptConfig(processName);
+export async function getChainConfig<T extends ChainConfig>(filename: string, chainId: ChainId): Promise<T> {
+  const scriptConfig: T[] = await loadScriptConfig(filename);
 
   const chainConfig = scriptConfig.find((x) => x.chainId == chainId);
 

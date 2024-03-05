@@ -32,7 +32,7 @@ async function run() {
       let config, transceiverAddress;
 
       try {
-        config = await getChainConfig<ManagerConfig>(processName, chain.chainId);
+        config = await getChainConfig<ManagerConfig>("managers", chain.chainId);
       } catch (error) {
         return { chainId: chain.chainId, error: "No configuration found" };
       }

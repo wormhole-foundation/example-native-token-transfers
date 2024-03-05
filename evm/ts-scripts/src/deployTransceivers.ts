@@ -21,7 +21,7 @@ import {
 
 const processName = "deployTransceivers";
 
-type NttTransceiverDeploymentConfig = {
+type NttTransceiverConfig = {
   chainId: ChainId;
   consistencyLevel: number;
   gasLimit: number;
@@ -38,7 +38,7 @@ init();
 const chains = loadOperatingChains();
 
 // Warning: we assume that the script configuration file is correctly formed
-const config: NttTransceiverDeploymentConfig[] = loadScriptConfig(processName);
+const config: NttTransceiverConfig[] = loadScriptConfig("transceivers");
 
 async function run() {
   console.log(`Start ${processName}!`);
@@ -80,7 +80,7 @@ async function run() {
   writeOutputFiles(output, processName);
 }
 
-async function deployTransceiver(chain: ChainInfo, config: NttTransceiverDeploymentConfig, contracts: NttTransceiverDependencies) {
+async function deployTransceiver(chain: ChainInfo, config: NttTransceiverConfig, contracts: NttTransceiverDependencies) {
   const log = (...args) => console.log(`[${chain.chainId}]`, ...args);
 
   let implementation, proxy, libraries;
@@ -135,7 +135,7 @@ async function deployTransceiverLibraries(
 
 async function deployTransceiverImplementation(
   chain: ChainInfo,
-  config: NttTransceiverDeploymentConfig,
+  config: NttTransceiverConfig,
   contracts: NttTransceiverDependencies,
   libraries: WormholeTransceiverLibraryAddresses,
 ): Promise<Deployment> {

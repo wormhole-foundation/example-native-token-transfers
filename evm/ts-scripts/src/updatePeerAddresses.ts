@@ -26,7 +26,7 @@ init();
 const chains = loadOperatingChains();
 async function run() {
   // Warning: we assume that the script configuration file is correctly formed
-  const config = await loadScriptConfig(processName) as PeerConfig[];
+  const config = await loadScriptConfig("peers") as PeerConfig[];
   console.log(`Start ${processName}!`);
 
   const results = await Promise.all(
