@@ -132,7 +132,8 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
         &mut amount,
         accs.common.mint.decimals,
         accs.peer.token_decimals,
-    );
+    )
+    .map_err(NTTError::from)?;
 
     let before = accs.common.from.amount;
 
@@ -234,7 +235,8 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
         &mut amount,
         accs.common.mint.decimals,
         accs.peer.token_decimals,
-    );
+    )
+    .map_err(NTTError::from)?;
 
     let before = accs.custody.amount;
 
