@@ -64,7 +64,13 @@ interface INttManagerState {
     /// @param peerChainId The chain ID of the peer.
     /// @param peerContract The address of the peer nttManager contract.
     /// @param decimals The number of decimals of the token on the peer chain.
-    function setPeer(uint16 peerChainId, bytes32 peerContract, uint8 decimals) external;
+    /// @param inboundLimit The inbound rate limit for the peer chain id
+    function setPeer(
+        uint16 peerChainId,
+        bytes32 peerContract,
+        uint8 decimals,
+        uint256 inboundLimit
+    ) external;
 
     /// @notice Checks if a message has been approved. The message should have at least
     /// the minimum threshold of attestations from distinct endpoints.

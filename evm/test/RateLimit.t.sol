@@ -41,7 +41,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         nttManager = MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         nttManager.initialize();
 
-        nttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 9);
+        nttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 9, type(uint64).max);
     }
 
     function test_outboundRateLimit_setLimitSimple() public {

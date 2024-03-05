@@ -20,7 +20,7 @@ library NttManagerHelpersLib {
             address(nttManager.token()).staticcall(abi.encodeWithSignature("decimals()"));
         uint8 tokenDecimals = abi.decode(queriedDecimals, (uint8));
         recipientNttManager.setPeer(
-            SENDING_CHAIN_ID, toWormholeFormat(address(nttManager)), tokenDecimals
+            SENDING_CHAIN_ID, toWormholeFormat(address(nttManager)), tokenDecimals, type(uint64).max
         );
         recipientNttManager.setInboundLimit(inboundLimit.untrim(decimals), SENDING_CHAIN_ID);
     }

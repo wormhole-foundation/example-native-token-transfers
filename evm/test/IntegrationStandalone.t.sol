@@ -126,8 +126,12 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
         nttManagerChain2.setInboundLimit(type(uint64).max, chainId1);
 
         // Register peer contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of peers here.
-        nttManagerChain1.setPeer(chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))), 9);
-        nttManagerChain2.setPeer(chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))), 7);
+        nttManagerChain1.setPeer(
+            chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))), 9, type(uint64).max
+        );
+        nttManagerChain2.setPeer(
+            chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))), 7, type(uint64).max
+        );
 
         // Set peers for the transceivers
         wormholeTransceiverChain1.setWormholePeer(

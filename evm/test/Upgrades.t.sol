@@ -119,12 +119,14 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
         nttManagerChain1.setPeer(
             chainId2,
             bytes32(uint256(uint160(address(nttManagerChain2)))),
-            DummyToken(nttManagerChain2.token()).decimals()
+            DummyToken(nttManagerChain2.token()).decimals(),
+            type(uint64).max
         );
         nttManagerChain2.setPeer(
             chainId1,
             bytes32(uint256(uint160(address(nttManagerChain1)))),
-            DummyToken(nttManagerChain1.token()).decimals()
+            DummyToken(nttManagerChain1.token()).decimals(),
+            type(uint64).max
         );
 
         wormholeTransceiverChain1.setWormholePeer(
