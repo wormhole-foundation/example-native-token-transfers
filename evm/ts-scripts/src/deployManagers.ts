@@ -43,6 +43,8 @@ async function run() {
   const output: any = {
     NttManagerImplementations: [],
     NttManagerProxies: [],
+    TransceiverStructsLibs: [],
+    TrimmedAmountLibs: [],
   };
 
   const results = await Promise.all(
@@ -61,9 +63,7 @@ async function run() {
   for (const result of results) {
     if (result.error) {
       console.error(
-        `Error deploying for chain ${result.chainId}: ${inspect(
-          result.error
-        )}`
+        `Error deploying for chain ${result.chainId}: ${inspect(result.error)}`
       );
       continue;
     }
@@ -71,6 +71,20 @@ async function run() {
     console.log(`Deployed succeded for chain ${result.chainId}`);
     output.NttManagerImplementations.push(result.implementation);
     output.NttManagerProxies.push(result.proxy);
+    output.TransceiverStructsLibs.push({
+      chainId: result.chainId,
+      address:
+        result.libraries[
+          "src/libraries/TransceiverStructs.sol:TransceiverStructs"
+        ],
+    });
+    output.TrimmedAmountLibs.push({
+      chainId: result.chainId,
+      address:
+        result.libraries[
+          "src/libraries/TrimmedAmount.sol:TrimmedAmountLib"
+        ],
+    });
   }
 
   writeOutputFiles(output, processName);
@@ -80,28 +94,31 @@ async function deployManager(chain: ChainInfo, config: NttManagerConfig) {
   let libraries, implementation, proxy;
   const log = (...args) => console.log(`[${chain.chainId}]`, ...args);
 
-  log("Deploying libraries");
   try {
     libraries = await deployManagerLibraries(chain);
+    log("Libraries deployed to ", inspect(libraries));
   } catch (error) {
     return { chainId: chain.chainId, error };
   }
 
-  log("Deploying implementation");
   try {
-    implementation = await deployManagerImplementation(chain, config, libraries);
-    log("Implementation deployed to ", implementation.address)
+    implementation = await deployManagerImplementation(
+      chain,
+      config,
+      libraries
+    );
+    log("Implementation deployed to ", implementation.address);
   } catch (error) {
     return { chainId: chain.chainId, error };
   }
 
-  log("Deploying proxy");
   proxy = await deployManagerProxy(chain, implementation.address);
   log("Proxy deployed to ", proxy.address);
 
   return {
     chainId: chain.chainId,
     implementation,
+    libraries,
     proxy,
   };
 }
@@ -109,26 +126,28 @@ async function deployManager(chain: ChainInfo, config: NttManagerConfig) {
 run().then(() => console.log("Done!"));
 
 async function deployManagerLibraries(
-  chain: ChainInfo,
+  chain: ChainInfo
 ): Promise<NttManagerLibraryAddresses> {
   const signer = await getSigner(chain);
 
-  const structs = await (new TransceiverStructs__factory(signer)).deploy();
-  const amountLib = await (new TrimmedAmountLib__factory(signer)).deploy();
+  const structs = await new TransceiverStructs__factory(signer).deploy();
+  const amountLib = await new TrimmedAmountLib__factory(signer).deploy();
 
-  return Promise.all([structs.deployed(), amountLib.deployed()])
-    .then(([structs, amountLib]) => {
+  return Promise.all([structs.deployed(), amountLib.deployed()]).then(
+    ([structs, amountLib]) => {
       return {
-        ["src/libraries/TransceiverStructs.sol:TransceiverStructs"]: structs.address,
+        ["src/libraries/TransceiverStructs.sol:TransceiverStructs"]:
+          structs.address,
         ["src/libraries/TrimmedAmount.sol:TrimmedAmountLib"]: amountLib.address,
-      }
-    });
+      };
+    }
+  );
 }
 
 async function deployManagerImplementation(
   chain: ChainInfo,
   config: NttManagerConfig,
-  libraries: NttManagerLibraryAddresses,
+  libraries: NttManagerLibraryAddresses
 ): Promise<Deployment> {
   const signer = await getSigner(chain);
 
@@ -159,13 +178,9 @@ async function deployManagerProxy(
   const iface = new ethers.utils.Interface(abi);
   const encodedCall = iface.encodeFunctionData("initialize");
 
-  const proxy = await proxyFactory.deploy(
-    implementationAddress,
-    encodedCall,
-  );
+  const proxy = await proxyFactory.deploy(implementationAddress, encodedCall);
 
   return await proxy.deployed().then((result) => {
     return { address: result.address, chainId: chain.chainId };
   });
 }
-

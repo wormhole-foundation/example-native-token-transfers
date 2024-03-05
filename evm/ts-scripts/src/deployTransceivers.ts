@@ -85,12 +85,10 @@ async function deployTransceiver(chain: ChainInfo, config: NttTransceiverConfig,
 
   let implementation, proxy, libraries;
 
-  log("Deploying libraries");
-  try {
-    libraries = await deployTransceiverLibraries(chain);
-  } catch (error) {
-    return { chainId: chain.chainId, error };
-  }
+  const structsLibAddress = await getContractAddress("TransceiverStructsLibs", chain.chainId);
+  libraries = {
+    ["src/libraries/TransceiverStructs.sol:TransceiverStructs"]: structsLibAddress,
+  };
 
   log("Deploying implementation");
   try {
@@ -117,21 +115,6 @@ async function deployTransceiver(chain: ChainInfo, config: NttTransceiverConfig,
 }
 
 run().then(() => console.log("Done!"));
-
-async function deployTransceiverLibraries(
-  chain: ChainInfo
-): Promise<WormholeTransceiverLibraryAddresses> {
-  const signer = await getSigner(chain);
-
-  const structs = await (new TransceiverStructs__factory(signer)).deploy();
-
-  return Promise.all([structs.deployed()])
-    .then(([structs]) => {
-      return {
-        ["src/libraries/TransceiverStructs.sol:TransceiverStructs"]: structs.address,
-      }
-    });
-}
 
 async function deployTransceiverImplementation(
   chain: ChainInfo,
