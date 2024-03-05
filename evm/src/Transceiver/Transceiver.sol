@@ -12,6 +12,7 @@ import "../interfaces/INttManager.sol";
 import "../interfaces/ITransceiver.sol";
 
 /// @title Transceiver
+/// @author Wormhole Project Contributors.
 /// @notice This contract is a base contract for Transceivers.
 /// @dev The Transceiver provides basic functionality for transmitting / receiving NTT messages.
 ///      The contract supports pausing via an admin or owner and is upgradable.

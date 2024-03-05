@@ -18,6 +18,7 @@ import "../interfaces/ITransceiver.sol";
 import {NttManagerState} from "./NttManagerState.sol";
 
 /// @title NttManager
+/// @author Wormhole Project Contributors.
 /// @notice The NttManager contract is responsible for managing the token
 ///         and associated transceivers.
 ///
