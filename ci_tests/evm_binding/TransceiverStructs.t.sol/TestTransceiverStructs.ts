@@ -26,16 +26,6 @@ import type {
   OnEvent,
 } from "../common";
 
-export type TrimmedAmountStruct = {
-  amount: BigNumberish;
-  decimals: BigNumberish;
-};
-
-export type TrimmedAmountStructOutput = [BigNumber, number] & {
-  amount: BigNumber;
-  decimals: number;
-};
-
 export declare namespace StdInvariant {
   export type FuzzSelectorStruct = { addr: string; selectors: BytesLike[] };
 
@@ -54,23 +44,18 @@ export declare namespace StdInvariant {
 
 export declare namespace TransceiverStructs {
   export type NativeTokenTransferStruct = {
-    amount: TrimmedAmountStruct;
+    amount: BigNumberish;
     sourceToken: BytesLike;
     to: BytesLike;
     toChain: BigNumberish;
   };
 
   export type NativeTokenTransferStructOutput = [
-    TrimmedAmountStructOutput,
+    BigNumber,
     string,
     string,
     number
-  ] & {
-    amount: TrimmedAmountStructOutput;
-    sourceToken: string;
-    to: string;
-    toChain: number;
-  };
+  ] & { amount: BigNumber; sourceToken: string; to: string; toChain: number };
 
   export type NttManagerMessageStruct = {
     id: BytesLike;
@@ -132,9 +117,9 @@ export interface TestTransceiverStructsInterface extends utils.Interface {
     "targetInterfaces()": FunctionFragment;
     "targetSelectors()": FunctionFragment;
     "targetSenders()": FunctionFragment;
-    "test_SerdeJunk_NativeTokenTransfer(((uint64,uint8),bytes32,bytes32,uint16))": FunctionFragment;
+    "test_SerdeJunk_NativeTokenTransfer((uint72,bytes32,bytes32,uint16))": FunctionFragment;
     "test_SerdeJunk_NttManagerMessage((bytes32,bytes32,bytes))": FunctionFragment;
-    "test_SerdeRoundtrip_NativeTokenTransfer(((uint64,uint8),bytes32,bytes32,uint16))": FunctionFragment;
+    "test_SerdeRoundtrip_NativeTokenTransfer((uint72,bytes32,bytes32,uint16))": FunctionFragment;
     "test_SerdeRoundtrip_NttManagerMessage((bytes32,bytes32,bytes))": FunctionFragment;
     "test_SerdeRoundtrip_TransceiverInit((bytes4,bytes32,uint8,bytes32,uint8))": FunctionFragment;
     "test_SerdeRoundtrip_TransceiverRegistration((bytes4,uint16,bytes32))": FunctionFragment;

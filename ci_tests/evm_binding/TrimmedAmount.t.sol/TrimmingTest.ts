@@ -4,6 +4,7 @@
 import type {
   BaseContract,
   BigNumber,
+  BigNumberish,
   BytesLike,
   CallOverrides,
   ContractTransaction,
@@ -59,11 +60,17 @@ export interface TrimmingTestInterface extends utils.Interface {
     "testAddOperatorNonZero()": FunctionFragment;
     "testAddOperatorZero()": FunctionFragment;
     "testDifferentDecimals()": FunctionFragment;
+    "testFuzz_AddOperatorOverload(uint72,uint72)": FunctionFragment;
+    "testFuzz_EqOperatorOverload(uint72,uint72)": FunctionFragment;
+    "testFuzz_GtOperatorOverload(uint72,uint72)": FunctionFragment;
+    "testFuzz_LtOperatorOverload(uint72,uint72)": FunctionFragment;
+    "testFuzz_SubOperatorOverload(uint72,uint72)": FunctionFragment;
     "testSubOperatorNonZero()": FunctionFragment;
     "testSubOperatorOverflow()": FunctionFragment;
     "testSubOperatorZero()": FunctionFragment;
     "testTrimLessThan8()": FunctionFragment;
     "testTrimmingRoundTrip()": FunctionFragment;
+    "test_packUnpack(uint64,uint8)": FunctionFragment;
   };
 
   getFunction(
@@ -84,11 +91,17 @@ export interface TrimmingTestInterface extends utils.Interface {
       | "testAddOperatorNonZero"
       | "testAddOperatorZero"
       | "testDifferentDecimals"
+      | "testFuzz_AddOperatorOverload"
+      | "testFuzz_EqOperatorOverload"
+      | "testFuzz_GtOperatorOverload"
+      | "testFuzz_LtOperatorOverload"
+      | "testFuzz_SubOperatorOverload"
       | "testSubOperatorNonZero"
       | "testSubOperatorOverflow"
       | "testSubOperatorZero"
       | "testTrimLessThan8"
       | "testTrimmingRoundTrip"
+      | "test_packUnpack"
   ): FunctionFragment;
 
   encodeFunctionData(functionFragment: "IS_TEST", values?: undefined): string;
@@ -150,6 +163,26 @@ export interface TrimmingTestInterface extends utils.Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
+    functionFragment: "testFuzz_AddOperatorOverload",
+    values: [BigNumberish, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "testFuzz_EqOperatorOverload",
+    values: [BigNumberish, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "testFuzz_GtOperatorOverload",
+    values: [BigNumberish, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "testFuzz_LtOperatorOverload",
+    values: [BigNumberish, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "testFuzz_SubOperatorOverload",
+    values: [BigNumberish, BigNumberish]
+  ): string;
+  encodeFunctionData(
     functionFragment: "testSubOperatorNonZero",
     values?: undefined
   ): string;
@@ -168,6 +201,10 @@ export interface TrimmingTestInterface extends utils.Interface {
   encodeFunctionData(
     functionFragment: "testTrimmingRoundTrip",
     values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "test_packUnpack",
+    values: [BigNumberish, BigNumberish]
   ): string;
 
   decodeFunctionResult(functionFragment: "IS_TEST", data: BytesLike): Result;
@@ -229,6 +266,26 @@ export interface TrimmingTestInterface extends utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "testFuzz_AddOperatorOverload",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "testFuzz_EqOperatorOverload",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "testFuzz_GtOperatorOverload",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "testFuzz_LtOperatorOverload",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "testFuzz_SubOperatorOverload",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "testSubOperatorNonZero",
     data: BytesLike
   ): Result;
@@ -246,6 +303,10 @@ export interface TrimmingTestInterface extends utils.Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "testTrimmingRoundTrip",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "test_packUnpack",
     data: BytesLike
   ): Result;
 
@@ -621,6 +682,36 @@ export interface TrimmingTest extends BaseContract {
       overrides?: Overrides & { from?: string }
     ): Promise<ContractTransaction>;
 
+    testFuzz_AddOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
+    testFuzz_EqOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
+    testFuzz_GtOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
+    testFuzz_LtOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
+    testFuzz_SubOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
     testSubOperatorNonZero(overrides?: CallOverrides): Promise<[void]>;
 
     testSubOperatorOverflow(
@@ -634,6 +725,12 @@ export interface TrimmingTest extends BaseContract {
     ): Promise<ContractTransaction>;
 
     testTrimmingRoundTrip(
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
+    test_packUnpack(
+      amount: BigNumberish,
+      decimals: BigNumberish,
       overrides?: Overrides & { from?: string }
     ): Promise<ContractTransaction>;
   };
@@ -684,6 +781,36 @@ export interface TrimmingTest extends BaseContract {
     overrides?: Overrides & { from?: string }
   ): Promise<ContractTransaction>;
 
+  testFuzz_AddOperatorOverload(
+    a: BigNumberish,
+    b: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  testFuzz_EqOperatorOverload(
+    a: BigNumberish,
+    b: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  testFuzz_GtOperatorOverload(
+    a: BigNumberish,
+    b: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  testFuzz_LtOperatorOverload(
+    a: BigNumberish,
+    b: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  testFuzz_SubOperatorOverload(
+    a: BigNumberish,
+    b: BigNumberish,
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
   testSubOperatorNonZero(overrides?: CallOverrides): Promise<void>;
 
   testSubOperatorOverflow(
@@ -697,6 +824,12 @@ export interface TrimmingTest extends BaseContract {
   ): Promise<ContractTransaction>;
 
   testTrimmingRoundTrip(
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
+  test_packUnpack(
+    amount: BigNumberish,
+    decimals: BigNumberish,
     overrides?: Overrides & { from?: string }
   ): Promise<ContractTransaction>;
 
@@ -743,6 +876,36 @@ export interface TrimmingTest extends BaseContract {
 
     testDifferentDecimals(overrides?: CallOverrides): Promise<void>;
 
+    testFuzz_AddOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    testFuzz_EqOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    testFuzz_GtOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    testFuzz_LtOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    testFuzz_SubOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
+
     testSubOperatorNonZero(overrides?: CallOverrides): Promise<void>;
 
     testSubOperatorOverflow(overrides?: CallOverrides): Promise<void>;
@@ -752,6 +915,12 @@ export interface TrimmingTest extends BaseContract {
     testTrimLessThan8(overrides?: CallOverrides): Promise<void>;
 
     testTrimmingRoundTrip(overrides?: CallOverrides): Promise<void>;
+
+    test_packUnpack(
+      amount: BigNumberish,
+      decimals: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
   };
 
   filters: {
@@ -894,6 +1063,36 @@ export interface TrimmingTest extends BaseContract {
       overrides?: Overrides & { from?: string }
     ): Promise<BigNumber>;
 
+    testFuzz_AddOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    testFuzz_EqOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    testFuzz_GtOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    testFuzz_LtOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    testFuzz_SubOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
     testSubOperatorNonZero(overrides?: CallOverrides): Promise<BigNumber>;
 
     testSubOperatorOverflow(
@@ -907,6 +1106,12 @@ export interface TrimmingTest extends BaseContract {
     ): Promise<BigNumber>;
 
     testTrimmingRoundTrip(
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
+    test_packUnpack(
+      amount: BigNumberish,
+      decimals: BigNumberish,
       overrides?: Overrides & { from?: string }
     ): Promise<BigNumber>;
   };
@@ -958,6 +1163,36 @@ export interface TrimmingTest extends BaseContract {
       overrides?: Overrides & { from?: string }
     ): Promise<PopulatedTransaction>;
 
+    testFuzz_AddOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    testFuzz_EqOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    testFuzz_GtOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    testFuzz_LtOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    testFuzz_SubOperatorOverload(
+      a: BigNumberish,
+      b: BigNumberish,
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
     testSubOperatorNonZero(
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
@@ -975,6 +1210,12 @@ export interface TrimmingTest extends BaseContract {
     ): Promise<PopulatedTransaction>;
 
     testTrimmingRoundTrip(
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    test_packUnpack(
+      amount: BigNumberish,
+      decimals: BigNumberish,
       overrides?: Overrides & { from?: string }
     ): Promise<PopulatedTransaction>;
   };

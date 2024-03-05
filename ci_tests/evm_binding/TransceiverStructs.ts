@@ -20,16 +20,6 @@ import type {
   OnEvent,
 } from "./common";
 
-export type TrimmedAmountStruct = {
-  amount: BigNumberish;
-  decimals: BigNumberish;
-};
-
-export type TrimmedAmountStructOutput = [BigNumber, number] & {
-  amount: BigNumber;
-  decimals: number;
-};
-
 export declare namespace TransceiverStructs {
   export type TransceiverMessageStruct = {
     sourceNttManagerAddress: BytesLike;
@@ -85,23 +75,18 @@ export declare namespace TransceiverStructs {
   };
 
   export type NativeTokenTransferStruct = {
-    amount: TrimmedAmountStruct;
+    amount: BigNumberish;
     sourceToken: BytesLike;
     to: BytesLike;
     toChain: BigNumberish;
   };
 
   export type NativeTokenTransferStructOutput = [
-    TrimmedAmountStructOutput,
+    BigNumber,
     string,
     string,
     number
-  ] & {
-    amount: TrimmedAmountStructOutput;
-    sourceToken: string;
-    to: string;
-    toChain: number;
-  };
+  ] & { amount: BigNumber; sourceToken: string; to: string; toChain: number };
 
   export type NttManagerMessageStruct = {
     id: BytesLike;
@@ -131,7 +116,7 @@ export interface TransceiverStructsInterface extends utils.Interface {
     "buildAndEncodeTransceiverMessage(bytes4,bytes32,bytes32,bytes,bytes)": FunctionFragment;
     "decodeTransceiverInit(bytes)": FunctionFragment;
     "decodeTransceiverRegistration(bytes)": FunctionFragment;
-    "encodeNativeTokenTransfer(((uint64,uint8),bytes32,bytes32,uint16))": FunctionFragment;
+    "encodeNativeTokenTransfer((uint72,bytes32,bytes32,uint16))": FunctionFragment;
     "encodeNttManagerMessage((bytes32,bytes32,bytes))": FunctionFragment;
     "encodeTransceiverInit((bytes4,bytes32,uint8,bytes32,uint8))": FunctionFragment;
     "encodeTransceiverInstruction((uint8,bytes))": FunctionFragment;

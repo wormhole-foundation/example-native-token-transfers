@@ -20,36 +20,22 @@ import type {
   OnEvent,
 } from "./common";
 
-export type TrimmedAmountStruct = {
-  amount: BigNumberish;
-  decimals: BigNumberish;
-};
-
-export type TrimmedAmountStructOutput = [BigNumber, number] & {
-  amount: BigNumber;
-  decimals: number;
-};
-
 export declare namespace IRateLimiter {
   export type InboundQueuedTransferStruct = {
-    amount: TrimmedAmountStruct;
+    amount: BigNumberish;
     txTimestamp: BigNumberish;
     recipient: string;
   };
 
   export type InboundQueuedTransferStructOutput = [
-    TrimmedAmountStructOutput,
+    BigNumber,
     BigNumber,
     string
-  ] & {
-    amount: TrimmedAmountStructOutput;
-    txTimestamp: BigNumber;
-    recipient: string;
-  };
+  ] & { amount: BigNumber; txTimestamp: BigNumber; recipient: string };
 
   export type OutboundQueuedTransferStruct = {
     recipient: BytesLike;
-    amount: TrimmedAmountStruct;
+    amount: BigNumberish;
     txTimestamp: BigNumberish;
     recipientChain: BigNumberish;
     sender: string;
@@ -58,14 +44,14 @@ export declare namespace IRateLimiter {
 
   export type OutboundQueuedTransferStructOutput = [
     string,
-    TrimmedAmountStructOutput,
+    BigNumber,
     BigNumber,
     number,
     string,
     string
   ] & {
     recipient: string;
-    amount: TrimmedAmountStructOutput;
+    amount: BigNumber;
     txTimestamp: BigNumber;
     recipientChain: number;
     sender: string;

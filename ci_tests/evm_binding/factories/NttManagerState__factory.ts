@@ -57,6 +57,42 @@ const _abi = [
   },
   {
     type: "function",
+    name: "getInboundLimitParams",
+    inputs: [
+      {
+        name: "chainId_",
+        type: "uint16",
+        internalType: "uint16",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        internalType: "struct IRateLimiter.RateLimitParams",
+        components: [
+          {
+            name: "limit",
+            type: "uint72",
+            internalType: "TrimmedAmount",
+          },
+          {
+            name: "currentCapacity",
+            type: "uint72",
+            internalType: "TrimmedAmount",
+          },
+          {
+            name: "lastTxTimestamp",
+            type: "uint64",
+            internalType: "uint64",
+          },
+        ],
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "getInboundQueuedTransfer",
     inputs: [
       {
@@ -73,20 +109,8 @@ const _abi = [
         components: [
           {
             name: "amount",
-            type: "tuple",
-            internalType: "struct TrimmedAmount",
-            components: [
-              {
-                name: "amount",
-                type: "uint64",
-                internalType: "uint64",
-              },
-              {
-                name: "decimals",
-                type: "uint8",
-                internalType: "uint8",
-              },
-            ],
+            type: "uint72",
+            internalType: "TrimmedAmount",
           },
           {
             name: "txTimestamp",
@@ -131,6 +155,36 @@ const _abi = [
   },
   {
     type: "function",
+    name: "getOutboundLimitParams",
+    inputs: [],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        internalType: "struct IRateLimiter.RateLimitParams",
+        components: [
+          {
+            name: "limit",
+            type: "uint72",
+            internalType: "TrimmedAmount",
+          },
+          {
+            name: "currentCapacity",
+            type: "uint72",
+            internalType: "TrimmedAmount",
+          },
+          {
+            name: "lastTxTimestamp",
+            type: "uint64",
+            internalType: "uint64",
+          },
+        ],
+      },
+    ],
+    stateMutability: "pure",
+  },
+  {
+    type: "function",
     name: "getOutboundQueuedTransfer",
     inputs: [
       {
@@ -152,20 +206,8 @@ const _abi = [
           },
           {
             name: "amount",
-            type: "tuple",
-            internalType: "struct TrimmedAmount",
-            components: [
-              {
-                name: "amount",
-                type: "uint64",
-                internalType: "uint64",
-              },
-              {
-                name: "decimals",
-                type: "uint8",
-                internalType: "uint8",
-              },
-            ],
+            type: "uint72",
+            internalType: "TrimmedAmount",
           },
           {
             name: "txTimestamp",
@@ -1001,37 +1043,13 @@ const _abi = [
     inputs: [
       {
         name: "newCurrentCapacity",
-        type: "tuple",
-        internalType: "struct TrimmedAmount",
-        components: [
-          {
-            name: "amount",
-            type: "uint64",
-            internalType: "uint64",
-          },
-          {
-            name: "decimals",
-            type: "uint8",
-            internalType: "uint8",
-          },
-        ],
+        type: "uint72",
+        internalType: "TrimmedAmount",
       },
       {
         name: "newLimit",
-        type: "tuple",
-        internalType: "struct TrimmedAmount",
-        components: [
-          {
-            name: "amount",
-            type: "uint64",
-            internalType: "uint64",
-          },
-          {
-            name: "decimals",
-            type: "uint8",
-            internalType: "uint8",
-          },
-        ],
+        type: "uint72",
+        internalType: "TrimmedAmount",
       },
     ],
   },

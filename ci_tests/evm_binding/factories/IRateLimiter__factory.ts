@@ -57,20 +57,8 @@ const _abi = [
         components: [
           {
             name: "amount",
-            type: "tuple",
-            internalType: "struct TrimmedAmount",
-            components: [
-              {
-                name: "amount",
-                type: "uint64",
-                internalType: "uint64",
-              },
-              {
-                name: "decimals",
-                type: "uint8",
-                internalType: "uint8",
-              },
-            ],
+            type: "uint72",
+            internalType: "TrimmedAmount",
           },
           {
             name: "txTimestamp",
@@ -110,20 +98,8 @@ const _abi = [
           },
           {
             name: "amount",
-            type: "tuple",
-            internalType: "struct TrimmedAmount",
-            components: [
-              {
-                name: "amount",
-                type: "uint64",
-                internalType: "uint64",
-              },
-              {
-                name: "decimals",
-                type: "uint8",
-                internalType: "uint8",
-              },
-            ],
+            type: "uint72",
+            internalType: "TrimmedAmount",
           },
           {
             name: "txTimestamp",
@@ -156,37 +132,13 @@ const _abi = [
     inputs: [
       {
         name: "newCurrentCapacity",
-        type: "tuple",
-        internalType: "struct TrimmedAmount",
-        components: [
-          {
-            name: "amount",
-            type: "uint64",
-            internalType: "uint64",
-          },
-          {
-            name: "decimals",
-            type: "uint8",
-            internalType: "uint8",
-          },
-        ],
+        type: "uint72",
+        internalType: "TrimmedAmount",
       },
       {
         name: "newLimit",
-        type: "tuple",
-        internalType: "struct TrimmedAmount",
-        components: [
-          {
-            name: "amount",
-            type: "uint64",
-            internalType: "uint64",
-          },
-          {
-            name: "decimals",
-            type: "uint8",
-            internalType: "uint8",
-          },
-        ],
+        type: "uint72",
+        internalType: "TrimmedAmount",
       },
     ],
   },
