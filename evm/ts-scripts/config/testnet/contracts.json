@@ -53,78 +53,112 @@
       "chainId": 10005
     }
   ],
-
-  "NttManagerProxies": [
-    {
-      "address": "0x36CF4c88FA548c6Ad9fcDc696e1c27Bb3306163F",
-      "chainId": 10002
-    },
-    {
-      "address": "0x6b2E3D1490B992859C05eFc73aE1dba3D22f362d",
-      "chainId": 10003
-    },
-    {
-      "address": "0xc6bcF3ed0d792D76811743106A134a2576083858",
-      "chainId": 10005
-    },
-    {
-      "address": "0x6b2E3D1490B992859C05eFc73aE1dba3D22f362d",
-      "chainId": 10004
-    }
-  ],
   "NttManagerImplementations": [
     {
-      "address": "0x3F7bD732f88A977C597d93d96a3100562B9358f9",
+      "address": "0xFCaF8F6f2138338169de91a69E1D9EeBf720ee98",
       "chainId": 10002
     },
     {
-      "address": "0x6B0F87D73C067de54d3E60A3De3434318110b1cb",
+      "address": "0x0d41A34Ab5a55252F89f1caF8d0C6e44bab70594",
       "chainId": 10003
     },
     {
-      "address": "0x86103aA1ce4ee136e3dC3C9695f2D9B7901e80cB",
-      "chainId": 10005
+      "address": "0x23Fea5514DFC9821479fBE18BA1D7e1A61f6FfCf",
+      "chainId": 10004
     },
     {
-      "address": "0x6B0F87D73C067de54d3E60A3De3434318110b1cb",
-      "chainId": 10004
+      "address": "0xB856c8809Ce949c685B54248C6F7C3771bD7F7Ec",
+      "chainId": 10005
     }
   ],
-
-  "NttTransceiverProxies": [
+  "NttManagerProxies": [
     {
-      "address": "0x2FDFc529fbd8e38e0675E988fBc463F5406c4fE2",
+      "address": "0x24c7E23e3A97cD2F04c9EB9F354bb7f3B31d2d1A",
       "chainId": 10002
     },
     {
-      "address": "0x5Ae59e6B1Bc3604B54791B4b98c478d38dFeCC2d",
+      "address": "0xaBFa6Ab8dD4d4166b8fea7f84C1458BEf92F3a61",
       "chainId": 10003
     },
     {
-      "address": "0x23DC06bCA918d0bC9Ea425fbC8D40977C66d3Ff6",
-      "chainId": 10005
+      "address": "0x838a95B6a3E06B6f11C437e22f3C7561a6ec40F1",
+      "chainId": 10004
     },
     {
-      "address": "0x5Ae59e6B1Bc3604B54791B4b98c478d38dFeCC2d",
-      "chainId": 10004
+      "address": "0x605dE5E0880Cfd6Ffc61aF9585CBAB3946594A3D",
+      "chainId": 10005
+    }
+  ],
+  "TransceiverStructsLibs": [
+    {
+      "chainId": 10002,
+      "address": "0x275651B3C706CF19031B3341aF262baC2DD5B22C"
+    },
+    {
+      "chainId": 10003,
+      "address": "0x5d54bf6B710e4a65d33A48780A3e605c4E4F6432"
+    },
+    {
+      "chainId": 10004,
+      "address": "0x36CF4c88FA548c6Ad9fcDc696e1c27Bb3306163F"
+    },
+    {
+      "chainId": 10005,
+      "address": "0xc3a1248e9bdC1EEF81d16b2AD1594764cBd9307a"
+    }
+  ],
+  "TrimmedAmountLibs": [
+    {
+      "chainId": 10002,
+      "address": "0x961a8548FdBD25240c65F7d6A3D29ad77e6E49CF"
+    },
+    {
+      "chainId": 10003,
+      "address": "0x6E2607810976Ba685c90d2a0fdEcB8eE38dE26f2"
+    },
+    {
+      "chainId": 10004,
+      "address": "0xaCDD73A0C9af9Ad670381fa321247C9493c6fc31"
+    },
+    {
+      "chainId": 10005,
+      "address": "0xA3A15E158FB5D07613129c98b409Dc60A3447610"
     }
   ],
   "NttTransceiverImplementations": [
     {
-      "address": "0x4917f2765A875A406CF763C23e17aBb4b02Fef53",
+      "address": "0x7b3c40EbC1a9017AcAE21e6b4A88819EdBF4Fe7D",
       "chainId": 10002
     },
     {
-      "address": "0x6d4c92CAeFd31C25E88981A7889fCF0ee2801Ed2",
+      "address": "0x76D59DFC0d21EF90B02c3Ba8BF35ad80E803CcE5",
       "chainId": 10003
     },
     {
-      "address": "0x70eB6b74D0C8EC812507075080ebdc8426c3bEdF",
-      "chainId": 10005
+      "address": "0x6883bdb0694751DE1545a1057c25b0F4fCC0443d",
+      "chainId": 10004
     },
     {
-      "address": "0x6d4c92CAeFd31C25E88981A7889fCF0ee2801Ed2",
+      "address": "0xbD8c338631378F4E571Dc0ED59058757A729E6BC",
+      "chainId": 10005
+    }
+  ],
+  "NttTransceiverProxies": [
+    {
+      "address": "0xC5bf11aB6aE525FFCA02e2af7F6704CDcECec2eA",
+      "chainId": 10002
+    },
+    {
+      "address": "0xC9a478f97ad763052AD4F00c4d7fC5d187DFFb1B",
+      "chainId": 10003
+    },
+    {
+      "address": "0xc3a1248e9bdC1EEF81d16b2AD1594764cBd9307a",
       "chainId": 10004
+    },
+    {
+      "address": "0x5a76440b725909000697E0f72646adf1a492DF8B",
+      "chainId": 10005
     }
   ]
 }

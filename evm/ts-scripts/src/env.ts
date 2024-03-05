@@ -24,6 +24,9 @@ export type ContractsJson = {
 
   NttTransceiverProxies: Deployment[],
   NttTransceiverImplementations: Deployment[],
+
+  TransceiverStructsLibs: Deployment[],
+  TrimmedAmountLibs: Deployment[],
 };
 
 const DEFAULT_ENV = "testnet";
