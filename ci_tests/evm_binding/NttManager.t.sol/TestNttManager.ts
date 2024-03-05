@@ -69,6 +69,7 @@ export interface TestNttManagerInterface extends utils.Interface {
     "test_disableReenableTransceiver()": FunctionFragment;
     "test_disabledRateLimiter()": FunctionFragment;
     "test_dustReverts()": FunctionFragment;
+    "test_maxOutTransceivers()": FunctionFragment;
     "test_multipleTransceivers()": FunctionFragment;
     "test_noAutomaticSlot()": FunctionFragment;
     "test_notTransceiver()": FunctionFragment;
@@ -113,6 +114,7 @@ export interface TestNttManagerInterface extends utils.Interface {
       | "test_disableReenableTransceiver"
       | "test_disabledRateLimiter"
       | "test_dustReverts"
+      | "test_maxOutTransceivers"
       | "test_multipleTransceivers"
       | "test_noAutomaticSlot"
       | "test_notTransceiver"
@@ -219,6 +221,10 @@ export interface TestNttManagerInterface extends utils.Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "test_dustReverts",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "test_maxOutTransceivers",
     values?: undefined
   ): string;
   encodeFunctionData(
@@ -371,6 +377,10 @@ export interface TestNttManagerInterface extends utils.Interface {
   ): Result;
   decodeFunctionResult(
     functionFragment: "test_dustReverts",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "test_maxOutTransceivers",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -1004,6 +1014,10 @@ export interface TestNttManager extends BaseContract {
       overrides?: Overrides & { from?: string }
     ): Promise<ContractTransaction>;
 
+    test_maxOutTransceivers(
+      overrides?: Overrides & { from?: string }
+    ): Promise<ContractTransaction>;
+
     test_multipleTransceivers(
       overrides?: Overrides & { from?: string }
     ): Promise<ContractTransaction>;
@@ -1151,6 +1165,10 @@ export interface TestNttManager extends BaseContract {
     overrides?: Overrides & { from?: string }
   ): Promise<ContractTransaction>;
 
+  test_maxOutTransceivers(
+    overrides?: Overrides & { from?: string }
+  ): Promise<ContractTransaction>;
+
   test_multipleTransceivers(
     overrides?: Overrides & { from?: string }
   ): Promise<ContractTransaction>;
@@ -1267,6 +1285,8 @@ export interface TestNttManager extends BaseContract {
     test_disabledRateLimiter(overrides?: CallOverrides): Promise<void>;
 
     test_dustReverts(overrides?: CallOverrides): Promise<void>;
+
+    test_maxOutTransceivers(overrides?: CallOverrides): Promise<void>;
 
     test_multipleTransceivers(overrides?: CallOverrides): Promise<void>;
 
@@ -1594,6 +1614,10 @@ export interface TestNttManager extends BaseContract {
       overrides?: Overrides & { from?: string }
     ): Promise<BigNumber>;
 
+    test_maxOutTransceivers(
+      overrides?: Overrides & { from?: string }
+    ): Promise<BigNumber>;
+
     test_multipleTransceivers(
       overrides?: Overrides & { from?: string }
     ): Promise<BigNumber>;
@@ -1733,6 +1757,10 @@ export interface TestNttManager extends BaseContract {
     ): Promise<PopulatedTransaction>;
 
     test_dustReverts(
+      overrides?: Overrides & { from?: string }
+    ): Promise<PopulatedTransaction>;
+
+    test_maxOutTransceivers(
       overrides?: Overrides & { from?: string }
     ): Promise<PopulatedTransaction>;
 

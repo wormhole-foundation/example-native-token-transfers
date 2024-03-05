@@ -27,16 +27,6 @@ import type {
   OnEvent,
 } from "../common";
 
-export type TrimmedAmountStruct = {
-  amount: BigNumberish;
-  decimals: BigNumberish;
-};
-
-export type TrimmedAmountStructOutput = [BigNumber, number] & {
-  amount: BigNumber;
-  decimals: number;
-};
-
 export declare namespace TransceiverStructs {
   export type NttManagerMessageStruct = {
     id: BytesLike;
@@ -62,25 +52,37 @@ export declare namespace TransceiverStructs {
 }
 
 export declare namespace IRateLimiter {
+  export type RateLimitParamsStruct = {
+    limit: BigNumberish;
+    currentCapacity: BigNumberish;
+    lastTxTimestamp: BigNumberish;
+  };
+
+  export type RateLimitParamsStructOutput = [
+    BigNumber,
+    BigNumber,
+    BigNumber
+  ] & {
+    limit: BigNumber;
+    currentCapacity: BigNumber;
+    lastTxTimestamp: BigNumber;
+  };
+
   export type InboundQueuedTransferStruct = {
-    amount: TrimmedAmountStruct;
+    amount: BigNumberish;
     txTimestamp: BigNumberish;
     recipient: string;
   };
 
   export type InboundQueuedTransferStructOutput = [
-    TrimmedAmountStructOutput,
+    BigNumber,
     BigNumber,
     string
-  ] & {
-    amount: TrimmedAmountStructOutput;
-    txTimestamp: BigNumber;
-    recipient: string;
-  };
+  ] & { amount: BigNumber; txTimestamp: BigNumber; recipient: string };
 
   export type OutboundQueuedTransferStruct = {
     recipient: BytesLike;
-    amount: TrimmedAmountStruct;
+    amount: BigNumberish;
     txTimestamp: BigNumberish;
     recipientChain: BigNumberish;
     sender: string;
@@ -89,14 +91,14 @@ export declare namespace IRateLimiter {
 
   export type OutboundQueuedTransferStructOutput = [
     string,
-    TrimmedAmountStructOutput,
+    BigNumber,
     BigNumber,
     number,
     string,
     string
   ] & {
     recipient: string;
-    amount: TrimmedAmountStructOutput;
+    amount: BigNumber;
     txTimestamp: BigNumber;
     recipientChain: number;
     sender: string;
@@ -126,9 +128,11 @@ export interface MockNttManagerStorageLayoutChangeInterface
     "executeMsg(uint16,bytes32,(bytes32,bytes32,bytes))": FunctionFragment;
     "getCurrentInboundCapacity(uint16)": FunctionFragment;
     "getCurrentOutboundCapacity()": FunctionFragment;
+    "getInboundLimitParams(uint16)": FunctionFragment;
     "getInboundQueuedTransfer(bytes32)": FunctionFragment;
     "getMigratesImmutables()": FunctionFragment;
     "getMode()": FunctionFragment;
+    "getOutboundLimitParams()": FunctionFragment;
     "getOutboundQueuedTransfer(uint64)": FunctionFragment;
     "getPeer(uint16)": FunctionFragment;
     "getThreshold()": FunctionFragment;
@@ -173,9 +177,11 @@ export interface MockNttManagerStorageLayoutChangeInterface
       | "executeMsg"
       | "getCurrentInboundCapacity"
       | "getCurrentOutboundCapacity"
+      | "getInboundLimitParams"
       | "getInboundQueuedTransfer"
       | "getMigratesImmutables"
       | "getMode"
+      | "getOutboundLimitParams"
       | "getOutboundQueuedTransfer"
       | "getPeer"
       | "getThreshold"
@@ -245,6 +251,10 @@ export interface MockNttManagerStorageLayoutChangeInterface
     values?: undefined
   ): string;
   encodeFunctionData(
+    functionFragment: "getInboundLimitParams",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
     functionFragment: "getInboundQueuedTransfer",
     values: [BytesLike]
   ): string;
@@ -253,6 +263,10 @@ export interface MockNttManagerStorageLayoutChangeInterface
     values?: undefined
   ): string;
   encodeFunctionData(functionFragment: "getMode", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "getOutboundLimitParams",
+    values?: undefined
+  ): string;
   encodeFunctionData(
     functionFragment: "getOutboundQueuedTransfer",
     values: [BigNumberish]
@@ -386,6 +400,10 @@ export interface MockNttManagerStorageLayoutChangeInterface
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "getInboundLimitParams",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "getInboundQueuedTransfer",
     data: BytesLike
   ): Result;
@@ -394,6 +412,10 @@ export interface MockNttManagerStorageLayoutChangeInterface
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "getMode", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "getOutboundLimitParams",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "getOutboundQueuedTransfer",
     data: BytesLike
@@ -806,6 +828,11 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
 
     getCurrentOutboundCapacity(overrides?: CallOverrides): Promise<[BigNumber]>;
 
+    getInboundLimitParams(
+      chainId_: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[IRateLimiter.RateLimitParamsStructOutput]>;
+
     getInboundQueuedTransfer(
       digest: BytesLike,
       overrides?: CallOverrides
@@ -814,6 +841,10 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
     getMigratesImmutables(overrides?: CallOverrides): Promise<[boolean]>;
 
     getMode(overrides?: CallOverrides): Promise<[number]>;
+
+    getOutboundLimitParams(
+      overrides?: CallOverrides
+    ): Promise<[IRateLimiter.RateLimitParamsStructOutput]>;
 
     getOutboundQueuedTransfer(
       queueSequence: BigNumberish,
@@ -991,6 +1022,11 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
 
   getCurrentOutboundCapacity(overrides?: CallOverrides): Promise<BigNumber>;
 
+  getInboundLimitParams(
+    chainId_: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<IRateLimiter.RateLimitParamsStructOutput>;
+
   getInboundQueuedTransfer(
     digest: BytesLike,
     overrides?: CallOverrides
@@ -999,6 +1035,10 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
   getMigratesImmutables(overrides?: CallOverrides): Promise<boolean>;
 
   getMode(overrides?: CallOverrides): Promise<number>;
+
+  getOutboundLimitParams(
+    overrides?: CallOverrides
+  ): Promise<IRateLimiter.RateLimitParamsStructOutput>;
 
   getOutboundQueuedTransfer(
     queueSequence: BigNumberish,
@@ -1174,6 +1214,11 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
 
     getCurrentOutboundCapacity(overrides?: CallOverrides): Promise<BigNumber>;
 
+    getInboundLimitParams(
+      chainId_: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<IRateLimiter.RateLimitParamsStructOutput>;
+
     getInboundQueuedTransfer(
       digest: BytesLike,
       overrides?: CallOverrides
@@ -1182,6 +1227,10 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
     getMigratesImmutables(overrides?: CallOverrides): Promise<boolean>;
 
     getMode(overrides?: CallOverrides): Promise<number>;
+
+    getOutboundLimitParams(
+      overrides?: CallOverrides
+    ): Promise<IRateLimiter.RateLimitParamsStructOutput>;
 
     getOutboundQueuedTransfer(
       queueSequence: BigNumberish,
@@ -1505,6 +1554,11 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
 
     getCurrentOutboundCapacity(overrides?: CallOverrides): Promise<BigNumber>;
 
+    getInboundLimitParams(
+      chainId_: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
     getInboundQueuedTransfer(
       digest: BytesLike,
       overrides?: CallOverrides
@@ -1513,6 +1567,8 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
     getMigratesImmutables(overrides?: CallOverrides): Promise<BigNumber>;
 
     getMode(overrides?: CallOverrides): Promise<BigNumber>;
+
+    getOutboundLimitParams(overrides?: CallOverrides): Promise<BigNumber>;
 
     getOutboundQueuedTransfer(
       queueSequence: BigNumberish,
@@ -1683,6 +1739,11 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
+    getInboundLimitParams(
+      chainId_: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
     getInboundQueuedTransfer(
       digest: BytesLike,
       overrides?: CallOverrides
@@ -1693,6 +1754,10 @@ export interface MockNttManagerStorageLayoutChange extends BaseContract {
     ): Promise<PopulatedTransaction>;
 
     getMode(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    getOutboundLimitParams(
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
 
     getOutboundQueuedTransfer(
       queueSequence: BigNumberish,

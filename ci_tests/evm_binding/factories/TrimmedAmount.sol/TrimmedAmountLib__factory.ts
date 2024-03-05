@@ -10,66 +10,6 @@ import type {
 
 const _abi = [
   {
-    type: "function",
-    name: "min",
-    inputs: [
-      {
-        name: "a",
-        type: "tuple",
-        internalType: "struct TrimmedAmount",
-        components: [
-          {
-            name: "amount",
-            type: "uint64",
-            internalType: "uint64",
-          },
-          {
-            name: "decimals",
-            type: "uint8",
-            internalType: "uint8",
-          },
-        ],
-      },
-      {
-        name: "b",
-        type: "tuple",
-        internalType: "struct TrimmedAmount",
-        components: [
-          {
-            name: "amount",
-            type: "uint64",
-            internalType: "uint64",
-          },
-          {
-            name: "decimals",
-            type: "uint8",
-            internalType: "uint8",
-          },
-        ],
-      },
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "tuple",
-        internalType: "struct TrimmedAmount",
-        components: [
-          {
-            name: "amount",
-            type: "uint64",
-            internalType: "uint64",
-          },
-          {
-            name: "decimals",
-            type: "uint8",
-            internalType: "uint8",
-          },
-        ],
-      },
-    ],
-    stateMutability: "pure",
-  },
-  {
     type: "error",
     name: "AmountTooLarge",
     inputs: [
@@ -80,26 +20,10 @@ const _abi = [
       },
     ],
   },
-  {
-    type: "error",
-    name: "NumberOfDecimalsNotEqual",
-    inputs: [
-      {
-        name: "decimals",
-        type: "uint8",
-        internalType: "uint8",
-      },
-      {
-        name: "decimalsOther",
-        type: "uint8",
-        internalType: "uint8",
-      },
-    ],
-  },
 ] as const;
 
 const _bytecode =
-  "0x6080806040523461001a576101929081610020823930815050f35b600080fdfe604060808152600436101561001357600080fd5b6000803560e01c630fe93ab11461002957600080fd5b36600319016080811261012257821361011f57610044610126565b67ffffffffffffffff9160043583811681036101225782526024359060ff8216820361011f57602083019182528460431936011261011f57610084610126565b91604435858116810361011b5783526064359060ff8216820361011b5760ff8091602086019384528460206100b7610126565b828152015251169151168082036100fe5750509160209160ff9385835116868351161190506000146100f757505b84519381511684520151166020820152f35b90506100e5565b60449250865191635ce6db6160e11b835260048301526024820152fd5b8280fd5b80fd5b5080fd5b604051906040820182811067ffffffffffffffff82111761014657604052565b634e487b7160e01b600052604160045260246000fdfea26469706673582212205fe0b37f3dca2c89b9e5bef07e011b7d63f1c9a94caaf2fe9a5359f8ce7f4ae964736f6c63430008130033";
+  "0x60808060405234601757603a9081601d823930815050f35b600080fdfe600080fdfea264697066735822122069aa28de760771fd5112b0ff34f6d29eeba9b7e707e63af40e0a9766501b83cd64736f6c63430008130033";
 
 type TrimmedAmountLibConstructorParams =
   | [signer?: Signer]
