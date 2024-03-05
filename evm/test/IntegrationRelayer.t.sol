@@ -205,8 +205,24 @@ contract TestEndToEndRelayer is
             uint256 priceQuote1 = wormholeTransceiverChain1.quoteDeliveryPrice(
                 chainId2, buildTransceiverInstruction(false)
             );
-
             bytes memory instructions = encodeTransceiverInstruction(false);
+
+            // set invalid config
+            vm.stopPrank();
+            wormholeTransceiverChain1.setIsWormholeEvmChain(chainId2, false);
+
+            // config not set correctly
+            vm.startPrank(userA);
+            vm.expectRevert();
+            nttManagerChain1.transfer{value: priceQuote1}(
+                sendingAmount, chainId2, bytes32(uint256(uint160(userB))), false, instructions
+            );
+
+            // set valid config
+            vm.stopPrank();
+            wormholeTransceiverChain1.setIsWormholeEvmChain(chainId2, true);
+            vm.startPrank(userA);
+
             vm.expectRevert(); // Dust error
             nttManagerChain1.transfer{value: priceQuote1}(
                 sendingAmount - 1, chainId2, bytes32(uint256(uint160(userB))), false, instructions
