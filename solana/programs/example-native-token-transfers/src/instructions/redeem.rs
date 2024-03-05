@@ -106,7 +106,15 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let message: NttManagerMessage<NativeTokenTransfer> =
         accs.transceiver_message.message.ntt_manager_payload.clone();
 
-    let amount = message.payload.amount.untrim(accs.mint.decimals);
+    // Calculate the scaled amount based on the appropriate decimal encoding for the token.
+    // Return an error if the resulting amount overflows.
+    // Ideally this state should never be reached: the sender should avoid sending invalid
+    // amounts when they would cause an error on the receiver.
+    let amount = message
+        .payload
+        .amount
+        .untrim(accs.mint.decimals)
+        .map_err(NTTError::from)?;
 
     if !accs.inbox_item.init {
         let recipient_address =
