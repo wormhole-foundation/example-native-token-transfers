@@ -1,4 +1,5 @@
 use anchor_lang::prelude::error_code;
+use ntt_messages::errors::ScalingError;
 
 #[error_code]
 // TODO(csongor): rename
@@ -43,4 +44,17 @@ pub enum NTTError {
     BadAmountAfterBurn,
     #[msg("ZeroThreshold")]
     ZeroThreshold,
+    #[msg("OverflowExponent")]
+    OverflowExponent,
+    #[msg("OverflowScaledAmount")]
+    OverflowScaledAmount,
+}
+
+impl From<ScalingError> for NTTError {
+    fn from(e: ScalingError) -> Self {
+        match e {
+            ScalingError::OverflowScaledAmount => NTTError::OverflowScaledAmount,
+            ScalingError::OverflowExponent => NTTError::OverflowExponent,
+        }
+    }
 }
