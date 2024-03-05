@@ -460,6 +460,35 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         assertEq(s3, 2);
     }
 
+    function test_transferWithAmountAndDecimalsThatCouldOverflow() public {
+        // The source chain has 18 decimals trimmed to 8, and the peer has 6 decimals trimmed to 6
+        nttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 6, type(uint64).max);
+
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+        DummyToken token = DummyToken(nttManager.token());
+        uint8 decimals = token.decimals();
+        assertEq(decimals, 18);
+
+        token.mintDummy(address(user_A), type(uint256).max);
+
+        vm.startPrank(user_A);
+        token.approve(address(nttManager), type(uint256).max);
+
+        // When transferring to a chain with 6 decimals the amount will get trimmed to 6 decimals
+        // and then scaled back up to 8 for local accounting. If we get the trimmed amount to be
+        // type(uint64).max, then when scaling up we could overflow. We safely cast to prevent this.
+
+        uint256 amount = type(uint64).max * 10 ** (decimals - 6);
+
+        vm.expectRevert("SafeCast: value doesn't fit in 64 bits");
+        nttManager.transfer(amount, chainId, toWormholeFormat(user_B), false, new bytes(1));
+
+        // A (slightly) more sensible amount should work normally
+        amount = (type(uint64).max * 10 ** (decimals - 6 - 2)) - 150000000000; // Subtract this to make sure we don't have dust
+        nttManager.transfer(amount, chainId, toWormholeFormat(user_B), false, new bytes(1));
+    }
+
     function test_attestationQuorum() public {
         address user_B = address(0x456);
 
