@@ -57,13 +57,13 @@ interface IWormholeTransceiver is IWormholeTransceiverState {
     error TransferAlreadyCompleted(bytes32 vaaHash);
 
     /// @notice Receive an attested message from the verification layer.
-    /// This function should verify the `encodedVm` and then deliver the attestation
+    ///         This function should verify the `encodedVm` and then deliver the attestation
     /// to the transceiver NttManager contract.
     /// @param encodedMessage The attested message.
     function receiveMessage(bytes memory encodedMessage) external;
 
     /// @notice Parses the encoded instruction and returns the instruction struct.
-    /// This instruction is specific to the WormholeTransceiver contract.
+    ///         This instruction is specific to the WormholeTransceiver contract.
     /// @param encoded The encoded instruction.
     /// @return instruction The parsed `WormholeTransceiverInstruction`.
     function parseWormholeTransceiverInstruction(bytes memory encoded)

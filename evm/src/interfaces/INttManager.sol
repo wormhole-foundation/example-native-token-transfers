@@ -55,7 +55,7 @@ interface INttManager is INttManagerState {
     error RefundFailed(uint256 refundAmount);
 
     /// @notice Error when the tranceiver already attested to the message.
-    ///         To ensure the client does not continue to initiate calls to the ateestationReceived function.
+    ///         To ensure the client does not continue to initiate calls to the attestationReceived function.
     /// @dev Selector 0x2113894.
     /// @param nttManagerMessageHash The hash of the message.
     error TransceiverAlreadyAttestedToMessage(bytes32 nttManagerMessageHash);
@@ -80,7 +80,7 @@ interface INttManager is INttManagerState {
     error InvalidRecipient();
 
     /// @notice Error when the amount burned is different than the balance difference,
-    ///          since NTT does not support burn fees.
+    ///         since NTT does not support burn fees.
     /// @dev Selector 0x02156a8f.
     /// @param burnAmount The amount burned.
     /// @param balanceDiff The balance after burning.

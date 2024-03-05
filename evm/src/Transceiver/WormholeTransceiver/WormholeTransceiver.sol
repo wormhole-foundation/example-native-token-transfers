@@ -16,7 +16,7 @@ import "./WormholeTransceiverState.sol";
 
 /// @title WormholeTransceiver
 /// @author Wormhole Project Contributors.
-/// @notice Transceiver implementation for the Wormhole.
+/// @notice Transceiver implementation for Wormhole.
 ///
 /// @dev This contract is responsible for sending and receiving NTT messages
 ///      that are authenticated through Wormhole Core.
