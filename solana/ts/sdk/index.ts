@@ -45,6 +45,8 @@ export type InboxItem = IdlAccounts<ExampleNativeTokenTransfers>['inboxItem']
 
 export const NTT_PROGRAM_IDS = [
   "nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS",
+  "NTTManager111111111111111111111111111111111",
+  "NTTManager222222222222222222222222222222222",
 ] as const;
 
 export const WORMHOLE_PROGRAM_IDS = [
@@ -164,7 +166,7 @@ export class NTT {
     outboundLimit: BN
     mode: 'burning' | 'locking'
   }) {
-    const mode =
+    const mode: any =
       args.mode === 'burning'
         ? { burning: {} }
         : { locking: {} }
@@ -220,6 +222,7 @@ export class NTT {
     } else if (config.mode.burning != null) {
       transferIx = await this.createTransferBurnInstruction(txArgs)
     } else {
+      // @ts-ignore
       transferIx = exhaustive(config.mode)
     }
 
@@ -769,7 +772,7 @@ export class NTT {
 
     // Let's check if the transfer was released
     const inboxItem = await this.getInboxItem(chainId, ntt_managerMessage)
-    return inboxItem.releaseStatus.released !== null
+    return inboxItem.releaseStatus.released !== undefined
   }
 
   // Account access

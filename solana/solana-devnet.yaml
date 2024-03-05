@@ -57,8 +57,12 @@ spec:
             - Ex9bCdVMSfx7EzB3pgSi2R4UHwJAXvTw18rBQm5YQ8gK
             - /opt/solana/deps/wormhole_migration.so
             - --upgradeable-program
-            - nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS
+            - NTTManager111111111111111111111111111111111
             - /opt/solana/deps/example_native_token_transfers.so
+            - 6sbzC1eH4FTujJXWj51eQe25cYvr4xfXbJ1vAj7j2k5J
+            - --upgradeable-program
+            - NTTManager222222222222222222222222222222222
+            - /opt/solana/deps/example_native_token_transfers_2.so
             - 6sbzC1eH4FTujJXWj51eQe25cYvr4xfXbJ1vAj7j2k5J
             - -q
           ports:

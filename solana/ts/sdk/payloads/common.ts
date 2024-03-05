@@ -1,5 +1,4 @@
 import { BN } from '@coral-xyz/anchor'
-import { assert } from 'chai'
 
 export class TransceiverMessage<A> {
   static prefix: Buffer
