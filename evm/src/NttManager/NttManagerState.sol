@@ -257,7 +257,12 @@ abstract contract NttManagerState is
     }
 
     /// @inheritdoc INttManagerState
-    function setPeer(uint16 peerChainId, bytes32 peerContract, uint8 decimals) public onlyOwner {
+    function setPeer(
+        uint16 peerChainId,
+        bytes32 peerContract,
+        uint8 decimals,
+        uint256 inboundLimit
+    ) public onlyOwner {
         if (peerChainId == 0) {
             revert InvalidPeerChainIdZero();
         }
@@ -273,7 +278,7 @@ abstract contract NttManagerState is
         _getPeersStorage()[peerChainId].peerAddress = peerContract;
         _getPeersStorage()[peerChainId].tokenDecimals = decimals;
 
-        _setInboundLimit(TrimmedAmountLib.max(tokenDecimals_), peerChainId);
+        _setInboundLimit(inboundLimit.trim(tokenDecimals_, tokenDecimals_), peerChainId);
 
         emit PeerUpdated(
             peerChainId, oldPeer.peerAddress, oldPeer.tokenDecimals, peerContract, decimals
