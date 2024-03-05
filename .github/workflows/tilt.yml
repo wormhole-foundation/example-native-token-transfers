@@ -24,7 +24,9 @@ jobs:
       - name: Clear repository
         run: |
           rm -rf $GITHUB_WORKSPACE && mkdir $GITHUB_WORKSPACE
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Expand for link to Tilt dashboard (only available during build)
         run: >
           echo "Tilt progress dashboard: https://$DASHBOARD_URL"
@@ -32,7 +34,7 @@ jobs:
           kubectl config set-context ci --namespace=$DEPLOY_NS
           kubectl config use-context ci
 
-      - run: tilt ci -- --evm2 --generic_relayer --solana_watcher --namespace=$DEPLOY_NS
+      - run: tilt ci -- --evm2 --generic_relayer --solana_watcher --guardiand_loglevel=warn --namespace=$DEPLOY_NS
         timeout-minutes: 30
 
       # Clean up k8s resources

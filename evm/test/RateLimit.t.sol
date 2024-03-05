@@ -4,7 +4,7 @@ import "forge-std/Test.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
 import "../src/NttManager/NttManager.sol";
 import "./mocks/DummyTransceiver.sol";
-import "./mocks/DummyToken.sol";
+import "../src/mocks/DummyToken.sol";
 import "./mocks/MockNttManager.sol";
 import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";

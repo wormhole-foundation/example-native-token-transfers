@@ -37,6 +37,13 @@ k8s_resource(
     ],
 )
 
+# EVM build
+docker_build(
+    ref = "ntt-evm-contract",
+    context = "./evm",
+    dockerfile = "./evm/Dockerfile",
+)
+
 # CI tests
 docker_build(
     ref = "ntt-ci",
