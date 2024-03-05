@@ -21,6 +21,7 @@ idl-build = [
 mainnet = [ "wormhole-anchor-sdk/mainnet" ]
 solana-devnet = [ "wormhole-anchor-sdk/solana-devnet" ]
 tilt-devnet = [ "wormhole-anchor-sdk/tilt-devnet" ]
+tilt-devnet2 = [ "wormhole-anchor-sdk/tilt-devnet" ]
 
 [dependencies]
 anchor-lang.workspace = true

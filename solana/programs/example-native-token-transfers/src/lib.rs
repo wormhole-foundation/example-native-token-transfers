@@ -26,7 +26,15 @@ use transceivers::wormhole::instructions::*;
 
 use instructions::*;
 
-declare_id!("nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS");
+cfg_if::cfg_if! {
+    if #[cfg(feature = "tilt-devnet")] {
+        declare_id!("NTTManager111111111111111111111111111111111");
+    } else if #[cfg(feature = "tilt-devnet2")] {
+        declare_id!("NTTManager222222222222222222222222222222222");
+    } else {
+        declare_id!("nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS");
+    }
+}
 
 const TOKEN_AUTHORITY_SEED: &[u8] = b"token_authority";
 

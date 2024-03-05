@@ -1491,6 +1491,7 @@ dependencies = [
  "base64 0.21.7",
  "bincode",
  "bitmaps 3.2.1",
+ "cfg-if",
  "hex",
  "libsecp256k1",
  "ntt-messages",

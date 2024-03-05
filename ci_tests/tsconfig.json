@@ -6,7 +6,9 @@
     "sourceMap": true,
     "target": "es6",
     "outDir": "dist",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "esModuleInterop": true
   },
   "include": ["src/*"]
 }

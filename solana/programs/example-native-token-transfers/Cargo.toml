@@ -24,9 +24,11 @@ test-sbf = []
 mainnet = [ "wormhole-anchor-sdk/mainnet" ]
 solana-devnet = [ "wormhole-anchor-sdk/solana-devnet" ]
 tilt-devnet = [ "wormhole-anchor-sdk/tilt-devnet" ]
+tilt-devnet2 = [ "wormhole-anchor-sdk/tilt-devnet" ]
 
 [dependencies]
 ahash = "=0.8.5"
+cfg-if = "1.0"
 
 ntt-messages = { path = "../../modules/ntt-messages", features = ["anchor", "hash"] }
 anchor-lang = { workspace = true, features = ["init-if-needed"] }

@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "@certusone/wormhole-sdk": "^0.10.11",
+    "@coral-xyz/anchor": "^0.29.0",
     "@improbable-eng/grpc-web-node-http-transport": "^0.15.0",
     "ethers": "^5.7.2",
     "ts-node": "^10.9.2"
