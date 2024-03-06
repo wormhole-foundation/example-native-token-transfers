@@ -4,6 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 import "forge-std/Test.sol";
 
 import "../src/libraries/TransceiverStructs.sol";
+import "../src/interfaces/IManagerBase.sol";
 import "../src/Transceiver/WormholeTransceiver/WormholeTransceiver.sol";
 import "../src/interfaces/INttManager.sol";
 
@@ -18,7 +19,7 @@ contract TestTransceiverStructs is Test {
         TransceiverStructs.TransceiverInit memory ti = TransceiverStructs.TransceiverInit({
             transceiverIdentifier: wh_prefix,
             nttManagerAddress: hex"BABABABABABA",
-            nttManagerMode: uint8(INttManager.Mode.LOCKING),
+            nttManagerMode: uint8(IManagerBase.Mode.LOCKING),
             tokenAddress: hex"DEDEDEDEDEDEDE",
             tokenDecimals: 16
         });

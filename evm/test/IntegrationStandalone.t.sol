@@ -9,7 +9,7 @@ import "../src/Transceiver/Transceiver.sol";
 import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
 import "../src/interfaces/ITransceiver.sol";
-import "../src/interfaces/INttManagerEvents.sol";
+import "../src/interfaces/IManagerBase.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
 import {Utils} from "./libraries/Utils.sol";
 import {DummyToken, DummyTokenMintAndBurn} from "./NttManager.t.sol";
@@ -26,7 +26,7 @@ import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "wormhole-solidity-sdk/Utils.sol";
 //import "wormhole-solidity-sdk/testing/WormholeRelayerTest.sol";
 
-contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
+contract TestEndToEndBase is Test, IRateLimiterEvents {
     NttManager nttManagerChain1;
     NttManager nttManagerChain2;
 
@@ -64,7 +64,7 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
         NttManager implementation = new MockNttManagerContract(
-            address(t1), INttManager.Mode.LOCKING, chainId1, 1 days, false
+            address(t1), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
         );
 
         nttManagerChain1 =
@@ -101,7 +101,7 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
         NttManager implementationChain2 = new MockNttManagerContract(
-            address(t2), INttManager.Mode.BURNING, chainId2, 1 days, false
+            address(t2), IManagerBase.Mode.BURNING, chainId2, 1 days, false
         );
 
         nttManagerChain2 =

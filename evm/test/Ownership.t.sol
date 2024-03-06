@@ -4,6 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import "forge-std/Test.sol";
 import "./mocks/MockNttManager.sol";
+import "../src/interfaces/IManagerBase.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {DummyTransceiver} from "./NttManager.t.sol";
 import {DummyToken} from "./NttManager.t.sol";
@@ -14,8 +15,9 @@ contract OwnershipTests is Test {
 
     function setUp() public {
         DummyToken t = new DummyToken();
-        NttManager implementation =
-            new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, chainId, 1 days, false);
+        NttManager implementation = new MockNttManagerContract(
+            address(t), IManagerBase.Mode.LOCKING, chainId, 1 days, false
+        );
 
         nttManager = MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         nttManager.initialize();

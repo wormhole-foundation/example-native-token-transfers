@@ -7,7 +7,7 @@ import "forge-std/console.sol";
 import "../src/NttManager/NttManager.sol";
 import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
-import "../src/interfaces/INttManagerEvents.sol";
+import "../src/interfaces/IManagerBase.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
 import "../src/NttManager/TransceiverRegistry.sol";
 import "../src/libraries/PausableUpgradeable.sol";
@@ -26,7 +26,7 @@ import "../src/mocks/DummyToken.sol";
 import "./mocks/MockNttManager.sol";
 
 // TODO: set this up so the common functionality tests can be run against both
-contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
+contract TestNttManager is Test, IRateLimiterEvents {
     MockNttManagerContract nttManager;
     MockNttManagerContract nttManagerOther;
     MockNttManagerContract nttManagerZeroRateLimiter;
@@ -51,11 +51,13 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         guardian = new WormholeSimulator(address(wormhole), DEVNET_GUARDIAN_PK);
 
         DummyToken t = new DummyToken();
-        NttManager implementation =
-            new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, chainId, 1 days, false);
+        NttManager implementation = new MockNttManagerContract(
+            address(t), IManagerBase.Mode.LOCKING, chainId, 1 days, false
+        );
 
-        NttManager otherImplementation =
-            new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, chainId, 1 days, false);
+        NttManager otherImplementation = new MockNttManagerContract(
+            address(t), IManagerBase.Mode.LOCKING, chainId, 1 days, false
+        );
 
         nttManager = MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         nttManager.initialize();
@@ -83,7 +85,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
     function test_disabledRateLimiter() public {
         DummyToken t = new DummyToken();
         NttManager implementation =
-            new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, chainId, 0, true);
+            new MockNttManagerContract(address(t), IManagerBase.Mode.LOCKING, chainId, 0, true);
 
         nttManagerZeroRateLimiter =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
@@ -263,8 +265,9 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         // only transceivers whose nttManager is us can be registered? (this would be
         // a convenience check, not a security one)
         DummyToken t = new DummyToken();
-        NttManager altNttManager =
-            new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, chainId, 1 days, false);
+        NttManager altNttManager = new MockNttManagerContract(
+            address(t), IManagerBase.Mode.LOCKING, chainId, 1 days, false
+        );
         DummyTransceiver e = new DummyTransceiver(address(altNttManager));
         nttManager.setTransceiver(address(e));
     }
@@ -288,7 +291,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         token.approve(address(nttManager), 3 * 10 ** decimals);
 
-        vm.expectRevert(abi.encodeWithSelector(INttManager.NoEnabledTransceivers.selector));
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.NoEnabledTransceivers.selector));
         nttManager.transfer(
             1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false, new bytes(1)
         );
@@ -326,7 +329,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
     function test_cantSetThresholdTooHigh() public {
         // 1 transceiver set, so can't set threshold to 2
-        vm.expectRevert(abi.encodeWithSelector(INttManagerState.ThresholdTooHigh.selector, 2, 1));
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.ThresholdTooHigh.selector, 2, 1));
         nttManager.setThreshold(2);
     }
 
@@ -345,7 +348,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         DummyTransceiver e = new DummyTransceiver(address(nttManager));
         nttManager.setTransceiver(address(e));
 
-        vm.expectRevert(abi.encodeWithSelector(INttManagerState.ZeroThreshold.selector));
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.ZeroThreshold.selector));
         nttManager.setThreshold(0);
     }
 
@@ -410,7 +413,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                INttManagerState.InvalidPeer.selector, TransceiverHelpersLib.SENDING_CHAIN_ID, peer
+                INttManager.InvalidPeer.selector, TransceiverHelpersLib.SENDING_CHAIN_ID, peer
             )
         );
         e1.receiveMessage(transceiverMessage);
@@ -460,7 +463,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         e1.receiveMessage(transceiverMessage);
         vm.expectRevert(
-            abi.encodeWithSelector(INttManager.TransceiverAlreadyAttestedToMessage.selector, hash)
+            abi.encodeWithSelector(IManagerBase.TransceiverAlreadyAttestedToMessage.selector, hash)
         );
         e1.receiveMessage(transceiverMessage);
 
@@ -603,7 +606,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         vm.recordLogs();
         vm.expectRevert(
             abi.encodeWithSelector(
-                INttManager.TransceiverAlreadyAttestedToMessage.selector,
+                IManagerBase.TransceiverAlreadyAttestedToMessage.selector,
                 TransceiverStructs.nttManagerMessageDigest(
                     TransceiverHelpersLib.SENDING_CHAIN_ID, m
                 )
@@ -625,7 +628,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
     function test_noAutomaticSlot() public {
         DummyToken t = new DummyToken();
         MockNttManagerContract c =
-            new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, 1, 1 days, false);
+            new MockNttManagerContract(address(t), IManagerBase.Mode.LOCKING, 1, 1 days, false);
         assertEq(c.lastSlot(), 0x0);
     }
 
@@ -634,7 +637,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         vm.startStateDiffRecording();
 
-        new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, 1, 1 days, false);
+        new MockNttManagerContract(address(t), IManagerBase.Mode.LOCKING, 1, 1 days, false);
 
         Utils.assertSafeUpgradeableConstructor(vm.stopAndReturnStateDiff());
     }
@@ -736,7 +739,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         // Step 2 (upgrade to a new nttManager)
         MockNttManagerContract newNttManager = new MockNttManagerContract(
-            nttManager.token(), INttManager.Mode.LOCKING, chainId, 1 days, false
+            nttManager.token(), IManagerBase.Mode.LOCKING, chainId, 1 days, false
         );
         nttManagerOther.upgrade(address(newNttManager));
 
@@ -761,8 +764,9 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         DummyTokenMintAndBurn t =
             DummyTokenMintAndBurn(address(new ERC1967Proxy(address(dummy1), "")));
 
-        NttManager implementation =
-            new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, chainId, 1 days, false);
+        NttManager implementation = new MockNttManagerContract(
+            address(t), IManagerBase.Mode.LOCKING, chainId, 1 days, false
+        );
 
         MockNttManagerContract newNttManager =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
