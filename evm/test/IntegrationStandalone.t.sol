@@ -194,7 +194,8 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
         // Chain2 verification and checks
         vm.chainId(chainId2);
 
-        vm.expectRevert(); // Wrong chain receiving the signed VAA
+        // Wrong chain receiving the signed VAA
+        vm.expectRevert(abi.encodeWithSelector(InvalidFork.selector, chainId1, chainId2));
         wormholeTransceiverChain1.receiveMessage(encodedVMs[0]);
         {
             uint256 supplyBefore = token2.totalSupply();
@@ -209,7 +210,12 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
         }
 
         // Can't resubmit the same message twice
-        vm.expectRevert(); // TransferAlreadyCompleted error
+        (IWormhole.VM memory wormholeVM,,) = wormhole.parseAndVerifyVM(encodedVMs[0]);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IWormholeTransceiver.TransferAlreadyCompleted.selector, wormholeVM.hash
+            )
+        );
         wormholeTransceiverChain2.receiveMessage(encodedVMs[0]);
 
         // Go back the other way from a THIRD user
@@ -337,7 +343,12 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
         }
 
         // Can't resubmit the same message twice
-        vm.expectRevert(); // TransferAlreadyCompleted error
+        (IWormhole.VM memory wormholeVM,,) = wormhole.parseAndVerifyVM(encodedVMs[0]);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IWormholeTransceiver.TransferAlreadyCompleted.selector, wormholeVM.hash
+            )
+        );
         wormholeTransceiverChain2.receiveMessage(encodedVMs[0]);
 
         // Go back the other way from a THIRD user
@@ -365,18 +376,38 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
             );
 
             // Test timing on the queues
-            vm.expectRevert();
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    IRateLimiter.OutboundQueuedTransferStillQueued.selector,
+                    0,
+                    vm.getBlockTimestamp()
+                )
+            );
             nttManagerChain2.completeOutboundQueuedTransfer(0);
             vm.warp(vm.getBlockTimestamp() + 1 days - 1);
-            vm.expectRevert();
+
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    IRateLimiter.OutboundQueuedTransferStillQueued.selector,
+                    0,
+                    vm.getBlockTimestamp() - 1 days + 1
+                )
+            );
             nttManagerChain2.completeOutboundQueuedTransfer(0);
+
             vm.warp(vm.getBlockTimestamp() + 1);
             nttManagerChain2.completeOutboundQueuedTransfer(0);
 
-            vm.expectRevert(); // Replay - should be deleted
+            // Replay - should be deleted
+            vm.expectRevert(
+                abi.encodeWithSelector(IRateLimiter.OutboundQueuedTransferNotFound.selector, 0)
+            );
             nttManagerChain2.completeOutboundQueuedTransfer(0);
 
-            vm.expectRevert(); // Non-existant
+            // Non-existant
+            vm.expectRevert(
+                abi.encodeWithSelector(IRateLimiter.OutboundQueuedTransferNotFound.selector, 1)
+            );
             nttManagerChain2.completeOutboundQueuedTransfer(1);
 
             uint256 supplyAfter = token2.totalSupply();
@@ -416,7 +447,11 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
 
             // Double redeem
             vm.warp(vm.getBlockTimestamp() + 100000);
-            vm.expectRevert();
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    IRateLimiter.InboundQueuedTransferNotFound.selector, queuedDigests[0]
+                )
+            );
             nttManagerChain1.completeInboundQueuedTransfer(queuedDigests[0]);
 
             uint256 supplyAfter = token1.totalSupply();
@@ -519,7 +554,13 @@ contract TestEndToEndBase is Test, INttManagerEvents, IRateLimiterEvents {
             uint256 supplyBefore = token2.totalSupply();
             wormholeTransceiverChain2_1.receiveMessage(encodedVMs[0]);
 
-            vm.expectRevert(); // Invalid wormhole peer
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    IWormholeTransceiver.InvalidWormholePeer.selector,
+                    chainId1,
+                    wormholeTransceiverChain1_1
+                )
+            );
             wormholeTransceiverChain2_2.receiveMessage(encodedVMs[0]);
 
             // Threshold check

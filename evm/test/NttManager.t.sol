@@ -160,7 +160,9 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         address notOwner = address(0x123);
         vm.startPrank(notOwner);
 
-        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", notOwner));
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, notOwner)
+        );
         nttManager.transferOwnership(address(0x456));
     }
 
@@ -178,10 +180,14 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         address notOwner = address(0x123);
         vm.startPrank(notOwner);
 
-        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", notOwner));
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, notOwner)
+        );
         nttManager.setTransceiver(address(e));
 
-        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", notOwner));
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, notOwner)
+        );
         nttManager.removeTransceiver(address(e));
     }
 
@@ -189,7 +195,11 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         DummyTransceiver e = new DummyTransceiver(address(nttManager));
         nttManager.setTransceiver(address(e));
 
-        vm.expectRevert(abi.encodeWithSignature("TransceiverAlreadyEnabled(address)", address(e)));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransceiverRegistry.TransceiverAlreadyEnabled.selector, address(e)
+            )
+        );
         nttManager.setTransceiver(address(e));
     }
 
@@ -256,7 +266,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
     function test_cantSetThresholdTooHigh() public {
         // no transceivers set, so can't set threshold to 1
-        vm.expectRevert(abi.encodeWithSignature("ThresholdTooHigh(uint256,uint256)", 1, 0));
+        vm.expectRevert(abi.encodeWithSelector(INttManagerState.ThresholdTooHigh.selector, 1, 0));
         nttManager.setThreshold(1);
     }
 
@@ -275,7 +285,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         DummyTransceiver e = new DummyTransceiver(address(nttManager));
         nttManager.setTransceiver(address(e));
 
-        vm.expectRevert(abi.encodeWithSignature("ZeroThreshold()"));
+        vm.expectRevert(abi.encodeWithSelector(INttManagerState.ZeroThreshold.selector));
         nttManager.setThreshold(0);
     }
 
@@ -283,7 +293,9 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         address notOwner = address(0x123);
         vm.startPrank(notOwner);
 
-        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", notOwner));
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, notOwner)
+        );
         nttManager.setThreshold(1);
     }
 
@@ -317,7 +329,9 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
             0, bytes32(0), peer, toWormholeFormat(address(nttManagerOther)), abi.encode("payload")
         );
 
-        vm.expectRevert(abi.encodeWithSignature("CallerNotTransceiver(address)", address(e1)));
+        vm.expectRevert(
+            abi.encodeWithSelector(TransceiverRegistry.CallerNotTransceiver.selector, address(e1))
+        );
         e1.receiveMessage(transceiverMessage);
     }
 
@@ -335,8 +349,8 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         );
 
         vm.expectRevert(
-            abi.encodeWithSignature(
-                "InvalidPeer(uint16,bytes32)", TransceiverHelpersLib.SENDING_CHAIN_ID, peer
+            abi.encodeWithSelector(
+                INttManagerState.InvalidPeer.selector, TransceiverHelpersLib.SENDING_CHAIN_ID, peer
             )
         );
         e1.receiveMessage(transceiverMessage);
@@ -386,7 +400,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
 
         e1.receiveMessage(transceiverMessage);
         vm.expectRevert(
-            abi.encodeWithSignature("TransceiverAlreadyAttestedToMessage(bytes32)", hash)
+            abi.encodeWithSelector(INttManager.TransceiverAlreadyAttestedToMessage.selector, hash)
         );
         e1.receiveMessage(transceiverMessage);
 
@@ -528,8 +542,8 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         // replay protection for transceiver
         vm.recordLogs();
         vm.expectRevert(
-            abi.encodeWithSignature(
-                "TransceiverAlreadyAttestedToMessage(bytes32)",
+            abi.encodeWithSelector(
+                INttManager.TransceiverAlreadyAttestedToMessage.selector,
                 TransceiverStructs.nttManagerMessageDigest(
                     TransceiverHelpersLib.SENDING_CHAIN_ID, m
                 )
@@ -597,8 +611,8 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         token.approve(address(nttManager), amountWithDust);
 
         vm.expectRevert(
-            abi.encodeWithSignature(
-                "TransferAmountHasDust(uint256,uint256)", amountWithDust, dustAmount
+            abi.encodeWithSelector(
+                INttManager.TransferAmountHasDust.selector, amountWithDust, dustAmount
             )
         );
         nttManager.transfer(amountWithDust, chainId, toWormholeFormat(to), false, new bytes(1));

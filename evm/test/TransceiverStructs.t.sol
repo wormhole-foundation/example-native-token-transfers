@@ -141,8 +141,8 @@ contract TestTransceiverStructs is Test {
         bytes memory junk = "junk";
 
         vm.expectRevert(
-            abi.encodeWithSignature(
-                "LengthMismatch(uint256,uint256)", message.length + junk.length, message.length
+            abi.encodeWithSelector(
+                BytesParsing.LengthMismatch.selector, message.length + junk.length, message.length
             )
         );
         TransceiverStructs.parseNttManagerMessage(abi.encodePacked(message, junk));
@@ -169,8 +169,8 @@ contract TestTransceiverStructs is Test {
         bytes memory junk = "junk";
 
         vm.expectRevert(
-            abi.encodeWithSignature(
-                "LengthMismatch(uint256,uint256)", message.length + junk.length, message.length
+            abi.encodeWithSelector(
+                BytesParsing.LengthMismatch.selector, message.length + junk.length, message.length
             )
         );
         TransceiverStructs.parseNativeTokenTransfer(abi.encodePacked(message, junk));
