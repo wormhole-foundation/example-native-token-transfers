@@ -35,7 +35,7 @@ import { NttManager__factory } from "../evm_binding/factories/NttManager__factor
 import { TransceiverStructs__factory } from "../evm_binding/factories/TransceiverStructs__factory";
 import { TrimmedAmountLib__factory } from "../evm_binding/factories/TrimmedAmount.sol/TrimmedAmountLib__factory";
 import { WormholeTransceiver__factory } from "../evm_binding/factories/WormholeTransceiver__factory";
-import { NTT } from "../solana_binding/ts/sdk";
+import { NTT, NttProgramId } from "../solana_binding/ts/sdk";
 import solanaTiltKey from "./solana-tilt.json"; // from https://github.com/wormhole-foundation/wormhole/blob/main/solana/keys/solana-devnet.json
 
 // NOTE: This test uses ethers-v5 as it has proven to be significantly faster than v6.
@@ -53,6 +53,7 @@ interface EVMChainDetails extends BaseDetails {
 interface SolanaChainDetails extends BaseDetails {
   type: "solana";
   signer: web3.Keypair;
+  manager: NTT;
 }
 interface BaseDetails {
   chainId: ChainId;
@@ -84,10 +85,6 @@ const SOL_CONNECTION = new web3.Connection(
   "confirmed"
 );
 const SOL_CORE_ADDRESS = "Bridge1p5gheXUvJ6jGWGeCsgPKgnE3YgdGKRVCMY9o";
-const SOL_NTT_CONTRACT = new NTT(SOL_CONNECTION, {
-  nttId: "NTTManager111111111111111111111111111111111",
-  wormholeId: SOL_CORE_ADDRESS,
-});
 const RELAYER_CONTRACT = "0x53855d4b64E9A3CF59A84bc768adA716B5536BC5";
 
 // Wormhole format means that addresses are bytes32 instead of addresses when using them to support other chains.
@@ -265,8 +262,20 @@ async function deployEvm(
   };
 }
 
-async function initSolana(mode: Mode): Promise<SolanaChainDetails> {
-  console.log("Using public key", SOL_PUBLIC_KEY.toString());
+async function initSolana(
+  mode: Mode,
+  nttId: NttProgramId
+): Promise<SolanaChainDetails> {
+  console.log(
+    "Using public key",
+    SOL_PUBLIC_KEY.toString(),
+    "and manager address",
+    nttId
+  );
+  const manager = new NTT(SOL_CONNECTION, {
+    nttId,
+    wormholeId: SOL_CORE_ADDRESS,
+  });
   const mint = await spl.createMint(
     SOL_CONNECTION,
     SOL_PRIVATE_KEY,
@@ -289,7 +298,7 @@ async function initSolana(mode: Mode): Promise<SolanaChainDetails> {
       mint,
       tokenAccount,
       SOL_PRIVATE_KEY,
-      BigInt(10000000)
+      utils.parseUnits("100", 9).toBigInt()
     );
     console.log("Minted 10000000 tokens");
   }
@@ -299,14 +308,14 @@ async function initSolana(mode: Mode): Promise<SolanaChainDetails> {
     mint,
     SOL_PRIVATE_KEY,
     0, // mint
-    SOL_NTT_CONTRACT.tokenAuthorityAddress()
+    manager.tokenAuthorityAddress()
   );
   console.log(
     "Set token authority to",
-    SOL_NTT_CONTRACT.tokenAuthorityAddress().toString()
+    manager.tokenAuthorityAddress().toString()
   );
 
-  await SOL_NTT_CONTRACT.initialize({
+  await manager.initialize({
     payer: SOL_PRIVATE_KEY,
     owner: SOL_PRIVATE_KEY,
     chain: "solana",
@@ -314,15 +323,12 @@ async function initSolana(mode: Mode): Promise<SolanaChainDetails> {
     outboundLimit: new BN(1000000000),
     mode,
   });
-  console.log(
-    "Initialized ntt at",
-    SOL_NTT_CONTRACT.program.programId.toString()
-  );
+  console.log("Initialized ntt at", manager.program.programId.toString());
 
-  await SOL_NTT_CONTRACT.registerTransceiver({
+  await manager.registerTransceiver({
     payer: SOL_PRIVATE_KEY,
     owner: SOL_PRIVATE_KEY,
-    transceiver: SOL_NTT_CONTRACT.program.programId,
+    transceiver: manager.program.programId,
   });
   console.log("Registered transceiver with self");
 
@@ -331,11 +337,12 @@ async function initSolana(mode: Mode): Promise<SolanaChainDetails> {
     chainId: 1,
     chainName: "solana",
     mode,
-    transceiverAddress: SOL_NTT_CONTRACT.emitterAccountAddress().toString(),
-    managerAddress: SOL_NTT_CONTRACT.program.programId.toString(),
+    transceiverAddress: manager.emitterAccountAddress().toString(),
+    managerAddress: manager.program.programId.toString(),
     NTTTokenAddress: mint.toString(),
     wormholeCoreAddress: SOL_CORE_ADDRESS,
     signer: SOL_PRIVATE_KEY,
+    manager,
   };
 }
 
@@ -343,11 +350,12 @@ async function setupPeer(targetInfo: ChainDetails, peerInfo: ChainDetails) {
   const managerAddress =
     peerInfo.type === "evm"
       ? addressToBytes32(peerInfo.managerAddress)
-      : `0x${SOL_NTT_CONTRACT.program.programId.toBuffer().toString("hex")}`;
+      : `0x${peerInfo.manager.program.programId.toBuffer().toString("hex")}`;
   const transceiverEmitter =
     peerInfo.type === "evm"
       ? addressToBytes32(peerInfo.transceiverAddress)
-      : `0x${SOL_NTT_CONTRACT.emitterAccountAddress()
+      : `0x${peerInfo.manager
+          .emitterAccountAddress()
           .toBuffer()
           .toString("hex")}`;
   const tokenDecimals = peerInfo.type === "evm" ? 18 : 9;
@@ -384,13 +392,13 @@ async function setupPeer(targetInfo: ChainDetails, peerInfo: ChainDetails) {
       );
     }
   } else if (targetInfo.type === "solana") {
-    await SOL_NTT_CONTRACT.setWormholeTransceiverPeer({
+    await targetInfo.manager.setWormholeTransceiverPeer({
       payer: SOL_PRIVATE_KEY,
       owner: SOL_PRIVATE_KEY,
       chain: coalesceChainName(peerInfo.chainId),
       address: Buffer.from(transceiverEmitter.substring(2), "hex"),
     });
-    await SOL_NTT_CONTRACT.setPeer({
+    await targetInfo.manager.setPeer({
       payer: SOL_PRIVATE_KEY,
       owner: SOL_PRIVATE_KEY,
       chain: coalesceChainName(peerInfo.chainId),
@@ -449,7 +457,7 @@ async function receive(
       SOL_PUBLIC_KEY,
       vaa
     );
-    const released = await SOL_NTT_CONTRACT.redeem({
+    const released = await chainDest.manager.redeem({
       payer: SOL_PRIVATE_KEY,
       vaa,
     });
@@ -471,12 +479,12 @@ async function getManagerAndUserBalance(
       await token.balanceOf(ETH_PUBLIC_KEY),
     ];
   } else if (chain.type === "solana") {
-    const mintAddress = await SOL_NTT_CONTRACT.mintAccountAddress();
+    const mintAddress = await chain.manager.mintAccountAddress();
     const associatedTokenAddress = spl.getAssociatedTokenAddressSync(
       mintAddress,
       SOL_PUBLIC_KEY
     );
-    const custodyAddress = await SOL_NTT_CONTRACT.custodyAccountAddress(
+    const custodyAddress = await chain.manager.custodyAccountAddress(
       mintAddress
     );
     return [
@@ -545,12 +553,12 @@ async function transferWithChecks(
       sourceChain.wormholeCoreAddress
     );
   } else if (sourceChain.type === "solana") {
-    const mintAddress = await SOL_NTT_CONTRACT.mintAccountAddress();
+    const mintAddress = await sourceChain.manager.mintAccountAddress();
     const associatedTokenAddress = spl.getAssociatedTokenAddressSync(
       mintAddress,
       SOL_PUBLIC_KEY
     );
-    const outboxItem = await SOL_NTT_CONTRACT.transfer({
+    const outboxItem = await sourceChain.manager.transfer({
       payer: SOL_PRIVATE_KEY,
       from: associatedTokenAddress,
       fromAuthority: SOL_PRIVATE_KEY,
@@ -563,7 +571,7 @@ async function transferWithChecks(
       shouldQueue: false,
     });
     const wormholeMessage =
-      SOL_NTT_CONTRACT.wormholeMessageAccountAddress(outboxItem);
+      sourceChain.manager.wormholeMessageAccountAddress(outboxItem);
     const wormholeMessageAccount = await SOL_CONNECTION.getAccountInfo(
       wormholeMessage
     );
@@ -573,7 +581,8 @@ async function transferWithChecks(
     const messageData = PostedMessageData.deserialize(
       wormholeMessageAccount.data
     );
-    emitterAddress = SOL_NTT_CONTRACT.emitterAccountAddress()
+    emitterAddress = sourceChain.manager
+      .emitterAccountAddress()
       .toBuffer()
       .toString("hex");
     sequence = messageData.message.sequence.toString();
@@ -634,6 +643,7 @@ async function transferWithChecks(
 }
 
 async function testEthHub() {
+  console.log("\n\n\n***\nEth Hub Test\n***");
   console.log("\nDeploying on eth-devnet");
   console.log("===============================================");
   const ethInfo = await deployEvm(ETH_SIGNER, "ethereum", "locking");
@@ -642,7 +652,10 @@ async function testEthHub() {
   const bscInfo = await deployEvm(BSC_SIGNER, "bsc", "burning");
   console.log("\nInitializing on solana-devnet");
   console.log("===============================================");
-  const solInfo = await initSolana("burning");
+  const solInfo = await initSolana(
+    "burning",
+    "NTTManager111111111111111111111111111111111"
+  );
   await link([ethInfo, bscInfo, solInfo]);
   console.log("\nStarting tests");
   console.log("========================");
@@ -662,4 +675,32 @@ async function testEthHub() {
   // TODO: corrupted or bad VAA usage
 }
 
-testEthHub();
+async function testSolanaHub() {
+  console.log("\n\n\n***\nSolana Hub Test\n***");
+  console.log("\nDeploying on eth-devnet");
+  console.log("===============================================");
+  const ethInfo = await deployEvm(ETH_SIGNER, "ethereum", "burning");
+  console.log("\nDeploying on eth-devnet2");
+  console.log("===============================================");
+  const bscInfo = await deployEvm(BSC_SIGNER, "bsc", "burning");
+  console.log("\nInitializing on solana-devnet");
+  console.log("===============================================");
+  const solInfo = await initSolana(
+    "locking",
+    "NTTManager222222222222222222222222222222222"
+  );
+  await link([ethInfo, bscInfo, solInfo]);
+  console.log("\nStarting tests");
+  console.log("========================");
+  console.log("Solana -> Eth -> BSC -> Solana");
+  await transferWithChecks(solInfo, ethInfo);
+  await transferWithChecks(ethInfo, bscInfo);
+  await transferWithChecks(bscInfo, solInfo);
+}
+
+async function test() {
+  await testEthHub();
+  await testSolanaHub();
+}
+
+test();
