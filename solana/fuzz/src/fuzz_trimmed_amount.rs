@@ -16,7 +16,7 @@ fn main() {
             let from = data[8];
             let to = data[9];
 
-            TrimmedAmount::trim(amount, from, to);
+            let _ = TrimmedAmount::trim(amount, from, to);
         });
     }
 }
