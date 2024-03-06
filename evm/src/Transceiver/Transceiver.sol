@@ -67,11 +67,6 @@ abstract contract Transceiver is
         _transferOwnership(newOwner);
     }
 
-    /// @dev pause the transceiver.
-    function _pauseTransceiver() internal {
-        _pause();
-    }
-
     function upgrade(address newImplementation) external onlyOwner {
         _upgrade(newImplementation);
     }

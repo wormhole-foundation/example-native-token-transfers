@@ -188,6 +188,10 @@ abstract contract NttManagerState is
         _pause();
     }
 
+    function unpause() public onlyOwnerOrPauser {
+        _unpause();
+    }
+
     /// @notice Transfer ownership of the Manager contract and all Endpoint contracts to a new owner.
     function transferOwnership(address newOwner) public override onlyOwner {
         super.transferOwnership(newOwner);
