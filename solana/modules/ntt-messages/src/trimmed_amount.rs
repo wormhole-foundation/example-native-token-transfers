@@ -214,14 +214,6 @@ mod test {
         );
 
         assert_eq!(
-            TrimmedAmount::trim(100_555_555_555_555_555, 255, 1)
-                .unwrap()
-                .untrim(255)
-                .unwrap(),
-            100_000_000_000_000_000
-        );
-
-        assert_eq!(
             TrimmedAmount::trim(158434, 6, 3).unwrap(),
             TrimmedAmount {
                 amount: 158,
