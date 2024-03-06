@@ -10,6 +10,7 @@ import "../src/interfaces/IRateLimiter.sol";
 import "../src/interfaces/INttManagerEvents.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
 import "../src/NttManager/TransceiverRegistry.sol";
+import "../src/libraries/PausableUpgradeable.sol";
 import {Utils} from "./libraries/Utils.sol";
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
@@ -164,6 +165,32 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
             abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, notOwner)
         );
         nttManager.transferOwnership(address(0x456));
+    }
+
+    function test_pauseUnpause() public {
+        assertEq(nttManager.isPaused(), false);
+        nttManager.pause();
+        assertEq(nttManager.isPaused(), true);
+
+        // When the NttManager is paused initiating transfers should not be allowed,
+        // as well as completing queued transfers on both source and destination chains
+        vm.expectRevert(
+            abi.encodeWithSelector(PausableUpgradeable.RequireContractIsNotPaused.selector)
+        );
+        nttManager.transfer(0, 0, bytes32(0));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(PausableUpgradeable.RequireContractIsNotPaused.selector)
+        );
+        nttManager.completeOutboundQueuedTransfer(0);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(PausableUpgradeable.RequireContractIsNotPaused.selector)
+        );
+        nttManager.completeInboundQueuedTransfer(bytes32(0));
+
+        nttManager.unpause();
+        assertEq(nttManager.isPaused(), false);
     }
 
     // === transceiver registration
