@@ -1,6 +1,8 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
-use ntt_messages::{ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage, errors::ScalingError};
+use ntt_messages::{
+    errors::ScalingError, ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage,
+};
 
 use crate::{
     bitmap::Bitmap,
@@ -101,9 +103,11 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     // Ideally this state should never be reached: the sender should avoid sending invalid
     // amounts when they would cause an error on the receiver.
     let amount = match message.payload.amount.untrim(accs.mint.decimals) {
-        Ok(amount)  => amount,
+        Ok(amount) => amount,
         Err(ScalingError::OverflowExponent) => return Err(error!(NTTError::OverflowExponent)),
-        Err(ScalingError::OverflowScaledAmount) => return Err(error!(NTTError::OverflowScaledAMount)),
+        Err(ScalingError::OverflowScaledAmount) => {
+            return Err(error!(NTTError::OverflowScaledAMount))
+        }
     };
 
     if !accs.inbox_item.init {

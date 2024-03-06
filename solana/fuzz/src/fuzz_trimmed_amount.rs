@@ -1,11 +1,13 @@
 use honggfuzz::fuzz;
 use ntt_messages::trimmed_amount::TrimmedAmount;
- 
+
 fn main() {
     loop {
         fuzz!(|data: &[u8]| {
             // Manually discard data that doesn't fit our inputs.
-            if data.len() != 10 { return }
+            if data.len() != 10 {
+                return;
+            }
 
             //  Convert first 8 bytes into a u64.
             let mut bytes = [0; 8];

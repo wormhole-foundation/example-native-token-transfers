@@ -12,7 +12,7 @@ use std::io;
 use crate::errors::ScalingError;
 
 #[cfg(feature = "anchor")]
-use anchor_lang::prelude::{borsh, AnchorSerialize, AnchorDeserialize, InitSpace};
+use anchor_lang::prelude::{borsh, AnchorDeserialize, AnchorSerialize, InitSpace};
 
 use wormhole_io::{Readable, Writeable};
 
@@ -70,7 +70,7 @@ impl TrimmedAmount {
         } else {
             // [`u64::checked_pow`] expects a u32 argument
             let power: u32 = (to_decimals - from_decimals).into();
-            
+
             // Safely initialize the scaling factor, or return custom error on overflow
             // Exponentiation will overflow u64 when `power` is greater than 18
             let scaling_factor: u64 = match 10u64.checked_pow(power) {
@@ -86,19 +86,21 @@ impl TrimmedAmount {
         }
     }
 
-    pub fn trim(amount: u64, from_decimals: u8, to_decimals: u8) -> Result<TrimmedAmount, ScalingError> {
+    pub fn trim(
+        amount: u64,
+        from_decimals: u8,
+        to_decimals: u8,
+    ) -> Result<TrimmedAmount, ScalingError> {
         let to_decimals = TRIMMED_DECIMALS.min(from_decimals).min(to_decimals);
         let amount = Self::scale(amount, from_decimals, to_decimals)?;
-        Ok (
-            Self {
-                amount,
-                decimals: to_decimals,
-            }
-        )
+        Ok(Self {
+            amount,
+            decimals: to_decimals,
+        })
     }
 
     pub fn untrim(&self, to_decimals: u8) -> Result<u64, ScalingError> {
-        let scaled_amount = Self::scale(self.amount, self.decimals, to_decimals)?; 
+        let scaled_amount = Self::scale(self.amount, self.decimals, to_decimals)?;
         Ok(scaled_amount)
     }
 
@@ -107,7 +109,11 @@ impl TrimmedAmount {
     /// The two amounts returned are equivalent, but (potentially) expressed in
     /// different decimals.
     /// Modifies `amount` as a side-effect.
-    pub fn remove_dust(amount: &mut u64, from_decimals: u8, to_decimals: u8) -> Result<TrimmedAmount, ScalingError> {
+    pub fn remove_dust(
+        amount: &mut u64,
+        from_decimals: u8,
+        to_decimals: u8,
+    ) -> Result<TrimmedAmount, ScalingError> {
         let trimmed = Self::trim(*amount, from_decimals, to_decimals)?;
         *amount = trimmed.untrim(from_decimals)?;
         Ok(trimmed)
@@ -159,7 +165,7 @@ mod test {
         // Check that the correct error is returned for exponent overflows.
         assert_eq!(
             Err(ScalingError::OverflowExponent),
-            TrimmedAmount::scale(100, 0, 255)    // to > from 
+            TrimmedAmount::scale(100, 0, 255) // to > from
         );
         assert_eq!(
             Err(ScalingError::OverflowExponent), // from > to
@@ -180,28 +186,41 @@ mod test {
     #[test]
     fn test_trim() {
         assert_eq!(
-            TrimmedAmount::trim(100_000_000_000_000_000, 18, 13).unwrap().amount(),
+            TrimmedAmount::trim(100_000_000_000_000_000, 18, 13)
+                .unwrap()
+                .amount(),
             10_000_000
         );
 
         // NOOP: 11 is reduced to 7, then returns just the amount.
         assert_eq!(
-            TrimmedAmount::trim(100_000_000_000_000_000, 7, 11).unwrap().amount(),
+            TrimmedAmount::trim(100_000_000_000_000_000, 7, 11)
+                .unwrap()
+                .amount(),
             100_000_000_000_000_000
         );
 
         assert_eq!(
-            TrimmedAmount::trim(100_555_555_555_555_555, 18, 9).unwrap().untrim(18).unwrap(),
+            TrimmedAmount::trim(100_555_555_555_555_555, 18, 9)
+                .unwrap()
+                .untrim(18)
+                .unwrap(),
             100_555_550_000_000_000
         );
 
         assert_eq!(
-            TrimmedAmount::trim(100_555_555_555_555_555, 18, 1).unwrap().untrim(18).unwrap(),
+            TrimmedAmount::trim(100_555_555_555_555_555, 18, 1)
+                .unwrap()
+                .untrim(18)
+                .unwrap(),
             100_000_000_000_000_000
         );
 
         assert_eq!(
-            TrimmedAmount::trim(100_555_555_555_555_555, 255, 1).unwrap().untrim(255).unwrap(),
+            TrimmedAmount::trim(100_555_555_555_555_555, 255, 1)
+                .unwrap()
+                .untrim(255)
+                .unwrap(),
             100_000_000_000_000_000
         );
 
@@ -218,7 +237,8 @@ mod test {
                 amount: 1,
                 decimals: 6,
             }
-            .untrim(13).unwrap(),
+            .untrim(13)
+            .unwrap(),
             10000000
         );
     }
