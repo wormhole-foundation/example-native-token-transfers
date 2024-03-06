@@ -17,6 +17,3 @@ solana-program = { workspace = true, optional = true }
 [dev-dependencies]
 
 hex.workspace = true
-
-[profile.test]
-overflow-checks = true
