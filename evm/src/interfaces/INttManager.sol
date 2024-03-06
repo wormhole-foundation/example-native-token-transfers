@@ -4,45 +4,49 @@ pragma solidity >=0.8.8 <0.9.0;
 import "../libraries/TrimmedAmount.sol";
 import "../libraries/TransceiverStructs.sol";
 
-import "./INttManagerState.sol";
+import "./IManagerBase.sol";
 
-interface INttManager is INttManagerState {
-    /// @notice The mode is either LOCKING or BURNING. In LOCKING mode, the NttManager locks the
-    ///         tokens of the sender and mints an equivalent amount on the target chain. In BURNING
-    ///         mode, the NttManager burns the tokens of the sender and mints an equivalent amount
-    ///         on the target chain.LOCKING mode preserves the total supply of the tokens.
-    enum Mode {
-        LOCKING,
-        BURNING
+interface INttManager is IManagerBase {
+    /// @dev The peer on another chain.
+    struct NttManagerPeer {
+        bytes32 peerAddress;
+        uint8 tokenDecimals;
     }
 
-    /// @notice Information about attestations for a given message.
-    /// @dev The fields are as follows:
-    ///      - executed: whether the message has been executed.
-    ///      - attested: bitmap of transceivers that have attested to this message.
-    ///                  (NOTE: might contain disabled transceivers)
-    struct AttestationInfo {
-        bool executed;
-        uint64 attestedTransceivers;
-    }
+    /// @notice Emitted when a message is sent from the nttManager.
+    /// @dev Topic0
+    ///      0x9716fe52fe4e02cf924ae28f19f5748ef59877c6496041b986fbad3dae6a8ecf
+    /// @param recipient The recipient of the message.
+    /// @param amount The amount transferred.
+    /// @param fee The amount of ether sent along with the tx to cover the delivery fee.
+    /// @param recipientChain The chain ID of the recipient.
+    /// @param msgSequence The unique sequence ID of the message.
+    event TransferSent(
+        bytes32 recipient, uint256 amount, uint256 fee, uint16 recipientChain, uint64 msgSequence
+    );
 
-    struct _Sequence {
-        uint64 num;
-    }
+    /// @notice Emitted when the peer contract is updated.
+    /// @dev Topic0
+    ///      0x1456404e7f41f35c3daac941bb50bad417a66275c3040061b4287d787719599d.
+    /// @param chainId_ The chain ID of the peer contract.
+    /// @param oldPeerContract The old peer contract address.
+    /// @param oldPeerDecimals The old peer contract decimals.
+    /// @param peerContract The new peer contract address.
+    /// @param peerDecimals The new peer contract decimals.
+    event PeerUpdated(
+        uint16 indexed chainId_,
+        bytes32 oldPeerContract,
+        uint8 oldPeerDecimals,
+        bytes32 peerContract,
+        uint8 peerDecimals
+    );
 
-    struct _Threshold {
-        uint8 num;
-    }
-
-    /// @notice payment for a transfer is too low.
-    /// @dev Selector 0xd523c6e0
-    /// @param requiredPayment The required payment.
-    /// @param providedPayment The provided payment.
-    error DeliveryPaymentTooLow(uint256 requiredPayment, uint256 providedPayment);
-
-    /// @notice There are no transceivers enabled with the NttManager
-    /// @dev Selector 0x69cf632a
-    error NoEnabledTransceivers();
+    /// @notice Emitted when a transfer has been redeemed
+    ///         (either minted or unlocked on the recipient chain).
+    /// @dev Topic0
+    ///      0x504e6efe18ab9eed10dc6501a417f5b12a2f7f2b1593aed9b89f9bce3cf29a91.
+    /// @param digest The digest of the message.
+    event TransferRedeemed(bytes32 indexed digest);
 
     /// @notice The transfer has some dust.
     /// @dev Selector 0x71f0634a
@@ -55,22 +59,6 @@ interface INttManager is INttManagerState {
     /// @dev Selector 0x66001a89
     /// @param mode The mode.
     error InvalidMode(uint8 mode);
-
-    /// @notice Error when the refund to the sender fails.
-    /// @dev Selector 0x2ca23714.
-    /// @param refundAmount The refund amount.
-    error RefundFailed(uint256 refundAmount);
-
-    /// @notice Error when the tranceiver already attested to the message.
-    ///         To ensure the client does not continue to initiate calls to the attestationReceived function.
-    /// @dev Selector 0x2113894.
-    /// @param nttManagerMessageHash The hash of the message.
-    error TransceiverAlreadyAttestedToMessage(bytes32 nttManagerMessageHash);
-
-    /// @notice Error when the message is not approved.
-    /// @dev Selector 0x451c4fb0.
-    /// @param msgHash The hash of the message.
-    error MessageNotApproved(bytes32 msgHash);
 
     /// @notice Error when trying to execute a message on an unintended target chain.
     /// @dev Selector 0x3dcb204a.
@@ -86,17 +74,29 @@ interface INttManager is INttManagerState {
     /// @dev Selector 0x9c8d2cd2.
     error InvalidRecipient();
 
-    /// @notice Error when the manager doesn't have a peer registered for the destination chain
-    /// @dev Selector 0x3af256bc.
-    /// @param chainId The target chain id
-    error PeerNotRegistered(uint16 chainId);
-
     /// @notice Error when the amount burned is different than the balance difference,
     ///         since NTT does not support burn fees.
     /// @dev Selector 0x02156a8f.
     /// @param burnAmount The amount burned.
     /// @param balanceDiff The balance after burning.
     error BurnAmountDifferentThanBalanceDiff(uint256 burnAmount, uint256 balanceDiff);
+
+    /// @notice The caller is not the deployer.
+    error UnexpectedDeployer(address expectedOwner, address owner);
+
+    /// @notice Peer for the chain does not match the configuration.
+    /// @param chainId ChainId of the source chain.
+    /// @param peerAddress Address of the peer nttManager contract.
+    error InvalidPeer(uint16 chainId, bytes32 peerAddress);
+
+    /// @notice Peer chain ID cannot be zero.
+    error InvalidPeerChainIdZero();
+
+    /// @notice Peer cannot be the zero address.
+    error InvalidPeerZeroAddress();
+
+    /// @notice Peer cannot have zero decimals.
+    error InvalidPeerDecimals();
 
     /// @notice Transfer a given amount to a recipient on a given chain. This function is called
     ///         by the user to send the token cross-chain. This function will either lock or burn the
@@ -142,15 +142,6 @@ interface INttManager is INttManagerState {
     /// @param digest The digest of the message to complete.
     function completeInboundQueuedTransfer(bytes32 digest) external;
 
-    /// @notice Fetch the delivery price for a given recipient chain transfer.
-    /// @param recipientChain The chain ID of the transfer destination.
-    /// @return - The delivery prices associated with each endpoint and the total price.
-    function quoteDeliveryPrice(
-        uint16 recipientChain,
-        TransceiverStructs.TransceiverInstruction[] memory transceiverInstructions,
-        address[] memory enabledTransceivers
-    ) external view returns (uint256[] memory, uint256);
-
     /// @notice Called by an Endpoint contract to deliver a verified attestation.
     /// @dev This function enforces attestation threshold and replay logic for messages. Once all
     ///      validations are complete, this function calls `executeMsg` to execute the command specified
@@ -181,4 +172,32 @@ interface INttManager is INttManagerState {
     /// @notice Returns the number of decimals of the token managed by the NttManager.
     /// @return decimals The number of decimals of the token.
     function tokenDecimals() external view returns (uint8);
+
+    /// @notice Returns registered peer contract for a given chain.
+    /// @param chainId_ chain ID.
+    function getPeer(uint16 chainId_) external view returns (NttManagerPeer memory);
+
+    /// @notice Sets the corresponding peer.
+    /// @dev The nttManager that executes the message sets the source nttManager as the peer.
+    /// @param peerChainId The chain ID of the peer.
+    /// @param peerContract The address of the peer nttManager contract.
+    /// @param decimals The number of decimals of the token on the peer chain.
+    /// @param inboundLimit The inbound rate limit for the peer chain id
+    function setPeer(
+        uint16 peerChainId,
+        bytes32 peerContract,
+        uint8 decimals,
+        uint256 inboundLimit
+    ) external;
+
+    /// @notice Sets the outbound transfer limit for a given chain.
+    /// @dev This method can only be executed by the `owner`.
+    /// @param limit The new outbound limit.
+    function setOutboundLimit(uint256 limit) external;
+
+    /// @notice Sets the inbound transfer limit for a given chain.
+    /// @dev This method can only be executed by the `owner`.
+    /// @param limit The new limit.
+    /// @param chainId The chain to set the limit for.
+    function setInboundLimit(uint256 limit, uint16 chainId) external;
 }

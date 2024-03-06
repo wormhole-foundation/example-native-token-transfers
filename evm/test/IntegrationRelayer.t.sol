@@ -8,7 +8,7 @@ import "../src/NttManager/NttManager.sol";
 import "../src/Transceiver/Transceiver.sol";
 import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
-import "../src/interfaces/INttManagerEvents.sol";
+import "../src/interfaces/IManagerBase.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
 import "../src/interfaces/IWormholeTransceiver.sol";
 import "../src/interfaces/IWormholeTransceiverState.sol";
@@ -65,7 +65,6 @@ contract TestEndToEndRelayerBase is Test {
 
 contract TestEndToEndRelayer is
     TestEndToEndRelayerBase,
-    INttManagerEvents,
     IRateLimiterEvents,
     WormholeRelayerBasicTest
 {
@@ -99,7 +98,7 @@ contract TestEndToEndRelayer is
         DummyToken t1 = new DummyToken();
 
         NttManager implementation = new MockNttManagerContract(
-            address(t1), INttManager.Mode.LOCKING, chainId1, 1 days, false
+            address(t1), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
         );
 
         nttManagerChain1 =
@@ -133,7 +132,7 @@ contract TestEndToEndRelayer is
         // Chain 2 setup
         DummyToken t2 = new DummyTokenMintAndBurn();
         NttManager implementationChain2 = new MockNttManagerContract(
-            address(t2), INttManager.Mode.BURNING, chainId2, 1 days, false
+            address(t2), IManagerBase.Mode.BURNING, chainId2, 1 days, false
         );
 
         nttManagerChain2 =
@@ -249,7 +248,7 @@ contract TestEndToEndRelayer is
             // Not enough in gas costs from the 'quote'.
             vm.expectRevert(
                 abi.encodeWithSelector(
-                    INttManager.DeliveryPaymentTooLow.selector, priceQuote1, priceQuote1 - 1
+                    IManagerBase.DeliveryPaymentTooLow.selector, priceQuote1, priceQuote1 - 1
                 )
             );
             nttManagerChain1.transfer{value: priceQuote1 - 1}(
@@ -450,11 +449,7 @@ contract TestEndToEndRelayer is
     }
 }
 
-contract TestRelayerEndToEndManual is
-    TestEndToEndRelayerBase,
-    INttManagerEvents,
-    IRateLimiterEvents
-{
+contract TestRelayerEndToEndManual is TestEndToEndRelayerBase, IRateLimiterEvents {
     NttManager nttManagerChain1;
     NttManager nttManagerChain2;
 
@@ -489,7 +484,7 @@ contract TestRelayerEndToEndManual is
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
         NttManager implementation = new MockNttManagerContract(
-            address(t1), INttManager.Mode.LOCKING, chainId1, 1 days, false
+            address(t1), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
         );
 
         nttManagerChain1 =
@@ -517,7 +512,7 @@ contract TestRelayerEndToEndManual is
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
         NttManager implementationChain2 = new MockNttManagerContract(
-            address(t2), INttManager.Mode.BURNING, chainId2, 1 days, false
+            address(t2), IManagerBase.Mode.BURNING, chainId2, 1 days, false
         );
 
         nttManagerChain2 =
@@ -609,7 +604,7 @@ contract TestRelayerEndToEndManual is
         // bad nttManager peer
         vm.expectRevert(
             abi.encodeWithSelector(
-                INttManagerState.InvalidPeer.selector, chainId1, address(nttManagerChain1)
+                INttManager.InvalidPeer.selector, chainId1, address(nttManagerChain1)
             )
         );
         wormholeTransceiverChain2.receiveWormholeMessages(

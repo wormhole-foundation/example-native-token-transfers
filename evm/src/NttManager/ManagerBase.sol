@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.8 <0.9.0;
 
-import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-
 import "wormhole-solidity-sdk/Utils.sol";
 import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 
@@ -12,69 +8,38 @@ import "../libraries/external/OwnableUpgradeable.sol";
 import "../libraries/external/ReentrancyGuardUpgradeable.sol";
 import "../libraries/TransceiverStructs.sol";
 import "../libraries/TransceiverHelpers.sol";
-import "../libraries/RateLimiter.sol";
 import "../libraries/PausableOwnable.sol";
 import "../libraries/Implementation.sol";
-import "../libraries/TrimmedAmount.sol";
 
-import "../interfaces/INttManager.sol";
-import "../interfaces/INttManagerState.sol";
-import "../interfaces/INttManagerEvents.sol";
-import "../interfaces/INTTToken.sol";
 import "../interfaces/ITransceiver.sol";
+import "../interfaces/IManagerBase.sol";
 
 import "./TransceiverRegistry.sol";
 
-abstract contract NttManagerState is
-    INttManagerState,
-    INttManagerEvents,
-    RateLimiter,
+abstract contract ManagerBase is
+    IManagerBase,
     TransceiverRegistry,
     PausableOwnable,
     ReentrancyGuardUpgradeable,
     Implementation
 {
-    using TrimmedAmountLib for uint256;
-    using TrimmedAmountLib for TrimmedAmount;
     // =============== Immutables ============================================================
 
     address public immutable token;
     address immutable deployer;
-    INttManager.Mode public immutable mode;
+    Mode public immutable mode;
     uint16 public immutable chainId;
     uint256 immutable evmChainId;
 
     // =============== Setup =================================================================
 
-    constructor(
-        address _token,
-        INttManager.Mode _mode,
-        uint16 _chainId,
-        uint64 _rateLimitDuration,
-        bool _skipRateLimiting
-    ) RateLimiter(_rateLimitDuration, _skipRateLimiting) {
+    constructor(address _token, Mode _mode, uint16 _chainId) {
         token = _token;
         mode = _mode;
         chainId = _chainId;
         evmChainId = block.chainid;
         // save the deployer (check this on initialization)
         deployer = msg.sender;
-    }
-
-    function __NttManager_init() internal onlyInitializing {
-        // check if the owner is the deployer of this contract
-        if (msg.sender != deployer) {
-            revert UnexpectedDeployer(deployer, msg.sender);
-        }
-        __PausedOwnable_init(msg.sender, msg.sender);
-        __ReentrancyGuard_init();
-        _setOutboundLimit(TrimmedAmountLib.max(tokenDecimals()));
-    }
-
-    function _initialize() internal virtual override {
-        __NttManager_init();
-        _checkThresholdInvariants();
-        _checkTransceiversInvariants();
     }
 
     function _migrate() internal virtual override {
@@ -90,13 +55,11 @@ abstract contract NttManagerState is
     bytes32 private constant MESSAGE_SEQUENCE_SLOT =
         bytes32(uint256(keccak256("ntt.messageSequence")) - 1);
 
-    bytes32 private constant PEERS_SLOT = bytes32(uint256(keccak256("ntt.peers")) - 1);
-
     bytes32 private constant THRESHOLD_SLOT = bytes32(uint256(keccak256("ntt.threshold")) - 1);
 
     // =============== Storage Getters/Setters ==============================================
 
-    function _getThresholdStorage() private pure returns (INttManager._Threshold storage $) {
+    function _getThresholdStorage() private pure returns (_Threshold storage $) {
         uint256 slot = uint256(THRESHOLD_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
@@ -106,7 +69,7 @@ abstract contract NttManagerState is
     function _getMessageAttestationsStorage()
         internal
         pure
-        returns (mapping(bytes32 => INttManager.AttestationInfo) storage $)
+        returns (mapping(bytes32 => AttestationInfo) storage $)
     {
         uint256 slot = uint256(MESSAGE_ATTESTATIONS_SLOT);
         assembly ("memory-safe") {
@@ -114,76 +77,218 @@ abstract contract NttManagerState is
         }
     }
 
-    function _getMessageSequenceStorage() internal pure returns (INttManager._Sequence storage $) {
+    function _getMessageSequenceStorage() internal pure returns (_Sequence storage $) {
         uint256 slot = uint256(MESSAGE_SEQUENCE_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
         }
     }
 
-    function _getPeersStorage()
+    // =============== External Logic =============================================================
+
+    /// @inheritdoc IManagerBase
+    function quoteDeliveryPrice(
+        uint16 recipientChain,
+        TransceiverStructs.TransceiverInstruction[] memory transceiverInstructions,
+        address[] memory enabledTransceivers
+    ) public view returns (uint256[] memory, uint256) {
+        uint256 numEnabledTransceivers = enabledTransceivers.length;
+        mapping(address => TransceiverInfo) storage transceiverInfos = _getTransceiverInfosStorage();
+
+        uint256[] memory priceQuotes = new uint256[](numEnabledTransceivers);
+        uint256 totalPriceQuote = 0;
+        for (uint256 i = 0; i < numEnabledTransceivers; i++) {
+            address transceiverAddr = enabledTransceivers[i];
+            uint8 registeredTransceiverIndex = transceiverInfos[transceiverAddr].index;
+            uint256 transceiverPriceQuote = ITransceiver(transceiverAddr).quoteDeliveryPrice(
+                recipientChain, transceiverInstructions[registeredTransceiverIndex]
+            );
+            priceQuotes[i] = transceiverPriceQuote;
+            totalPriceQuote += transceiverPriceQuote;
+        }
+        return (priceQuotes, totalPriceQuote);
+    }
+
+    // =============== Internal Logic ===========================================================
+
+    function _recordTransceiverAttestation(
+        uint16 sourceChainId,
+        TransceiverStructs.NttManagerMessage memory payload
+    ) internal returns (bytes32) {
+        bytes32 nttManagerMessageHash =
+            TransceiverStructs.nttManagerMessageDigest(sourceChainId, payload);
+
+        // set the attested flag for this transceiver.
+        // NOTE: Attestation is idempotent (bitwise or 1), but we revert
+        // anyway to ensure that the client does not continue to initiate calls
+        // to receive the same message through the same transceiver.
+        if (
+            transceiverAttestedToMessage(
+                nttManagerMessageHash, _getTransceiverInfosStorage()[msg.sender].index
+            )
+        ) {
+            revert TransceiverAlreadyAttestedToMessage(nttManagerMessageHash);
+        }
+        _setTransceiverAttestedToMessage(nttManagerMessageHash, msg.sender);
+
+        return nttManagerMessageHash;
+    }
+
+    function _isMessageExecuted(
+        uint16 sourceChainId,
+        bytes32 sourceNttManagerAddress,
+        TransceiverStructs.NttManagerMessage memory message
+    ) internal returns (bytes32, bool) {
+        bytes32 digest = TransceiverStructs.nttManagerMessageDigest(sourceChainId, message);
+
+        if (!isMessageApproved(digest)) {
+            revert MessageNotApproved(digest);
+        }
+
+        bool msgAlreadyExecuted = _replayProtect(digest);
+        if (msgAlreadyExecuted) {
+            // end execution early to mitigate the possibility of race conditions from transceivers
+            // attempting to deliver the same message when (threshold < number of transceiver messages)
+            // notify client (off-chain process) so they don't attempt redundant msg delivery
+            emit MessageAlreadyExecuted(sourceNttManagerAddress, digest);
+            return (bytes32(0), msgAlreadyExecuted);
+        }
+
+        return (digest, msgAlreadyExecuted);
+    }
+
+    function _sendMessageToTransceivers(
+        uint16 recipientChain,
+        bytes32 peerAddress,
+        uint256[] memory priceQuotes,
+        TransceiverStructs.TransceiverInstruction[] memory transceiverInstructions,
+        address[] memory enabledTransceivers,
+        bytes memory nttManagerMessage
+    ) internal {
+        uint256 numEnabledTransceivers = enabledTransceivers.length;
+        mapping(address => TransceiverInfo) storage transceiverInfos = _getTransceiverInfosStorage();
+
+        if (peerAddress == bytes32(0)) {
+            revert PeerNotRegistered(recipientChain);
+        }
+
+        // call into transceiver contracts to send the message
+        for (uint256 i = 0; i < numEnabledTransceivers; i++) {
+            address transceiverAddr = enabledTransceivers[i];
+            // send it to the recipient nttManager based on the chain
+            ITransceiver(transceiverAddr).sendMessage{value: priceQuotes[i]}(
+                recipientChain,
+                transceiverInstructions[transceiverInfos[transceiverAddr].index],
+                nttManagerMessage,
+                peerAddress
+            );
+        }
+    }
+
+    function _prepareForTransfer(
+        uint16 recipientChain,
+        bytes memory transceiverInstructions
+    )
         internal
-        pure
-        returns (mapping(uint16 => NttManagerPeer) storage $)
+        returns (
+            address[] memory,
+            TransceiverStructs.TransceiverInstruction[] memory,
+            uint256[] memory,
+            uint256
+        )
     {
-        uint256 slot = uint256(PEERS_SLOT);
-        assembly ("memory-safe") {
-            $.slot := slot
+        // cache enabled transceivers to avoid multiple storage reads
+        address[] memory enabledTransceivers = _getEnabledTransceiversStorage();
+
+        TransceiverStructs.TransceiverInstruction[] memory instructions;
+
+        {
+            uint256 numEnabledTransceivers = enabledTransceivers.length;
+
+            if (numEnabledTransceivers == 0) {
+                revert NoEnabledTransceivers();
+            }
+
+            instructions = TransceiverStructs.parseTransceiverInstructions(
+                transceiverInstructions, numEnabledTransceivers
+            );
+        }
+
+        (uint256[] memory priceQuotes, uint256 totalPriceQuote) =
+            quoteDeliveryPrice(recipientChain, instructions, enabledTransceivers);
+        {
+            // check up front that msg.value will cover the delivery price
+            if (msg.value < totalPriceQuote) {
+                revert DeliveryPaymentTooLow(totalPriceQuote, msg.value);
+            }
+
+            // refund user extra excess value from msg.value
+            uint256 excessValue = msg.value - totalPriceQuote;
+            if (excessValue > 0) {
+                _refundToSender(excessValue);
+            }
+        }
+
+        return (enabledTransceivers, instructions, priceQuotes, totalPriceQuote);
+    }
+
+    function _refundToSender(uint256 refundAmount) internal {
+        // refund the price quote back to sender
+        (bool refundSuccessful,) = payable(msg.sender).call{value: refundAmount}("");
+
+        // check success
+        if (!refundSuccessful) {
+            revert RefundFailed(refundAmount);
         }
     }
 
     // =============== Public Getters ========================================================
 
-    /// @inheritdoc INttManagerState
+    /// @inheritdoc IManagerBase
     function getMode() public view returns (uint8) {
         return uint8(mode);
     }
 
-    /// @inheritdoc INttManagerState
+    /// @inheritdoc IManagerBase
     function getThreshold() public view returns (uint8) {
         return _getThresholdStorage().num;
     }
 
-    /// @inheritdoc INttManagerState
+    /// @inheritdoc IManagerBase
     function isMessageApproved(bytes32 digest) public view returns (bool) {
         uint8 threshold = getThreshold();
         return messageAttestations(digest) >= threshold && threshold > 0;
     }
 
-    /// @inheritdoc INttManagerState
+    /// @inheritdoc IManagerBase
     function nextMessageSequence() external view returns (uint64) {
         return _getMessageSequenceStorage().num;
     }
 
-    /// @inheritdoc INttManagerState
+    /// @inheritdoc IManagerBase
     function isMessageExecuted(bytes32 digest) public view returns (bool) {
         return _getMessageAttestationsStorage()[digest].executed;
     }
 
-    /// @inheritdoc INttManagerState
-    function getPeer(uint16 chainId_) external view returns (NttManagerPeer memory) {
-        return _getPeersStorage()[chainId_];
-    }
-
-    /// @inheritdoc INttManagerState
+    /// @inheritdoc IManagerBase
     function transceiverAttestedToMessage(bytes32 digest, uint8 index) public view returns (bool) {
         return
             _getMessageAttestationsStorage()[digest].attestedTransceivers & uint64(1 << index) > 0;
     }
 
-    /// @inheritdoc INttManagerState
+    /// @inheritdoc IManagerBase
     function messageAttestations(bytes32 digest) public view returns (uint8 count) {
         return countSetBits(_getMessageAttestations(digest));
     }
 
-    // =============== ADMIN ==============================================================
+    // =============== Admin ==============================================================
 
-    /// @inheritdoc INttManagerState
+    /// @inheritdoc IManagerBase
     function upgrade(address newImplementation) external onlyOwner {
         _upgrade(newImplementation);
     }
 
-    /// @inheritdoc INttManagerState
+    /// @inheritdoc IManagerBase
     function pause() public onlyOwnerOrPauser {
         _pause();
     }
@@ -192,7 +297,7 @@ abstract contract NttManagerState is
         _unpause();
     }
 
-    /// @notice Transfer ownership of the Manager contract and all Endpoint contracts to a new owner.
+    /// @notice Transfer ownership of the Manager contract and all Transceiver contracts to a new owner.
     function transferOwnership(address newOwner) public override onlyOwner {
         super.transferOwnership(newOwner);
         // loop through all the registered transceivers and set the new owner of each transceiver to the newOwner
@@ -204,11 +309,11 @@ abstract contract NttManagerState is
         }
     }
 
-    /// @inheritdoc INttManagerState
+    /// @inheritdoc IManagerBase
     function setTransceiver(address transceiver) external onlyOwner {
         _setTransceiver(transceiver);
 
-        INttManager._Threshold storage _threshold = _getThresholdStorage();
+        _Threshold storage _threshold = _getThresholdStorage();
         // We do not automatically increase the threshold here.
         // Automatically increasing the threshold can result in a scenario
         // where in-flight messages can't be redeemed.
@@ -229,11 +334,11 @@ abstract contract NttManagerState is
         emit TransceiverAdded(transceiver, _getNumTransceiversStorage().enabled, _threshold.num);
     }
 
-    /// @inheritdoc INttManagerState
+    /// @inheritdoc IManagerBase
     function removeTransceiver(address transceiver) external onlyOwner {
         _removeTransceiver(transceiver);
 
-        INttManager._Threshold storage _threshold = _getThresholdStorage();
+        _Threshold storage _threshold = _getThresholdStorage();
         uint8 numEnabledTransceivers = _getNumTransceiversStorage().enabled;
 
         if (numEnabledTransceivers < _threshold.num) {
@@ -243,61 +348,19 @@ abstract contract NttManagerState is
         emit TransceiverRemoved(transceiver, _threshold.num);
     }
 
-    /// @inheritdoc INttManagerState
+    /// @inheritdoc IManagerBase
     function setThreshold(uint8 threshold) external onlyOwner {
         if (threshold == 0) {
             revert ZeroThreshold();
         }
 
-        INttManager._Threshold storage _threshold = _getThresholdStorage();
+        _Threshold storage _threshold = _getThresholdStorage();
         uint8 oldThreshold = _threshold.num;
 
         _threshold.num = threshold;
         _checkThresholdInvariants();
 
         emit ThresholdChanged(oldThreshold, threshold);
-    }
-
-    /// @inheritdoc INttManagerState
-    function setPeer(
-        uint16 peerChainId,
-        bytes32 peerContract,
-        uint8 decimals,
-        uint256 inboundLimit
-    ) public onlyOwner {
-        if (peerChainId == 0) {
-            revert InvalidPeerChainIdZero();
-        }
-        if (peerContract == bytes32(0)) {
-            revert InvalidPeerZeroAddress();
-        }
-        if (decimals == 0) {
-            revert InvalidPeerDecimals();
-        }
-
-        NttManagerPeer memory oldPeer = _getPeersStorage()[peerChainId];
-
-        _getPeersStorage()[peerChainId].peerAddress = peerContract;
-        _getPeersStorage()[peerChainId].tokenDecimals = decimals;
-
-        uint8 tokenDecimals = tokenDecimals();
-        _setInboundLimit(inboundLimit.trim(tokenDecimals, tokenDecimals), peerChainId);
-
-        emit PeerUpdated(
-            peerChainId, oldPeer.peerAddress, oldPeer.tokenDecimals, peerContract, decimals
-        );
-    }
-
-    /// @inheritdoc INttManagerState
-    function setOutboundLimit(uint256 limit) external onlyOwner {
-        uint8 tokenDecimals = tokenDecimals();
-        _setOutboundLimit(limit.trim(tokenDecimals, tokenDecimals));
-    }
-
-    /// @inheritdoc INttManagerState
-    function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
-        uint8 tokenDecimals = tokenDecimals();
-        _setInboundLimit(limit.trim(tokenDecimals, tokenDecimals), chainId_);
     }
 
     // =============== Internal ==============================================================
@@ -328,13 +391,6 @@ abstract contract NttManagerState is
         return _getMessageAttestations(digest) & uint64(1 << index) != 0;
     }
 
-    /// @dev Verify that the peer address saved for `sourceChainId` matches the `peerAddress`.
-    function _verifyPeer(uint16 sourceChainId, bytes32 peerAddress) internal view {
-        if (_getPeersStorage()[sourceChainId].peerAddress != peerAddress) {
-            revert InvalidPeer(sourceChainId, peerAddress);
-        }
-    }
-
     // @dev Mark a message as executed.
     // This function will retuns `true` if the message has already been executed.
     function _replayProtect(bytes32 digest) internal returns (bool) {
@@ -357,11 +413,10 @@ abstract contract NttManagerState is
     /// ============== Invariants =============================================
 
     /// @dev When we add new immutables, this function should be updated
-    function _checkImmutables() internal view override {
+    function _checkImmutables() internal view virtual override {
         assert(this.token() == token);
         assert(this.mode() == mode);
         assert(this.chainId() == chainId);
-        assert(this.rateLimitDuration() == rateLimitDuration);
     }
 
     function _checkRegisteredTransceiversInvariants() internal view {
