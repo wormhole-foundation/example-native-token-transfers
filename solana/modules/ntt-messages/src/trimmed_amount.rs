@@ -9,8 +9,10 @@
 
 use std::io;
 
+use crate::errors::ScalingError;
+
 #[cfg(feature = "anchor")]
-use anchor_lang::prelude::*;
+use anchor_lang::prelude::{borsh, AnchorSerialize, AnchorDeserialize, InitSpace};
 
 use wormhole_io::{Readable, Writeable};
 
@@ -40,47 +42,67 @@ impl TrimmedAmount {
         Self { amount, decimals }
     }
 
-    pub fn change_decimals(&self, new_decimals: u8) -> Self {
+    pub fn change_decimals(&self, new_decimals: u8) -> Result<Self, ScalingError> {
         if new_decimals == self.decimals {
-            return *self;
+            return Ok(*self);
         }
-        Self {
-            amount: self.untrim(new_decimals),
+        let amount = self.untrim(new_decimals)?;
+        Ok(Self {
+            amount,
             decimals: new_decimals,
-        }
+        })
     }
 
-    fn scale(amount: u64, from_decimals: u8, to_decimals: u8) -> u64 {
+    fn scale(amount: u64, from_decimals: u8, to_decimals: u8) -> Result<u64, ScalingError> {
         if from_decimals == to_decimals {
-            return amount;
+            return Ok(amount);
         }
         if from_decimals > to_decimals {
-            amount / 10u64.pow((from_decimals - to_decimals).into())
+            Ok(amount / 10u64.pow((from_decimals - to_decimals).into()))
         } else {
-            amount * 10u64.pow((to_decimals - from_decimals).into())
+            // [`u64::checked_pow`] expects a u32 argument
+            let power: u32 = (to_decimals - from_decimals).into();
+            
+            // Safely initialize the scaling factor, or return custom error on overflow
+            // Exponentiation will overflow u64 when `power` is greater than 18
+            let scaling_factor: u64 = match 10u64.checked_pow(power) {
+                Some(scaling_factor) => scaling_factor,
+                None => return Err(ScalingError::OverflowExponent),
+            };
+
+            // Return Result: scaled_amount or custom error on overflow
+            match amount.checked_mul(scaling_factor) {
+                Some(scaled_amount) => Ok(scaled_amount),
+                None => Err(ScalingError::OverflowScaledAmount),
+            }
         }
     }
 
-    pub fn trim(amount: u64, from_decimals: u8, to_decimals: u8) -> TrimmedAmount {
+    pub fn trim(amount: u64, from_decimals: u8, to_decimals: u8) -> Result<TrimmedAmount, ScalingError> {
         let to_decimals = TRIMMED_DECIMALS.min(from_decimals).min(to_decimals);
-        Self {
-            amount: Self::scale(amount, from_decimals, to_decimals),
-            decimals: to_decimals,
-        }
+        let amount = Self::scale(amount, from_decimals, to_decimals)?;
+        Ok (
+            Self {
+                amount,
+                decimals: to_decimals,
+            }
+        )
     }
 
-    pub fn untrim(&self, to_decimals: u8) -> u64 {
-        Self::scale(self.amount, self.decimals, to_decimals)
+    pub fn untrim(&self, to_decimals: u8) -> Result<u64, ScalingError> {
+        let scaled_amount = Self::scale(self.amount, self.decimals, to_decimals)?; 
+        Ok(scaled_amount)
     }
 
-    /// Removes dust from an amount, returning the the amount with the removed
+    /// Removes dust from an amount, returning the amount with the removed
     /// dust (expressed in the original decimals) and the trimmed amount.
     /// The two amounts returned are equivalent, but (potentially) expressed in
     /// different decimals.
-    pub fn remove_dust(amount: &mut u64, from_decimals: u8, to_decimals: u8) -> TrimmedAmount {
-        let trimmed = Self::trim(*amount, from_decimals, to_decimals);
-        *amount = trimmed.untrim(from_decimals);
-        trimmed
+    /// Modifies `amount` as a side-effect.
+    pub fn remove_dust(amount: &mut u64, from_decimals: u8, to_decimals: u8) -> Result<TrimmedAmount, ScalingError> {
+        let trimmed = Self::trim(*amount, from_decimals, to_decimals)?;
+        *amount = trimmed.untrim(from_decimals)?;
+        Ok(trimmed)
     }
 
     pub fn amount(&self) -> u64 {
@@ -125,29 +147,55 @@ mod test {
     use super::*;
 
     #[test]
+    fn test_scale_overflow_exponent() {
+        // Exponent overflow for [`scale`]. To trigger this code path, toDecimals must be greater than
+        // fromDecimals.
+        assert_eq!(
+            Err(ScalingError::OverflowExponent),
+            TrimmedAmount::scale(100, 0, 255)
+        );
+    }
+
+    #[test]
+    fn test_scale_overflow_scaled_amount() {
+        // Amount calculation overflow for [`scale`]. To trigger this code path, toDecimals must be greater than
+        // fromDecimals.
+        assert_eq!(
+            Err(ScalingError::OverflowScaledAmount),
+            TrimmedAmount::scale(u64::MAX, 10, 11)
+        );
+    }
+
+    #[test]
     fn test_trim() {
         assert_eq!(
-            TrimmedAmount::trim(100_000_000_000_000_000, 18, 13).amount(),
+            TrimmedAmount::trim(100_000_000_000_000_000, 18, 13).unwrap().amount(),
             10_000_000
         );
 
+        // NOOP: 11 is reduced to 7, then returns just the amount.
         assert_eq!(
-            TrimmedAmount::trim(100_000_000_000_000_000, 7, 11).amount(),
+            TrimmedAmount::trim(100_000_000_000_000_000, 7, 11).unwrap().amount(),
             100_000_000_000_000_000
         );
 
         assert_eq!(
-            TrimmedAmount::trim(100_555_555_555_555_555, 18, 9).untrim(18),
+            TrimmedAmount::trim(100_555_555_555_555_555, 18, 9).unwrap().untrim(18).unwrap(),
             100_555_550_000_000_000
         );
 
         assert_eq!(
-            TrimmedAmount::trim(100_555_555_555_555_555, 18, 1).untrim(18),
+            TrimmedAmount::trim(100_555_555_555_555_555, 18, 1).unwrap().untrim(18).unwrap(),
             100_000_000_000_000_000
         );
 
         assert_eq!(
-            TrimmedAmount::trim(158434, 6, 3),
+            TrimmedAmount::trim(100_555_555_555_555_555, 255, 1).unwrap().untrim(255).unwrap(),
+            100_000_000_000_000_000
+        );
+
+        assert_eq!(
+            TrimmedAmount::trim(158434, 6, 3).unwrap(),
             TrimmedAmount {
                 amount: 158,
                 decimals: 3
@@ -159,7 +207,7 @@ mod test {
                 amount: 1,
                 decimals: 6,
             }
-            .untrim(13),
+            .untrim(13).unwrap(),
             10000000
         );
     }

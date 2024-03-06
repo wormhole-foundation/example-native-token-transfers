@@ -35,4 +35,8 @@ pub enum NTTError {
     DisabledTransceiver,
     #[msg("InvalidDeployer")]
     InvalidDeployer,
+    #[msg("OverflowExponent")]
+    OverflowExponent,
+    #[msg("OverflowScaledAmount")]
+    OverflowScaledAMount,
 }
