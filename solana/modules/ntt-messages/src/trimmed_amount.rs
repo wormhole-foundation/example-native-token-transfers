@@ -61,10 +61,7 @@ impl TrimmedAmount {
             // [`u64::checked_pow`] expects a u32 argument
             let power: u32 = (from_decimals - to_decimals).into();
             // Exponentiation will overflow u64 when `power` is greater than 18
-            let scaling_factor: u64 = match 10u64.checked_pow(power) {
-                Some(scaling_factor) => scaling_factor,
-                None => return Err(ScalingError::OverflowExponent),
-            };
+            let scaling_factor: u64 = 10u64.checked_pow(power).ok_or(ScalingError::OverflowExponent)?;
 
             Ok(amount / scaling_factor)
         } else {
@@ -73,10 +70,7 @@ impl TrimmedAmount {
 
             // Safely initialize the scaling factor, or return custom error on overflow
             // Exponentiation will overflow u64 when `power` is greater than 18
-            let scaling_factor: u64 = match 10u64.checked_pow(power) {
-                Some(scaling_factor) => scaling_factor,
-                None => return Err(ScalingError::OverflowExponent),
-            };
+            let scaling_factor: u64 = 10u64.checked_pow(power).ok_or(ScalingError::OverflowExponent)?;
 
             // Return Result: scaled_amount or custom error on overflow
             match amount.checked_mul(scaling_factor) {
@@ -100,8 +94,7 @@ impl TrimmedAmount {
     }
 
     pub fn untrim(&self, to_decimals: u8) -> Result<u64, ScalingError> {
-        let scaled_amount = Self::scale(self.amount, self.decimals, to_decimals)?;
-        Ok(scaled_amount)
+        Self::scale(self.amount, self.decimals, to_decimals)
     }
 
     /// Removes dust from an amount, returning the amount with the removed
