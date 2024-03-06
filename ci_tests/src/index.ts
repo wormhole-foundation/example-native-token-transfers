@@ -44,7 +44,7 @@ import solanaTiltKey from "./solana-tilt.json"; // from https://github.com/wormh
 // - v5 does not parse the errors from ganache correctly (v6 does)
 // - there are intermittent nonce errors, even following a `.wait()` (see `tryAndWaitThrice`)
 
-// Chain details to keep track of during the testing
+type Mode = "locking" | "burning";
 type ChainDetails = EVMChainDetails | SolanaChainDetails;
 interface EVMChainDetails extends BaseDetails {
   type: "evm";
@@ -57,6 +57,7 @@ interface SolanaChainDetails extends BaseDetails {
 interface BaseDetails {
   chainId: ChainId;
   chainName: ChainName;
+  mode: Mode;
   transceiverAddress: string;
   managerAddress: string;
   NTTTokenAddress: string;
@@ -151,7 +152,7 @@ async function tryAndWaitThrice(
 async function deployEvm(
   signer: Wallet,
   chainName: ChainName,
-  lockingMode: boolean
+  mode: Mode
 ): Promise<EVMChainDetails> {
   // Deploy libraries used by various things
   console.log("Deploying libraries of transceiverStructs and trimmedAmounts");
@@ -162,9 +163,15 @@ async function deployEvm(
   const trimmedAmountContract = await trimmedAmountFactory.deploy();
 
   // Deploy the NTT token
-  const NTTAddress = await new (lockingMode
+  const NTTAddress = await new (mode === "locking"
     ? DummyToken__factory
     : DummyTokenMintAndBurn__factory)(signer).deploy();
+
+  if (mode === "locking") {
+    await tryAndWaitThrice(() =>
+      NTTAddress.mintDummy(ETH_PUBLIC_KEY, utils.parseEther("100"))
+    );
+  }
 
   const transceiverStructsAddress = await transceiverStructsContract.address;
   const trimmedAmountAddress = await trimmedAmountContract.address;
@@ -184,7 +191,7 @@ async function deployEvm(
   const wormholeManager = new NttManager__factory(myObj, signer);
   const managerAddress = await wormholeManager.deploy(
     ERC20NTTAddress, // Token address
-    lockingMode ? 0 : 1, // Lock
+    mode === "locking" ? 0 : 1, // Lock
     chainId, // chain id
     0, // Locking time
     true
@@ -249,6 +256,7 @@ async function deployEvm(
     type: "evm",
     chainId,
     chainName,
+    mode,
     transceiverAddress: transceiverProxyAddress.address,
     managerAddress: managerProxyAddress.address,
     NTTTokenAddress: ERC20NTTAddress,
@@ -257,7 +265,7 @@ async function deployEvm(
   };
 }
 
-async function initSolana(lockingMode: boolean): Promise<SolanaChainDetails> {
+async function initSolana(mode: Mode): Promise<SolanaChainDetails> {
   console.log("Using public key", SOL_PUBLIC_KEY.toString());
   const mint = await spl.createMint(
     SOL_CONNECTION,
@@ -274,7 +282,7 @@ async function initSolana(lockingMode: boolean): Promise<SolanaChainDetails> {
     SOL_PUBLIC_KEY
   );
   console.log("Created token account", tokenAccount.toString());
-  if (lockingMode) {
+  if (mode === "locking") {
     await spl.mintTo(
       SOL_CONNECTION,
       SOL_PRIVATE_KEY,
@@ -304,7 +312,7 @@ async function initSolana(lockingMode: boolean): Promise<SolanaChainDetails> {
     chain: "solana",
     mint,
     outboundLimit: new BN(1000000000),
-    mode: lockingMode ? "locking" : "burning",
+    mode,
   });
   console.log(
     "Initialized ntt at",
@@ -322,6 +330,7 @@ async function initSolana(lockingMode: boolean): Promise<SolanaChainDetails> {
     type: "solana",
     chainId: 1,
     chainName: "solana",
+    mode,
     transceiverAddress: SOL_NTT_CONTRACT.emitterAccountAddress().toString(),
     managerAddress: SOL_NTT_CONTRACT.program.programId.toString(),
     NTTTokenAddress: mint.toString(),
@@ -449,36 +458,54 @@ async function receive(
   }
 }
 
-async function transferWithChecks(
-  sourceChain: ChainDetails,
-  destinationChain: ChainDetails,
-  shouldPreMint: boolean,
-  sourceBurn: boolean,
-  useRelayer: boolean
-) {
-  const amount = utils.parseEther("1");
-  const scaledAmount = utils.parseUnits("1", 9);
-  let emitterAddress: string;
-  let sequence: string;
-  let balanceBeforeRecv: BigNumber;
-
-  if (destinationChain.type === "evm") {
+async function getManagerAndUserBalance(
+  chain: ChainDetails
+): Promise<[BigNumber, BigNumber]> {
+  if (chain.type === "evm") {
     const token = DummyToken__factory.connect(
-      destinationChain.NTTTokenAddress,
-      destinationChain.signer
+      chain.NTTTokenAddress,
+      chain.signer
     );
-    balanceBeforeRecv = await token.balanceOf(ETH_PUBLIC_KEY);
-  } else if (destinationChain.type === "solana") {
+    return [
+      await token.balanceOf(chain.managerAddress),
+      await token.balanceOf(ETH_PUBLIC_KEY),
+    ];
+  } else if (chain.type === "solana") {
     const mintAddress = await SOL_NTT_CONTRACT.mintAccountAddress();
     const associatedTokenAddress = spl.getAssociatedTokenAddressSync(
       mintAddress,
       SOL_PUBLIC_KEY
     );
-    balanceBeforeRecv = BigNumber.from(
-      (await SOL_CONNECTION.getTokenAccountBalance(associatedTokenAddress))
-        .value.amount
+    const custodyAddress = await SOL_NTT_CONTRACT.custodyAccountAddress(
+      mintAddress
     );
+    return [
+      BigNumber.from(
+        (await SOL_CONNECTION.getTokenAccountBalance(custodyAddress)).value
+          .amount
+      ),
+      BigNumber.from(
+        (await SOL_CONNECTION.getTokenAccountBalance(associatedTokenAddress))
+          .value.amount
+      ),
+    ];
   }
+}
+
+async function transferWithChecks(
+  sourceChain: ChainDetails,
+  destinationChain: ChainDetails,
+  useRelayer: boolean = false
+) {
+  const amount = utils.parseEther("1");
+  const scaledAmount = utils.parseUnits("1", 9);
+  let emitterAddress: string;
+  let sequence: string;
+
+  const [managerBalanceBeforeSend, userBalanceBeforeSend] =
+    await getManagerAndUserBalance(sourceChain);
+  const [managerBalanceBeforeRecv, userBalanceBeforeRecv] =
+    await getManagerAndUserBalance(destinationChain);
 
   if (sourceChain.type === "evm") {
     const manager = NttManager__factory.connect(
@@ -489,16 +516,9 @@ async function transferWithChecks(
       sourceChain.NTTTokenAddress,
       sourceChain.signer
     );
-    if (shouldPreMint) {
-      await tryAndWaitThrice(() => token.mintDummy(ETH_PUBLIC_KEY, amount));
-    }
     await tryAndWaitThrice(() =>
       token.approve(sourceChain.managerAddress, amount)
     );
-    const balanceManagerBeforeSend1 = await token.balanceOf(
-      sourceChain.managerAddress
-    );
-    const balanceUserBeforeSend1 = await token.balanceOf(ETH_PUBLIC_KEY);
     const txResponse = await tryAndWaitThrice(() =>
       manager["transfer(uint256,uint16,bytes32,bool,bytes)"](
         amount,
@@ -524,36 +544,11 @@ async function transferWithChecks(
       txResponse,
       sourceChain.wormholeCoreAddress
     );
-    const balanceManagerAfterSend1 = await token.balanceOf(
-      sourceChain.managerAddress
-    );
-    const balanceUserAfterSend1 = await token.balanceOf(ETH_PUBLIC_KEY);
-    if (
-      sourceBurn
-        ? !balanceManagerAfterSend1.eq(BigNumber.from("0"))
-        : !balanceManagerAfterSend1.eq(balanceManagerBeforeSend1.add(amount))
-    ) {
-      console.log("Manager amount incorrect");
-    }
-
-    if (!balanceUserAfterSend1.eq(balanceUserBeforeSend1.sub(amount))) {
-      console.log("User amount incorrect");
-    }
   } else if (sourceChain.type === "solana") {
     const mintAddress = await SOL_NTT_CONTRACT.mintAccountAddress();
     const associatedTokenAddress = spl.getAssociatedTokenAddressSync(
       mintAddress,
       SOL_PUBLIC_KEY
-    );
-    const custodyAddress = await SOL_NTT_CONTRACT.custodyAccountAddress(
-      mintAddress
-    );
-    const balanceManagerBeforeSend2 = BigNumber.from(
-      (await SOL_CONNECTION.getTokenAccountBalance(custodyAddress)).value.amount
-    );
-    const balanceUserBeforeSend2 = BigNumber.from(
-      (await SOL_CONNECTION.getTokenAccountBalance(associatedTokenAddress))
-        .value.amount
     );
     const outboxItem = await SOL_NTT_CONTRACT.transfer({
       payer: SOL_PRIVATE_KEY,
@@ -567,20 +562,6 @@ async function transferWithChecks(
       ),
       shouldQueue: false,
     });
-    const balanceManagerAfterSend2 = BigNumber.from(
-      (await SOL_CONNECTION.getTokenAccountBalance(custodyAddress)).value.amount
-    );
-    const balanceUserAfterSend2 = BigNumber.from(
-      (await SOL_CONNECTION.getTokenAccountBalance(associatedTokenAddress))
-        .value.amount
-    );
-    if (!balanceManagerAfterSend2.eq(0) || !balanceManagerBeforeSend2.eq(0)) {
-      console.log("Manager on burn chain has funds");
-    }
-
-    if (!balanceUserBeforeSend2.sub(scaledAmount).eq(balanceUserAfterSend2)) {
-      console.log("User didn't transfer proper amount of funds on burn chain");
-    }
     const wormholeMessage =
       SOL_NTT_CONTRACT.wormholeMessageAccountAddress(outboxItem);
     const wormholeMessageAccount = await SOL_CONNECTION.getAccountInfo(
@@ -607,58 +588,77 @@ async function transferWithChecks(
     );
   }
 
-  if (destinationChain.type === "evm") {
-    const token = DummyToken__factory.connect(
-      destinationChain.NTTTokenAddress,
-      destinationChain.signer
+  const [managerBalanceAfterSend, userBalanceAfterSend] =
+    await getManagerAndUserBalance(sourceChain);
+  const [managerBalanceAfterRecv, userBalanceAfterRecv] =
+    await getManagerAndUserBalance(destinationChain);
+  const sourceCheckAmount =
+    sourceChain.type === "solana" ? scaledAmount : amount;
+  const destinationCheckAmount =
+    destinationChain.type === "solana" ? scaledAmount : amount;
+
+  if (
+    sourceChain.mode === "burning"
+      ? !managerBalanceAfterSend.eq(BigNumber.from("0"))
+      : !managerBalanceAfterSend.eq(
+          managerBalanceBeforeSend.add(sourceCheckAmount)
+        )
+  ) {
+    throw new Error(
+      `Source manager amount incorrect: before ${managerBalanceBeforeSend.toString()}, after ${managerBalanceAfterSend.toString()}`
     );
-    const balanceAfterRecv = await token.balanceOf(ETH_PUBLIC_KEY);
-    if (!balanceAfterRecv.eq(balanceBeforeRecv.add(amount))) {
-      console.log("User amount receive incorrect");
-    }
-  } else if (destinationChain.type === "solana") {
-    const mintAddress = await SOL_NTT_CONTRACT.mintAccountAddress();
-    const associatedTokenAddress = spl.getAssociatedTokenAddressSync(
-      mintAddress,
-      SOL_PUBLIC_KEY
+  }
+  if (!userBalanceAfterSend.eq(userBalanceBeforeSend.sub(sourceCheckAmount))) {
+    throw new Error(
+      `Source user amount incorrect: before ${userBalanceBeforeSend.toString()}, after ${userBalanceAfterSend.toString()}`
     );
-    const balanceAfterRecv = BigNumber.from(
-      (await SOL_CONNECTION.getTokenAccountBalance(associatedTokenAddress))
-        .value.amount
+  }
+  if (
+    destinationChain.mode === "burning"
+      ? !managerBalanceAfterRecv.eq(BigNumber.from("0"))
+      : !managerBalanceAfterRecv.eq(
+          managerBalanceBeforeRecv.sub(destinationCheckAmount)
+        )
+  ) {
+    throw new Error(
+      `Destination manager amount incorrect: before ${managerBalanceBeforeRecv.toString()}, after ${managerBalanceAfterRecv.toString()}`
     );
-    if (!balanceAfterRecv.eq(balanceBeforeRecv.add(scaledAmount))) {
-      console.log(
-        `User amount 1 receive incorrect: before ${balanceBeforeRecv.toString()}, after ${balanceAfterRecv.toString()}`
-      );
-    }
+  }
+  if (
+    !userBalanceAfterRecv.eq(userBalanceBeforeRecv.add(destinationCheckAmount))
+  ) {
+    throw new Error(
+      `Destination user amount incorrect: before ${userBalanceBeforeRecv.toString()}, after ${userBalanceAfterRecv.toString()}`
+    );
   }
 }
 
 async function testEthHub() {
   console.log("\nDeploying on eth-devnet");
   console.log("===============================================");
-  const ethInfo = await deployEvm(ETH_SIGNER, "ethereum", true);
+  const ethInfo = await deployEvm(ETH_SIGNER, "ethereum", "locking");
   console.log("\nDeploying on eth-devnet2");
   console.log("===============================================");
-  const bscInfo = await deployEvm(BSC_SIGNER, "bsc", false);
+  const bscInfo = await deployEvm(BSC_SIGNER, "bsc", "burning");
   console.log("\nInitializing on solana-devnet");
   console.log("===============================================");
-  const solInfo = await initSolana(false);
+  const solInfo = await initSolana("burning");
   await link([ethInfo, bscInfo, solInfo]);
   console.log("\nStarting tests");
   console.log("========================");
   console.log("Eth <> BSC");
-  await transferWithChecks(ethInfo, bscInfo, true, false, false);
-  await transferWithChecks(bscInfo, ethInfo, false, true, false);
+  await transferWithChecks(ethInfo, bscInfo);
+  await transferWithChecks(bscInfo, ethInfo);
   console.log(`Eth <> Solana`);
-  await transferWithChecks(ethInfo, solInfo, true, false, false);
-  await transferWithChecks(solInfo, ethInfo, false, true, false);
+  await transferWithChecks(ethInfo, solInfo);
+  await transferWithChecks(solInfo, ethInfo);
   console.log(`BSC <> Solana`);
-  await transferWithChecks(bscInfo, solInfo, true, true, false);
-  await transferWithChecks(solInfo, bscInfo, false, true, false);
+  await transferWithChecks(ethInfo, bscInfo);
+  await transferWithChecks(bscInfo, solInfo);
+  await transferWithChecks(solInfo, bscInfo);
   console.log("Eth <> BSC with relay");
-  await transferWithChecks(ethInfo, bscInfo, true, false, true);
-  await transferWithChecks(bscInfo, ethInfo, false, true, true);
+  await transferWithChecks(ethInfo, bscInfo, true);
+  await transferWithChecks(bscInfo, ethInfo, true);
   // TODO: corrupted or bad VAA usage
 }
 
