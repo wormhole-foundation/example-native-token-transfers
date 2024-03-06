@@ -310,12 +310,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "080e9890a082662b09c1ad45f567faeeb47f22b5fb23895fbe1e651e718e25ca"
 
 [[package]]
-name = "arbitrary"
-version = "1.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d5a26814d8dcb93b0e5a0ff3c6d80a8843bafb21b39e8e18a6f05471870e110"
-
-[[package]]
 name = "ark-bn254"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1864,18 +1858,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "honggfuzz"
-version = "0.5.55"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "848e9c511092e0daa0a35a63e8e6e475a3e8f870741448b9f6028d69b142f18e"
-dependencies = [
- "arbitrary",
- "lazy_static",
- "memmap2",
- "rustc_version",
-]
-
-[[package]]
 name = "http"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2360,14 +2342,6 @@ checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
 dependencies = [
  "memchr",
  "minimal-lexical",
-]
-
-[[package]]
-name = "ntt-fuzz"
-version = "0.0.1"
-dependencies = [
- "honggfuzz",
- "ntt-messages",
 ]
 
 [[package]]
