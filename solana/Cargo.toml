@@ -2,7 +2,6 @@
 members = [
     "programs/*",
     "modules/*",
-    "fuzz/*"
 ]
 resolver = "2"
 
