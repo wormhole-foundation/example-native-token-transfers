@@ -481,7 +481,8 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
         // Chain2 verification and checks
         vm.chainId(chainId2);
 
-        vm.expectRevert(); // Wrong chain receiving the signed VAA
+        // Wrong chain receiving the signed VAA
+        vm.expectRevert(abi.encodeWithSelector(InvalidFork.selector, chainId1, chainId2));
         wormholeTransceiverChain1.receiveMessage(encodedVMs[0]);
         {
             uint256 supplyBefore = token2.totalSupply();
@@ -496,7 +497,12 @@ contract TestUpgrades is Test, INttManagerEvents, IRateLimiterEvents {
         }
 
         // Can't resubmit the same message twice
-        vm.expectRevert(); // TransferAlreadyCompleted error
+        (IWormhole.VM memory wormholeVM,,) = wormhole.parseAndVerifyVM(encodedVMs[0]);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IWormholeTransceiver.TransferAlreadyCompleted.selector, wormholeVM.hash
+            )
+        );
         wormholeTransceiverChain2.receiveMessage(encodedVMs[0]);
 
         // Go back the other way from a THIRD user
@@ -629,7 +635,9 @@ contract TestInitialize is Test {
         // Attempt to initialize the contract from a non-deployer account.
         vm.prank(userA);
         vm.expectRevert(
-            abi.encodeWithSignature("UnexpectedDeployer(address,address)", address(this), userA)
+            abi.encodeWithSelector(
+                INttManagerState.UnexpectedDeployer.selector, address(this), userA
+            )
         );
         nttManagerChain1.initialize();
     }
