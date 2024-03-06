@@ -156,18 +156,21 @@ mod test {
 
     #[test]
     fn test_scale_overflow_exponent() {
-        // Exponent overflow for [`scale`]. To trigger this code path, toDecimals must be greater than
-        // fromDecimals.
+        // Check that the correct error is returned for exponent overflows.
         assert_eq!(
             Err(ScalingError::OverflowExponent),
-            TrimmedAmount::scale(100, 0, 255)
+            TrimmedAmount::scale(100, 0, 255)    // to > from 
+        );
+        assert_eq!(
+            Err(ScalingError::OverflowExponent), // from > to
+            TrimmedAmount::scale(100, 255, 0)
         );
     }
 
     #[test]
     fn test_scale_overflow_scaled_amount() {
-        // Amount calculation overflow for [`scale`]. To trigger this code path, toDecimals must be greater than
-        // fromDecimals.
+        // Amount scaling overflow for [`scale`]. This can occur when toDecimals is greater than
+        // fromDecimals
         assert_eq!(
             Err(ScalingError::OverflowScaledAmount),
             TrimmedAmount::scale(u64::MAX, 10, 11)
