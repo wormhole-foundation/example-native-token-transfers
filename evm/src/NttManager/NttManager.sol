@@ -155,9 +155,9 @@ contract NttManager is INttManager, NttManagerState {
         if (nativeTokenTransfer.toChain != chainId) {
             revert InvalidTargetChain(nativeTokenTransfer.toChain, chainId);
         }
-        uint8 tokenDecimals = tokenDecimals();
-        TrimmedAmount memory nativeTransferAmount =
-            (nativeTokenTransfer.amount.untrim(tokenDecimals)).trim(tokenDecimals, tokenDecimals);
+        uint8 toDecimals = tokenDecimals();
+        TrimmedAmount nativeTransferAmount =
+            (nativeTokenTransfer.amount.untrim(toDecimals)).trim(toDecimals, toDecimals);
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
@@ -314,8 +314,8 @@ contract NttManager is INttManager, NttManagerState {
         }
 
         // trim amount after burning to ensure transfer amount matches (amount - fee)
-        TrimmedAmount memory trimmedAmount = _trimTransferAmount(amount, recipientChain);
-        TrimmedAmount memory internalAmount = trimmedAmount.shift(tokenDecimals());
+        TrimmedAmount trimmedAmount = _trimTransferAmount(amount, recipientChain);
+        TrimmedAmount internalAmount = trimmedAmount.shift(tokenDecimals());
 
         // get the sequence for this transfer
         uint64 sequence = _useMessageSequence();

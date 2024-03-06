@@ -709,7 +709,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         newNttManager.initialize();
         // register nttManager peer
         bytes32 peer = toWormholeFormat(address(nttManager));
-        newNttManager.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9);
+        newNttManager.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9, type(uint64).max);
 
         address user_A = address(0x123);
         address user_B = address(0x456);
@@ -734,7 +734,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         bytes memory transceiverMessage;
         bytes memory tokenTransferMessage;
 
-        TrimmedAmount memory transferAmount = TrimmedAmount(100, 8);
+        TrimmedAmount transferAmount = packTrimmedAmount(100, 8);
 
         tokenTransferMessage = TransceiverStructs.encodeNativeTokenTransfer(
             TransceiverStructs.NativeTokenTransfer({
@@ -784,9 +784,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         t.upgrade(address(dummy3));
 
         vm.startPrank(user_A);
-        vm.expectRevert(
-            abi.encodeWithSelector(TrimmedAmountLib.NumberOfDecimalsNotEqual.selector, 8, 7)
-        );
+        vm.expectRevert(abi.encodeWithSelector(NumberOfDecimalsNotEqual.selector, 8, 7));
         newNttManager.transfer(
             1 * 10 ** 7,
             TransceiverHelpersLib.SENDING_CHAIN_ID,
@@ -803,9 +801,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
             toWormholeFormat(address(newNttManager)),
             tokenTransferMessage
         );
-        vm.expectRevert(
-            abi.encodeWithSelector(TrimmedAmountLib.NumberOfDecimalsNotEqual.selector, 8, 7)
-        );
+        vm.expectRevert(abi.encodeWithSelector(NumberOfDecimalsNotEqual.selector, 8, 7));
         e1.receiveMessage(transceiverMessage);
     }
 }
