@@ -3,8 +3,8 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 /// @dev TrimmedAmount is a bit-packed representation of a token amount and its decimals.
-/// @dev 64 bytes: [0 - 64] amount
-/// @dev 8 bytes: [64 - 72] decimals
+/// @dev 64 bits: [0 - 64] amount
+/// @dev 8 bits: [64 - 72] decimals
 type TrimmedAmount is uint72;
 
 using {gt as >, lt as <, sub as -, add as +, eq as ==, min, unwrap} for TrimmedAmount global;

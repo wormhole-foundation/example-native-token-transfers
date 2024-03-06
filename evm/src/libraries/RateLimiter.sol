@@ -9,10 +9,8 @@ import "../libraries/TrimmedAmount.sol";
 
 abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     using TrimmedAmountLib for TrimmedAmount;
-    /**
-     * @dev The duration it takes for the limits to fully replenish
-     */
 
+    /// @dev The duration (in seconds) it takes for the limits to fully replenish.
     uint64 public immutable rateLimitDuration;
 
     /// =============== STORAGE ===============================================
