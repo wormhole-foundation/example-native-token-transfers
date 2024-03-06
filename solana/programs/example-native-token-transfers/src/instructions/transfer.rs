@@ -1,9 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
-use ntt_messages::{
-    chain_id::ChainId, errors::ScalingError, mode::Mode, trimmed_amount::TrimmedAmount,
-};
+use ntt_messages::{chain_id::ChainId, mode::Mode, trimmed_amount::TrimmedAmount};
 
 use crate::{
     bitmap::Bitmap,
@@ -113,17 +111,12 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
     } = args;
 
     // TODO: should we revert if we have dust?
-    let trimmed_amount = match TrimmedAmount::remove_dust(
+    let trimmed_amount = TrimmedAmount::remove_dust(
         &mut amount,
         accs.common.mint.decimals,
         accs.peer.token_decimals,
-    ) {
-        Ok(trimmed_amount) => trimmed_amount,
-        Err(ScalingError::OverflowExponent) => return Err(error!(NTTError::OverflowExponent)),
-        Err(ScalingError::OverflowScaledAmount) => {
-            return Err(error!(NTTError::OverflowScaledAMount))
-        }
-    };
+    )
+    .map_err(NTTError::from)?;
 
     token_interface::burn(
         CpiContext::new_with_signer(
@@ -203,17 +196,12 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
     } = args;
 
     // TODO: should we revert if we have dust?
-    let trimmed_amount = match TrimmedAmount::remove_dust(
+    let trimmed_amount = TrimmedAmount::remove_dust(
         &mut amount,
         accs.common.mint.decimals,
         accs.peer.token_decimals,
-    ) {
-        Ok(trimmed_amount) => trimmed_amount,
-        Err(ScalingError::OverflowExponent) => return Err(error!(NTTError::OverflowExponent)),
-        Err(ScalingError::OverflowScaledAmount) => {
-            return Err(error!(NTTError::OverflowScaledAMount))
-        }
-    };
+    )
+    .map_err(NTTError::from)?;
 
     token_interface::transfer_checked(
         CpiContext::new_with_signer(
