@@ -43,7 +43,6 @@ abstract contract NttManagerState is
     INttManager.Mode public immutable mode;
     uint16 public immutable chainId;
     uint256 immutable evmChainId;
-    uint8 public immutable tokenDecimals_;
 
     // =============== Setup =================================================================
 
@@ -55,7 +54,6 @@ abstract contract NttManagerState is
         bool _skipRateLimiting
     ) RateLimiter(_rateLimitDuration, _skipRateLimiting) {
         token = _token;
-        tokenDecimals_ = _initializeTokenDecimals();
         mode = _mode;
         chainId = _chainId;
         evmChainId = block.chainid;
@@ -70,7 +68,7 @@ abstract contract NttManagerState is
         }
         __PausedOwnable_init(msg.sender, msg.sender);
         __ReentrancyGuard_init();
-        _setOutboundLimit(TrimmedAmountLib.max(tokenDecimals_));
+        _setOutboundLimit(TrimmedAmountLib.max(tokenDecimals()));
     }
 
     function _initialize() internal virtual override {
@@ -278,7 +276,8 @@ abstract contract NttManagerState is
         _getPeersStorage()[peerChainId].peerAddress = peerContract;
         _getPeersStorage()[peerChainId].tokenDecimals = decimals;
 
-        _setInboundLimit(inboundLimit.trim(tokenDecimals_, tokenDecimals_), peerChainId);
+        uint8 tokenDecimals = tokenDecimals();
+        _setInboundLimit(inboundLimit.trim(tokenDecimals, tokenDecimals), peerChainId);
 
         emit PeerUpdated(
             peerChainId, oldPeer.peerAddress, oldPeer.tokenDecimals, peerContract, decimals
@@ -287,12 +286,14 @@ abstract contract NttManagerState is
 
     /// @inheritdoc INttManagerState
     function setOutboundLimit(uint256 limit) external onlyOwner {
-        _setOutboundLimit(limit.trim(tokenDecimals_, tokenDecimals_));
+        uint8 tokenDecimals = tokenDecimals();
+        _setOutboundLimit(limit.trim(tokenDecimals, tokenDecimals));
     }
 
     /// @inheritdoc INttManagerState
     function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
-        _setInboundLimit(limit.trim(tokenDecimals_, tokenDecimals_), chainId_);
+        uint8 tokenDecimals = tokenDecimals();
+        _setInboundLimit(limit.trim(tokenDecimals, tokenDecimals), chainId_);
     }
 
     // =============== Internal ==============================================================
@@ -349,17 +350,11 @@ abstract contract NttManagerState is
         _getMessageSequenceStorage().num++;
     }
 
-    function _initializeTokenDecimals() internal view returns (uint8) {
-        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
-        return abi.decode(queriedDecimals, (uint8));
-    }
-
     /// ============== Invariants =============================================
 
     /// @dev When we add new immutables, this function should be updated
     function _checkImmutables() internal view override {
         assert(this.token() == token);
-        assert(this.tokenDecimals_() == tokenDecimals_);
         assert(this.mode() == mode);
         assert(this.chainId() == chainId);
         assert(this.rateLimitDuration() == rateLimitDuration);
