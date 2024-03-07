@@ -115,7 +115,7 @@ pub struct TransferBurn<'info> {
 // TODO: fees for relaying?
 /// Burns tokens and issues a corresponding notification to the outbox of the connected
 /// [`NttManagerPeer`].
-/// SECURITY: Owner checks are disabled here. Ownership checks are enforced by implicit 
+/// SECURITY: Owner checks are disabled here. Ownership checks are enforced by implicit
 /// anchor constraints in the `Transfer` account struct.
 /// transaction
 /// SECURITY: Signer check is disabled here. The signer is checked via the `Transfer` struct
@@ -231,7 +231,7 @@ pub struct TransferLock<'info> {
 // TODO: factor out common bits
 /// Locks tokens and issues a corresponding notification to the outbox of the connected
 /// [`NttManagerPeer`].
-/// SECURITY: Owner checks are disabled here. Ownership checks are enforced by implicit 
+/// SECURITY: Owner checks are disabled here. Ownership checks are enforced by implicit
 /// anchor constraints in the `Transfer` account struct.
 /// transaction
 /// SECURITY: Signer check is disabled here. The signer is checked via the `Transfer` struct
