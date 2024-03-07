@@ -13,7 +13,7 @@ import "../interfaces/INttManager.sol";
 import "../interfaces/INttToken.sol";
 import "../interfaces/ITransceiver.sol";
 
-import {ManagerBase} from "./ManagerBase.sol";
+import {ManagerBase} from "./shared/ManagerBase.sol";
 
 /// @title NttManager
 /// @author Wormhole Project Contributors.

@@ -5,7 +5,7 @@ pragma solidity >=0.8.8 <0.9.0;
 import "./NttManagerHelpers.sol";
 import "../mocks/DummyTransceiver.sol";
 import "../../src/mocks/DummyToken.sol";
-import "../../src/NttManager/NttManager.sol";
+import "../../src/NativeTransfers/NttManager.sol";
 import "../../src/libraries/TrimmedAmount.sol";
 
 library TransceiverHelpersLib {
