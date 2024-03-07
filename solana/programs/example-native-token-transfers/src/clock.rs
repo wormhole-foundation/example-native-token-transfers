@@ -4,24 +4,24 @@
 //! This makes it easy to unit test functions that depend on the current time
 //! without having to instantiate a Solana runtime.
 
-#[cfg(not(test))]
+#[cfg(not(any(fuzzing, test)))]
 use anchor_lang::prelude::*;
 
 use anchor_lang::solana_program::clock::UnixTimestamp;
 
-#[cfg(test)]
+#[cfg(any(fuzzing, test))]
 static TEST_TIMESTAMP: std::sync::Mutex<i64> = std::sync::Mutex::new(0);
 
 pub fn current_timestamp() -> UnixTimestamp {
-    #[cfg(not(test))]
+    #[cfg(not(any(fuzzing, test)))]
     return anchor_lang::solana_program::clock::Clock::get()
         .unwrap()
         .unix_timestamp;
-    #[cfg(test)]
+    #[cfg(any(fuzzing, test))]
     return *TEST_TIMESTAMP.lock().unwrap();
 }
 
-#[cfg(test)]
+#[cfg(any(fuzzing, test))]
 pub fn set_test_timestamp(timestamp: UnixTimestamp) {
     *TEST_TIMESTAMP.lock().unwrap() = timestamp;
 }
