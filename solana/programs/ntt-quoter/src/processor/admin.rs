@@ -120,7 +120,7 @@ pub struct RegisterChain<'info> {
 }
 
 pub fn register_chain(ctx: Context<RegisterChain>, _args: RegisterChainArgs) -> Result<()> {
-    ctx.accounts.registered_chain.bump = ctx.accounts.registered_chain.bump;
+    ctx.accounts.registered_chain.bump = ctx.bumps.registered_chain;
     ctx.accounts.registered_chain.base_price = u64::MAX;
     Ok(())
 }
