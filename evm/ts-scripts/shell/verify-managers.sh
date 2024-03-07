@@ -36,7 +36,7 @@ else
   operating_chains=$(jq -r '.operatingChains[]' $chains_file_path)
 fi
 
-# export FOUNDRY_PROFILE=production
+export FOUNDRY_PROFILE=production
 
 for chain in $operating_chains; do
   echo "Operating on chain $chain:"
@@ -51,7 +51,7 @@ for chain in $operating_chains; do
 
   if [ "$implementation_address" = "" ] || 
     [ "$proxy_address" = "" ] ||
-    [ "$etherscan_api_key" = "nul" ] ||
+    [ "$etherscan_api_key" = "null" ] ||
     [ "$transceiver_structs_address" = "null" ] ||
     [ "$trimmed_amount_lib_address" = "null" ] ||
     [ "$evm_network_id" = "null" ]; then
