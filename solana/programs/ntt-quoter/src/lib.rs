@@ -2,8 +2,8 @@ use anchor_lang::prelude::*;
 
 mod processor;
 pub(crate) use processor::*;
-mod state;
 mod error;
+mod state;
 
 //because Anchor is bat-shit, we can't use aliased types in account definitions due to how
 //  the derive accounts macro is implemented (and I don't have the time to fix it, create a PR,
@@ -33,41 +33,47 @@ cfg_if::cfg_if! {
 
 #[program]
 pub mod ntt_quoter {
-  use super::*;
+    use super::*;
 
-  pub fn request_relay(ctx: Context<RequestRelay>, args: RequestRelayArgs) -> Result<()> {
-    processor::request_relay(ctx, args)
-  }
+    pub fn request_relay(ctx: Context<RequestRelay>, args: RequestRelayArgs) -> Result<()> {
+        processor::request_relay(ctx, args)
+    }
 
-  pub fn close_relay(ctx: Context<CloseRelay>) -> Result<()> {
-    processor::close_relay(ctx)
-  }
+    pub fn close_relay(ctx: Context<CloseRelay>) -> Result<()> {
+        processor::close_relay(ctx)
+    }
 
-  pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-    processor::initialize(ctx)
-  }
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        processor::initialize(ctx)
+    }
 
-  pub fn set_assistant(ctx: Context<SetAssistant>) -> Result<()> {
-    processor::set_assistant(ctx)
-  }
+    pub fn set_assistant(ctx: Context<SetAssistant>) -> Result<()> {
+        processor::set_assistant(ctx)
+    }
 
-  pub fn set_fee_recipient(ctx: Context<SetFeeRecipient>) -> Result<()> {
-    processor::set_fee_recipient(ctx)
-  }
+    pub fn set_fee_recipient(ctx: Context<SetFeeRecipient>) -> Result<()> {
+        processor::set_fee_recipient(ctx)
+    }
 
-  pub fn register_chain(ctx: Context<RegisterChain>, args: RegisterChainArgs) -> Result<()> {
-    processor::register_chain(ctx, args)
-  }
+    pub fn register_chain(ctx: Context<RegisterChain>, args: RegisterChainArgs) -> Result<()> {
+        processor::register_chain(ctx, args)
+    }
 
-  pub fn update_sol_price(ctx: Context<UpdateSolPrice>, args: UpdateSolPriceArgs) -> Result<()> {
-    processor::update_sol_price(ctx, args)
-  }
+    pub fn update_sol_price(ctx: Context<UpdateSolPrice>, args: UpdateSolPriceArgs) -> Result<()> {
+        processor::update_sol_price(ctx, args)
+    }
 
-  pub fn update_chain_prices(ctx: Context<UpdateChainPrices>, args: UpdateChainPricesArgs) -> Result<()> {
-    processor::update_chain_prices(ctx, args)
-  }
+    pub fn update_chain_prices(
+        ctx: Context<UpdateChainPrices>,
+        args: UpdateChainPricesArgs,
+    ) -> Result<()> {
+        processor::update_chain_prices(ctx, args)
+    }
 
-  pub fn update_chain_params(ctx: Context<UpdateChainParams>, args: UpdateChainParamsArgs) -> Result<()> {
-    processor::update_chain_params(ctx, args)
-  }
+    pub fn update_chain_params(
+        ctx: Context<UpdateChainParams>,
+        args: UpdateChainParamsArgs,
+    ) -> Result<()> {
+        processor::update_chain_params(ctx, args)
+    }
 }
