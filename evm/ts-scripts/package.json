@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "npx typechain --target=ethers-v5 --node16-modules --out-dir=./contract-bindings ../forge-build/*/*.json"
+    "build": "npx typechain --target=ethers-v5 --out-dir=./contract-bindings ../out/*/*.json"
   },
   "author": "",
   "license": "ISC",
