@@ -18,6 +18,7 @@ type ManagerConfig = {
   chainId: ChainId;
   threshold: number;
   outboundLimit: string;
+  inboundLimit: {chainId: ChainId, limit: number }[];
 };
 
 init();
@@ -72,15 +73,28 @@ async function configureManager(chain: ChainInfo, transceiverAddress: string, co
   const log = (...args: any[]) => console.log(`[${chain.chainId}]`, ...args);
 
   const contract = await getManagerContract(chain);
-  console.log("setting transceiver", transceiverAddress);
-  await contract.setTransceiver(transceiverAddress);
-  log(`transceiver address set to: ${transceiverAddress}`);
 
-  await contract.setOutboundLimit(BigInt(config.outboundLimit));
-  log(`outboundLimit set to: ${config.outboundLimit}`);
+  if ((await contract.getTransceivers()).length === 0) {
+    await contract.setTransceiver(transceiverAddress);
+    log(`transceiver address set to: ${transceiverAddress}`);
+  }
+  
+  const contractOutboundConfig = await contract.getOutboundLimitParams();
+  const desiredOutboundLimit = BigInt(config.outboundLimit);
+  if (contractOutboundConfig.limit.toBigInt() !== desiredOutboundLimit) {
+    await contract.setOutboundLimit(desiredOutboundLimit);
+    log(`outboundLimit set to: ${config.outboundLimit}`);
+  }
 
-  await contract.setThreshold(config.threshold);
-  log(`Threshold configured to: ${config.threshold}`);
+  for (const { limit, chainId } of config.inboundLimit) {
+    await contract.setInboundLimit(BigInt(limit), chainId);
+    log(`inboundLimit for chain ${chainId} set to: ${limit}`);
+  }
+
+  if (await contract.getThreshold() !== config.threshold) {
+    await contract.setThreshold(config.threshold);
+    log(`Threshold configured to: ${config.threshold}`);
+  }
 
   return { chainId: chain.chainId };
 }

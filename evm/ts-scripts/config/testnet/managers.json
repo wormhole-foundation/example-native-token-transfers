@@ -6,7 +6,13 @@
     "rateLimitDuration": 3600,
     "skipRateLimit": false,
     "threshold": 1,
-    "outboundLimit": 10000
+    "outboundLimit": 100000000000000000000,
+    "inboundLimit": [
+      { "chainId": 1, "limit": 1000000000000000000000000 },
+      { "chainId": 10003, "limit": 1000000000000000000000000 },
+      { "chainId": 10004, "limit": 1000000000000000000000000 },
+      { "chainId": 10005, "limit": 1000000000000000000000000 }
+    ]
   },
   {
     "token": "0x169D91C797edF56100F1B765268145660503a423",
@@ -14,8 +20,15 @@
     "chainId": 10003,
     "rateLimitDuration": 3600,
     "skipRateLimit": false,
+
     "threshold": 1,
-    "outboundLimit": 10000
+    "outboundLimit": 100000000000000000000,
+    "inboundLimit": [
+      { "chainId": 1, "limit": 1000000000000000000000000 },
+      { "chainId": 10002, "limit": 1000000000000000000000000 },
+      { "chainId": 10004, "limit": 1000000000000000000000000 },
+      { "chainId": 10005, "limit": 1000000000000000000000000 }
+    ]
   },
   {
     "token": "0x169D91C797edF56100F1B765268145660503a423",
@@ -24,7 +37,13 @@
     "rateLimitDuration": 3600,
     "skipRateLimit": false,
     "threshold": 1,
-    "outboundLimit": 10000
+    "outboundLimit": 100000000000000000000,
+    "inboundLimit": [
+      { "chainId": 1, "limit": 1000000000000000000000000 },
+      { "chainId": 10002, "limit": 1000000000000000000000000 },
+      { "chainId": 10003, "limit": 1000000000000000000000000 },
+      { "chainId": 10005, "limit": 1000000000000000000000000 }
+    ]
   },
   {
     "token": "0x169D91C797edF56100F1B765268145660503a423",
@@ -33,6 +52,12 @@
     "rateLimitDuration": 3600,
     "skipRateLimit": false,
     "threshold": 1,
-    "outboundLimit": 10000
+    "outboundLimit": 100000000000000000000,
+    "inboundLimit": [
+      { "chainId": 1, "limit": 1000000000000000000000000 },
+      { "chainId": 10002, "limit": 1000000000000000000000000 },
+      { "chainId": 10003, "limit": 1000000000000000000000000 },
+      { "chainId": 10004, "limit": 1000000000000000000000000 }
+    ]
   }
 ]
