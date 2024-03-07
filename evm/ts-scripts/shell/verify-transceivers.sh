@@ -66,7 +66,7 @@ for chain in $operating_chains; do
 
   if [ "$implementation_address" = "" ] || 
     [ "$proxy_address" = "" ] ||
-    [ "$etherscan_api_key" = "nul" ] ||
+    [ "$etherscan_api_key" = "null" ] ||
     [ "$manager_address" = "null" ] ||
     [ "$wormhole_core_address" = "null" ] ||
     [ "$wormhole_relayer_address" = "null" ] ||
