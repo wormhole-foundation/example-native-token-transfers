@@ -134,7 +134,7 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
         RateLimitResult::Delayed(release_timestamp) => release_timestamp,
     };
 
-    accs.inbox_item.release_status = ReleaseStatus::ReleaseAfter(release_timestamp);
+    accs.inbox_item.release_after(release_timestamp)?;
 
     Ok(())
 }
