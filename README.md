@@ -1,4 +1,8 @@
-# Native Token Transfers (NTT)
+<div align="center">
+  <img src="images/ntt-logo-black.png", height=100>
+</div>
+
+---
 
 ## Overview
 
