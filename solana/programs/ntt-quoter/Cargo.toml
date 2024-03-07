@@ -1,0 +1,26 @@
+[package]
+name = "ntt-quoter"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "ntt_quoter"
+
+[features]
+default = ["localnet", "no-idl"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+localnet = []
+testnet = []
+
+[dependencies]
+anchor-lang = { workspace = true, features = ["init-if-needed"] }
+solana-program.workspace = true
+cfg-if.workspace = true
+wormhole-io.workspace = true
+wormhole-solana-utils.workspace = true
+
+example-native-token-transfers = { path = "../example-native-token-transfers", features = ["no-entrypoint"] }

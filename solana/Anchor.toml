@@ -9,6 +9,7 @@ skip-lint = false
 [programs.localnet]
 example_native_token_transfers = "nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS"
 wormhole_governance = "wgvEiKVzX9yyEoh41jZAdC6JqGUTS4CFXbFGBV5TKdZ"
+ntt_quoter = "9jFBLvMZZERVmeY4tbq5MejbXRE18paGEuoB6xVJZgGe"
 
 [registry]
 url = "https://api.apr.dev"

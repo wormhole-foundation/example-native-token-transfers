@@ -2355,6 +2355,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ntt-quoter"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "cfg-if",
+ "example-native-token-transfers",
+ "solana-program",
+ "wormhole-io",
+ "wormhole-solana-utils",
+]
+
+[[package]]
 name = "num"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

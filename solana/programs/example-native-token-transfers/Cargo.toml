@@ -28,13 +28,13 @@ tilt-devnet2 = [ "wormhole-anchor-sdk/tilt-devnet" ]
 
 [dependencies]
 ahash = "=0.8.5"
-cfg-if = "1.0"
 
 ntt-messages = { path = "../../modules/ntt-messages", features = ["anchor", "hash"] }
 anchor-lang = { workspace = true, features = ["init-if-needed"] }
 anchor-spl.workspace = true
 bitmaps = "3.2.1"
 hex.workspace = true
+cfg-if.workspace = true
 solana-program.workspace = true
 wormhole-anchor-sdk.workspace = true
 wormhole-io.workspace = true

@@ -1,0 +1,81 @@
+use anchor_lang::prelude::*;
+use crate::{
+  state::{
+    Instance,
+    RegisteredChain,
+  },
+  error::NttQuoterError,
+};
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct UpdateSolPriceArgs {
+  pub sol_price: u64, //UsdPrice (usd/sol [6 decimals])
+}
+
+#[derive(Accounts)]
+pub struct UpdateSolPrice<'info> {
+  #[account(constraint = instance.is_authorized(&authority.key()) @ NttQuoterError::NotAuthorized)]
+  pub authority: Signer<'info>,
+
+  #[account(seeds = [Instance::SEED_PREFIX], bump = Instance::BUMP)]
+  pub instance: Account<'info, Instance>,
+}
+
+pub fn update_sol_price(ctx: Context<UpdateSolPrice>, args: UpdateSolPriceArgs) -> Result<()> {
+  ctx.accounts.instance.sol_price = args.sol_price;
+  Ok(())
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct UpdateChainPricesArgs {
+  pub native_price: u64, //UsdPrice (usd/target_native)
+  pub gas_price: u64, //GasPrice (wei)
+}
+
+#[derive(Accounts)]
+pub struct UpdateChainPrices<'info> {
+  #[account(constraint = instance.is_authorized(&authority.key()) @ NttQuoterError::NotAuthorized)]
+  pub authority: Signer<'info>,
+
+  #[account(seeds = [Instance::SEED_PREFIX], bump = Instance::BUMP)]
+  pub instance: Account<'info, Instance>,
+
+  #[account(mut)]
+  pub registered_chain: Account<'info, RegisteredChain>,
+}
+
+pub fn update_chain_prices(
+  ctx: Context<UpdateChainPrices>,
+  args: UpdateChainPricesArgs
+) -> Result<()> {
+  ctx.accounts.registered_chain.native_price = args.native_price;
+  ctx.accounts.registered_chain.gas_price = args.gas_price;
+  Ok(())
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct UpdateChainParamsArgs {
+  pub max_gas_dropoff: u64, //NativeAmount (gwei)
+  pub base_price: u64, //UsdPrice  
+}
+
+#[derive(Accounts)]
+pub struct UpdateChainParams<'info> {
+  #[account(constraint = instance.is_authorized(&authority.key()) @ NttQuoterError::NotAuthorized)]
+  pub authority: Signer<'info>,
+
+  #[account(seeds = [Instance::SEED_PREFIX], bump = Instance::BUMP)]
+  pub instance: Account<'info, Instance>,
+
+  #[account(mut)]
+  pub registered_chain: Account<'info, RegisteredChain>,
+}
+
+pub fn update_chain_params(
+  ctx: Context<UpdateChainParams>,
+  args: UpdateChainParamsArgs
+) -> Result<()> {
+  ctx.accounts.registered_chain.max_gas_dropoff = args.max_gas_dropoff;
+  ctx.accounts.registered_chain.base_price = args.base_price;
+  Ok(())
+}
