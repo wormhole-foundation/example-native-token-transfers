@@ -44,7 +44,7 @@ for chain in $operating_chains; do
 
   export implementation_address=$(jq --raw-output ".NttManagerImplementations[] | select(.chainId == $chain) | .address" $contracts_file_path)
   export proxy_address=$(jq --raw-output ".NttManagerProxies[] | select(.chainId == $chain) | .address" $contracts_file_path)
-  export etherscan_api_key=$(jq --raw-output ".[] | select(.chainId == $chain) | .token" $scanner_tokens_file)
+  export etherscan_api_key=$(jq --raw-output ".[] | select(.chainId == $chain) | .etherscan" $scanner_tokens_file)
   export evm_network_id=$(jq ".chains[] | select(.chainId == $chain) | .evmNetworkId" $chains_file_path)
   export transceiver_structs_address=$(jq --raw-output ".TransceiverStructsLibs[] | select(.chainId == $chain) | .address" $contracts_file_path)
   export trimmed_amount_lib_address=$(jq --raw-output ".TrimmedAmountLibs[] | select(.chainId == $chain) | .address" $contracts_file_path)
