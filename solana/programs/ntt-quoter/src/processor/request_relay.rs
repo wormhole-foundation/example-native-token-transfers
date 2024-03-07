@@ -74,9 +74,9 @@ fn mul_div(scalar: u64, numerator: u64, denominator: u64) -> u64 {
 pub fn request_relay(ctx: Context<RequestRelay>, args: RequestRelayArgs) -> Result<()> {
     let accs = ctx.accounts;
 
-    require_gt!(
-        args.gas_dropoff,
+    require_gte!(
         accs.registered_chain.max_gas_dropoff,
+        args.gas_dropoff,
         NttQuoterError::ExceedsMaxGasDropoff
     );
 
