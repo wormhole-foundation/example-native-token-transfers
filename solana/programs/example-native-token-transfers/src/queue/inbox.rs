@@ -45,6 +45,14 @@ impl InboxItem {
             ReleaseStatus::Released => Err(NTTError::TransferAlreadyRedeemed.into()),
         }
     }
+
+    pub fn release_after(&mut self, release_timestamp: i64) -> Result<()> {
+        if self.release_status != ReleaseStatus::NotApproved {
+            return Err(NTTError::TransferCannotBeRedeemed.into());
+        };
+        self.release_status = ReleaseStatus::ReleaseAfter(release_timestamp);
+        Ok(())
+    }
 }
 
 /// Inbound rate limit per chain.
