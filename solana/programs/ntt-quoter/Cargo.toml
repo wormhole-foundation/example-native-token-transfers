@@ -8,13 +8,16 @@ crate-type = ["cdylib", "lib"]
 name = "ntt_quoter"
 
 [features]
-default = ["localnet", "no-idl"]
+default = ["mainnet", "no-idl"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
-localnet = []
-testnet = []
+
+mainnet = []
+solana-devnet = []
+tilt-devnet = []
+tilt-devnet2 = ["tilt-devnet"]
 
 [dependencies]
 anchor-lang = { workspace = true, features = ["init-if-needed"] }
