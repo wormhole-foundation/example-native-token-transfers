@@ -78,6 +78,7 @@ pub fn post_message<'info, A: TypePrefixedPayload>(
 
 /// SECURITY: Owner and signer checks are disabled as this private function is used only by
 /// [`post_message`].
+#[allow(unknown_lints)]
 #[allow(missing_owner_check)]
 #[allow(missing_signer_check)]
 fn pay_wormhole_fee<'info>(
