@@ -12,6 +12,13 @@ There are two basic components to NTT:
 
 (2) **NttManager**: The NttManager contract is responsible for managing the token and the transceivers. It also handles the rate limiting and the message attestation logic. Note that each NttManager corresponds to a single token. However, a single NttManager can can control multiple transceivers.
 
+
+<figure>
+  <img src="images/NTT-architecture--custom-attestation-2.png" alt="NTT Architecture Diagram">
+  <figcaption>Figure: NTT Architecture Diagram with Custom Attestations.</figcaption>
+</figure>
+
+
 ## Amount trimming
 
 In the payload, amounts are encoded as unsigned 64 bit integers, and capped at 8 decimals.
