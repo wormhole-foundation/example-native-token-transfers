@@ -89,9 +89,23 @@ abstract contract ManagerBase is
     /// @inheritdoc IManagerBase
     function quoteDeliveryPrice(
         uint16 recipientChain,
+        bytes memory transceiverInstructions
+    ) public view returns (uint256[] memory, uint256) {
+        address[] memory enabledTransceivers = _getEnabledTransceiversStorage();
+
+        TransceiverStructs.TransceiverInstruction[] memory instructions = TransceiverStructs
+            .parseTransceiverInstructions(transceiverInstructions, enabledTransceivers.length);
+
+        return _quoteDeliveryPrice(recipientChain, instructions, enabledTransceivers);
+    }
+
+    // =============== Internal Logic ===========================================================
+
+    function _quoteDeliveryPrice(
+        uint16 recipientChain,
         TransceiverStructs.TransceiverInstruction[] memory transceiverInstructions,
         address[] memory enabledTransceivers
-    ) public view returns (uint256[] memory, uint256) {
+    ) internal view returns (uint256[] memory, uint256) {
         uint256 numEnabledTransceivers = enabledTransceivers.length;
         mapping(address => TransceiverInfo) storage transceiverInfos = _getTransceiverInfosStorage();
 
@@ -108,8 +122,6 @@ abstract contract ManagerBase is
         }
         return (priceQuotes, totalPriceQuote);
     }
-
-    // =============== Internal Logic ===========================================================
 
     function _recordTransceiverAttestation(
         uint16 sourceChainId,
@@ -215,7 +227,7 @@ abstract contract ManagerBase is
         }
 
         (uint256[] memory priceQuotes, uint256 totalPriceQuote) =
-            quoteDeliveryPrice(recipientChain, instructions, enabledTransceivers);
+            _quoteDeliveryPrice(recipientChain, instructions, enabledTransceivers);
         {
             // check up front that msg.value will cover the delivery price
             if (msg.value < totalPriceQuote) {

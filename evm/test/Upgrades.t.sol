@@ -429,6 +429,17 @@ contract TestUpgrades is Test, IRateLimiterEvents {
         wormholeTransceiverChain1Implementation.initialize();
     }
 
+    function test_nonZeroWormholeFee() public {
+        // Set the message fee to be non-zero
+        vm.chainId(11155111); // Sepolia testnet id
+        uint256 fee = 0.000001e18;
+        guardian.setMessageFee(fee);
+        uint256 balanceBefore = address(userA).balance;
+        basicFunctionality();
+        uint256 balanceAfter = address(userA).balance;
+        assertEq(balanceAfter + fee, balanceBefore);
+    }
+
     function basicFunctionality() public {
         vm.chainId(chainId1);
 
@@ -444,11 +455,15 @@ contract TestUpgrades is Test, IRateLimiterEvents {
 
         vm.recordLogs();
 
+        // Fetch quote
+        (, uint256 totalQuote) =
+            nttManagerChain1.quoteDeliveryPrice(chainId2, encodeTransceiverInstruction(true));
+
         // Send token through standard means (not relayer)
         {
             uint256 nttManagerBalanceBefore = token1.balanceOf(address(nttManagerChain1));
             uint256 userBalanceBefore = token1.balanceOf(address(userA));
-            nttManagerChain1.transfer(
+            nttManagerChain1.transfer{value: totalQuote}(
                 sendingAmount,
                 chainId2,
                 bytes32(uint256(uint160(userB))),
@@ -514,10 +529,14 @@ contract TestUpgrades is Test, IRateLimiterEvents {
         token2.approve(address(nttManagerChain2), sendingAmount);
         vm.recordLogs();
 
+        // Fetch quote
+        (, totalQuote) =
+            nttManagerChain2.quoteDeliveryPrice(chainId1, encodeTransceiverInstruction(true));
+
         // Supply checks on the transfer
         {
             uint256 supplyBefore = token2.totalSupply();
-            nttManagerChain2.transfer(
+            nttManagerChain2.transfer{value: totalQuote}(
                 sendingAmount,
                 chainId1,
                 bytes32(uint256(uint160(userD))),
