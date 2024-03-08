@@ -41,10 +41,9 @@ impl Bitmap {
         Ok(BM::<128>::from_value(self.map).get(usize::from(index)))
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     pub fn count_enabled_votes(&self, enabled: Bitmap) -> u8 {
         let bm = BM::<128>::from_value(self.map) & BM::<128>::from_value(enabled.map);
-        // Conversion from usize to u8 is safe here. The Bitmap uses u128, so its maximum length
-        // (number of true bits) is 128.
         bm.len()
             .try_into()
             .expect("Bitmap length must not exceed the bounds of u8")

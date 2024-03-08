@@ -46,12 +46,15 @@ impl RateLimitState {
     /// Returns the capacity of the rate limiter.
     /// On-chain programs and unit tests should always use [`capacity`].
     /// This function is useful in solana-program-test, where the clock sysvar
-    /// SECURITY: Integer division is OK here. We are not that concerned with precision. Removing
-    /// the remainder in this case is arguably more secure as it reduces the available capacity.
-    /// SECURITY: Sign loss is OK here. It is a conversion performed on a timestamp that must always be
-    /// positive.
+    // SECURITY: Integer division is OK here. We are not that concerned with precision. Removing
+    // the remainder in this case is arguably more secure as it reduces the available capacity.
+    // SECURITY: Sign loss is OK here. It is a conversion performed on a timestamp that must always be
+    // positive.
+    // SECURITY: Truncation is allowed here. Clippy warns about the final returned expression, but it is
+    // safe.
     #[allow(clippy::integer_division)]
     #[allow(clippy::cast_sign_loss)]
+    #[allow(clippy::cast_possible_truncation)]
     pub fn capacity_at(&self, now: UnixTimestamp) -> u64 {
         assert!(self.last_tx_timestamp <= now);
 
@@ -76,6 +79,10 @@ impl RateLimitState {
                 + time_passed as u128 * limit / (Self::RATE_LIMIT_DURATION as u128)
         };
 
+        // The use of `min` here prevents truncation.
+        // The value of `limit` is u64 in reality. If both `calculated_capacity` and `limit` are at
+        // their maxiumum possible values (u128::MAX and u64::MAX), then u64::MAX will be chosen by
+        // `min`. So truncation is not possible.
         calculated_capacity.min(limit) as u64
     }
 
