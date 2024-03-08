@@ -152,7 +152,7 @@ contract WormholeTransceiver is
         WormholeTransceiverInstruction memory weIns =
             parseWormholeTransceiverInstruction(instruction.payload);
         if (weIns.shouldSkipRelayerSend) {
-            return 0;
+            return wormhole.messageFee();
         }
 
         if (_checkInvalidRelayingConfig(targetChain)) {
@@ -164,9 +164,10 @@ contract WormholeTransceiver is
             return cost;
         } else if (isSpecialRelayingEnabled(targetChain)) {
             uint256 cost = specialRelayer.quoteDeliveryPrice(getNttManagerToken(), targetChain, 0);
-            return cost;
+            // We need to pay both the special relayer cost and the Wormhole message fee independently
+            return cost + wormhole.messageFee();
         } else {
-            return 0;
+            return wormhole.messageFee();
         }
     }
 
@@ -203,15 +204,19 @@ contract WormholeTransceiver is
 
             emit RelayingInfo(uint8(RelayingType.Standard), deliveryPayment);
         } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
-            uint64 sequence =
-                wormhole.publishMessage(0, encodedTransceiverPayload, consistencyLevel);
-            specialRelayer.requestDelivery{value: deliveryPayment}(
+            uint256 wormholeFee = wormhole.messageFee();
+            uint64 sequence = wormhole.publishMessage{value: wormholeFee}(
+                0, encodedTransceiverPayload, consistencyLevel
+            );
+            specialRelayer.requestDelivery{value: deliveryPayment - wormholeFee}(
                 getNttManagerToken(), recipientChain, 0, sequence
             );
 
             emit RelayingInfo(uint8(RelayingType.Special), deliveryPayment);
         } else {
-            wormhole.publishMessage(0, encodedTransceiverPayload, consistencyLevel);
+            wormhole.publishMessage{value: deliveryPayment}(
+                0, encodedTransceiverPayload, consistencyLevel
+            );
 
             emit RelayingInfo(uint8(RelayingType.Manual), deliveryPayment);
         }

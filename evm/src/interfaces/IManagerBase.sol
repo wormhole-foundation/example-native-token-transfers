@@ -111,11 +111,11 @@ interface IManagerBase {
 
     /// @notice Fetch the delivery price for a given recipient chain transfer.
     /// @param recipientChain The chain ID of the transfer destination.
-    /// @return - The delivery prices associated with each endpoint and the total price.
+    /// @param transceiverInstructions The transceiver specific instructions for quoting and sending
+    /// @return - The delivery prices associated with each enabled endpoint and the total price.
     function quoteDeliveryPrice(
         uint16 recipientChain,
-        TransceiverStructs.TransceiverInstruction[] memory transceiverInstructions,
-        address[] memory enabledTransceivers
+        bytes memory transceiverInstructions
     ) external view returns (uint256[] memory, uint256);
 
     /// @notice Sets the threshold for the number of attestations required for a message
