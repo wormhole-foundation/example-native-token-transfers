@@ -104,7 +104,7 @@ abstract contract Transceiver is
     function sendMessage(
         uint16 recipientChain,
         TransceiverStructs.TransceiverInstruction memory instruction,
-        bytes memory nttManagerMessage,
+        bytes memory ManagerMessage,
         bytes32 recipientNttManagerAddress
     ) external payable nonReentrant onlyNttManager {
         _sendMessage(
@@ -113,7 +113,7 @@ abstract contract Transceiver is
             msg.sender,
             recipientNttManagerAddress,
             instruction,
-            nttManagerMessage
+            ManagerMessage
         );
     }
 
@@ -125,7 +125,7 @@ abstract contract Transceiver is
         address caller,
         bytes32 recipientNttManagerAddress,
         TransceiverStructs.TransceiverInstruction memory transceiverInstruction,
-        bytes memory nttManagerMessage
+        bytes memory ManagerMessage
     ) internal virtual;
 
     // @define This method is called by the BridgeNttManager contract to send a cross-chain message.
@@ -135,7 +135,7 @@ abstract contract Transceiver is
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
         bytes32 recipientNttManagerAddress,
-        TransceiverStructs.NttManagerMessage memory payload
+        TransceiverStructs.ManagerMessage memory payload
     ) internal virtual {
         if (recipientNttManagerAddress != toWormholeFormat(nttManager)) {
             revert UnexpectedRecipientNttManagerAddress(

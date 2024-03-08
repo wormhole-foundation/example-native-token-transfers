@@ -152,12 +152,12 @@ interface INttManager is IManagerBase {
     function attestationReceived(
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
-        TransceiverStructs.NttManagerMessage memory payload
+        TransceiverStructs.ManagerMessage memory payload
     ) external;
 
     /// @notice Called after a message has been sufficiently verified to execute
     ///         the command in the message. This function will decode the payload
-    ///         as an NttManagerMessage to extract the sequence, msgType, and other parameters.
+    ///         as an ManagerMessage to extract the sequence, msgType, and other parameters.
     /// @dev This function is exposed as a fallback for when an `Transceiver` is deregistered
     ///      when a message is in flight.
     /// @param sourceChainId The chain id of the sender.
@@ -166,7 +166,7 @@ interface INttManager is IManagerBase {
     function executeMsg(
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
-        TransceiverStructs.NttManagerMessage memory message
+        TransceiverStructs.ManagerMessage memory message
     ) external;
 
     /// @notice Returns the number of decimals of the token managed by the NttManager.

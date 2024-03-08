@@ -113,10 +113,9 @@ abstract contract ManagerBase is
 
     function _recordTransceiverAttestation(
         uint16 sourceChainId,
-        TransceiverStructs.NttManagerMessage memory payload
+        TransceiverStructs.ManagerMessage memory payload
     ) internal returns (bytes32) {
-        bytes32 nttManagerMessageHash =
-            TransceiverStructs.nttManagerMessageDigest(sourceChainId, payload);
+        bytes32 ManagerMessageHash = TransceiverStructs.managerMessageDigest(sourceChainId, payload);
 
         // set the attested flag for this transceiver.
         // NOTE: Attestation is idempotent (bitwise or 1), but we revert
@@ -124,22 +123,22 @@ abstract contract ManagerBase is
         // to receive the same message through the same transceiver.
         if (
             transceiverAttestedToMessage(
-                nttManagerMessageHash, _getTransceiverInfosStorage()[msg.sender].index
+                ManagerMessageHash, _getTransceiverInfosStorage()[msg.sender].index
             )
         ) {
-            revert TransceiverAlreadyAttestedToMessage(nttManagerMessageHash);
+            revert TransceiverAlreadyAttestedToMessage(ManagerMessageHash);
         }
-        _setTransceiverAttestedToMessage(nttManagerMessageHash, msg.sender);
+        _setTransceiverAttestedToMessage(ManagerMessageHash, msg.sender);
 
-        return nttManagerMessageHash;
+        return ManagerMessageHash;
     }
 
     function _isMessageExecuted(
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
-        TransceiverStructs.NttManagerMessage memory message
+        TransceiverStructs.ManagerMessage memory message
     ) internal returns (bytes32, bool) {
-        bytes32 digest = TransceiverStructs.nttManagerMessageDigest(sourceChainId, message);
+        bytes32 digest = TransceiverStructs.managerMessageDigest(sourceChainId, message);
 
         if (!isMessageApproved(digest)) {
             revert MessageNotApproved(digest);
@@ -163,7 +162,7 @@ abstract contract ManagerBase is
         uint256[] memory priceQuotes,
         TransceiverStructs.TransceiverInstruction[] memory transceiverInstructions,
         address[] memory enabledTransceivers,
-        bytes memory nttManagerMessage
+        bytes memory ManagerMessage
     ) internal {
         uint256 numEnabledTransceivers = enabledTransceivers.length;
         mapping(address => TransceiverInfo) storage transceiverInfos = _getTransceiverInfosStorage();
@@ -179,7 +178,7 @@ abstract contract ManagerBase is
             ITransceiver(transceiverAddr).sendMessage{value: priceQuotes[i]}(
                 recipientChain,
                 transceiverInstructions[transceiverInfos[transceiverAddr].index],
-                nttManagerMessage,
+                ManagerMessage,
                 peerAddress
             );
         }

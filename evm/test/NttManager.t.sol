@@ -142,9 +142,9 @@ contract TestNttManager is Test, IRateLimiterEvents {
             TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9, type(uint64).max
         );
 
-        TransceiverStructs.NttManagerMessage memory nttManagerMessage;
+        TransceiverStructs.ManagerMessage memory ManagerMessage;
         bytes memory transceiverMessage;
-        (nttManagerMessage, transceiverMessage) = TransceiverHelpersLib
+        (ManagerMessage, transceiverMessage) = TransceiverHelpersLib
             .buildTransceiverMessageWithNttManagerPayload(
             0,
             bytes32(0),
@@ -155,8 +155,8 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         e1.receiveMessage(transceiverMessage);
 
-        bytes32 hash = TransceiverStructs.nttManagerMessageDigest(
-            TransceiverHelpersLib.SENDING_CHAIN_ID, nttManagerMessage
+        bytes32 hash = TransceiverStructs.managerMessageDigest(
+            TransceiverHelpersLib.SENDING_CHAIN_ID, ManagerMessage
         );
         assertEq(nttManagerZeroRateLimiter.messageAttestations(hash), 1);
     }
@@ -431,9 +431,9 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         bytes32 peer = toWormholeFormat(address(nttManager));
 
-        TransceiverStructs.NttManagerMessage memory nttManagerMessage;
+        TransceiverStructs.ManagerMessage memory ManagerMessage;
         bytes memory transceiverMessage;
-        (nttManagerMessage, transceiverMessage) = TransceiverHelpersLib
+        (ManagerMessage, transceiverMessage) = TransceiverHelpersLib
             .buildTransceiverMessageWithNttManagerPayload(
             0, bytes32(0), peer, toWormholeFormat(address(nttManagerOther)), abi.encode("payload")
         );
@@ -454,17 +454,17 @@ contract TestNttManager is Test, IRateLimiterEvents {
         bytes32 peer = toWormholeFormat(address(nttManager));
         nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9, type(uint64).max);
 
-        TransceiverStructs.NttManagerMessage memory nttManagerMessage;
+        TransceiverStructs.ManagerMessage memory ManagerMessage;
         bytes memory transceiverMessage;
-        (nttManagerMessage, transceiverMessage) = TransceiverHelpersLib
+        (ManagerMessage, transceiverMessage) = TransceiverHelpersLib
             .buildTransceiverMessageWithNttManagerPayload(
             0, bytes32(0), peer, toWormholeFormat(address(nttManagerOther)), abi.encode("payload")
         );
 
         e1.receiveMessage(transceiverMessage);
 
-        bytes32 hash = TransceiverStructs.nttManagerMessageDigest(
-            TransceiverHelpersLib.SENDING_CHAIN_ID, nttManagerMessage
+        bytes32 hash = TransceiverStructs.managerMessageDigest(
+            TransceiverHelpersLib.SENDING_CHAIN_ID, ManagerMessage
         );
         assertEq(nttManagerOther.messageAttestations(hash), 1);
     }
@@ -477,15 +477,15 @@ contract TestNttManager is Test, IRateLimiterEvents {
         bytes32 peer = toWormholeFormat(address(nttManager));
         nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9, type(uint64).max);
 
-        TransceiverStructs.NttManagerMessage memory nttManagerMessage;
+        TransceiverStructs.ManagerMessage memory ManagerMessage;
         bytes memory transceiverMessage;
-        (nttManagerMessage, transceiverMessage) = TransceiverHelpersLib
+        (ManagerMessage, transceiverMessage) = TransceiverHelpersLib
             .buildTransceiverMessageWithNttManagerPayload(
             0, bytes32(0), peer, toWormholeFormat(address(nttManagerOther)), abi.encode("payload")
         );
 
-        bytes32 hash = TransceiverStructs.nttManagerMessageDigest(
-            TransceiverHelpersLib.SENDING_CHAIN_ID, nttManagerMessage
+        bytes32 hash = TransceiverStructs.managerMessageDigest(
+            TransceiverHelpersLib.SENDING_CHAIN_ID, ManagerMessage
         );
 
         e1.receiveMessage(transceiverMessage);
@@ -508,7 +508,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
         ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](1);
         transceivers[0] = e1;
 
-        TransceiverStructs.NttManagerMessage memory m;
+        TransceiverStructs.ManagerMessage memory m;
         (m,) = TransceiverHelpersLib.attestTransceiversHelper(
             address(0x456),
             0,
@@ -523,7 +523,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
         nttManagerOther.removeTransceiver(address(e1));
 
         bytes32 hash =
-            TransceiverStructs.nttManagerMessageDigest(TransceiverHelpersLib.SENDING_CHAIN_ID, m);
+            TransceiverStructs.managerMessageDigest(TransceiverHelpersLib.SENDING_CHAIN_ID, m);
         // a disabled transceiver's vote no longer counts
         assertEq(nttManagerOther.messageAttestations(hash), 0);
 
@@ -601,7 +601,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         TrimmedAmount transferAmount = packTrimmedAmount(50, 8);
 
-        TransceiverStructs.NttManagerMessage memory m;
+        TransceiverStructs.ManagerMessage memory m;
         bytes memory encodedEm;
         {
             ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](2);
@@ -743,7 +743,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
         transceivers[0] = e1;
         transceivers[1] = e2;
 
-        TransceiverStructs.NttManagerMessage memory m;
+        TransceiverStructs.ManagerMessage memory m;
         bytes memory encodedEm;
         {
             TransceiverStructs.TransceiverMessage memory em;

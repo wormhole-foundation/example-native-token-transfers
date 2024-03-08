@@ -24,13 +24,17 @@ library TransceiverStructs {
     ///      This is 0x99'N''T''T'
     bytes4 constant NTT_PREFIX = 0x994E5454;
 
+    /// @dev Prefix for all NonFungibleNativeTokenTransfer payloads
+    ///     This is 0x99'N''F''T'
+    bytes4 constant NON_FUNGIBLE_NTT_PREFIX = 0x994E4654;
+
     /// @dev Message emitted and received by the nttManager contract.
     ///      The wire format is as follows:
     ///      - id - 32 bytes
     ///      - sender - 32 bytes
     ///      - payloadLength - 2 bytes
     ///      - payload - `payloadLength` bytes
-    struct NttManagerMessage {
+    struct ManagerMessage {
         /// @notice unique message identifier
         /// @dev This is incrementally assigned on EVM chains, but this is not
         /// guaranteed on other runtimes.
@@ -41,14 +45,14 @@ library TransceiverStructs {
         bytes payload;
     }
 
-    function nttManagerMessageDigest(
+    function managerMessageDigest(
         uint16 sourceChainId,
-        NttManagerMessage memory m
+        ManagerMessage memory m
     ) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(sourceChainId, encodeNttManagerMessage(m)));
+        return keccak256(abi.encodePacked(sourceChainId, encodeManagerMessage(m)));
     }
 
-    function encodeNttManagerMessage(NttManagerMessage memory m)
+    function encodeManagerMessage(ManagerMessage memory m)
         public
         pure
         returns (bytes memory encoded)
@@ -60,13 +64,13 @@ library TransceiverStructs {
         return abi.encodePacked(m.id, m.sender, payloadLength, m.payload);
     }
 
-    /// @notice Parse a NttManagerMessage.
+    /// @notice Parse a ManagerMessage.
     /// @param encoded The byte array corresponding to the encoded message
-    /// @return nttManagerMessage The parsed NttManagerMessage struct.
-    function parseNttManagerMessage(bytes memory encoded)
+    /// @return nttManagerMessage The parsed ManagerMessage struct.
+    function parseManagerMessage(bytes memory encoded)
         public
         pure
-        returns (NttManagerMessage memory nttManagerMessage)
+        returns (ManagerMessage memory nttManagerMessage)
     {
         uint256 offset = 0;
         (nttManagerMessage.id, offset) = encoded.asBytes32Unchecked(offset);
@@ -142,6 +146,47 @@ library TransceiverStructs {
         (nativeTokenTransfer.toChain, offset) = encoded.asUint16Unchecked(offset);
         encoded.checkLength(offset);
     }
+
+    /// @dev Native Token Transfer payload.
+    ///     TODO: Document wire format.
+    struct NonFungibleNativeTokenTransfer {
+        /// @notice Address of the recipient.
+        bytes32 to;
+        /// @notice Chain ID of the recipient
+        uint16 toChain;
+        /// @notice Array of tokenIds.
+        uint256[] tokenIds;
+    }
+
+    function encodeNonFungibleNativeTokenTransfer(NonFungibleNativeTokenTransfer memory nft)
+        public
+        pure
+        returns (bytes memory encoded)
+    {
+        return abi.encodePacked(
+            NON_FUNGIBLE_NTT_PREFIX, nft.to, nft.toChain, encodeNftBatch(nft.tokenIds)
+        );
+    }
+
+    function encodeNftBatch(uint256[] memory tokenIds) public pure returns (bytes memory encoded) {
+        uint16 batchSize = uint16(tokenIds.length);
+
+        encoded = abi.encodePacked(batchSize);
+        for (uint256 i = 0; i < batchSize; ++i) {
+            // For now encode each token ID as 32 bytes long.
+            // TODO: Optimize this to encode only the necessary bytes.
+            encoded = abi.encodePacked(encoded, uint8(32), tokenIds[i]);
+        }
+    }
+
+    /// @dev Parse a NativeTokenTransfer.
+    /// @param encoded The byte array corresponding to the encoded message
+    /// @return nativeTokenTransfer The parsed NativeTokenTransfer struct.
+    function parseNonFungibleNativeTokenTransfer(bytes memory encoded)
+        public
+        pure
+        returns (NativeTokenTransfer memory nativeTokenTransfer)
+    {}
 
     /// @dev Message emitted by Transceiver implementations.
     ///      Each message includes an Transceiver-specified 4-byte prefix.
@@ -246,22 +291,22 @@ library TransceiverStructs {
     }
 
     /// @dev Parses the payload of an Transceiver message and returns
-    ///      the parsed NttManagerMessage struct.
+    ///      the parsed ManagerMessage struct.
     /// @param expectedPrefix The prefix that should be encoded in the nttManager message.
     /// @param payload The payload sent across the wire.
-    function parseTransceiverAndNttManagerMessage(
+    function parseTransceiverAndManagerMessage(
         bytes4 expectedPrefix,
         bytes memory payload
-    ) public pure returns (TransceiverMessage memory, NttManagerMessage memory) {
+    ) public pure returns (TransceiverMessage memory, ManagerMessage memory) {
         // parse the encoded message payload from the Transceiver
         TransceiverMessage memory parsedTransceiverMessage =
             parseTransceiverMessage(expectedPrefix, payload);
 
         // parse the encoded message payload from the NttManager
-        NttManagerMessage memory parsedNttManagerMessage =
-            parseNttManagerMessage(parsedTransceiverMessage.nttManagerPayload);
+        ManagerMessage memory parsedManagerMessage =
+            parseManagerMessage(parsedTransceiverMessage.nttManagerPayload);
 
-        return (parsedTransceiverMessage, parsedNttManagerMessage);
+        return (parsedTransceiverMessage, parsedManagerMessage);
     }
 
     /// @dev Variable-length transceiver-specific instruction that can be passed by the caller to the nttManager.

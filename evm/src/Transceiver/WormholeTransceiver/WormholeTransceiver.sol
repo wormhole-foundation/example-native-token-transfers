@@ -61,15 +61,15 @@ contract WormholeTransceiver is
 
         // parse the encoded Transceiver payload
         TransceiverStructs.TransceiverMessage memory parsedTransceiverMessage;
-        TransceiverStructs.NttManagerMessage memory parsedNttManagerMessage;
-        (parsedTransceiverMessage, parsedNttManagerMessage) = TransceiverStructs
-            .parseTransceiverAndNttManagerMessage(WH_TRANSCEIVER_PAYLOAD_PREFIX, payload);
+        TransceiverStructs.ManagerMessage memory parsedManagerMessage;
+        (parsedTransceiverMessage, parsedManagerMessage) = TransceiverStructs
+            .parseTransceiverAndManagerMessage(WH_TRANSCEIVER_PAYLOAD_PREFIX, payload);
 
         _deliverToNttManager(
             sourceChainId,
             parsedTransceiverMessage.sourceNttManagerAddress,
             parsedTransceiverMessage.recipientNttManagerAddress,
-            parsedNttManagerMessage
+            parsedManagerMessage
         );
     }
 
@@ -104,15 +104,15 @@ contract WormholeTransceiver is
 
         // parse the encoded Transceiver payload
         TransceiverStructs.TransceiverMessage memory parsedTransceiverMessage;
-        TransceiverStructs.NttManagerMessage memory parsedNttManagerMessage;
-        (parsedTransceiverMessage, parsedNttManagerMessage) = TransceiverStructs
-            .parseTransceiverAndNttManagerMessage(WH_TRANSCEIVER_PAYLOAD_PREFIX, payload);
+        TransceiverStructs.ManagerMessage memory parsedManagerMessage;
+        (parsedTransceiverMessage, parsedManagerMessage) = TransceiverStructs
+            .parseTransceiverAndManagerMessage(WH_TRANSCEIVER_PAYLOAD_PREFIX, payload);
 
         _deliverToNttManager(
             sourceChain,
             parsedTransceiverMessage.sourceNttManagerAddress,
             parsedTransceiverMessage.recipientNttManagerAddress,
-            parsedNttManagerMessage
+            parsedManagerMessage
         );
     }
 
@@ -151,6 +151,7 @@ contract WormholeTransceiver is
         // Check the special instruction up front to see if we should skip sending via a relayer
         WormholeTransceiverInstruction memory weIns =
             parseWormholeTransceiverInstruction(instruction.payload);
+
         if (weIns.shouldSkipRelayerSend) {
             return 0;
         }
@@ -176,7 +177,7 @@ contract WormholeTransceiver is
         address caller,
         bytes32 recipientNttManagerAddress,
         TransceiverStructs.TransceiverInstruction memory instruction,
-        bytes memory nttManagerMessage
+        bytes memory ManagerMessage
     ) internal override {
         (
             TransceiverStructs.TransceiverMessage memory transceiverMessage,
@@ -185,7 +186,7 @@ contract WormholeTransceiver is
             WH_TRANSCEIVER_PAYLOAD_PREFIX,
             toWormholeFormat(caller),
             recipientNttManagerAddress,
-            nttManagerMessage,
+            ManagerMessage,
             new bytes(0)
         );
 

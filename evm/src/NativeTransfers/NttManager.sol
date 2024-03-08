@@ -173,9 +173,9 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         _verifyPeer(sourceChainId, sourceNttManagerAddress);
 
         // Compute manager message digest and record transceiver attestation.
-        bytes32 nttManagerMessageHash = _recordTransceiverAttestation(sourceChainId, payload);
+        bytes32 ManagerMessageHash = _recordTransceiverAttestation(sourceChainId, payload);
 
-        if (isMessageApproved(nttManagerMessageHash)) {
+        if (isMessageApproved(ManagerMessageHash)) {
             executeMsg(sourceChainId, sourceNttManagerAddress, payload);
         }
     }
@@ -408,9 +408,9 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
             amount, toWormholeFormat(token), recipient, recipientChain
         );
 
-        // construct the NttManagerMessage payload
-        bytes memory encodedNttManagerPayload = TransceiverStructs.encodeNttManagerMessage(
-            TransceiverStructs.NttManagerMessage(
+        // construct the ManagerMessage payload
+        bytes memory encodedNttManagerPayload = TransceiverStructs.encodeManagerMessage(
+            TransceiverStructs.ManagerMessage(
                 bytes32(uint256(seq)),
                 toWormholeFormat(sender),
                 TransceiverStructs.encodeNativeTokenTransfer(ntt)

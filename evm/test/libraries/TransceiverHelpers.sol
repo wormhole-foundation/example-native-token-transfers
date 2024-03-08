@@ -39,13 +39,13 @@ library TransceiverHelpersLib {
     )
         internal
         returns (
-            TransceiverStructs.NttManagerMessage memory,
+            TransceiverStructs.ManagerMessage memory,
             TransceiverStructs.TransceiverMessage memory
         )
     {
-        TransceiverStructs.NttManagerMessage memory m =
-            buildNttManagerMessage(to, id, toChain, nttManager, amount);
-        bytes memory encodedM = TransceiverStructs.encodeNttManagerMessage(m);
+        TransceiverStructs.ManagerMessage memory m =
+            buildManagerMessage(to, id, toChain, nttManager, amount);
+        bytes memory encodedM = TransceiverStructs.encodeManagerMessage(m);
 
         prepTokenReceive(nttManager, recipientNttManager, amount, inboundLimit);
 
@@ -67,16 +67,16 @@ library TransceiverHelpersLib {
         return (m, em);
     }
 
-    function buildNttManagerMessage(
+    function buildManagerMessage(
         address to,
         bytes32 id,
         uint16 toChain,
         NttManager nttManager,
         TrimmedAmount amount
-    ) internal view returns (TransceiverStructs.NttManagerMessage memory) {
+    ) internal view returns (TransceiverStructs.ManagerMessage memory) {
         DummyToken token = DummyToken(nttManager.token());
 
-        return TransceiverStructs.NttManagerMessage(
+        return TransceiverStructs.ManagerMessage(
             id,
             bytes32(0),
             TransceiverStructs.encodeNativeTokenTransfer(
@@ -109,16 +109,16 @@ library TransceiverHelpersLib {
         bytes32 sourceNttManager,
         bytes32 recipientNttManager,
         bytes memory payload
-    ) internal pure returns (TransceiverStructs.NttManagerMessage memory, bytes memory) {
-        TransceiverStructs.NttManagerMessage memory m =
-            TransceiverStructs.NttManagerMessage(id, sender, payload);
-        bytes memory nttManagerMessage = TransceiverStructs.encodeNttManagerMessage(m);
+    ) internal pure returns (TransceiverStructs.ManagerMessage memory, bytes memory) {
+        TransceiverStructs.ManagerMessage memory m =
+            TransceiverStructs.ManagerMessage(id, sender, payload);
+        bytes memory ManagerMessage = TransceiverStructs.encodeManagerMessage(m);
         bytes memory transceiverMessage;
         (, transceiverMessage) = TransceiverStructs.buildAndEncodeTransceiverMessage(
             TEST_TRANSCEIVER_PAYLOAD_PREFIX,
             sourceNttManager,
             recipientNttManager,
-            nttManagerMessage,
+            ManagerMessage,
             new bytes(0)
         );
         return (m, transceiverMessage);
