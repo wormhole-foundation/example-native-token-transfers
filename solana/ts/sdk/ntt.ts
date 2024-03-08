@@ -734,7 +734,7 @@ export class NTT {
       ...args,
       payer: args.payer.publicKey,
       nttMessage,
-      recipient: new PublicKey(nttMessage.payload.recipientAddress),
+      recipient: new PublicKey(nttMessage.payload.recipientAddress.toUint8Array()),
       chain: chainId,
       revertOnDelay: false
     }

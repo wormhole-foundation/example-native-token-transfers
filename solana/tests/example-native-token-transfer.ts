@@ -7,7 +7,9 @@ import { toChainId } from '@certusone/wormhole-sdk'
 import { MockEmitter, MockGuardians } from '@certusone/wormhole-sdk/lib/cjs/mock'
 import * as fs from "fs";
 
-import { type TransceiverMessage, NttManagerMessage, NativeTokenTransfer, TrimmedAmount, postVaa, WormholeTransceiverMessage, NTT } from '../ts/sdk'
+import { encoding } from '@wormhole-foundation/sdk-base'
+import { UniversalAddress, serializePayload, deserializePayload } from '@wormhole-foundation/sdk-definitions'
+import { NttMessage, postVaa, NTT } from '../ts/sdk'
 
 export const GUARDIAN_KEY = 'cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0'
 
@@ -78,7 +80,7 @@ describe('example-native-token-transfers', () => {
         payer,
         owner: payer,
         chain: 'ethereum',
-        address: Buffer.from('ntt_manager'.padStart(32, '\0')),
+        address: Buffer.from('nttManager'.padStart(32, '\0')),
         limit: new BN(1000000),
         tokenDecimals: 18
       })
@@ -110,13 +112,11 @@ describe('example-native-token-transfers', () => {
       }
 
       const messageData = PostedMessageData.deserialize(wormholeMessageAccount.data)
-      const transceiverMessage = WormholeTransceiverMessage.deserialize(
-        messageData.message.payload,
-        a => NttManagerMessage.deserialize(a, NativeTokenTransfer.deserialize)
-      )
+      const transceiverMessage =
+        deserializePayload("NTT:WormholeTransfer", messageData.message.payload)
 
       // assert theat amount is what we expect
-      expect(transceiverMessage.ntt_managerPayload.payload.trimmedAmount).to.deep.equal(new TrimmedAmount(BigInt(10000), 8))
+      expect(transceiverMessage.nttManagerPayload.payload.trimmedAmount).to.deep.equal({amount: 10000n, decimals: 8})
       // get from balance
       const balance = await connection.getTokenAccountBalance(tokenAccount)
       expect(balance.value.amount).to.equal('9900000')
@@ -133,7 +133,7 @@ describe('example-native-token-transfers', () => {
       // console.log(message);
 
       // TODO: assert other stuff in the message
-      // console.log(ntt_managerMessage);
+      // console.log(nttManagerMessage);
     });
 
     it('Can receive tokens', async () => {
@@ -146,27 +146,30 @@ describe('example-native-token-transfers', () => {
 
       const guardians = new MockGuardians(0, [GUARDIAN_KEY])
 
-      const sendingTransceiverMessage: TransceiverMessage<NativeTokenTransfer> = {
-        sourceNttManager: Buffer.from('ntt_manager'.padStart(32, '\0')),
-        recipientNttManager: ntt.program.programId.toBuffer(),
-        ntt_managerPayload: new NttManagerMessage(
-          Buffer.from('sequence1'.padEnd(32, '0'), 'ascii'),
-          Buffer.from('FACE'.padStart(64, '0'), 'hex'),
-          new NativeTokenTransfer(
-            Buffer.from('FAFA'.padStart(64, '0'), 'hex'),
-            new TrimmedAmount(BigInt(10000), 8),
-            toChainId('solana'),
-            user.publicKey.toBuffer()
-          ),
-        ),
-        transceiverPayload: Buffer.alloc(0)
-      }
+      const sendingTransceiverMessage = {
+        sourceNttManager: new UniversalAddress(encoding.bytes.encode('nttManager'.padStart(32, '\0'))),
+        recipientNttManager: new UniversalAddress(ntt.program.programId.toBytes()),
+        nttManagerPayload: {
+          id: encoding.bytes.encode('sequence1'.padEnd(32, '0')),
+          sender: new UniversalAddress('FACE'.padStart(64, '0')),
+          payload: {
+            trimmedAmount: {
+              amount: 10000n,
+              decimals: 8
+            },
+            sourceToken: new UniversalAddress('FAFA'.padStart(64, '0')),
+            recipientAddress: new UniversalAddress(user.publicKey.toBytes()),
+            recipientChain: 'Solana',
+          }
+        },
+        transceiverPayload: new Uint8Array(0)
+      } as const
 
-      const serialized = WormholeTransceiverMessage.serialize(sendingTransceiverMessage, a => NttManagerMessage.serialize(a, NativeTokenTransfer.serialize))
+      const serialized = serializePayload("NTT:WormholeTransfer", sendingTransceiverMessage)
 
       const published = emitter.publishMessage(
         0, // nonce
-        serialized,
+        Buffer.from(serialized),
         0 // consistency level
       )
 
