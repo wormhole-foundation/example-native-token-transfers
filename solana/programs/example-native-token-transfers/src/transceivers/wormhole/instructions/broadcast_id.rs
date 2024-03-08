@@ -21,7 +21,6 @@ pub struct BroadcastId<'info> {
     pub wormhole_message: Signer<'info>,
 
     #[account(
-        mut,
         seeds = [b"emitter"],
         bump
     )]

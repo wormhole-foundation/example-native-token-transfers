@@ -38,7 +38,6 @@ pub struct ReleaseOutbound<'info> {
     pub wormhole_message: UncheckedAccount<'info>,
 
     #[account(
-        mut,
         seeds = [b"emitter"],
         bump
     )]
