@@ -39,6 +39,9 @@ interface INttManager is INttManagerState {
     /// @param providedPayment The provided payment.
     error DeliveryPaymentTooLow(uint256 requiredPayment, uint256 providedPayment);
 
+    /// @notice There are no transceivers enabled with the NttManager
+    error NoEnabledTransceivers();
+
     //// @notice The transfer has some dust.
     //// @dev This is a security measure to prevent users from losing funds.
     ////      This is the result of trimming the amount and then untrimming it.

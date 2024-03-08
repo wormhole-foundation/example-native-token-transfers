@@ -42,6 +42,9 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         nttManager.initialize();
 
         nttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 9, type(uint64).max);
+
+        DummyTransceiver e = new DummyTransceiver(address(nttManager));
+        nttManager.setTransceiver(address(e));
     }
 
     function test_outboundRateLimit_setLimitSimple() public {
