@@ -96,7 +96,7 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]) {
       await transceiverContract.setWormholePeer(peer.chainId, Buffer.from(peerTransceiverAddress, "hex"));
       log(`Registered transceiver peer for chain ${peer.chainId} at ${peerTransceiverAddress}.`);
     } else {
-      log(`Transceiver peer for chain ${peer.chainId} already registered at ${wormholePeerAddress}.`)
+      log(`Transceiver peer for chain ${peer.chainId} was already registered at ${wormholePeerAddress}.`)
     }
 
     if (!(await transceiverContract.isWormholeEvmChain(peer.chainId)) && peer.isWormholeEvmChain) {
