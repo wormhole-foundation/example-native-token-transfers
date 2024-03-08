@@ -7,9 +7,9 @@ pub struct Instance {
     pub assistant: Pubkey,
     pub fee_recipient: Pubkey,
     pub sol_price: u64, //UsdPrice (usd/sol [6 decimals])
-    //future feature:
-    //amount of sol the user has to pay for the relayer to trigger the release of their outbox item
-    //pub release_cost: u64, //SolAmount (lamports)
+                        //future feature:
+                        //amount of sol the user has to pay for the relayer to trigger the release of their outbox item
+                        //pub release_cost: u64, //SolAmount (lamports)
 }
 
 impl Instance {

@@ -59,8 +59,11 @@ const GWEI: u64 = u64::pow(10, 9);
 //TODO built-in u128 division likely still wastes a ton of compute units
 //     might be more efficient to use f64 or ruint crate
 fn mul_div(scalar: u64, numerator: u64, denominator: u64) -> u64 {
-    if scalar > 0 { //avoid potentially expensive u128 division
-        ((scalar as u128) * (numerator as u128) / (denominator as u128)).try_into().unwrap()
+    if scalar > 0 {
+        //avoid potentially expensive u128 division
+        ((scalar as u128) * (numerator as u128) / (denominator as u128))
+            .try_into()
+            .unwrap()
     } else {
         0
     }
@@ -76,24 +79,31 @@ pub fn request_relay(ctx: Context<RequestRelay>, args: RequestRelayArgs) -> Resu
     );
 
     let relay_fee_in_lamports = {
-        let target_native_in_gwei = args.gas_dropoff +
-            mul_div(accs.registered_chain.gas_price, EVM_GAS_COST, GWEI);
+        let target_native_in_gwei =
+            args.gas_dropoff + mul_div(accs.registered_chain.gas_price, EVM_GAS_COST, GWEI);
 
         //usd/target_native[usd, 6 decimals] * target_native[gwei, 9 decimals] = usd[usd, 6 decimals]
-        let target_native_in_usd =
-            mul_div(accs.registered_chain.native_price, target_native_in_gwei, GWEI);
+        let target_native_in_usd = mul_div(
+            accs.registered_chain.native_price,
+            target_native_in_gwei,
+            GWEI,
+        );
 
         let total_in_usd = target_native_in_usd + accs.registered_chain.base_price;
 
         //total_fee[sol, 9 decimals] = total_usd[usd, 6 decimals] / (sol_price[usd, 6 decimals]
-        mul_div(total_in_usd, LAMPORTS_PER_SOL, accs.instance.sol_price)        
+        mul_div(total_in_usd, LAMPORTS_PER_SOL, accs.instance.sol_price)
     };
 
     let rent_in_lamports = sysvar::rent::Rent::get()?.minimum_balance(8 + RelayRequest::INIT_SPACE);
     let fee_minus_rent = relay_fee_in_lamports.saturating_sub(rent_in_lamports);
     let total_fee_in_lamports = fee_minus_rent + rent_in_lamports;
 
-    require_gte!(args.max_fee, total_fee_in_lamports, NttQuoterError::ExceedsUserMaxFee);
+    require_gte!(
+        args.max_fee,
+        total_fee_in_lamports,
+        NttQuoterError::ExceedsUserMaxFee
+    );
 
     msg!("total fee in lamports: {}", total_fee_in_lamports);
 
