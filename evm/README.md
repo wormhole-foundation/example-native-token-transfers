@@ -2,7 +2,7 @@
 
 1. **Transfer**
 
-A client calls on [`transfer`] to initiate an NTT transfer. The client must specify at minimum, the amount of the transfer, the recipient chain, and the recipient address on the recipient chain. [`transfer`] also supports a flag to specify whether the NttManager should queue transfers or revert if they are rate-limited. Clients can also include additional instructions to forward along to the Transceiver on the source chain. Depending on mode set in the initial configuration of the NttManager contract, transfers are either "locked" or "burned". Once the transfer has been forwarded to the Transceiver, the NttManager emits the `TransferSent` event.
+A client calls on [`transfer`] to initiate an NTT transfer. The client must specify at minimum, the amount of the transfer, the recipient chain, and the recipient address on the recipient chain. [`transfer`] also supports a flag to specify whether the `NttManager` should queue rate-limited transfers or revert. Clients can also include additional instructions to forward along to the Transceiver on the source chain. Depending on mode set in the initial configuration of the `NttManager` contract, transfers are either "locked" or "burned". Once the transfer has been forwarded to the Transceiver, the `NttManager` emits the `TransferSent` event.
 
 _Events_
 ``` solidity
@@ -21,11 +21,11 @@ event TransferSent(
 
 2. **Rate Limit**
 
-A transfers can be rate-limited (see [here](../README.md#rate-limiting-and-cancel-flows) for more details), both on the source and destination chains. If a transfer is rate-limited on the source chain and the `shouldQueue` flag is enabled, it is added to an outbound queue. The transfer can be released after the configured `_rateLimitDuration` has expired via the [`completeOutboundQueuedTransfer`] method. The `OutboundTransferQueued` and `OutboundTransferRateLimited` events are emitted.
+A transfer can be rate-limited (see [here](../README.md#rate-limiting-and-cancel-flows) for more details) both on the source and destination chains. If a transfer is rate-limited on the source chain and the `shouldQueue` flag is enabled, it is added to an outbound queue. The transfer can be released after the configured `_rateLimitDuration` has expired via the [`completeOutboundQueuedTransfer`] method. The `OutboundTransferQueued` and `OutboundTransferRateLimited` events are emitted.
 
 If the client attempts to release the transfer from the queue before the expiry of the `rateLimitDuration`, the contract reverts with a `OutboundQueuedTransferStillQueued` error.
 
-Similarly, tranfers that are rate-limited on the destination chain are added to an inbound queue. These transfers can be released from the queue via the [`completeInboundQueuedTransfer`] method. The `InboundTransferQueued` event is emitted.
+Similarly, transfers that are rate-limited on the destination chain are added to an inbound queue. These transfers can be released from the queue via the [`completeInboundQueuedTransfer`] method. The `InboundTransferQueued` event is emitted.
 
 If the client attempts to release the transfer from the queue before the expiry of the `rateLimitDuration`, the contract reverts with a `InboundQueuedTransferStillQueued` error.
 
@@ -60,7 +60,7 @@ event InboundTransferQueued(bytes32 digest);
 
 3. **Send**
 
-Once the NttManager forwards the message to the Transceiver, the message is transmitted via the [`sendMessage`] method. The method signature is enforced by the [`Transceiver`] but transceivers are free to determine their own implementation for transmitting messages. (e.g A message routed through the Wormhole Transceiver can be sent via automatic relaying (AR), via a specialized or custom relayer, or manually).
+Once the `NttManager` forwards the message to the Transceiver, the message is transmitted via the [`sendMessage`] method. The method signature is enforced by the Transceiver but transceivers are free to determine their own implementation for transmitting messages. (e.g. a message routed through the Wormhole Transceiver can be sent via standard relaying, a specialized or custom relayer, or manually published via the core bridge).
 
 Once the message has been transmitted, the contract emits the `SendTransceiverMessage` event.
 
@@ -78,14 +78,16 @@ event SendTransceiverMessage(
 
 4. **Receive**
 
-Once a message has been emitted by a Transceiver on the source chain, an off-chain process (e.g. a relayer) will forward the message to the corresponding Transceiver on the recipient chain. The relayer interacts with the transceiver via an entrypoint for receiving messages. For example, the client will call the [`receiveWormholeMessage`] method on the WormholeTransceiver contract to execute the message. Once the `ReceiveMessage` event is emitted during this process.
+Once a message has been emitted by a Transceiver on the source chain, an off-chain process (e.g. a relayer) will forward the message to the corresponding Transceiver on the recipient chain. The relayer interacts with the Transceiver via an entrypoint for receiving messages. For example, the relayer will call the [`receiveWormholeMessage`] method on the `WormholeTransceiver` contract to execute the message. The `ReceiveRelayedMessage` event is emitted during this process.
 
-This method should also forward the message to the NttManager on the recipient chain.
+This method should also forward the message to the `NttManager` on the destination chain.
 Note that the the Transceiver interface does not declare a signature for this method because receiving messages is specific to each Transceiver, and a one-size-fits-all solution would be overly restrictive.
 
-The NttManager contract allows an M of N threshold for attestations to determine whether a message can be safely executed. For example, if the threshold requirement is 1, the message will be executed after a single Transceiver delivers a valid attestation. If the threshold requirement is 2, the message will only be executed after two Transceivers deliver valid attestations. When a message is attested to by a Transceiver, the contract emits the `MessageAttestedTo` event.
+The `NttManager` contract allows an _M_ of _N_ threshold for Transceiver attestations to determine whether a message can be safely executed. For example, if the threshold requirement is 1, the message will be executed after a single Transceiver delivers a valid attestation. If the threshold requirement is 2, the message will only be executed after two Transceivers deliver valid attestations. When a message is attested to by a Transceiver, the contract emits the `MessageAttestedTo` event.
 
-NTT implements replay protection, so if a Transceiver attempts to deliver a message attestation twice, the contract reverts with `TransceiverAlreadyAttestedToMessage` error. NTT also implements replay protection against reexecuting messages. This check also acts as reentrancy protecion as well. If a message had already been executed, the contract ends execution early and emits the `MessageAlreadyExecuted` event instead of reverting via an error. This mitigates the possibility of race conditions from transceivers attempting to deliver the same message when (threshold < number of transceivers) and notifies the client (off-chain process) so they don't attempt redundant message delivery.
+NTT implements replay protection, so if a given Transceiver attempts to deliver a message attestation twice, the contract reverts with `TransceiverAlreadyAttestedToMessage` error. NTT also implements replay protection against re-executing messages. This check also acts as reentrancy protection as well.
+
+If a message had already been executed, the contract ends execution early and emits the `MessageAlreadyExecuted` event instead of reverting via an error. This mitigates the possibility of race conditions from transceivers attempting to deliver the same message when the threshold is less than the total number of available of Transceivers (i.e. threshold < totalTransceivers) and notifies the client (off-chain process) so they don't attempt redundant message delivery.
 
 _Events_
 ``` solidity
@@ -123,7 +125,7 @@ event MessageAlreadyExecuted(bytes32 indexed sourceNttManager, bytes32 indexed m
 
 6. **Mint or Unlock**
 
-Once a transfer has been successfully verified, the tokens can minted (if the mode is "burning") or unlocked (if the mode is "locking") to the recipient on the destination chain. Note that the source token decimals are bounded betweeen 0 and `TRIMMED_DECIMALS` as enforced in the wire format. The transfer amount is untrimmed (scaled-up) if the destination chain token decimals is greater than `TRIMMED_DECIMALS`. Once the approriate number of tokens has been minted or unlocked to the recipient, the `TransferRedeemed` event is emitted.
+Once a transfer has been successfully verified, the tokens can be minted (if the mode is "burning") or unlocked (if the mode is "locking") to the recipient on the destination chain. Note that the source token decimals are bounded betweeen 0 and `TRIMMED_DECIMALS` as enforced in the wire format. The transfer amount is untrimmed (scaled-up) if the destination chain token decimals exceed `TRIMMED_DECIMALS`. Once the approriate number of tokens have been minted or unlocked to the recipient, the `TransferRedeemed` event is emitted.
 
 _Events_
 ```solidity
