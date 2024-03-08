@@ -3,12 +3,16 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import "openzeppelin-contracts/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
+import "openzeppelin-contracts/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "wormhole-solidity-sdk/Utils.sol";
 import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 
+import "../libraries/TransceiverHelpers.sol";
+
 import "../interfaces/ITransceiver.sol";
 import "../interfaces/INonFungibleNttManager.sol";
+import "../interfaces/INonFungibleNttToken.sol";
 
 import {ManagerBase} from "./shared/ManagerBase.sol";
 
@@ -87,7 +91,7 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
     // =============== External Interface ==================================================
 
     function transfer(
-        uint256[] calldata tokenIds,
+        uint256[] memory tokenIds,
         uint16 recipientChain,
         bytes32 recipient
     ) external payable nonReentrant whenNotPaused returns (uint64) {
@@ -95,7 +99,7 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
     }
 
     function transfer(
-        uint256[] calldata tokenIds,
+        uint256[] memory tokenIds,
         uint16 recipientChain,
         bytes32 recipient,
         bytes memory transceiverInstructions
@@ -103,8 +107,64 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
         return _transfer(tokenIds, recipientChain, recipient, transceiverInstructions);
     }
 
+    function attestationReceived(
+        uint16 sourceChainId,
+        bytes32 sourceNttManagerAddress,
+        TransceiverStructs.ManagerMessage memory payload
+    ) external onlyTransceiver {
+        _verifyPeer(sourceChainId, sourceNttManagerAddress);
+
+        // Compute manager message digest and record transceiver attestation.
+        bytes32 ManagerMessageHash = _recordTransceiverAttestation(sourceChainId, payload);
+
+        if (isMessageApproved(ManagerMessageHash)) {
+            executeMsg(sourceChainId, sourceNttManagerAddress, payload);
+        }
+    }
+
+    function executeMsg(
+        uint16 sourceChainId,
+        bytes32 sourceNttManagerAddress,
+        TransceiverStructs.ManagerMessage memory message
+    ) public {
+        // verify chain has not forked
+        checkFork(evmChainId);
+
+        (bytes32 digest, bool alreadyExecuted) =
+            _isMessageExecuted(sourceChainId, sourceNttManagerAddress, message);
+
+        if (alreadyExecuted) {
+            return;
+        }
+
+        TransceiverStructs.NonFungibleNativeTokenTransfer memory nft =
+            TransceiverStructs.parseNonFungibleNativeTokenTransfer(message.payload);
+
+        // verify that the destination chain is valid
+        if (nft.toChain != chainId) {
+            revert InvalidTargetChain(nft.toChain, chainId);
+        }
+
+        _mintOrUnlockToRecipient(digest, fromWormholeFormat(nft.to), nft.tokenIds);
+    }
+
+    function onERC721Received(
+        address operator,
+        address,
+        uint256,
+        bytes calldata
+    ) external view returns (bytes4){
+        if (operator != address(this)) {
+            revert InvalidOperator(operator, address(this));
+        }
+        return type(IERC721Receiver).interfaceId;
+    }
+
+
+    // ==================== Internal Business Logic =========================================
+
     function _transfer(
-        uint256[] calldata tokenIds,
+        uint256[] memory tokenIds,
         uint16 recipientChain,
         bytes32 recipient,
         bytes memory transceiverInstructions
@@ -178,9 +238,25 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
         return sequence;
     }
 
+    function _mintOrUnlockToRecipient(
+        bytes32 digest,
+        address recipient,
+        uint256[] memory tokenIds
+    ) internal {
+        emit TransferRedeemed(digest);
+
+        if (mode == Mode.BURNING) {
+            _mintTokens(tokenIds, recipient);
+        } else if (mode == Mode.LOCKING) {
+            _unlockTokens(tokenIds, recipient);
+        } else {
+            revert InvalidMode(uint8(mode));
+        }
+    }
+
     // ==================== Internal Helpers ===============================================
 
-    function _lockTokens(uint256[] calldata tokenIds) internal {
+    function _lockTokens(uint256[] memory tokenIds) internal {
         uint256 len = tokenIds.length;
 
         for (uint256 i = 0; i < len; ++i) {
@@ -188,7 +264,15 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
         }
     }
 
-    function _burnTokens(uint256[] calldata tokenIds) internal {
+    function _unlockTokens(uint256[] memory tokenIds, address recipient) internal {
+        uint256 len = tokenIds.length;
+
+        for (uint256 i = 0; i < len; ++i) {
+            IERC721(token).safeTransferFrom(address(this), recipient, tokenIds[i]);
+        }
+    }
+
+    function _burnTokens(uint256[] memory tokenIds) internal {
         uint256 len = tokenIds.length;
 
         for (uint256 i = 0; i < len; ++i) {
@@ -196,8 +280,16 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
         }
     }
 
+    function _mintTokens(uint256[] memory tokenIds, address recipient) internal {
+        uint256 len = tokenIds.length;
+
+        for (uint256 i = 0; i < len; ++i) {
+            INonFungibleNttToken(token).mint(recipient, tokenIds[i]);
+        }
+    }
+
     /// @dev Verify that the peer address saved for `sourceChainId` matches the `peerAddress`.
-    function _verifyPeerInbound(uint16 sourceChainId, bytes32 peerAddress) internal view {
+    function _verifyPeer(uint16 sourceChainId, bytes32 peerAddress) internal view {
         if (_getPeersStorage()[sourceChainId].peerAddress != peerAddress) {
             revert InvalidPeer(sourceChainId, peerAddress);
         }

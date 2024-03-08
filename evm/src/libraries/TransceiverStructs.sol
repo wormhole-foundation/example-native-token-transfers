@@ -163,30 +163,47 @@ library TransceiverStructs {
         pure
         returns (bytes memory encoded)
     {
-        return abi.encodePacked(
-            NON_FUNGIBLE_NTT_PREFIX, nft.to, nft.toChain, encodeNftBatch(nft.tokenIds)
-        );
-    }
+        uint16 batchSize = uint16(nft.tokenIds.length);
 
-    function encodeNftBatch(uint256[] memory tokenIds) public pure returns (bytes memory encoded) {
-        uint16 batchSize = uint16(tokenIds.length);
-
-        encoded = abi.encodePacked(batchSize);
+        bytes memory encodedTokenIds = abi.encodePacked(batchSize);
         for (uint256 i = 0; i < batchSize; ++i) {
             // For now encode each token ID as 32 bytes long.
             // TODO: Optimize this to encode only the necessary bytes.
-            encoded = abi.encodePacked(encoded, uint8(32), tokenIds[i]);
+            encodedTokenIds = abi.encodePacked(encodedTokenIds, uint8(32), nft.tokenIds[i]);
         }
+
+        return abi.encodePacked(
+            NON_FUNGIBLE_NTT_PREFIX, nft.to, nft.toChain, encodedTokenIds
+        );
     }
 
-    /// @dev Parse a NativeTokenTransfer.
-    /// @param encoded The byte array corresponding to the encoded message
-    /// @return nativeTokenTransfer The parsed NativeTokenTransfer struct.
     function parseNonFungibleNativeTokenTransfer(bytes memory encoded)
         public
         pure
-        returns (NativeTokenTransfer memory nativeTokenTransfer)
-    {}
+        returns (NonFungibleNativeTokenTransfer memory nonFungibleNtt)
+    {
+        uint256 offset = 0;
+        bytes4 prefix;
+        (prefix, offset) = encoded.asBytes4Unchecked(offset);
+        if (prefix != NON_FUNGIBLE_NTT_PREFIX) {
+            revert IncorrectPrefix(prefix);
+        }
+
+        (nonFungibleNtt.to, offset) = encoded.asBytes32Unchecked(offset);
+        (nonFungibleNtt.toChain, offset) = encoded.asUint16Unchecked(offset);
+
+        uint16 batchSize;
+        (batchSize, offset) = encoded.asUint16Unchecked(offset);
+
+        uint256[] memory tokenIds = new uint256[](batchSize);
+        for (uint256 i = 0; i < batchSize; ++i) {
+            uint8 tokenIdLength;
+            (tokenIdLength, offset) = encoded.asUint8Unchecked(offset);
+            (tokenIds[i], offset) = encoded.asUint256Unchecked(offset);
+        }
+
+        encoded.checkLength(offset);
+    }
 
     /// @dev Message emitted by Transceiver implementations.
     ///      Each message includes an Transceiver-specified 4-byte prefix.

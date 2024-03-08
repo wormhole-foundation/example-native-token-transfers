@@ -20,6 +20,23 @@ interface INonFungibleNttManager is IManagerBase {
     /// @param peerContract The new peer contract address.
     event PeerUpdated(uint16 indexed chainId_, bytes32 oldPeerContract, bytes32 peerContract);
 
+    /// @notice Emitted when a message is sent from the nttManager.
+    /// @param recipient The recipient of the message.
+    /// @param batchSize The number of NFTs transferred.
+    /// @param fee The amount of ether sent along with the tx to cover the delivery fee.
+    /// @param recipientChain The chain ID of the recipient.
+    /// @param msgSequence The unique sequence ID of the message.
+    event TransferSent(
+        bytes32 recipient, uint16 batchSize, uint256 fee, uint16 recipientChain, uint64 msgSequence
+    );
+
+    /// @notice Emitted when a transfer has been redeemed
+    ///         (either minted or unlocked on the recipient chain).
+    /// @dev Topic0
+    ///      0x504e6efe18ab9eed10dc6501a417f5b12a2f7f2b1593aed9b89f9bce3cf29a91.
+    /// @param digest The digest of the message.
+    event TransferRedeemed(bytes32 indexed digest);
+
     /// @notice The caller is not the deployer.
     error UnexpectedDeployer(address expectedOwner, address owner);
 
@@ -28,6 +45,8 @@ interface INonFungibleNttManager is IManagerBase {
 
     /// @notice Peer cannot be the zero address.
     error InvalidPeerZeroAddress();
+
+    error InvalidOperator(address operator, address expectedOperator);
 
     error InvalidRecipient();
     error ZeroTokenIds();
@@ -42,13 +61,9 @@ interface INonFungibleNttManager is IManagerBase {
     /// @param mode The mode.
     error InvalidMode(uint8 mode);
 
-    /// @notice Emitted when a message is sent from the nttManager.
-    /// @param recipient The recipient of the message.
-    /// @param batchSize The number of NFTs transferred.
-    /// @param fee The amount of ether sent along with the tx to cover the delivery fee.
-    /// @param recipientChain The chain ID of the recipient.
-    /// @param msgSequence The unique sequence ID of the message.
-    event TransferSent(
-        bytes32 recipient, uint16 batchSize, uint256 fee, uint16 recipientChain, uint64 msgSequence
-    );
+    /// @notice Error when trying to execute a message on an unintended target chain.
+    /// @dev Selector 0x3dcb204a.
+    /// @param targetChain The target chain.
+    /// @param thisChain The current chain.
+    error InvalidTargetChain(uint16 targetChain, uint16 thisChain); 
 }
