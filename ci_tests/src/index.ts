@@ -14,7 +14,6 @@ import {
   getDeliveryHashFromLog,
   getWormholeLog,
 } from "@certusone/wormhole-sdk/lib/cjs/relayer";
-import {} from "@certusone/wormhole-sdk/lib/cjs/relayer/consts";
 import { NodeWallet } from "@certusone/wormhole-sdk/lib/cjs/solana";
 import { PostedMessageData } from "@certusone/wormhole-sdk/lib/cjs/solana/wormhole";
 import { BN, web3 } from "@coral-xyz/anchor";
@@ -37,6 +36,7 @@ import { TrimmedAmountLib__factory } from "../evm_binding/factories/TrimmedAmoun
 import { WormholeTransceiver__factory } from "../evm_binding/factories/WormholeTransceiver__factory";
 import { NTT, NttProgramId } from "../solana_binding/ts/sdk";
 import solanaTiltKey from "./solana-tilt.json"; // from https://github.com/wormhole-foundation/wormhole/blob/main/solana/keys/solana-devnet.json
+import { submitAccountantVAA } from "./accountant";
 
 // NOTE: This test uses ethers-v5 as it has proven to be significantly faster than v6.
 // Additionally, the @certusone/wormhole-sdk currently has a v5 dependency.
@@ -92,6 +92,11 @@ function addressToBytes32(address: string): string {
   return `0x000000000000000000000000${address.substring(2)}`;
 }
 
+const getEmitter = (chainInfo: ChainDetails) =>
+  chainInfo.type === "evm"
+    ? getEmitterAddressEth(chainInfo.transceiverAddress)
+    : chainInfo.manager.emitterAccountAddress().toBuffer().toString("hex");
+
 async function waitForRelay(
   tx: ContractReceipt,
   chainId: ChainId,
@@ -102,7 +107,7 @@ async function waitForRelay(
   const log = getWormholeLog(
     tx,
     CONTRACTS.DEVNET.ethereum.core,
-    addressToBytes32(RELAYER_CONTRACT).substring(2),
+    getEmitterAddressEth(RELAYER_CONTRACT),
     0
   );
   const deliveryHash = await getDeliveryHashFromLog(
@@ -351,13 +356,7 @@ async function setupPeer(targetInfo: ChainDetails, peerInfo: ChainDetails) {
     peerInfo.type === "evm"
       ? addressToBytes32(peerInfo.managerAddress)
       : `0x${peerInfo.manager.program.programId.toBuffer().toString("hex")}`;
-  const transceiverEmitter =
-    peerInfo.type === "evm"
-      ? addressToBytes32(peerInfo.transceiverAddress)
-      : `0x${peerInfo.manager
-          .emitterAccountAddress()
-          .toBuffer()
-          .toString("hex")}`;
+  const transceiverEmitter = `0x${getEmitter(peerInfo)}`;
   const tokenDecimals = peerInfo.type === "evm" ? 18 : 9;
   const inboundLimit =
     targetInfo.type === "evm"
@@ -424,23 +423,33 @@ async function link(chainInfos: ChainDetails[]) {
   console.log("Finished linking!");
 }
 
+async function getVAA(
+  chainId: ChainId,
+  emitterAddress: string,
+  sequence: string
+) {
+  console.log(`Fetching VAA ${chainId}/${emitterAddress}/${sequence}`);
+  return (
+    await getSignedVAAWithRetry(
+      ["http://guardian:7071"], // HTTP host for the Guardian
+      chainId,
+      emitterAddress,
+      sequence,
+      {
+        transport: NodeHttpTransport(),
+      }
+    )
+  ).vaaBytes;
+}
+
 async function receive(
   chainId: ChainId,
   emitterAddress: string,
   sequence: string,
   chainDest: ChainDetails
 ) {
-  console.log(`Fetching VAA ${chainId}/${emitterAddress}/${sequence}`);
   // poll until the guardian(s) witness and sign the vaa
-  const { vaaBytes: signedVAA } = await getSignedVAAWithRetry(
-    ["http://guardian:7071"], // HTTP host for the Guardian
-    chainId,
-    emitterAddress,
-    sequence,
-    {
-      transport: NodeHttpTransport(),
-    }
-  );
+  const signedVAA = await getVAA(chainId, emitterAddress, sequence);
 
   if (chainDest.type === "evm") {
     const transceiver = WormholeTransceiver__factory.connect(
@@ -507,7 +516,6 @@ async function transferWithChecks(
 ) {
   const amount = utils.parseEther("1");
   const scaledAmount = utils.parseUnits("1", 9);
-  let emitterAddress: string;
   let sequence: string;
 
   const [managerBalanceBeforeSend, userBalanceBeforeSend] =
@@ -547,7 +555,6 @@ async function transferWithChecks(
         destinationChain.signer.provider
       );
     }
-    emitterAddress = getEmitterAddressEth(sourceChain.transceiverAddress);
     sequence = parseSequenceFromLogEth(
       txResponse,
       sourceChain.wormholeCoreAddress
@@ -581,17 +588,13 @@ async function transferWithChecks(
     const messageData = PostedMessageData.deserialize(
       wormholeMessageAccount.data
     );
-    emitterAddress = sourceChain.manager
-      .emitterAccountAddress()
-      .toBuffer()
-      .toString("hex");
     sequence = messageData.message.sequence.toString();
   }
 
   if (!useRelayer) {
     await receive(
       sourceChain.chainId,
-      emitterAddress,
+      getEmitter(sourceChain),
       sequence,
       destinationChain
     );
@@ -642,6 +645,35 @@ async function transferWithChecks(
   }
 }
 
+async function accountantRegistrations(chainInfos: ChainDetails[]) {
+  console.log("Submitting NTT accountant registrations");
+  // first submit hub init
+  const hub = chainInfos[0];
+  await submitAccountantVAA(await getVAA(hub.chainId, getEmitter(hub), "0"));
+  // then submit spoke to hub registrations
+  for (const chainInfo of chainInfos.slice(1)) {
+    await submitAccountantVAA(
+      await getVAA(chainInfo.chainId, getEmitter(chainInfo), "1")
+    );
+  }
+  // then submit the rest of the registrations
+  for (const chainInfo of chainInfos) {
+    for (
+      let idx = chainInfo === hub ? 0 : 1;
+      idx < chainInfos.length - 1;
+      idx++
+    ) {
+      await submitAccountantVAA(
+        await getVAA(
+          chainInfo.chainId,
+          getEmitter(chainInfo),
+          (1 + idx).toString()
+        )
+      );
+    }
+  }
+}
+
 async function testEthHub() {
   console.log("\n\n\n***\nEth Hub Test\n***");
   console.log("\nDeploying on eth-devnet");
@@ -657,6 +689,7 @@ async function testEthHub() {
     "NTTManager111111111111111111111111111111111"
   );
   await link([ethInfo, bscInfo, solInfo]);
+  await accountantRegistrations([ethInfo, bscInfo, solInfo]);
   console.log("\nStarting tests");
   console.log("========================");
   console.log("Eth <> BSC");
@@ -689,7 +722,8 @@ async function testSolanaHub() {
     "locking",
     "NTTManager222222222222222222222222222222222"
   );
-  await link([ethInfo, bscInfo, solInfo]);
+  await link([solInfo, ethInfo, bscInfo]);
+  await accountantRegistrations([solInfo, ethInfo, bscInfo]);
   console.log("\nStarting tests");
   console.log("========================");
   console.log("Solana -> Eth -> BSC -> Solana");
@@ -699,6 +733,19 @@ async function testSolanaHub() {
 }
 
 async function test() {
+  // register the relayers (taken from https://github.com/wormhole-foundation/wormhole/blob/main/wormchain/contracts/tools/__tests__/test_ntt_accountant.ts#L614)
+  await submitAccountantVAA(
+    Buffer.from(
+      "010000000001006c9967aee739944b30ffcc01653f2030ea02c038adda26a8f5a790f191134dff1e1e48368af121a34806806140d4f56ec09e25067006e69c95b0c4c08b8897990000000000000000000001000000000000000000000000000000000000000000000000000000000000000400000000001ce9cf010000000000000000000000000000000000576f726d686f6c6552656c61796572010000000200000000000000000000000053855d4b64e9a3cf59a84bc768ada716b5536bc5",
+      "hex"
+    )
+  );
+  await submitAccountantVAA(
+    Buffer.from(
+      "01000000000100894be2c33626547e665cee73684854fbd8fc2eb79ec9ad724b1fb10d6cd24aaa590393870e6655697cd69d5553881ac8519e1282e7d3ae5fc26d7452d097651c00000000000000000000010000000000000000000000000000000000000000000000000000000000000004000000000445fb0b010000000000000000000000000000000000576f726d686f6c6552656c61796572010000000400000000000000000000000053855d4b64e9a3cf59a84bc768ada716b5536bc5",
+      "hex"
+    )
+  );
   await testEthHub();
   await testSolanaHub();
 }
