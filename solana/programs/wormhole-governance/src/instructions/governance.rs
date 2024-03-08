@@ -154,11 +154,9 @@ impl From<AccountMeta> for Acc {
 /// The VAA's payload contains an instruction and relevant Accounts that it requires. This program
 /// performs verification of the VAA's contents and then performs a Cross Program Invocation if all
 /// verification succeeds.
-/// NOTE: `missing_owner_check` is disabled here: The VAA instruction may contain
-/// placeholder accounts with Pubkeys set to hard-coded values [OWNER] and [PAYER].
-/// These keys are overwritten. Because they are placeholders, the `owner` field is not important.
-#[allow(unknown_lints)]
-#[allow(missing_owner_check)]
+/// NOTE: The VAA instruction may contain placeholder accounts with Pubkeys set to hard-coded values [OWNER] and [PAYER].
+/// These keys are overwritten. Because they are placeholders, we do not need to enforce e.g. 
+///  ownership checks.
 pub fn governance<'info>(ctx: Context<'_, '_, '_, 'info, Governance<'info>>) -> Result<()> {
     let vaa_data = ctx.accounts.vaa.data();
 
@@ -176,10 +174,8 @@ pub fn governance<'info>(ctx: Context<'_, '_, '_, 'info, Governance<'info>>) -> 
     // Governance account.)
     instruction.accounts.iter_mut().for_each(|acc| {
         if acc.pubkey == OWNER {
-            // Missing ownership check is OK here
             acc.pubkey = ctx.accounts.governance.key();
         } else if acc.pubkey == PAYER {
-            // Missing ownership check is OK here
             acc.pubkey = ctx.accounts.payer.key();
         }
     });

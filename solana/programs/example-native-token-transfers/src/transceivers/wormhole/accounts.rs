@@ -33,9 +33,6 @@ pub struct WormholeAccounts<'info> {
 /// wrapped by`TransferBurn`.
 /// SECURITY: Signer checks are disabled. The only valid sender is the
 /// [`wormhole::PostMessage::emitter`], enforced by the [`CpiContext`] below.
-#[allow(unknown_lints)]
-#[allow(missing_owner_check)]
-#[allow(missing_signer_check)]
 pub fn post_message<'info, A: TypePrefixedPayload>(
     wormhole: &WormholeAccounts<'info>,
     payer: AccountInfo<'info>,
@@ -76,11 +73,8 @@ pub fn post_message<'info, A: TypePrefixedPayload>(
     Ok(())
 }
 
-/// SECURITY: Owner and signer checks are disabled as this private function is used only by
+/// SECURITY: Owner and signer checks are not performed here as this private function is used only by
 /// [`post_message`].
-#[allow(unknown_lints)]
-#[allow(missing_owner_check)]
-#[allow(missing_signer_check)]
 fn pay_wormhole_fee<'info>(
     wormhole: &WormholeAccounts<'info>,
     payer: &AccountInfo<'info>,

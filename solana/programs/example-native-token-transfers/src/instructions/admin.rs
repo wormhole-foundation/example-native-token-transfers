@@ -33,6 +33,9 @@ pub struct TransferOwnership<'info> {
     pub owner: Signer<'info>,
 
     /// CHECK: This account will be the signer in the [claim_ownership] instruction.
+    // new_owner is not expected to interact with this instruction. Instead, they call [`claim_ownership`]. 
+    // The intention of new_owner is that it could be an arbitrary account so no constraints are
+    // required here.
     new_owner: AccountInfo<'info>,
 
     #[account(
@@ -52,12 +55,7 @@ pub struct TransferOwnership<'info> {
     bpf_loader_upgradeable_program: Program<'info, BpfLoaderUpgradeable>,
 }
 
-#[allow(unknown_lints)]
-#[allow(missing_owner_check)]
 pub fn transfer_ownership(ctx: Context<TransferOwnership>) -> Result<()> {
-    // Missing ownership check is OK here: new_owner is not expected to interact with this
-    // instruction. Instead, they call [`claim_ownership`]. The whole intention of new_owner
-    // is that it could be an arbitrary account.
     ctx.accounts.config.pending_owner = Some(ctx.accounts.new_owner.key());
 
     // TODO: only transfer authority when the authority is not already the upgrade lock
@@ -69,7 +67,6 @@ pub fn transfer_ownership(ctx: Context<TransferOwnership>) -> Result<()> {
             bpf_loader_upgradeable::SetUpgradeAuthorityChecked {
                 program_data: ctx.accounts.program_data.to_account_info(),
                 current_authority: ctx.accounts.owner.to_account_info(),
-                // Missing ownership check is OK here: upgrade_lock is enforced to be a PDA.
                 new_authority: ctx.accounts.upgrade_lock.to_account_info(),
             },
             &[&[b"upgrade_lock", &[ctx.bumps.upgrade_lock]]],
@@ -110,8 +107,6 @@ pub struct ClaimOwnership<'info> {
     bpf_loader_upgradeable_program: Program<'info, BpfLoaderUpgradeable>,
 }
 
-#[allow(unknown_lints)]
-#[allow(missing_owner_check)]
 pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
     ctx.accounts.config.pending_owner = None;
     ctx.accounts.config.owner = ctx.accounts.new_owner.key();
@@ -123,7 +118,6 @@ pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
                 .to_account_info(),
             bpf_loader_upgradeable::SetUpgradeAuthorityChecked {
                 program_data: ctx.accounts.program_data.to_account_info(),
-                // Missing ownership check is OK here: upgrade_lock is enforced to be a PDA.
                 current_authority: ctx.accounts.upgrade_lock.to_account_info(),
                 new_authority: ctx.accounts.new_owner.to_account_info(),
             },
@@ -213,6 +207,8 @@ pub struct RegisterTransceiver<'info> {
     pub payer: Signer<'info>,
 
     #[account(executable)]
+    // CHECK: Missing ownership check is OK here: Transceiver is intended to be an arbitrary
+    // program.
     pub transceiver: AccountInfo<'info>,
 
     #[account(
@@ -227,8 +223,6 @@ pub struct RegisterTransceiver<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[allow(unknown_lints)]
-#[allow(missing_owner_check)]
 pub fn register_transceiver(ctx: Context<RegisterTransceiver>) -> Result<()> {
     let id = ctx.accounts.config.next_transceiver_id;
     ctx.accounts.config.next_transceiver_id += 1;
@@ -237,8 +231,6 @@ pub fn register_transceiver(ctx: Context<RegisterTransceiver>) -> Result<()> {
         .set_inner(RegisteredTransceiver {
             bump: ctx.bumps.registered_transceiver,
             id,
-            // Missing ownership check is OK here: Transceiver is intended to be an arbitrary
-            // program.
             transceiver_address: ctx.accounts.transceiver.key(),
         });
 

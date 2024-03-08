@@ -60,12 +60,8 @@ pub struct ReleaseInboundMint<'info> {
 /// Setting this flag to `false` is useful when bundling this instruction
 /// together with [`crate::instructions::redeem`] in a transaction, so that the minting
 /// is attempted optimistically.
-/// SECURITY: Owner checks are disabled here. Ownership checks are enforced by implicit anchor constraints.
-/// SECURITY: Signer checks are disabled here. The signer is checked implicitly by [`ReleaseInbound`]
-/// which is wrapped by [`ReleaseInboundMint`].
-#[allow(unknown_lints)]
-#[allow(missing_owner_check)]
-#[allow(missing_signer_check)]
+/// SECURITY: Signer checks are disabled here because anyone is permitted to send a release
+/// transaction.
 pub fn release_inbound_mint(
     ctx: Context<ReleaseInboundMint>,
     args: ReleaseInboundArgs,
@@ -124,12 +120,8 @@ pub struct ReleaseInboundUnlock<'info> {
 /// Setting this flag to `false` is useful when bundling this instruction
 /// together with [`crate::instructions::redeem`], so that the unlocking
 /// is attempted optimistically.
-/// SECURITY: Owner checks are disabled here. Ownership checks are enforced by implicit anchor constraints.
 /// SECURITY: Signer checks are disabled here because anyone is permitted to send a release
-/// transaction
-#[allow(unknown_lints)]
-#[allow(missing_owner_check)]
-#[allow(missing_signer_check)]
+/// transaction.
 pub fn release_inbound_unlock(
     ctx: Context<ReleaseInboundUnlock>,
     args: ReleaseInboundArgs,

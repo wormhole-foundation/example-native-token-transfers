@@ -53,11 +53,6 @@ pub struct ReleaseOutboundArgs {
     pub revert_on_delay: bool,
 }
 
-/// SECURITY: Owner checks are disabled. [`ReleaseOutbound::emitter`] is enforced to be a PDA.
-/// [`ReleaseOutbound::wormhole_message`] is verified by the Wormhole core bridge instead of this
-/// program.
-#[allow(unknown_lints)]
-#[allow(missing_owner_check)]
 pub fn release_outbound(ctx: Context<ReleaseOutbound>, args: ReleaseOutboundArgs) -> Result<()> {
     let accs = ctx.accounts;
     let released = accs.outbox_item.try_release(accs.transceiver.id)?;

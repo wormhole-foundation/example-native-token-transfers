@@ -115,14 +115,6 @@ pub struct TransferBurn<'info> {
 // TODO: fees for relaying?
 /// Burns tokens and issues a corresponding notification to the outbox of the connected
 /// [`NttManagerPeer`].
-/// SECURITY: Owner checks are disabled here. Ownership checks are enforced by implicit
-/// anchor constraints in the `Transfer` account struct.
-/// transaction
-/// SECURITY: Signer check is disabled here. The signer is checked via the `Transfer` struct
-/// wrapped by`TransferBurn`.
-#[allow(unknown_lints)]
-#[allow(missing_owner_check)]
-#[allow(missing_signer_check)]
 pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<()> {
     require_eq!(
         ctx.accounts.common.config.mode,
@@ -231,15 +223,7 @@ pub struct TransferLock<'info> {
 // TODO: factor out common bits
 /// Locks tokens and issues a corresponding notification to the outbox of the connected
 /// [`NttManagerPeer`].
-/// SECURITY: Owner checks are disabled here. Ownership checks are enforced by implicit
-/// anchor constraints in the `Transfer` account struct.
-/// transaction
-/// SECURITY: Signer check is disabled here. The signer is checked via the `Transfer` struct
-/// wrapped by`TransferLock`
 #[allow(unknown_lints)]
-#[allow(missing_owner_check)]
-#[allow(missing_signer_check)]
->>>>>>> 7396235 (solana: Mark existing dylint warnings as false positives)
 pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<()> {
     require_eq!(
         ctx.accounts.common.config.mode,
