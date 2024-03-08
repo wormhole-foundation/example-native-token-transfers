@@ -155,7 +155,7 @@ impl From<AccountMeta> for Acc {
 /// performs verification of the VAA's contents and then performs a Cross Program Invocation if all
 /// verification succeeds.
 /// NOTE: The VAA instruction may contain placeholder accounts with Pubkeys set to hard-coded values [OWNER] and [PAYER].
-/// These keys are overwritten. Because they are placeholders, we do not need to enforce e.g. 
+/// These keys are overwritten. Because they are placeholders, we do not need to enforce e.g.
 ///  ownership checks.
 pub fn governance<'info>(ctx: Context<'_, '_, '_, 'info, Governance<'info>>) -> Result<()> {
     let vaa_data = ctx.accounts.vaa.data();
