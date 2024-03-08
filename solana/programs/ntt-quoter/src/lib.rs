@@ -22,7 +22,6 @@ const EVM_GAS_COST: u64 = 250_000; //TODO determine true gas cost on EVM
 cfg_if::cfg_if! {
   if #[cfg(feature = "solana-devnet")] {
     declare_id!("");
-    const INSTANCE_BUMP: u8 = 255; //TODO calculate via TypeScript SDK calcInstanceBump
     const WORMHOLE_TRANSCEIVER_INDEX: u8 = 0;
   } else if #[cfg(feature = "tilt-devnet")] {
     declare_id!("NttRe1ayer111111111111111111111111111111111");
@@ -30,7 +29,6 @@ cfg_if::cfg_if! {
     const WORMHOLE_TRANSCEIVER_INDEX: u8 = 0;
   } else if #[cfg(feature = "mainnet")] {
     declare_id!("NttRe1ayer111111111111111111111111111111111");
-    const INSTANCE_BUMP: u8 = 255; //TODO calculate via TypeScript SDK calcInstanceBump
     const WORMHOLE_TRANSCEIVER_INDEX: u8 = 0;
   }
 }

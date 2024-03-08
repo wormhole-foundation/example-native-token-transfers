@@ -10,7 +10,6 @@ pub struct CloseRelay<'info> {
     #[account(constraint = instance.is_authorized(&authority.key()) @ NttQuoterError::NotAuthorized)]
     pub authority: Signer<'info>,
 
-    #[account(seeds = [Instance::SEED_PREFIX], bump = Instance::BUMP)]
     pub instance: Account<'info, Instance>,
 
     #[account(mut, address = instance.fee_recipient @ NttQuoterError::InvalidFeeRecipient)]
