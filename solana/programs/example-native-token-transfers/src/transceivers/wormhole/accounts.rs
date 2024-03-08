@@ -30,7 +30,6 @@ pub struct WormholeAccounts<'info> {
 
 /// SECURITY: Owner checks are disabled. Each of [`WormholeAccounts::bridge`], [`WormholeAccounts::fee_collector`],
 /// and [`WormholeAccounts::sequence`] must be checked by the Wormhole core bridge.
-/// wrapped by`TransferBurn`.
 /// SECURITY: Signer checks are disabled. The only valid sender is the
 /// [`wormhole::PostMessage::emitter`], enforced by the [`CpiContext`] below.
 pub fn post_message<'info, A: TypePrefixedPayload>(
