@@ -11,10 +11,11 @@ pub struct UpdateSolPriceArgs {
 
 #[derive(Accounts)]
 pub struct UpdateSolPrice<'info> {
-    #[account(constraint = instance.is_authorized(&authority.key()) @ NttQuoterError::NotAuthorized)]
+    #[account(constraint = instance.is_authorized(&authority.key()) @
+        NttQuoterError::NotAuthorized
+    )]
     pub authority: Signer<'info>,
 
-    #[account(seeds = [Instance::SEED_PREFIX], bump = Instance::BUMP)]
     pub instance: Account<'info, Instance>,
 }
 
@@ -34,7 +35,6 @@ pub struct UpdateChainPrices<'info> {
     #[account(constraint = instance.is_authorized(&authority.key()) @ NttQuoterError::NotAuthorized)]
     pub authority: Signer<'info>,
 
-    #[account(seeds = [Instance::SEED_PREFIX], bump = Instance::BUMP)]
     pub instance: Account<'info, Instance>,
 
     #[account(mut)]
@@ -61,7 +61,6 @@ pub struct UpdateChainParams<'info> {
     #[account(constraint = instance.is_authorized(&authority.key()) @ NttQuoterError::NotAuthorized)]
     pub authority: Signer<'info>,
 
-    #[account(seeds = [Instance::SEED_PREFIX], bump = Instance::BUMP)]
     pub instance: Account<'info, Instance>,
 
     #[account(mut)]

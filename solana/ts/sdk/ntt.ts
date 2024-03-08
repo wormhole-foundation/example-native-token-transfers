@@ -1,8 +1,11 @@
 import { type ChainName, toChainId, coalesceChainId, type ChainId, SignedVaa } from '@certusone/wormhole-sdk'
 import { serializeLayout, toChainId as SDKv2toChainId } from "@wormhole-foundation/sdk-base";
-import { deserialize } from "@wormhole-foundation/sdk-definitions";
-//TODO these need to be properly exported by the SDK
-import { nttManagerMessageLayout, NttManagerMessage, nativeTokenTransferLayout } from "@wormhole-foundation/sdk-definitions/dist/cjs/payloads/ntt";
+import {
+  deserialize,
+  nttManagerMessageLayout,
+  NttManagerMessage,
+  nativeTokenTransferLayout,
+} from "@wormhole-foundation/sdk-definitions";
 import { derivePostedVaaKey, getWormholeDerivedAccounts } from '@certusone/wormhole-sdk/lib/cjs/solana/wormhole'
 import { BN, translateError, type IdlAccounts, Program } from '@coral-xyz/anchor'
 import { associatedAddress } from '@coral-xyz/anchor/dist/cjs/utils/token'

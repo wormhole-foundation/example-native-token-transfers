@@ -7,14 +7,13 @@ pub struct Instance {
     pub assistant: Pubkey,
     pub fee_recipient: Pubkey,
     pub sol_price: u64, //UsdPrice (usd/sol [6 decimals])
-                        //amount of sol the user has to pay for the relayer to trigger the release of their outbox message
-                        //pub release_cost: u64, //SolAmount (lamports)
+    //future feature:
+    //amount of sol the user has to pay for the relayer to trigger the release of their outbox item
+    //pub release_cost: u64, //SolAmount (lamports)
 }
 
 impl Instance {
     pub const SEED_PREFIX: &'static [u8] = b"instance";
-    pub const BUMP: u8 = crate::INSTANCE_BUMP;
-    pub const SIGNER_SEEDS: &'static [&'static [u8]] = &[Self::SEED_PREFIX, &[Self::BUMP]];
 
     pub fn is_authorized(&self, authority: &Pubkey) -> bool {
         self.owner == *authority || self.assistant == *authority

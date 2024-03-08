@@ -26,20 +26,12 @@ const SEED_PREFIX_REGISTERED_CHAIN = "registered_chain";
 const SEED_PREFIX_RELAY_REQUEST    = "relay_request";
 
 export class NttQuoter {
-  //use to determine and update instance bump constant in ntt-quoter lib.rs
-  static calcInstanceBump(programId: PublicKeyInitData) {
-    return PublicKey.findProgramAddressSync(
-      [encoding.bytes.encode(SEED_PREFIX_INSTANCE)],
-      new PublicKey(programId)
-    )[1];
-  }
-
   readonly instance: PublicKey;
   private readonly program: Program<Idl>;
   
   constructor(connection: Connection, programId: PublicKeyInitData) {
-    this.program   = new Program<Idl>(IDL as Idl, new PublicKey(programId), {connection});
-    this.instance  = derivePda([SEED_PREFIX_INSTANCE], this.program.programId);
+    this.program  = new Program<Idl>(IDL as Idl, new PublicKey(programId), {connection});
+    this.instance = derivePda([SEED_PREFIX_INSTANCE], this.program.programId);
   }
 
   // ---- user relevant functions ----
@@ -78,7 +70,6 @@ export class NttQuoter {
     }).accounts({
       payer,
       instance: this.instance,
-      feeRecipient: (await this.getInstance()).feeRecipient,
       registeredChain: this.registeredChainPda(toChainId(chain)),
       outboxItem,
       relayRequest: this.relayRequestPda(outboxItem),
