@@ -371,8 +371,19 @@ contract NttManager is INttManager, NttManagerState {
         // cache enabled transceivers to avoid multiple storage reads
         address[] memory enabledTransceivers = _getEnabledTransceiversStorage();
 
-        TransceiverStructs.TransceiverInstruction[] memory instructions = TransceiverStructs
-            .parseTransceiverInstructions(transceiverInstructions, enabledTransceivers.length);
+        TransceiverStructs.TransceiverInstruction[] memory instructions;
+
+        {
+            uint256 numEnabledTransceivers = enabledTransceivers.length;
+
+            if (numEnabledTransceivers == 0) {
+                revert NoEnabledTransceivers();
+            }
+
+            instructions = TransceiverStructs.parseTransceiverInstructions(
+                transceiverInstructions, numEnabledTransceivers
+            );
+        }
 
         (uint256[] memory priceQuotes, uint256 totalPriceQuote) =
             quoteDeliveryPrice(recipientChain, instructions, enabledTransceivers);

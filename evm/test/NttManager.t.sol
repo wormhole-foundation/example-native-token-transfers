@@ -40,6 +40,7 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         0xcfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0;
     WormholeSimulator guardian;
     uint256 initialBlockTimestamp;
+    DummyTransceiver dummyTransceiver;
 
     function setUp() public {
         string memory url = "https://ethereum-goerli.publicnode.com";
@@ -62,6 +63,9 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         nttManagerOther =
             MockNttManagerContract(address(new ERC1967Proxy(address(otherImplementation), "")));
         nttManagerOther.initialize();
+
+        dummyTransceiver = new DummyTransceiver(address(nttManager));
+        nttManager.setTransceiver(address(dummyTransceiver));
     }
 
     // === pure unit tests
@@ -84,6 +88,9 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         nttManagerZeroRateLimiter =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         nttManagerZeroRateLimiter.initialize();
+
+        DummyTransceiver e = new DummyTransceiver(address(nttManagerZeroRateLimiter));
+        nttManagerZeroRateLimiter.setTransceiver(address(e));
 
         address user_A = address(0x123);
         address user_B = address(0x456);
@@ -262,6 +269,31 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         nttManager.setTransceiver(address(e));
     }
 
+    function test_noEnabledTransceivers() public {
+        nttManager.removeTransceiver(address(dummyTransceiver));
+
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(nttManager.token());
+
+        uint8 decimals = token.decimals();
+
+        nttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 9, type(uint64).max);
+        nttManager.setOutboundLimit(packTrimmedAmount(type(uint64).max, 8).untrim(decimals));
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+
+        vm.startPrank(user_A);
+
+        token.approve(address(nttManager), 3 * 10 ** decimals);
+
+        vm.expectRevert(abi.encodeWithSelector(INttManager.NoEnabledTransceivers.selector));
+        nttManager.transfer(
+            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false, new bytes(1)
+        );
+    }
+
     function test_notTransceiver() public {
         // TODO: this is accepted currently. should we include a check to ensure
         // only transceivers can be registered? (this would be a convenience check, not a security one)
@@ -269,13 +301,14 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
     }
 
     function test_maxOutTransceivers() public {
-        // Let's register a transceiver and then disable it
+        // Let's register a transceiver and then disable it. We now have 2 registered managers
+        // since we register 1 in the setup
         DummyTransceiver e = new DummyTransceiver(address(nttManager));
         nttManager.setTransceiver(address(e));
         nttManager.removeTransceiver(address(e));
 
         // We should be able to register 64 transceivers total
-        for (uint256 i = 0; i < 63; ++i) {
+        for (uint256 i = 0; i < 62; ++i) {
             DummyTransceiver d = new DummyTransceiver(address(nttManager));
             nttManager.setTransceiver(address(d));
         }
@@ -292,9 +325,9 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
     // == threshold
 
     function test_cantSetThresholdTooHigh() public {
-        // no transceivers set, so can't set threshold to 1
-        vm.expectRevert(abi.encodeWithSelector(INttManagerState.ThresholdTooHigh.selector, 1, 0));
-        nttManager.setThreshold(1);
+        // 1 transceiver set, so can't set threshold to 2
+        vm.expectRevert(abi.encodeWithSelector(INttManagerState.ThresholdTooHigh.selector, 2, 1));
+        nttManager.setThreshold(2);
     }
 
     function test_canSetThreshold() public {
@@ -734,9 +767,14 @@ contract TestNttManager is Test, INttManagerEvents, IRateLimiterEvents {
         MockNttManagerContract newNttManager =
             MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         newNttManager.initialize();
-        // register nttManager peer
+
+        // register nttManager peer and transceiver
         bytes32 peer = toWormholeFormat(address(nttManager));
         newNttManager.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9, type(uint64).max);
+        {
+            DummyTransceiver e = new DummyTransceiver(address(newNttManager));
+            newNttManager.setTransceiver(address(e));
+        }
 
         address user_A = address(0x123);
         address user_B = address(0x456);
