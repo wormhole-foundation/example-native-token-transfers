@@ -35,20 +35,24 @@ interface INttManager is INttManagerState {
     }
 
     /// @notice payment for a transfer is too low.
+    /// @dev Selector 0xd523c6e0
     /// @param requiredPayment The required payment.
     /// @param providedPayment The provided payment.
     error DeliveryPaymentTooLow(uint256 requiredPayment, uint256 providedPayment);
 
     /// @notice There are no transceivers enabled with the NttManager
+    /// @dev Selector 0x69cf632a
     error NoEnabledTransceivers();
 
-    //// @notice The transfer has some dust.
-    //// @dev This is a security measure to prevent users from losing funds.
-    ////      This is the result of trimming the amount and then untrimming it.
-    //// @param  amount The amount to transfer.
+    /// @notice The transfer has some dust.
+    /// @dev Selector 0x71f0634a
+    /// @dev This is a security measure to prevent users from losing funds.
+    ///      This is the result of trimming the amount and then untrimming it.
+    /// @param  amount The amount to transfer.
     error TransferAmountHasDust(uint256 amount, uint256 dust);
 
     /// @notice The mode is invalid. It is neither in LOCKING or BURNING mode.
+    /// @dev Selector 0x66001a89
     /// @param mode The mode.
     error InvalidMode(uint8 mode);
 
