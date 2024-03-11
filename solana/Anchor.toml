@@ -7,7 +7,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-example_native_token_transfers = "nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS"
+example_native_token_transfers = "NtTfsJMdeuTFFHpQv2wGWaoaECFYN8eq8sAtY8fA6eq"
 wormhole_governance = "wgvEiKVzX9yyEoh41jZAdC6JqGUTS4CFXbFGBV5TKdZ"
 ntt_quoter = "9jFBLvMZZERVmeY4tbq5MejbXRE18paGEuoB6xVJZgGe"
 
