@@ -19,19 +19,8 @@ mod state;
 // !! update constant in TypeScript SDK when updating this value !!
 const EVM_GAS_COST: u64 = 250_000; //TODO determine true gas cost on EVM
 
-cfg_if::cfg_if! {
-  if #[cfg(feature = "solana-devnet")] {
-    declare_id!("");
-    const WORMHOLE_TRANSCEIVER_INDEX: u8 = 0;
-  } else if #[cfg(feature = "tilt-devnet")] {
-    declare_id!("NttRe1ayer111111111111111111111111111111111");
-    const INSTANCE_BUMP: u8 = 255; //TODO calculate via TypeScript SDK calcInstanceBump
-    const WORMHOLE_TRANSCEIVER_INDEX: u8 = 0;
-  } else if #[cfg(feature = "mainnet")] {
-    declare_id!("NttRe1ayer111111111111111111111111111111111");
-    const WORMHOLE_TRANSCEIVER_INDEX: u8 = 0;
-  }
-}
+declare_id!("NttQuoter1111111111111111111111111111111111");
+const WORMHOLE_TRANSCEIVER_INDEX: u8 = 0;
 
 #[program]
 pub mod ntt_quoter {
