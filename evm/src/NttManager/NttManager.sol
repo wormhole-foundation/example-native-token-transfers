@@ -169,7 +169,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
         TransceiverStructs.NttManagerMessage memory payload
-    ) external onlyTransceiver {
+    ) external onlyTransceiver whenNotPaused {
         _verifyPeer(sourceChainId, sourceNttManagerAddress);
 
         // Compute manager message digest and record transceiver attestation.
@@ -185,7 +185,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
         TransceiverStructs.NttManagerMessage memory message
-    ) public {
+    ) public whenNotPaused {
         // verify chain has not forked
         checkFork(evmChainId);
 
