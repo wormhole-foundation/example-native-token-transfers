@@ -181,8 +181,8 @@ contract TestNttManager is Test, IRateLimiterEvents {
         nttManager.pause();
         assertEq(nttManager.isPaused(), true);
 
-        // When the NttManager is paused initiating transfers should not be allowed,
-        // as well as completing queued transfers on both source and destination chains
+        // When the NttManager is paused, initiating transfers, completing queued transfers on both source and destination chains,
+        // executing transfers and attesting to transfers should all revert
         vm.expectRevert(
             abi.encodeWithSelector(PausableUpgradeable.RequireContractIsNotPaused.selector)
         );
@@ -197,6 +197,25 @@ contract TestNttManager is Test, IRateLimiterEvents {
             abi.encodeWithSelector(PausableUpgradeable.RequireContractIsNotPaused.selector)
         );
         nttManager.completeInboundQueuedTransfer(bytes32(0));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(PausableUpgradeable.RequireContractIsNotPaused.selector)
+        );
+        TransceiverStructs.NttManagerMessage memory message;
+        nttManager.executeMsg(0, bytes32(0), message);
+
+        bytes memory transceiverMessage;
+        (, transceiverMessage) = TransceiverHelpersLib.buildTransceiverMessageWithNttManagerPayload(
+            0,
+            bytes32(0),
+            toWormholeFormat(address(nttManagerOther)),
+            toWormholeFormat(address(nttManager)),
+            abi.encode("payload")
+        );
+        vm.expectRevert(
+            abi.encodeWithSelector(PausableUpgradeable.RequireContractIsNotPaused.selector)
+        );
+        dummyTransceiver.receiveMessage(transceiverMessage);
 
         nttManager.unpause();
         assertEq(nttManager.isPaused(), false);
