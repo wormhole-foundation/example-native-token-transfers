@@ -22,6 +22,16 @@ use crate::error::GovernanceError;
 pub const OWNER: Pubkey = sentinel_pubkey(b"owner");
 pub const PAYER: Pubkey = sentinel_pubkey(b"payer");
 
+#[account]
+#[derive(InitSpace)]
+pub struct ReplayProtection {
+    pub bump: u8,
+}
+
+impl ReplayProtection {
+    pub const SEED_PREFIX: &'static [u8] = b"replay";
+}
+
 #[derive(Accounts)]
 pub struct Governance<'info> {
     #[account(mut)]
@@ -43,6 +53,22 @@ pub struct Governance<'info> {
 
     #[account(executable)]
     pub program: AccountInfo<'info>,
+
+    #[account(
+        init,
+        space = 8 + ReplayProtection::INIT_SPACE,
+        payer = payer,
+        seeds = [
+            ReplayProtection::SEED_PREFIX,
+            vaa.emitter_chain().to_be_bytes().as_ref(),
+            vaa.emitter_address().as_ref(),
+            vaa.sequence().to_be_bytes().as_ref()
+        ],
+        bump
+    )]
+    pub replay: Account<'info, ReplayProtection>,
+
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
@@ -129,6 +155,10 @@ pub fn governance<'info>(ctx: Context<'_, '_, '_, 'info, Governance<'info>>) -> 
     let vaa_data = ctx.accounts.vaa.data();
 
     let mut instruction: Instruction = vaa_data.clone().into();
+
+    ctx.accounts.replay.set_inner(ReplayProtection {
+        bump: ctx.bumps.replay,
+    });
 
     instruction.accounts.iter_mut().for_each(|acc| {
         if acc.pubkey == OWNER {
