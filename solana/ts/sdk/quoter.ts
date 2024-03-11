@@ -2,7 +2,6 @@ import {
   deserializeLayout,
   Chain,
   toChainId,
-  encoding,
 } from "@wormhole-foundation/sdk-base";
 import {
   Connection,
