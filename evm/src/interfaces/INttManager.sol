@@ -86,6 +86,11 @@ interface INttManager is INttManagerState {
     /// @dev Selector 0x9c8d2cd2.
     error InvalidRecipient();
 
+    /// @notice Error when the manager doesn't have a peer registered for the destination chain
+    /// @dev Selector 0x3af256bc.
+    /// @param chainId The target chain id
+    error PeerNotRegistered(uint16 chainId);
+
     /// @notice Error when the amount burned is different than the balance difference,
     ///         since NTT does not support burn fees.
     /// @dev Selector 0x02156a8f.
