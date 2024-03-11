@@ -16,6 +16,7 @@
         "sha3": "^2.1.4"
     },
     "devDependencies": {
+        "@metaplex-foundation/mpl-token-metadata": "^3.2.1",
         "@stylistic/eslint-plugin": "^1.6.1",
         "@stylistic/eslint-plugin-js": "^1.6.1",
         "@stylistic/eslint-plugin-ts": "^1.6.1",
