@@ -246,6 +246,11 @@ contract NttManager is INttManager, NttManagerState {
         uint256 numEnabledTransceivers = enabledTransceivers.length;
         mapping(address => TransceiverInfo) storage transceiverInfos = _getTransceiverInfosStorage();
         bytes32 peerAddress = _getPeersStorage()[recipientChain].peerAddress;
+
+        if (peerAddress == bytes32(0)) {
+            revert PeerNotRegistered(recipientChain);
+        }
+
         // call into transceiver contracts to send the message
         for (uint256 i = 0; i < numEnabledTransceivers; i++) {
             address transceiverAddr = enabledTransceivers[i];
