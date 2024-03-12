@@ -953,8 +953,8 @@ contract TestRateLimit is Test, IRateLimiterEvents {
     }
 
     function testFuzz_inboundRateLimitShouldQueue(uint256 inboundLimitAmt, uint256 amount) public {
-        vm.assume(amount > 0 && amount <= type(uint64).max);
-        vm.assume(inboundLimitAmt < amount);
+        amount = bound(amount, 1, type(uint64).max);
+        inboundLimitAmt = bound(amount, 0, amount - 1);
 
         address user_B = address(0x456);
 
