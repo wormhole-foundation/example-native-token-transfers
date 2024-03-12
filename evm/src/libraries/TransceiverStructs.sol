@@ -172,9 +172,7 @@ library TransceiverStructs {
             encodedTokenIds = abi.encodePacked(encodedTokenIds, uint8(32), nft.tokenIds[i]);
         }
 
-        return abi.encodePacked(
-            NON_FUNGIBLE_NTT_PREFIX, nft.to, nft.toChain, encodedTokenIds
-        );
+        return abi.encodePacked(NON_FUNGIBLE_NTT_PREFIX, nft.to, nft.toChain, encodedTokenIds);
     }
 
     function parseNonFungibleNativeTokenTransfer(bytes memory encoded)

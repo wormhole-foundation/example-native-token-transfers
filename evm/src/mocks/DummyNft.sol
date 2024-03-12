@@ -47,7 +47,7 @@ contract DummyNft is ERC721 {
     }
 }
 
-contract DummyTokenMintAndBurn is DummyNft {
+contract DummyNftMintAndBurn is DummyNft {
     constructor(bytes memory baseUri) DummyNft(baseUri) {}
 
     function mint(address to, uint256 tokenId) public override {

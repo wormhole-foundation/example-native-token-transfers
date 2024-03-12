@@ -21,17 +21,11 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
 
     // =============== Immutables ============================================================
 
-    uint8 public constant MAX_BATCH_SIZE = 50;
+    uint8 constant MAX_BATCH_SIZE = 50;
 
     // =============== Setup =================================================================
 
-    constructor(
-        address _token,
-        Mode _mode,
-        uint16 _chainId,
-        uint64 _rateLimitDuration,
-        bool _skipRateLimiting
-    ) ManagerBase(_token, _mode, _chainId) {}
+    constructor(address _token, Mode _mode, uint16 _chainId) ManagerBase(_token, _mode, _chainId) {}
 
     function __NonFungibleNttManager_init() internal onlyInitializing {
         // check if the owner is the deployer of this contract
@@ -71,6 +65,10 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
         return _getPeersStorage()[chainId_];
     }
 
+    function getMaxBatchSize() external view returns (uint8) {
+        return MAX_BATCH_SIZE;
+    }
+
     // =============== Admin ==============================================================
 
     function setPeer(uint16 peerChainId, bytes32 peerContract) public onlyOwner {
@@ -89,14 +87,6 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
     }
 
     // =============== External Interface ==================================================
-
-    function transfer(
-        uint256[] memory tokenIds,
-        uint16 recipientChain,
-        bytes32 recipient
-    ) external payable nonReentrant whenNotPaused returns (uint64) {
-        return _transfer(tokenIds, recipientChain, recipient, new bytes(1));
-    }
 
     function transfer(
         uint256[] memory tokenIds,
@@ -145,7 +135,15 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
             revert InvalidTargetChain(nft.toChain, chainId);
         }
 
-        _mintOrUnlockToRecipient(digest, fromWormholeFormat(nft.to), nft.tokenIds);
+        emit TransferRedeemed(digest);
+
+        if (mode == Mode.BURNING) {
+            _mintTokens(nft.tokenIds, fromWormholeFormat(nft.to));
+        } else if (mode == Mode.LOCKING) {
+            _unlockTokens(nft.tokenIds, fromWormholeFormat(nft.to));
+        } else {
+            revert InvalidMode(uint8(mode));
+        }
     }
 
     function onERC721Received(
@@ -153,13 +151,12 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
         address,
         uint256,
         bytes calldata
-    ) external view returns (bytes4){
+    ) external view returns (bytes4) {
         if (operator != address(this)) {
             revert InvalidOperator(operator, address(this));
         }
         return type(IERC721Receiver).interfaceId;
     }
-
 
     // ==================== Internal Business Logic =========================================
 
@@ -236,22 +233,6 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
         );
 
         return sequence;
-    }
-
-    function _mintOrUnlockToRecipient(
-        bytes32 digest,
-        address recipient,
-        uint256[] memory tokenIds
-    ) internal {
-        emit TransferRedeemed(digest);
-
-        if (mode == Mode.BURNING) {
-            _mintTokens(tokenIds, recipient);
-        } else if (mode == Mode.LOCKING) {
-            _unlockTokens(tokenIds, recipient);
-        } else {
-            revert InvalidMode(uint8(mode));
-        }
     }
 
     // ==================== Internal Helpers ===============================================

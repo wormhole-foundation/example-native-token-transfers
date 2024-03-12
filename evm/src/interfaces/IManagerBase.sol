@@ -61,7 +61,7 @@ interface IManagerBase {
     /// @param threshold The current threshold of transceivers.
     event TransceiverRemoved(address transceiver, uint8 threshold);
 
-     /// @notice Emitted when a message has already been executed to
+    /// @notice Emitted when a message has already been executed to
     ///         notify client of against retries.
     /// @dev Topic0
     ///      0x4069dff8c9df7e38d2867c0910bd96fd61787695e5380281148c04932d02bef2.

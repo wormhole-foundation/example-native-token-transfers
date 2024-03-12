@@ -30,7 +30,7 @@ contract DummyTransceiver is Transceiver, ITransceiverReceiver {
         // do nothing
     }
 
-    function receiveMessage(bytes memory encodedMessage) external {
+    function receiveMessage(bytes memory encodedMessage) external virtual {
         TransceiverStructs.TransceiverMessage memory parsedTransceiverMessage;
         TransceiverStructs.ManagerMessage memory parsedManagerMessage;
         (parsedTransceiverMessage, parsedManagerMessage) = TransceiverStructs
@@ -48,4 +48,25 @@ contract DummyTransceiver is Transceiver, ITransceiverReceiver {
         pure
         returns (uint16 recipientChain, bytes memory payload)
     {}
+}
+
+contract DummyTransceiverWithChainId is DummyTransceiver {
+    uint16 public fromChainId;
+
+    constructor(address nttManager, uint16 _fromChainId) DummyTransceiver(nttManager) {
+        fromChainId = _fromChainId;
+    }
+
+    function receiveMessage(bytes memory encodedMessage) external override {
+        TransceiverStructs.TransceiverMessage memory parsedTransceiverMessage;
+        TransceiverStructs.ManagerMessage memory parsedManagerMessage;
+        (parsedTransceiverMessage, parsedManagerMessage) = TransceiverStructs
+            .parseTransceiverAndManagerMessage(TEST_TRANSCEIVER_PAYLOAD_PREFIX, encodedMessage);
+        _deliverToNttManager(
+            fromChainId,
+            parsedTransceiverMessage.sourceNttManagerAddress,
+            parsedTransceiverMessage.recipientNttManagerAddress,
+            parsedManagerMessage
+        );
+    }
 }

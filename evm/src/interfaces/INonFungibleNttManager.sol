@@ -38,7 +38,7 @@ interface INonFungibleNttManager is IManagerBase {
     event TransferRedeemed(bytes32 indexed digest);
 
     /// @notice The caller is not the deployer.
-    error UnexpectedDeployer(address expectedOwner, address owner);
+    error UnexpectedDeployer(address expectedOwner, address caller);
 
     /// @notice Peer chain ID cannot be zero.
     error InvalidPeerChainIdZero();
@@ -65,5 +65,23 @@ interface INonFungibleNttManager is IManagerBase {
     /// @dev Selector 0x3dcb204a.
     /// @param targetChain The target chain.
     /// @param thisChain The current chain.
-    error InvalidTargetChain(uint16 targetChain, uint16 thisChain); 
+    error InvalidTargetChain(uint16 targetChain, uint16 thisChain);
+
+    /// @notice Sets the corresponding peer.
+    /// @dev The NonFungiblenttManager that executes the message sets the source NonFungibleNttManager
+    /// as the peer.
+    /// @param peerChainId The chain ID of the peer.
+    /// @param peerContract The address of the peer nttManager contract.c
+    function setPeer(uint16 peerChainId, bytes32 peerContract) external;
+
+    function getPeer(uint16 chainId_) external view returns (NonFungibleNttManagerPeer memory);
+
+    function getMaxBatchSize() external view returns (uint8);
+
+    function transfer(
+        uint256[] memory tokenIds,
+        uint16 recipientChain,
+        bytes32 recipient,
+        bytes memory transceiverInstructions
+    ) external payable returns (uint64);
 }
