@@ -15,6 +15,7 @@ import {Utils} from "./libraries/Utils.sol";
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import "openzeppelin-contracts/contracts/utils/math/SafeCast.sol";
 import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "wormhole-solidity-sdk/Utils.sol";
@@ -585,7 +586,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         uint256 amount = type(uint64).max * 10 ** (decimals - 6);
 
-        vm.expectRevert("SafeCast: value doesn't fit in 64 bits");
+        vm.expectRevert(abi.encodeWithSelector(SafeCast.SafeCastOverflowedUintDowncast.selector, 64, amount / 10 ** (decimals - 6 - 2)));
         nttManager.transfer(amount, chainId, toWormholeFormat(user_B), false, new bytes(1));
 
         // A (slightly) more sensible amount should work normally

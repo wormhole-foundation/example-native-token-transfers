@@ -10,6 +10,8 @@ import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 contract GovernedContract is Ownable {
     error RandomError();
 
+    constructor() Ownable(msg.sender) {}
+
     bool public governanceStuffCalled;
 
     function governanceStuff() public onlyOwner {
