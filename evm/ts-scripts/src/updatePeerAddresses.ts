@@ -1,8 +1,5 @@
 import { inspect } from "util";
-import {
-  ChainId,
-  tryNativeToHexString,
-} from "@certusone/wormhole-sdk";
+import { ChainId, tryNativeToHexString } from "@certusone/wormhole-sdk";
 import {
   NttManager__factory,
   WormholeTransceiver__factory,
@@ -63,7 +60,6 @@ async function run() {
     console.log(`Configuration succeded for chain ${result.chainId}`);
   }
 }
-const zeroAddress32 = "0x" + "00".repeat(32);
 
 async function registerPeers(chain: ChainInfo, peers: PeerConfig[]) {
   const log = (...args: any[]) => console.log(`[${chain.chainId}]`, ...args);
@@ -76,28 +72,33 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]) {
 
     const config = await getChainConfig<PeerConfig>(processName, peer.chainId);
 
-    const peerCurrentConfig = await managerContract.getPeer(peer.chainId);
-    if (
-      peerCurrentConfig.peerAddress === zeroAddress32 ||
-      peerCurrentConfig.tokenDecimals === 0
-    ) {
-      if (!config.decimals)
-        return {
-          chainId: chain.chainId,
-          error: "No 'decimals' configuration found",
-        };
-      const peerAddress = await getNormalizedPeerManagerAddress(peer, chain);
-      if (!peerAddress)
-        return { chainId: chain.chainId, error: "No 'managerAddress' found" };
+    if (!config.decimals)
+      return {
+        chainId: chain.chainId,
+        error: "No 'decimals' configuration found",
+      };
 
+    const peerCurrentConfig = await managerContract.getPeer(peer.chainId);
+    const desiredPeerAddress = await getNormalizedPeerManagerAddress(
+      peer,
+      chain
+    );
+
+    if (!desiredPeerAddress)
+      return { chainId: chain.chainId, error: "No 'managerAddress' found" };
+
+    if (
+      peerCurrentConfig.peerAddress !== desiredPeerAddress ||
+      peerCurrentConfig.tokenDecimals !== config.decimals
+    ) {
       await managerContract.setPeer(
         peer.chainId,
-        Buffer.from(peerAddress, "hex"),
+        Buffer.from(desiredPeerAddress, "hex"),
         config.decimals,
-        BigInt(config.inboundLimit),
+        BigInt(config.inboundLimit)
       );
       log(
-        `Registered manager peer for chain ${peer.chainId} at ${peerAddress}.`
+        `Registered manager peer for chain ${peer.chainId} at ${desiredPeerAddress}.`
       );
     } else {
       log(
@@ -105,39 +106,46 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]) {
       );
     }
 
-    const wormholePeerAddress = await transceiverContract.getWormholePeer(
+    const currentTransceiverAddr = await transceiverContract.getWormholePeer(
       peer.chainId
     );
 
-    if (wormholePeerAddress === zeroAddress32) {
-      const peerTransceiverAddress = await getNormalizedPeerTransceiverAddress(
-        peer,
-        chain
-      );
-      if (!peerTransceiverAddress)
-        return {
-          chainId: chain.chainId,
-          error: "No 'transceiverAddress' found",
-        };
+    const desiredTransceiverAddr = await getNormalizedPeerTransceiverAddress(
+      peer,
+      chain
+    );
+
+    if (!desiredTransceiverAddr)
+      return {
+        chainId: chain.chainId,
+        error: "No 'transceiverAddress' found",
+      };
+
+    if (desiredTransceiverAddr !== currentTransceiverAddr) {
       await transceiverContract.setWormholePeer(
         peer.chainId,
-        Buffer.from(peerTransceiverAddress, "hex")
+        Buffer.from(desiredTransceiverAddr, "hex")
       );
       log(
-        `Registered transceiver peer for chain ${peer.chainId} at ${peerTransceiverAddress}.`
+        `Registered transceiver peer for chain ${peer.chainId} at ${desiredTransceiverAddr}.`
       );
     } else {
       log(
-        `Transceiver peer for chain ${peer.chainId} was already registered at ${wormholePeerAddress}.`
+        `Transceiver peer for chain ${peer.chainId} was already registered at ${currentTransceiverAddr}.`
       );
     }
 
     if (
-      await transceiverContract.isWormholeEvmChain(peer.chainId) !==
+      (await transceiverContract.isWormholeEvmChain(peer.chainId)) !==
       peer.isWormholeEvmChain
     ) {
-      await transceiverContract.setIsWormholeEvmChain(peer.chainId, peer.isWormholeEvmChain);
-      log(`Set ${peer.chainId} as wormhole evm chain = ${peer.isWormholeEvmChain}`);
+      await transceiverContract.setIsWormholeEvmChain(
+        peer.chainId,
+        peer.isWormholeEvmChain
+      );
+      log(
+        `Set ${peer.chainId} as wormhole evm chain = ${peer.isWormholeEvmChain}`
+      );
     } else {
       log(`Chain ${peer.chainId} is already set as wormhole evm chain.`);
     }

@@ -9,6 +9,8 @@ import { buildTransaction } from "./helpers";
 
 const mintKeypair = Keypair.generate();
 
+console.log("Creating mint account with keypair:", mintKeypair.publicKey.toBase58());
+
 (async () => {
   const tokenConfig = {
     decimals: 9,
