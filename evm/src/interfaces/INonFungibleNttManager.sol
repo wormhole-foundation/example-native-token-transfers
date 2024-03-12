@@ -76,7 +76,7 @@ interface INonFungibleNttManager is IManagerBase {
 
     function getPeer(uint16 chainId_) external view returns (NonFungibleNttManagerPeer memory);
 
-    function getMaxBatchSize() external view returns (uint8);
+    function getMaxBatchSize() external pure returns (uint8);
 
     function transfer(
         uint256[] memory tokenIds,

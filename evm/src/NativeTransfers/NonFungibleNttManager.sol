@@ -65,7 +65,7 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
         return _getPeersStorage()[chainId_];
     }
 
-    function getMaxBatchSize() external view returns (uint8) {
+    function getMaxBatchSize() external pure returns (uint8) {
         return MAX_BATCH_SIZE;
     }
 
@@ -200,8 +200,11 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
 
         uint64 sequence = _useMessageSequence();
 
-        TransceiverStructs.NonFungibleNativeTokenTransfer memory nft =
-            TransceiverStructs.NonFungibleNativeTokenTransfer(recipient, recipientChain, tokenIds);
+        /// NOTE: The integrator that deploys this code can modify the arbitrary payload
+        /// to include any custom instructions they wish to communicate to the target
+        /// contract.
+        TransceiverStructs.NonFungibleNativeTokenTransfer memory nft = TransceiverStructs
+            .NonFungibleNativeTokenTransfer(recipient, recipientChain, tokenIds, new bytes(0));
 
         // construct the ManagerMessage payload
         bytes memory encodedNttManagerPayload = TransceiverStructs.encodeManagerMessage(

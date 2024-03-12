@@ -156,6 +156,8 @@ library TransceiverStructs {
         uint16 toChain;
         /// @notice Array of tokenIds.
         uint256[] tokenIds;
+        /// @notice Arbitrary payload per manager implementation.
+        bytes payload;
     }
 
     function encodeNonFungibleNativeTokenTransfer(NonFungibleNativeTokenTransfer memory nft)
@@ -164,6 +166,7 @@ library TransceiverStructs {
         returns (bytes memory encoded)
     {
         uint16 batchSize = uint16(nft.tokenIds.length);
+        uint16 payloadLen = uint16(nft.payload.length);
 
         bytes memory encodedTokenIds = abi.encodePacked(batchSize);
         for (uint256 i = 0; i < batchSize; ++i) {
@@ -172,7 +175,9 @@ library TransceiverStructs {
             encodedTokenIds = abi.encodePacked(encodedTokenIds, uint8(32), nft.tokenIds[i]);
         }
 
-        return abi.encodePacked(NON_FUNGIBLE_NTT_PREFIX, nft.to, nft.toChain, encodedTokenIds);
+        return abi.encodePacked(
+            NON_FUNGIBLE_NTT_PREFIX, nft.to, nft.toChain, encodedTokenIds, payloadLen, nft.payload
+        );
     }
 
     function parseNonFungibleNativeTokenTransfer(bytes memory encoded)
@@ -199,6 +204,12 @@ library TransceiverStructs {
             (tokenIdLength, offset) = encoded.asUint8Unchecked(offset);
             (tokenIds[i], offset) = encoded.asUint256Unchecked(offset);
         }
+        nonFungibleNtt.tokenIds = tokenIds;
+
+        // Decode arbitrary payload.
+        uint16 payloadLength;
+        (payloadLength, offset) = encoded.asUint16Unchecked(offset);
+        (nonFungibleNtt.payload, offset) = encoded.sliceUnchecked(offset, payloadLength);
 
         encoded.checkLength(offset);
     }

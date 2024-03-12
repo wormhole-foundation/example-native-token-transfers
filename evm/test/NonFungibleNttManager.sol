@@ -10,6 +10,7 @@ import "../src/interfaces/IManagerBase.sol";
 
 import "../src/NativeTransfers/NonFungibleNttManager.sol";
 import "../src/NativeTransfers/shared/TransceiverRegistry.sol";
+import "../src/Transceiver/WormholeTransceiver/WormholeTransceiverState.sol";
 import "./interfaces/ITransceiverReceiver.sol";
 
 import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
@@ -22,16 +23,20 @@ import {Utils} from "./libraries/Utils.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../src/libraries/external/OwnableUpgradeable.sol";
 
-import "./mocks/DummyTransceiver.sol";
+import "./mocks/MockTransceivers.sol";
 import "../src/mocks/DummyNft.sol";
 
 contract TestNonFungibleNttManager is Test {
     uint16 constant chainIdOne = 2;
     uint16 constant chainIdTwo = 6;
+    bytes4 constant WH_TRANSCEIVER_PAYLOAD_PREFIX = 0x9945FF10;
     uint256 constant DEVNET_GUARDIAN_PK =
         0xcfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0;
     WormholeSimulator guardian;
     uint256 initialBlockTimestamp;
+    address relayer = 0x28D8F1Be96f97C1387e94A53e00eCcFb4E75175a;
+    uint8 consistencyLevel = 1;
+    uint256 baseGasLimit = 500000;
 
     address owner = makeAddr("owner");
 
@@ -39,8 +44,8 @@ contract TestNonFungibleNttManager is Test {
     DummyNftMintAndBurn nft;
     INonFungibleNttManager managerOne;
     INonFungibleNttManager managerTwo;
-    DummyTransceiverWithChainId transceiverOne;
-    DummyTransceiverWithChainId transceiverTwo;
+    MockWormholeTransceiverContract transceiverOne;
+    MockWormholeTransceiverContract transceiverTwo;
 
     function deployNonFungibleManager(
         address _nft,
@@ -82,8 +87,22 @@ contract TestNonFungibleNttManager is Test {
             deployNonFungibleManager(address(nft), IManagerBase.Mode.BURNING, chainIdTwo, true);
 
         // Wormhole Transceivers.
-        transceiverOne = new DummyTransceiverWithChainId(address(managerOne), chainIdTwo);
-        transceiverTwo = new DummyTransceiverWithChainId(address(managerTwo), chainIdOne);
+        transceiverOne = new MockWormholeTransceiverContract(
+            address(managerOne),
+            address(guardian.wormhole()),
+            relayer,
+            address(0),
+            consistencyLevel,
+            baseGasLimit
+        );
+        transceiverTwo = new MockWormholeTransceiverContract(
+            address(managerTwo),
+            address(guardian.wormhole()),
+            relayer,
+            address(0),
+            consistencyLevel,
+            baseGasLimit
+        );
 
         // Register transceivers and peers.
         managerOne.setTransceiver(address(transceiverOne));
@@ -190,14 +209,19 @@ contract TestNonFungibleNttManager is Test {
         nftCount = bound(nftCount, 1, managerOne.getMaxBatchSize());
 
         address recipient = makeAddr("recipient");
-        uint256[] memory tokenIds = mintNftBatch(nft, recipient, nftCount, 0);
+        uint256[] memory tokenIds = mintNftBatch(nft, recipient, nftCount, 50);
 
         // Transfer NFTs as the owner of the NFTs.
         vm.startPrank(recipient);
         nft.setApprovalForAll(address(managerOne), true);
 
         vm.recordLogs();
-        managerOne.transfer(tokenIds, chainIdTwo, toWormholeFormat(recipient), new bytes(1));
+        managerOne.transfer(
+            tokenIds,
+            chainIdTwo,
+            toWormholeFormat(recipient),
+            encodeTransceiverInstruction(true, transceiverOne)
+        );
         vm.stopPrank();
 
         // Check if the NFTs are locked.
@@ -207,7 +231,28 @@ contract TestNonFungibleNttManager is Test {
         }
 
         // Fetch the wormhole message.
-        //bytes memory encodedVm = getWormholeMessage(vm.getRecordedLogs(), chainIdOne)[0];
+        bytes memory encodedVm = getWormholeMessage(vm.getRecordedLogs(), chainIdOne)[0];
+
+        // Verify the manager message
+        bytes memory vmPayload = guardian.wormhole().parseVM(encodedVm).payload;
+        (, TransceiverStructs.ManagerMessage memory message) = TransceiverStructs
+            .parseTransceiverAndManagerMessage(WH_TRANSCEIVER_PAYLOAD_PREFIX, vmPayload);
+
+        assertEq(uint256(message.id), managerOne.nextMessageSequence() - 1);
+        assertEq(message.sender, toWormholeFormat(recipient));
+
+        // Verify the non-fungible transfer message.
+        TransceiverStructs.NonFungibleNativeTokenTransfer memory nftTransfer = TransceiverStructs
+            .parseNonFungibleNativeTokenTransfer(message.payload);
+
+        assertEq(nftTransfer.to, toWormholeFormat(recipient));
+        assertEq(nftTransfer.toChain, chainIdTwo);
+        assertEq(nftTransfer.payload, new bytes(0));
+        assertEq(nftTransfer.tokenIds.length, nftCount);
+
+        for (uint256 i = 0; i < nftCount; i++) {
+            assertEq(nftTransfer.tokenIds[i], tokenIds[i]);
+        }
     }
 
     // ==================================== Helpers =======================================
@@ -231,7 +276,7 @@ contract TestNonFungibleNttManager is Test {
     function getWormholeMessage(
         Vm.Log[] memory logs,
         uint16 emitterChain
-    ) internal returns (bytes[] memory) {
+    ) internal view returns (bytes[] memory) {
         Vm.Log[] memory entries = guardian.fetchWormholeMessageFromLog(logs);
         bytes[] memory encodedVMs = new bytes[](entries.length);
         for (uint256 i = 0; i < encodedVMs.length; i++) {
@@ -239,5 +284,21 @@ contract TestNonFungibleNttManager is Test {
         }
 
         return encodedVMs;
+    }
+
+    function encodeTransceiverInstruction(
+        bool relayer_off,
+        MockWormholeTransceiverContract transceiver
+    ) public view returns (bytes memory) {
+        WormholeTransceiver.WormholeTransceiverInstruction memory instruction =
+            IWormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
+        bytes memory encodedInstructionWormhole =
+            transceiver.encodeWormholeTransceiverInstruction(instruction);
+        TransceiverStructs.TransceiverInstruction memory TransceiverInstruction = TransceiverStructs
+            .TransceiverInstruction({index: 0, payload: encodedInstructionWormhole});
+        TransceiverStructs.TransceiverInstruction[] memory TransceiverInstructions =
+            new TransceiverStructs.TransceiverInstruction[](1);
+        TransceiverInstructions[0] = TransceiverInstruction;
+        return TransceiverStructs.encodeTransceiverInstructions(TransceiverInstructions);
     }
 }
