@@ -586,7 +586,13 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         uint256 amount = type(uint64).max * 10 ** (decimals - 6);
 
-        vm.expectRevert(abi.encodeWithSelector(SafeCast.SafeCastOverflowedUintDowncast.selector, 64, amount / 10 ** (decimals - 6 - 2)));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SafeCast.SafeCastOverflowedUintDowncast.selector,
+                64,
+                amount / 10 ** (decimals - 6 - 2)
+            )
+        );
         nttManager.transfer(amount, chainId, toWormholeFormat(user_B), false, new bytes(1));
 
         // A (slightly) more sensible amount should work normally
