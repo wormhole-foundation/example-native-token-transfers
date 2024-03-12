@@ -11,6 +11,7 @@ import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "./libraries/TransceiverHelpers.sol";
 import "./libraries/NttManagerHelpers.sol";
+import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 
 pragma solidity >=0.8.8 <0.9.0;
 
@@ -19,6 +20,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
     using TrimmedAmountLib for uint256;
     using TrimmedAmountLib for TrimmedAmount;
+    using BytesParsing for bytes;
 
     uint16 constant chainId = 7;
 
@@ -731,6 +733,27 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         return transceivers;
     }
 
+    function expectRevert(
+        address contractAddress,
+        bytes memory encodedSignature,
+        string memory expectedRevert
+    ) internal {
+        (bool success, bytes memory result) = contractAddress.call(
+            encodedSignature
+        );
+        require(!success, "call did not revert");
+
+        console.log("result: %s", result.length);
+        // // compare revert strings
+        bytes32 expectedRevertHash = keccak256(abi.encode(expectedRevert));
+        (bytes memory res,) = result.slice(4, result.length - 4);
+        bytes32 actualRevertHash = keccak256(abi.encodePacked(res));
+        require(
+             expectedRevertHash == actualRevertHash,
+            "call did not revert as expected"
+        );
+    }
+
     // transfer tokens from user_A to user_B
     // this consumes capacity on the outbound side
     // send tokens from user_B to user_A
@@ -738,47 +761,36 @@ contract TestRateLimit is Test, IRateLimiterEvents {
     // send tokens from user_A to user_B
     // this should consume capacity on the outbound side
     // and backfill the inbound side
-    function testFuzz_CircularFlowBackFilling(uint64 mintAmt, uint256 transferAmt) public {
-        mintAmt = uint64(bound(mintAmt, 2, type(uint256).max));
-        transferAmt = uint64(bound(transferAmt, 1, mintAmt - 1));
+    function testFuzz_CircularFlowBackFilling(uint256 mintAmt, uint256 transferAmt) public {
+        mintAmt = bound(mintAmt, 1, type(uint256).max);
+        // enforces transferAmt <= mintAmt
+        transferAmt = bound(transferAmt, 0, mintAmt);
 
         (address user_A, address user_B, DummyToken token, uint8 decimals) = setupToken();
 
-        TrimmedAmount mintAmount = packTrimmedAmount(mintAmt, 8);
-        token.mintDummy(address(user_A), mintAmount.untrim(decimals));
-        nttManager.setOutboundLimit(mintAmount.untrim(decimals));
-
-        // transfer 10 tokens
-        vm.startPrank(user_A);
-
-        // TrimmedAmount memory transferAmount = TrimmedAmount(transferAmt, 8);
-        token.approve(address(nttManager), type(uint256).max);
-
-        // TODO: also fuzz the fromDecimals?
-
-        // allow for amounts greater than uint64 to check if [`transfer`] reverts
+        // allow for amounts greater than uint64 to check if [`setOutboundLimit`] reverts
         // on amounts greater than u64 MAX.
-        TrimmedAmount transferAmount = transferAmt.trim(decimals, 8);
-
-        // check error conditions
-        if (transferAmount.getAmount() == 0) {
-            vm.expectRevert();
-            // transfer tokens from user_A -> user_B via the nttManager
-            nttManager.transfer(
-                transferAmount.untrim(decimals),
-                chainId,
-                toWormholeFormat(user_B),
-                false,
-                new bytes(1)
-            );
+        if (mintAmt.scale(decimals, 8) > type(uint64).max) {
+            vm.expectRevert("SafeCast: value doesn't fit in 64 bits");
+            nttManager.setOutboundLimit(mintAmt);
 
             return;
         }
 
-        if (transferAmount.getAmount() > type(uint64).max) {
-            bytes4 selector = bytes4(keccak256("AmountTooLarge(uint256)"));
-            vm.expectRevert(abi.encodeWithSelector(selector, transferAmt));
+        nttManager.setOutboundLimit(mintAmt);
+        TrimmedAmount mintAmount = mintAmt.trim(decimals, 8);
+        token.mintDummy(address(user_A), mintAmount.untrim(decimals));
+        nttManager.setOutboundLimit(mintAmount.untrim(decimals));
 
+        vm.startPrank(user_A);
+        token.approve(address(nttManager), type(uint256).max);
+
+        TrimmedAmount transferAmount = transferAmt.trim(decimals, 8);
+
+        // check error conditions
+        // revert if amount to be transferred is 0
+        if (transferAmount.getAmount() == 0) {
+            vm.expectRevert(abi.encodeWithSelector(INttManager.ZeroAmount.selector));
             nttManager.transfer(
                 transferAmount.untrim(decimals),
                 chainId,
