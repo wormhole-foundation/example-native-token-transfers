@@ -20,12 +20,11 @@ describe('example-native-token-transfers', () => {
   const owner = anchor.web3.Keypair.generate()
   const connection = new anchor.web3.Connection('http://localhost:8899', 'confirmed');
   const ntt = new NTT(connection, {
-    nttId: 'NtTfsJMdeuTFFHpQv2wGWaoaECFYN8eq8sAtY8fA6eq',
-    wormholeId: 'worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth'
-  })
+    nttId: 'NttF2XqV8fc1kb9VinwShysQXPw7JB7hACGvcV1uYFn',
+    wormholeId: '3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5'
+  });
   const user = anchor.web3.Keypair.generate()
   let tokenAccount: anchor.web3.PublicKey
-
 
   let mint: anchor.web3.PublicKey
 

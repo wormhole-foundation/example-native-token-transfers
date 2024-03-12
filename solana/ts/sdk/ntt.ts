@@ -52,7 +52,7 @@ export interface TransferArgs {
 }
 
 export const NTT_PROGRAM_IDS = [
-  "NtTfsJMdeuTFFHpQv2wGWaoaECFYN8eq8sAtY8fA6eq",
+  "NttF2XqV8fc1kb9VinwShysQXPw7JB7hACGvcV1uYFn",
   "NTTManager111111111111111111111111111111111",
   "NTTManager222222222222222222222222222222222",
 ] as const;

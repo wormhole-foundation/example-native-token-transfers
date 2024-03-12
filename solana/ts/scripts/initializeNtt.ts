@@ -25,32 +25,36 @@ if (!nttProgramId) {
     wormholeId: wormholeProgramId as any,
   });
 
+  const nttManagerPk = ntt.tokenAuthorityAddress();
+
   // make ntt-manager the mint authority
+  // TODO: this might fail if the authority has already been set
   await setAuthority(
     connection, 
     deployerKeypair, 
     mint, 
-    deployerKeypair, 
+    deployerKeypair.publicKey, 
     0, 
-    ntt.tokenAuthorityAddress()
+    nttManagerPk,
   );
+  console.log(`Authority set to ${nttManagerPk.toBase58()}`);
 
-  // initialize the ntt manager
   await ntt.initialize({
     payer: deployerKeypair,
     owner: deployerKeypair,
     chain: "solana",
     mint,
     // TODO: this two properties should also be configurable
-    outboundLimit: new BN(1000000),
+    outboundLimit: new BN(10000000000000),
     mode: "locking",
   });
+  console.log("NTT initialized succesfully!");
 
-  // register ntt manager id as it's own transceiver
   await ntt.registerTransceiver({
     payer: deployerKeypair,
     owner: deployerKeypair,
-    transceiver: nttProgramId as any,
+    transceiver: new PublicKey(wormholeProgramId),
   });
+  console.log(`Transceiver registered at: ${wormholeProgramId}`);
 })();
 
