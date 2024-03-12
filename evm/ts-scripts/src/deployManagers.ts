@@ -26,7 +26,6 @@ type NttManagerConfig = {
   chainId: ChainId;
   rateLimitDuration: number;
   skipRateLimit: boolean;
-  // TODO!!! make sure we can easily configure any configurable property on any of the contraccts. What properties are configurable?
   threshold: number;
   outboundLimit: number;
 };
@@ -96,7 +95,7 @@ async function deployManager(chain: ChainInfo, config: NttManagerConfig) {
 
   try {
     libraries = await deployManagerLibraries(chain);
-    log("Libraries deployed to ", inspect(libraries));
+    log("Libraries deployed at ", inspect(libraries));
   } catch (error) {
     return { chainId: chain.chainId, error };
   }
@@ -107,13 +106,13 @@ async function deployManager(chain: ChainInfo, config: NttManagerConfig) {
       config,
       libraries
     );
-    log("Implementation deployed to ", implementation.address);
+    log("Implementation deployed at ", implementation.address);
   } catch (error) {
     return { chainId: chain.chainId, error };
   }
 
   proxy = await deployManagerProxy(chain, implementation.address);
-  log("Proxy deployed to ", proxy.address);
+  log("Proxy deployed at ", proxy.address);
 
   return {
     chainId: chain.chainId,
@@ -130,18 +129,15 @@ async function deployManagerLibraries(
 ): Promise<NttManagerLibraryAddresses> {
   const signer = await getSigner(chain);
 
-  const structs = await new TransceiverStructs__factory(signer).deploy();
-  const amountLib = await new TrimmedAmountLib__factory(signer).deploy();
+  const libAddresses = {} as NttManagerLibraryAddresses;
 
-  return Promise.all([structs.deployed(), amountLib.deployed()]).then(
-    ([structs, amountLib]) => {
-      return {
-        ["src/libraries/TransceiverStructs.sol:TransceiverStructs"]:
-          structs.address,
-        ["src/libraries/TrimmedAmount.sol:TrimmedAmountLib"]: amountLib.address,
-      };
-    }
-  );
+  const structs = await new TransceiverStructs__factory(signer).deploy();
+  libAddresses["src/libraries/TransceiverStructs.sol:TransceiverStructs"] = await structs.deployed().then((d) => d.address);
+  
+  const amountLib = await new TrimmedAmountLib__factory(signer).deploy();
+  libAddresses["src/libraries/TrimmedAmount.sol:TrimmedAmountLib"] = await amountLib.deployed().then((d) => d.address);
+
+  return libAddresses;
 }
 
 async function deployManagerImplementation(
@@ -176,7 +172,7 @@ async function deployManagerProxy(
 
   const abi = ["function initialize()"];
   const iface = new ethers.utils.Interface(abi);
-  const encodedCall = iface.encodeFunctionData("initialize");
+  const encodedCall = iface.encodeFunctionData("initialize", []);
 
   const proxy = await proxyFactory.deploy(implementationAddress, encodedCall);
 

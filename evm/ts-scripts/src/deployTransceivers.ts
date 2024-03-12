@@ -93,7 +93,7 @@ async function deployTransceiver(chain: ChainInfo, config: NttTransceiverConfig,
   log("Deploying implementation");
   try {
     implementation = await deployTransceiverImplementation(chain, config, contracts, libraries);
-    log("Implementation deployed to ", implementation.address);
+    log("Implementation deployed at ", implementation.address);
   } catch (error) {
     return { chainId: chain.chainId, error };
   }
@@ -101,7 +101,7 @@ async function deployTransceiver(chain: ChainInfo, config: NttTransceiverConfig,
   log("Deploying proxy");
   try {
     proxy = await deployTransceiverProxy(chain, implementation.address);
-    log("Proxy deployed to ", proxy.address);
+    log("Proxy deployed at ", proxy.address);
   } catch (error) {
     return { chainId: chain.chainId, error };
   }
