@@ -9,12 +9,6 @@ contract TrimmingTest is Test {
     using TrimmedAmountLib for uint256;
     using TrimmedAmountLib for TrimmedAmount;
 
-    function test_packUnpack(uint64 amount, uint8 decimals) public {
-        TrimmedAmount trimmed = packTrimmedAmount(amount, decimals);
-        assertEq(trimmed.getAmount(), amount);
-        assertEq(trimmed.getDecimals(), decimals);
-    }
-
     function testTrimmingRoundTrip() public {
         uint8 decimals = 18;
         uint256 amount = 50 * 10 ** decimals;
@@ -169,6 +163,14 @@ contract TrimmingTest is Test {
         assertEq(expectedRoundTrip, amountRoundTrip);
     }
 
+    // =============   FUZZ TESTS ================== //
+
+    function test_packUnpack(uint64 amount, uint8 decimals) public {
+        TrimmedAmount trimmed = packTrimmedAmount(amount, decimals);
+        assertEq(trimmed.getAmount(), amount);
+        assertEq(trimmed.getDecimals(), decimals);
+    }
+
     function testFuzz_AddOperatorOverload(TrimmedAmount a, TrimmedAmount b) public {
         vm.assume(a.getDecimals() == b.getDecimals());
 
@@ -235,53 +237,50 @@ contract TrimmingTest is Test {
         vm.assume(fromDecimals <= 8 && fromDecimals <= toDecimals);
 
         // initialize TrimmedAmount
-        TrimmedAmount memory trimmedAmount = TrimmedAmount(uint64(amt), fromDecimals);
+        TrimmedAmount trimmedAmount = packTrimmedAmount(uint64(amt), fromDecimals);
 
         // trimming is left inverse of trimming
         uint256 amountUntrimmed = trimmedAmount.untrim(toDecimals);
-        TrimmedAmount memory amountRoundTrip = amountUntrimmed.trim(toDecimals, fromDecimals);
+        TrimmedAmount amountRoundTrip = amountUntrimmed.trim(toDecimals, fromDecimals);
 
-        assertEq(trimmedAmount.amount, amountRoundTrip.amount);
+        assertEq(trimmedAmount.getAmount(), amountRoundTrip.getAmount());
     }
-
-    // FUZZ TESTS
 
     // invariant: forall (TrimmedAmount a, TrimmedAmount b)
     //            a.saturatingAdd(b).amount <= type(uint64).max
-    function testFuzz_saturatingAddDoesNotOverflow(
-        TrimmedAmount memory a,
-        TrimmedAmount memory b
-    ) public {
-        vm.assume(a.decimals == b.decimals);
+    function testFuzz_saturatingAddDoesNotOverflow(TrimmedAmount a, TrimmedAmount b) public {
+        vm.assume(a.getDecimals() == b.getDecimals());
 
-        TrimmedAmount memory c = a.saturatingAdd(b);
+        TrimmedAmount c = a.saturatingAdd(b);
 
         // decimals should always be the same, else revert
-        assertEq(c.decimals, a.decimals);
+        assertEq(c.getDecimals(), a.getDecimals());
 
         // amount should never overflow
-        assertLe(c.amount, type(uint64).max);
+        assertLe(c.getAmount(), type(uint64).max);
         // amount should never underflow
-        assertGe(c.amount, 0);
+        assertGe(c.getAmount(), 0);
     }
 
     // NOTE: above the TRIMMED_DECIMALS threshold will always get trimmed to TRIMMED_DECIMALS
     // or trimmed to the number of decimals on the recipient chain.
     // this tests for inputs with decimals > TRIMMED_DECIMALS
-    function testFuzz_SubOperatorZeroAboveThreshold(uint256 amt, uint8 decimals) public pure {
+    function testFuzz_SubOperatorZeroAboveThreshold(uint256 amt, uint8 decimals) public {
         decimals = uint8(bound(decimals, 8, 18));
         uint256 maxAmt = (type(uint64).max) / (10 ** decimals);
         vm.assume(amt < maxAmt);
 
         uint256 amount = amt * (10 ** decimals);
         uint256 amountOther = 0;
-        TrimmedAmount memory trimmedAmount = amount.trim(decimals, 8);
-        TrimmedAmount memory trimmedAmountOther = amountOther.trim(decimals, 8);
+        TrimmedAmount trimmedAmount = amount.trim(decimals, 8);
+        TrimmedAmount trimmedAmountOther = amountOther.trim(decimals, 8);
 
-        TrimmedAmount memory trimmedSub = trimmedAmount.sub(trimmedAmountOther);
+        TrimmedAmount trimmedSub = trimmedAmount - trimmedAmountOther;
 
-        TrimmedAmount memory expectedTrimmedSub = TrimmedAmount(uint64(amt * (10 ** 8)), 8);
-        assert(expectedTrimmedSub.eq(trimmedSub));
+        TrimmedAmount expectedTrimmedSub = packTrimmedAmount(uint64(amt * (10 ** 8)), 8);
+        assert(expectedTrimmedSub == trimmedSub);
+        assertEq(expectedTrimmedSub.getAmount(), trimmedSub.getAmount());
+        assertEq(expectedTrimmedSub.getDecimals(), trimmedSub.getDecimals());
     }
 
     function testFuzz_SubOperatorWillOverflow(
@@ -296,29 +295,31 @@ contract TrimmingTest is Test {
 
         uint256 amountLeft = amtLeft * (10 ** decimals);
         uint256 amountRight = amtRight * (10 ** decimals);
-        TrimmedAmount memory trimmedAmount = amountLeft.trim(decimals, 8);
-        TrimmedAmount memory trimmedAmountOther = amountRight.trim(decimals, 8);
+        TrimmedAmount trimmedAmount = amountLeft.trim(decimals, 8);
+        TrimmedAmount trimmedAmountOther = amountRight.trim(decimals, 8);
 
-        vm.expectRevert();
-        trimmedAmount.sub(trimmedAmountOther);
+        vm.expectRevert(stdError.arithmeticError);
+        trimmedAmount - trimmedAmountOther;
     }
 
     // NOTE: above the TRIMMED_DECIMALS threshold will always get trimmed to TRIMMED_DECIMALS
     // or trimmed to the number of decimals on the recipient chain.
     // this tests for inputs with decimals > TRIMMED_DECIMALS
-    function testFuzz_AddOperatorZeroAboveThreshold(uint256 amt, uint8 decimals) public pure {
+    function testFuzz_AddOperatorZeroAboveThreshold(uint256 amt, uint8 decimals) public {
         decimals = uint8(bound(decimals, 8, 18));
         uint256 maxAmt = (type(uint64).max) / (10 ** decimals);
         vm.assume(amt < maxAmt);
 
         uint256 amount = amt * (10 ** decimals);
         uint256 amountOther = 0;
-        TrimmedAmount memory trimmedAmount = amount.trim(decimals, 8);
-        TrimmedAmount memory trimmedAmountOther = amountOther.trim(decimals, 8);
+        TrimmedAmount trimmedAmount = amount.trim(decimals, 8);
+        TrimmedAmount trimmedAmountOther = amountOther.trim(decimals, 8);
 
-        TrimmedAmount memory trimmedSum = trimmedAmount.add(trimmedAmountOther);
+        TrimmedAmount trimmedSum = trimmedAmount + trimmedAmountOther;
 
-        TrimmedAmount memory expectedTrimmedSum = TrimmedAmount(uint64(amt * (10 ** 8)), 8);
-        assert(expectedTrimmedSum.eq(trimmedSum));
+        TrimmedAmount expectedTrimmedSum = packTrimmedAmount(uint64(amt * (10 ** 8)), 8);
+        assert(expectedTrimmedSum == trimmedSum);
+        assertEq(expectedTrimmedSum.getAmount(), trimmedSum.getAmount());
+        assertEq(expectedTrimmedSum.getDecimals(), trimmedSum.getDecimals());
     }
 }

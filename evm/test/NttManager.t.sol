@@ -73,7 +73,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
     // === pure unit tests
 
     // naive implementation of countSetBits to test against
-    function simpleCount(uint64 n) public returns (uint8) {
+    function simpleCount(uint64 n) public pure returns (uint8) {
         uint8 count;
 
         while (n > 0) {

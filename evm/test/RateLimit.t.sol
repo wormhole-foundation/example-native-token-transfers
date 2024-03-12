@@ -652,7 +652,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
                 nttManager.getInboundLimitParams(TransceiverHelpersLib.SENDING_CHAIN_ID);
             assertEq(
                 inboundLimitParams.currentCapacity.getAmount(),
-                inboundLimitParams.limit.sub(transferAmount).getAmount()
+                (inboundLimitParams.limit - transferAmount).getAmount()
             );
             assertEq(inboundLimitParams.lastTxTimestamp, receiveTime);
         }
@@ -691,7 +691,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
                 nttManager.getOutboundLimitParams();
             assertEq(
                 outboundLimitParams.currentCapacity.getAmount(),
-                outboundLimitParams.limit.sub(transferAmount).getAmount()
+                (outboundLimitParams.limit - transferAmount).getAmount()
             );
             assertEq(outboundLimitParams.lastTxTimestamp, sendAgainTime);
         }
@@ -744,7 +744,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         (address user_A, address user_B, DummyToken token, uint8 decimals) = setupToken();
 
-        TrimmedAmount memory mintAmount = TrimmedAmount(mintAmt, 8);
+        TrimmedAmount mintAmount = packTrimmedAmount(mintAmt, 8);
         token.mintDummy(address(user_A), mintAmount.untrim(decimals));
         nttManager.setOutboundLimit(mintAmount.untrim(decimals));
 
@@ -758,10 +758,10 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         // allow for amounts greater than uint64 to check if [`transfer`] reverts
         // on amounts greater than u64 MAX.
-        TrimmedAmount memory transferAmount = transferAmt.trim(decimals, 8);
+        TrimmedAmount transferAmount = transferAmt.trim(decimals, 8);
 
         // check error conditions
-        if (transferAmount.amount == 0) {
+        if (transferAmount.getAmount() == 0) {
             vm.expectRevert();
             // transfer tokens from user_A -> user_B via the nttManager
             nttManager.transfer(
@@ -775,7 +775,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
             return;
         }
 
-        if (transferAmount.amount > type(uint64).max) {
+        if (transferAmount.getAmount() > type(uint64).max) {
             bytes4 selector = bytes4(keccak256("AmountTooLarge(uint256)"));
             vm.expectRevert(abi.encodeWithSelector(selector, transferAmt));
 
@@ -799,7 +799,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         // assert nttManager has 10 tokens and user_A has 10 fewer tokens
         assertEq(token.balanceOf(address(nttManager)), transferAmount.untrim(decimals));
-        assertEq(token.balanceOf(user_A), mintAmount.sub(transferAmount).untrim(decimals));
+        assertEq(token.balanceOf(user_A), (mintAmount - transferAmount).untrim(decimals));
 
         {
             // consumed capacity on the outbound side
@@ -808,7 +808,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
                 nttManager.getOutboundLimitParams();
             assertEq(
                 outboundLimitParams.currentCapacity.getAmount(),
-                outboundLimitParams.limit.sub(transferAmount).getAmount()
+                (outboundLimitParams.limit - transferAmount).getAmount()
             );
             assertEq(outboundLimitParams.lastTxTimestamp, initialBlockTimestamp);
         }
@@ -969,7 +969,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         TransceiverStructs.NttManagerMessage memory m;
         bytes memory encodedEm;
         uint256 inboundLimit = inboundLimitAmt;
-        TrimmedAmount memory trimmedAmount = TrimmedAmount(uint64(amount), 8);
+        TrimmedAmount trimmedAmount = packTrimmedAmount(uint64(amount), 8);
         {
             TransceiverStructs.TransceiverMessage memory em;
             (m, em) = TransceiverHelpersLib.attestTransceiversHelper(
@@ -979,7 +979,6 @@ contract TestRateLimit is Test, IRateLimiterEvents {
                 nttManager,
                 nttManager,
                 trimmedAmount,
-                // TrimmedAmount(50, 8),
                 inboundLimit.trim(token.decimals(), token.decimals()),
                 transceivers
             );
