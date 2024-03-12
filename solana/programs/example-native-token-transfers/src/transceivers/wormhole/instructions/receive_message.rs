@@ -18,8 +18,7 @@ pub struct ReceiveMessage<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    // NOTE: this works when the contract is paused
-    pub config: Account<'info, Config>,
+    pub config: NotPausedConfig<'info>,
 
     #[account(
         seeds = [TransceiverPeer::SEED_PREFIX, vaa.emitter_chain().to_be_bytes().as_ref()],
