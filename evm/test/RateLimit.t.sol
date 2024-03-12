@@ -342,8 +342,11 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         uint256 transferAmount = 3 * 10 ** decimals;
         token.approve(address(nttManager), transferAmount);
 
-        bytes4 selector = bytes4(keccak256("NotEnoughCapacity(uint256,uint256)"));
-        vm.expectRevert(abi.encodeWithSelector(selector, outboundLimit, transferAmount));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IRateLimiter.NotEnoughCapacity.selector, outboundLimit, transferAmount
+            )
+        );
         nttManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
     }
 
@@ -377,9 +380,12 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         uint256 badTransferAmount = 2 * 10 ** decimals;
         token.approve(address(nttManager), badTransferAmount);
 
-        bytes4 selector = bytes4(keccak256("NotEnoughCapacity(uint256,uint256)"));
         vm.expectRevert(
-            abi.encodeWithSelector(selector, newCapacity.untrim(decimals), badTransferAmount)
+            abi.encodeWithSelector(
+                IRateLimiter.NotEnoughCapacity.selector,
+                newCapacity.untrim(decimals),
+                badTransferAmount
+            )
         );
         nttManager.transfer(
             badTransferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1)
@@ -430,9 +436,11 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         vm.warp(durationElapsedTime - 1);
 
         // assert that transfer still can't be completed
-        bytes4 stillQueuedSelector =
-            bytes4(keccak256("OutboundQueuedTransferStillQueued(uint64,uint256)"));
-        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, initialBlockTimestamp));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IRateLimiter.OutboundQueuedTransferStillQueued.selector, 0, initialBlockTimestamp
+            )
+        );
         nttManager.completeOutboundQueuedTransfer(0);
 
         // now complete transfer
@@ -441,8 +449,9 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         assertEq(seq, 0);
 
         // now ensure transfer was removed from queue
-        bytes4 notFoundSelector = bytes4(keccak256("OutboundQueuedTransferNotFound(uint64)"));
-        vm.expectRevert(abi.encodeWithSelector(notFoundSelector, 0));
+        vm.expectRevert(
+            abi.encodeWithSelector(IRateLimiter.OutboundQueuedTransferNotFound.selector, 0)
+        );
         nttManager.completeOutboundQueuedTransfer(0);
     }
 
@@ -544,10 +553,12 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         {
             // assert that transfer still can't be completed
-            bytes4 stillQueuedSelector =
-                bytes4(keccak256("InboundQueuedTransferStillQueued(bytes32,uint256)"));
             vm.expectRevert(
-                abi.encodeWithSelector(stillQueuedSelector, digest, initialBlockTimestamp)
+                abi.encodeWithSelector(
+                    IRateLimiter.InboundQueuedTransferStillQueued.selector,
+                    digest,
+                    initialBlockTimestamp
+                )
             );
             nttManager.completeInboundQueuedTransfer(digest);
         }
@@ -558,8 +569,9 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         {
             // assert transfer no longer in queue
-            bytes4 notQueuedSelector = bytes4(keccak256("InboundQueuedTransferNotFound(bytes32)"));
-            vm.expectRevert(abi.encodeWithSelector(notQueuedSelector, digest));
+            vm.expectRevert(
+                abi.encodeWithSelector(IRateLimiter.InboundQueuedTransferNotFound.selector, digest)
+            );
             nttManager.completeInboundQueuedTransfer(digest);
         }
 
@@ -738,9 +750,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         bytes memory encodedSignature,
         string memory expectedRevert
     ) internal {
-        (bool success, bytes memory result) = contractAddress.call(
-            encodedSignature
-        );
+        (bool success, bytes memory result) = contractAddress.call(encodedSignature);
         require(!success, "call did not revert");
 
         console.log("result: %s", result.length);
@@ -748,10 +758,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         bytes32 expectedRevertHash = keccak256(abi.encode(expectedRevert));
         (bytes memory res,) = result.slice(4, result.length - 4);
         bytes32 actualRevertHash = keccak256(abi.encodePacked(res));
-        require(
-             expectedRevertHash == actualRevertHash,
-            "call did not revert as expected"
-        );
+        require(expectedRevertHash == actualRevertHash, "call did not revert as expected");
     }
 
     // transfer tokens from user_A to user_B
@@ -948,9 +955,11 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         vm.warp(durationElapsedTime - 1);
 
         // assert that transfer still can't be completed
-        bytes4 stillQueuedSelector =
-            bytes4(keccak256("OutboundQueuedTransferStillQueued(uint64,uint256)"));
-        vm.expectRevert(abi.encodeWithSelector(stillQueuedSelector, 0, initialBlockTimestamp));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IRateLimiter.OutboundQueuedTransferStillQueued.selector, 0, initialBlockTimestamp
+            )
+        );
         nttManager.completeOutboundQueuedTransfer(0);
 
         // now complete transfer
@@ -959,8 +968,9 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         assertEq(seq, 0);
 
         // now ensure transfer was removed from queue
-        bytes4 notFoundSelector = bytes4(keccak256("OutboundQueuedTransferNotFound(uint64)"));
-        vm.expectRevert(abi.encodeWithSelector(notFoundSelector, 0));
+        vm.expectRevert(
+            abi.encodeWithSelector(IRateLimiter.OutboundQueuedTransferNotFound.selector, 0)
+        );
         nttManager.completeOutboundQueuedTransfer(0);
     }
 
@@ -1027,10 +1037,12 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         {
             // assert that transfer still can't be completed
-            bytes4 stillQueuedSelector =
-                bytes4(keccak256("InboundQueuedTransferStillQueued(bytes32,uint256)"));
             vm.expectRevert(
-                abi.encodeWithSelector(stillQueuedSelector, digest, initialBlockTimestamp)
+                abi.encodeWithSelector(
+                    IRateLimiter.InboundQueuedTransferStillQueued.selector,
+                    digest,
+                    initialBlockTimestamp
+                )
             );
             nttManager.completeInboundQueuedTransfer(digest);
         }
@@ -1041,8 +1053,9 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         {
             // assert transfer no longer in queue
-            bytes4 notQueuedSelector = bytes4(keccak256("InboundQueuedTransferNotFound(bytes32)"));
-            vm.expectRevert(abi.encodeWithSelector(notQueuedSelector, digest));
+            vm.expectRevert(
+                abi.encodeWithSelector(IRateLimiter.InboundQueuedTransferNotFound.selector, digest)
+            );
             nttManager.completeInboundQueuedTransfer(digest);
         }
 
