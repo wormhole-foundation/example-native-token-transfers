@@ -49,6 +49,13 @@ for chain in $operating_chains; do
   export transceiver_structs_address=$(jq --raw-output ".TransceiverStructsLibs[] | select(.chainId == $chain) | .address" $contracts_file_path)
   export trimmed_amount_lib_address=$(jq --raw-output ".TrimmedAmountLibs[] | select(.chainId == $chain) | .address" $contracts_file_path)
 
+  # echo "implementation_address: $implementation_address"
+  # echo "proxy_address: $proxy_address"
+  # echo "etherscan_api_key: $etherscan_api_key"
+  # echo "evm_network_id: $evm_network_id"
+  # echo "transceiver_structs_address: $transceiver_structs_address"
+  # echo "trimmed_amount_lib_address: $trimmed_amount_lib_address"
+
   if [ "$implementation_address" = "" ] || 
     [ "$proxy_address" = "" ] ||
     [ "$etherscan_api_key" = "null" ] ||
