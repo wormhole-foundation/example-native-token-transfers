@@ -27,11 +27,6 @@ jobs:
         with:
           version: nightly
 
-      - name: Run Forge build
-        run: |
-          make test-evm-push0
-        id: build
-
       - name: Run Forge tests
         run: |
           make test-evm
