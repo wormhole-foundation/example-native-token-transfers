@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.8 <0.9.0;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, stdError} from "forge-std/Test.sol";
 import "../src/libraries/TrimmedAmount.sol";
 import "forge-std/console.sol";
 
@@ -82,7 +82,7 @@ contract TrimmingTest is Test {
         TrimmedAmount trimmedAmount = amount.trim(decimals, 8);
         TrimmedAmount trimmedAmountOther = amountOther.trim(decimalsOther, 8);
 
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(NumberOfDecimalsNotEqual.selector, 8, decimalsOther));
         trimmedAmount + trimmedAmountOther;
     }
 
@@ -149,7 +149,8 @@ contract TrimmingTest is Test {
             TrimmedAmount trimmedAmount = amount.trim(decimals[i], 8);
             TrimmedAmount trimmedAmountOther = amountOther.trim(decimals[i], 8);
 
-            vm.expectRevert();
+            // arithmetic overflow
+            vm.expectRevert(stdError.arithmeticError);
             trimmedAmount - trimmedAmountOther;
         }
     }

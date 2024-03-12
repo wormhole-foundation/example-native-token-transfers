@@ -6,6 +6,7 @@ import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 
 import "../../libraries/TransceiverHelpers.sol";
+import "../../libraries/BooleanFlag.sol";
 import "../../libraries/TransceiverStructs.sol";
 
 import "../../interfaces/IWormholeTransceiver.sol";
@@ -17,6 +18,8 @@ import "../Transceiver.sol";
 
 abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transceiver {
     using BytesParsing for bytes;
+    using BooleanFlagLib for bool;
+    using BooleanFlagLib for BooleanFlag;
 
     // ==================== Immutables ===============================================
     uint8 public immutable consistencyLevel;
@@ -132,7 +135,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     function _getWormholeRelayingEnabledChainsStorage()
         internal
         pure
-        returns (mapping(uint16 => uint256) storage $)
+        returns (mapping(uint16 => BooleanFlag) storage $)
     {
         uint256 slot = uint256(WORMHOLE_RELAYING_ENABLED_CHAINS_SLOT);
         assembly ("memory-safe") {
@@ -143,7 +146,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     function _getSpecialRelayingEnabledChainsStorage()
         internal
         pure
-        returns (mapping(uint16 => uint256) storage $)
+        returns (mapping(uint16 => BooleanFlag) storage $)
     {
         uint256 slot = uint256(SPECIAL_RELAYING_ENABLED_CHAINS_SLOT);
         assembly ("memory-safe") {
@@ -154,7 +157,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     function _getWormholeEvmChainIdsStorage()
         internal
         pure
-        returns (mapping(uint16 => uint256) storage $)
+        returns (mapping(uint16 => BooleanFlag) storage $)
     {
         uint256 slot = uint256(WORMHOLE_EVM_CHAIN_IDS);
         assembly ("memory-safe") {
@@ -176,17 +179,17 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
 
     /// @inheritdoc IWormholeTransceiverState
     function isWormholeRelayingEnabled(uint16 chainId) public view returns (bool) {
-        return toBool(_getWormholeRelayingEnabledChainsStorage()[chainId]);
+        return _getWormholeRelayingEnabledChainsStorage()[chainId].toBool();
     }
 
     /// @inheritdoc IWormholeTransceiverState
     function isSpecialRelayingEnabled(uint16 chainId) public view returns (bool) {
-        return toBool(_getSpecialRelayingEnabledChainsStorage()[chainId]);
+        return _getSpecialRelayingEnabledChainsStorage()[chainId].toBool();
     }
 
     /// @inheritdoc IWormholeTransceiverState
     function isWormholeEvmChain(uint16 chainId) public view returns (bool) {
-        return toBool(_getWormholeEvmChainIdsStorage()[chainId]);
+        return _getWormholeEvmChainIdsStorage()[chainId].toBool();
     }
 
     // =============== Admin ===============================================================
@@ -230,7 +233,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
         if (chainId == 0) {
             revert InvalidWormholeChainIdZero();
         }
-        _getWormholeEvmChainIdsStorage()[chainId] = toWord(isEvm);
+        _getWormholeEvmChainIdsStorage()[chainId] = isEvm.toWord();
 
         emit SetIsWormholeEvmChain(chainId, isEvm);
     }
@@ -240,7 +243,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
         if (chainId == 0) {
             revert InvalidWormholeChainIdZero();
         }
-        _getWormholeRelayingEnabledChainsStorage()[chainId] = toWord(isEnabled);
+        _getWormholeRelayingEnabledChainsStorage()[chainId] = isEnabled.toWord();
 
         emit SetIsWormholeRelayingEnabled(chainId, isEnabled);
     }
@@ -250,7 +253,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
         if (chainId == 0) {
             revert InvalidWormholeChainIdZero();
         }
-        _getSpecialRelayingEnabledChainsStorage()[chainId] = toWord(isEnabled);
+        _getSpecialRelayingEnabledChainsStorage()[chainId] = isEnabled.toWord();
 
         emit SetIsSpecialRelayingEnabled(chainId, isEnabled);
     }

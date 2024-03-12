@@ -8,7 +8,7 @@ import "../src/NttManager/NttManager.sol";
 import "../src/Transceiver/Transceiver.sol";
 import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
-import "../src/interfaces/INttManagerEvents.sol";
+import "../src/interfaces/IManagerBase.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
 import "../src/interfaces/IWormholeTransceiver.sol";
 import "../src/interfaces/IWormholeTransceiverState.sol";
@@ -65,7 +65,6 @@ contract TestEndToEndRelayerBase is Test {
 
 contract TestEndToEndRelayer is
     TestEndToEndRelayerBase,
-    INttManagerEvents,
     IRateLimiterEvents,
     WormholeRelayerBasicTest
 {
@@ -99,7 +98,7 @@ contract TestEndToEndRelayer is
         DummyToken t1 = new DummyToken();
 
         NttManager implementation = new MockNttManagerContract(
-            address(t1), INttManager.Mode.LOCKING, chainId1, 1 days, false
+            address(t1), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
         );
 
         nttManagerChain1 =
@@ -133,7 +132,7 @@ contract TestEndToEndRelayer is
         // Chain 2 setup
         DummyToken t2 = new DummyTokenMintAndBurn();
         NttManager implementationChain2 = new MockNttManagerContract(
-            address(t2), INttManager.Mode.BURNING, chainId2, 1 days, false
+            address(t2), IManagerBase.Mode.BURNING, chainId2, 1 days, false
         );
 
         nttManagerChain2 =
@@ -213,7 +212,11 @@ contract TestEndToEndRelayer is
 
             // config not set correctly
             vm.startPrank(userA);
-            vm.expectRevert(abi.encodeWithSignature("InvalidRelayingConfig(uint16)", chainId2));
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    IWormholeTransceiver.InvalidRelayingConfig.selector, chainId2
+                )
+            );
             nttManagerChain1.transfer{value: priceQuote1}(
                 sendingAmount, chainId2, bytes32(uint256(uint160(userB))), false, instructions
             );
@@ -223,17 +226,31 @@ contract TestEndToEndRelayer is
             wormholeTransceiverChain1.setIsWormholeEvmChain(chainId2, true);
             vm.startPrank(userA);
 
-            vm.expectRevert(); // Dust error
+            // revert if transfer amount has dust
+            uint256 amount = sendingAmount - 1;
+            TrimmedAmount trimmedAmount = amount.trim(decimals, 7);
+            uint256 newAmount = trimmedAmount.untrim(decimals);
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    INttManager.TransferAmountHasDust.selector, amount, amount - newAmount
+                )
+            );
             nttManagerChain1.transfer{value: priceQuote1}(
                 sendingAmount - 1, chainId2, bytes32(uint256(uint160(userB))), false, instructions
             );
 
-            vm.expectRevert(); // Zero funds error
+            // Zero funds error
+            vm.expectRevert(abi.encodeWithSelector(INttManager.ZeroAmount.selector));
             nttManagerChain1.transfer{value: priceQuote1}(
                 0, chainId2, bytes32(uint256(uint160(userB))), false, instructions
             );
 
-            vm.expectRevert(); // Not enough in gas costs from the 'quote'.
+            // Not enough in gas costs from the 'quote'.
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    IManagerBase.DeliveryPaymentTooLow.selector, priceQuote1, priceQuote1 - 1
+                )
+            );
             nttManagerChain1.transfer{value: priceQuote1 - 1}(
                 sendingAmount, chainId2, bytes32(uint256(uint160(userB))), false, instructions
             );
@@ -432,11 +449,7 @@ contract TestEndToEndRelayer is
     }
 }
 
-contract TestRelayerEndToEndManual is
-    TestEndToEndRelayerBase,
-    INttManagerEvents,
-    IRateLimiterEvents
-{
+contract TestRelayerEndToEndManual is TestEndToEndRelayerBase, IRateLimiterEvents {
     NttManager nttManagerChain1;
     NttManager nttManagerChain2;
 
@@ -471,7 +484,7 @@ contract TestRelayerEndToEndManual is
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
         NttManager implementation = new MockNttManagerContract(
-            address(t1), INttManager.Mode.LOCKING, chainId1, 1 days, false
+            address(t1), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
         );
 
         nttManagerChain1 =
@@ -499,7 +512,7 @@ contract TestRelayerEndToEndManual is
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
         NttManager implementationChain2 = new MockNttManagerContract(
-            address(t2), INttManager.Mode.BURNING, chainId2, 1 days, false
+            address(t2), IManagerBase.Mode.BURNING, chainId2, 1 days, false
         );
 
         nttManagerChain2 =
@@ -587,7 +600,13 @@ contract TestRelayerEndToEndManual is
             chainId1, bytes32(uint256(uint160(address(0x1)))), 9, type(uint64).max
         );
         vm.startPrank(relayer);
-        vm.expectRevert(); // bad nttManager peer
+
+        // bad nttManager peer
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                INttManager.InvalidPeer.selector, chainId1, address(nttManagerChain1)
+            )
+        );
         wormholeTransceiverChain2.receiveWormholeMessages(
             vaa.payload,
             a,
@@ -646,7 +665,9 @@ contract TestRelayerEndToEndManual is
         );
 
         // Should from sending a *duplicate* message
-        vm.expectRevert(); // Uses a custom error with a hash - don't know how to calculate the hash
+        vm.expectRevert(
+            abi.encodeWithSelector(IWormholeTransceiver.TransferAlreadyCompleted.selector, vaa.hash)
+        );
         wormholeTransceiverChain2.receiveWormholeMessages(
             vaa.payload, // Verified
             a, // Should be zero

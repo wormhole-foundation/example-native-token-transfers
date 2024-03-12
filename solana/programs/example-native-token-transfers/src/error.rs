@@ -19,6 +19,8 @@ pub enum NTTError {
     InvalidRecipientNttManager,
     #[msg("TransferAlreadyRedeemed")]
     TransferAlreadyRedeemed,
+    #[msg("TransferCannotBeRedeemed")]
+    TransferCannotBeRedeemed,
     #[msg("TransferNotApproved")]
     TransferNotApproved,
     #[msg("MessageAlreadySent")]

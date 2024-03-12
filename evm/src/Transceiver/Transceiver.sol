@@ -11,6 +11,15 @@ import "../libraries/Implementation.sol";
 import "../interfaces/INttManager.sol";
 import "../interfaces/ITransceiver.sol";
 
+/// @title Transceiver
+/// @author Wormhole Project Contributors.
+/// @notice This contract is a base contract for Transceivers.
+/// @dev The Transceiver provides basic functionality for transmitting / receiving NTT messages.
+///      The contract supports pausing via an admin or owner and is upgradable.
+///
+/// @dev The interface for receiving messages is not enforced by this contract.
+///      Instead, inheriting contracts should implement their own receiving logic,
+///      based on the verification model and serde logic associated with message handling.
 abstract contract Transceiver is
     ITransceiver,
     PausableOwnable,
@@ -56,11 +65,6 @@ abstract contract Transceiver is
     /// the nttManager should be able to update transceiver ownership.
     function transferTransceiverOwnership(address newOwner) external onlyNttManager {
         _transferOwnership(newOwner);
-    }
-
-    /// @dev pause the transceiver.
-    function _pauseTransceiver() internal {
-        _pause();
     }
 
     function upgrade(address newImplementation) external onlyOwner {

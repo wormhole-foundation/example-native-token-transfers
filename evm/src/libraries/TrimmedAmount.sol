@@ -2,9 +2,11 @@
 /// @dev TrimmedAmount is a utility library to handle token amounts with different decimals
 pragma solidity >=0.8.8 <0.9.0;
 
+import "openzeppelin-contracts/contracts/utils/math/SafeCast.sol";
+
 /// @dev TrimmedAmount is a bit-packed representation of a token amount and its decimals.
-/// @dev 64 bytes: [0 - 64] amount
-/// @dev 8 bytes: [64 - 72] decimals
+/// @dev 64 bits: [0 - 64] amount
+/// @dev 8 bits: [64 - 72] decimals
 type TrimmedAmount is uint72;
 
 using {gt as >, lt as <, sub as -, add as +, eq as ==, min, unwrap} for TrimmedAmount global;
@@ -122,7 +124,7 @@ library TrimmedAmountLib {
             saturatedSum = saturatedSum > type(uint64).max ? type(uint64).max : saturatedSum;
         }
 
-        return packTrimmedAmount(uint64(saturatedSum), getDecimals(a));
+        return packTrimmedAmount(SafeCast.toUint64(saturatedSum), getDecimals(a));
     }
 
     /// @dev scale the amount from original decimals to target decimals (base 10)
@@ -145,7 +147,7 @@ library TrimmedAmountLib {
     function shift(TrimmedAmount amount, uint8 toDecimals) internal pure returns (TrimmedAmount) {
         uint8 actualToDecimals = minUint8(TRIMMED_DECIMALS, toDecimals);
         return packTrimmedAmount(
-            uint64(scale(getAmount(amount), getDecimals(amount), actualToDecimals)),
+            SafeCast.toUint64(scale(getAmount(amount), getDecimals(amount), actualToDecimals)),
             actualToDecimals
         );
     }
@@ -173,10 +175,7 @@ library TrimmedAmountLib {
 
         // NOTE: amt after trimming must fit into uint64 (that's the point of
         // trimming, as Solana only supports uint64 for token amts)
-        if (amountScaled > type(uint64).max) {
-            revert AmountTooLarge(amt);
-        }
-        return packTrimmedAmount(uint64(amountScaled), actualToDecimals);
+        return packTrimmedAmount(SafeCast.toUint64(amountScaled), actualToDecimals);
     }
 
     function untrim(TrimmedAmount amt, uint8 toDecimals) internal pure returns (uint256) {

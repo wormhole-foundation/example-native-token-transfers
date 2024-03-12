@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.8 <0.9.0;
 
-/// @dev This contract is responsible for handling the registration of Transceivers.
+/// @title TransceiverRegistry
+/// @author Wormhole Project Contributors.
+/// @notice This contract is responsible for handling the registration of Transceivers.
+/// @dev This contract checks that a few critical invariants hold when transceivers are added or removed,
+///      including:
+///         1. If a transceiver is not registered, it should be enabled.
+///         2. The value set in the bitmap of trannsceivers
+///            should directly correspond to the whether the transceiver is enabled
 abstract contract TransceiverRegistry {
     constructor() {
         _checkTransceiversInvariants();
@@ -33,11 +40,33 @@ abstract contract TransceiverRegistry {
 
     uint8 constant MAX_TRANSCEIVERS = 64;
 
+    /// @notice Error when the caller is not the transceiver.
+    /// @dev Selector 0xa0ae911d.
+    /// @param caller The address of the caller.
     error CallerNotTransceiver(address caller);
+
+    /// @notice Error when the transceiver is the zero address.
+    /// @dev Selector 0x2f44bd77.
     error InvalidTransceiverZeroAddress();
+
+    /// @notice Error when the transceiver is disabled.
+    /// @dev Selector 0x1f61ba44.
     error DisabledTransceiver(address transceiver);
+
+    /// @notice Error when the number of registered transceivers
+    ///         exceeeds (MAX_TRANSCEIVERS = 64).
+    /// @dev Selector 0x891684c3.
     error TooManyTransceivers();
+
+    /// @notice Error when attempting to remove a transceiver
+    ///         that is not registered.
+    /// @dev Selector 0xd583f470.
+    /// @param transceiver The address of the transceiver.
     error NonRegisteredTransceiver(address transceiver);
+
+    /// @notice Error when attempting to enable a transceiver that is already enabled.
+    /// @dev Selector 0x8d68f84d.
+    /// @param transceiver The address of the transceiver.
     error TransceiverAlreadyEnabled(address transceiver);
 
     modifier onlyTransceiver() {

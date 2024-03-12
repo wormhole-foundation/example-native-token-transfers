@@ -29,40 +29,35 @@ yargs(hideBin(process.argv))
                 .command(
                     "deploy",
                     "deploy the solana program",
-                    (yargs) => {
-                        yargs.option("network", NETWORK_OPTIONS)
-                    },
+                    (yargs) => yargs.option("network", NETWORK_OPTIONS),
                     (argv) => {
                         throw new Error("Not implemented");
                     })
                 .command(
                     "upgrade",
                     "upgrade the solana program",
-                    (yargs) => {
-                        yargs
-                            .option("network", NETWORK_OPTIONS)
-                            .option("dir", {
-                                alias: "d",
-                                describe: "Path to the solana workspace",
-                                default: ".",
-                                demandOption: false,
-                                type: "string",
-                            })
-                            .option("keypair", {
-                                alias: "k",
-                                describe: "Path to the keypair",
-                                demandOption: true,
-                                type: "string",
-                            })
-                    },
+                    (yargs) => yargs
+                        .option("network", NETWORK_OPTIONS)
+                        .option("dir", {
+                            alias: "d",
+                            describe: "Path to the solana workspace",
+                            default: ".",
+                            demandOption: false,
+                            type: "string",
+                        })
+                        .option("keypair", {
+                            alias: "k",
+                            describe: "Path to the keypair",
+                            demandOption: true,
+                            type: "string",
+                        }),
                     async (argv) => {
                         // TODO: the hardcoded stuff should be factored out once
                         // we support other networks and programs
                         // TODO: currently the keypair is the upgrade authority. we should support governance program too
-                        // TODO: why does typescript not like the yargs types?
-                        const network: string = argv.network as string;
-                        const keypair: string = argv.keypair as string;
-                        const dir: string = argv.dir as string;
+                        const network = argv.network;
+                        const keypair = argv.keypair;
+                        const dir = argv.dir;
                         const objectFile = "example_native_token_transfers.so";
                         const programId = "nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS";
                         assertNetwork(network);

@@ -6,13 +6,12 @@ import "../interfaces/IRateLimiterEvents.sol";
 import "./TransceiverHelpers.sol";
 import "./TransceiverStructs.sol";
 import "../libraries/TrimmedAmount.sol";
+import "openzeppelin-contracts/contracts/utils/math/SafeCast.sol";
 
 abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     using TrimmedAmountLib for TrimmedAmount;
-    /**
-     * @dev The duration it takes for the limits to fully replenish
-     */
 
+    /// @dev The duration (in seconds) it takes for the limits to fully replenish.
     uint64 public immutable rateLimitDuration;
 
     /// =============== STORAGE ===============================================
@@ -171,7 +170,9 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
                 + (rateLimitParams.limit.getAmount() * timePassed) / rateLimitDuration;
 
             uint256 result = min(calculatedCapacity, rateLimitParams.limit.getAmount());
-            return packTrimmedAmount(uint64(result), rateLimitParams.currentCapacity.getDecimals());
+            return packTrimmedAmount(
+                SafeCast.toUint64(result), rateLimitParams.currentCapacity.getDecimals()
+            );
         }
     }
 

@@ -2,6 +2,8 @@ import {
   CONTRACTS,
   ChainId,
   ChainName,
+  coalesceChainId,
+  coalesceChainName,
   getEmitterAddressEth,
   getSignedVAAWithRetry,
   parseSequenceFromLogEth,
@@ -12,6 +14,7 @@ import {
   getDeliveryHashFromLog,
   getWormholeLog,
 } from "@certusone/wormhole-sdk/lib/cjs/relayer";
+import {} from "@certusone/wormhole-sdk/lib/cjs/relayer/consts";
 import { NodeWallet } from "@certusone/wormhole-sdk/lib/cjs/solana";
 import { PostedMessageData } from "@certusone/wormhole-sdk/lib/cjs/solana/wormhole";
 import { BN, web3 } from "@coral-xyz/anchor";
@@ -32,9 +35,16 @@ import { NttManager__factory } from "../evm_binding/factories/NttManager__factor
 import { TransceiverStructs__factory } from "../evm_binding/factories/TransceiverStructs__factory";
 import { TrimmedAmountLib__factory } from "../evm_binding/factories/TrimmedAmount.sol/TrimmedAmountLib__factory";
 import { WormholeTransceiver__factory } from "../evm_binding/factories/WormholeTransceiver__factory";
-import { NTT } from "../solana_binding/ts/sdk";
+import { NTT, NttProgramId } from "../solana_binding/ts/sdk";
+import solanaTiltKey from "./solana-tilt.json"; // from https://github.com/wormhole-foundation/wormhole/blob/main/solana/keys/solana-devnet.json
 
-// Chain details to keep track of during the testing
+// NOTE: This test uses ethers-v5 as it has proven to be significantly faster than v6.
+// Additionally, the @certusone/wormhole-sdk currently has a v5 dependency.
+// This does have the following shortcomings:
+// - v5 does not parse the errors from ganache correctly (v6 does)
+// - there are intermittent nonce errors, even following a `.wait()` (see `tryAndWaitThrice`)
+
+type Mode = "locking" | "burning";
 type ChainDetails = EVMChainDetails | SolanaChainDetails;
 interface EVMChainDetails extends BaseDetails {
   type: "evm";
@@ -43,10 +53,12 @@ interface EVMChainDetails extends BaseDetails {
 interface SolanaChainDetails extends BaseDetails {
   type: "solana";
   signer: web3.Keypair;
+  manager: NTT;
 }
 interface BaseDetails {
-  chainId: number;
+  chainId: ChainId;
   chainName: ChainName;
+  mode: Mode;
   transceiverAddress: string;
   managerAddress: string;
   NTTTokenAddress: string;
@@ -65,23 +77,14 @@ const BSC_SIGNER = new Wallet(
   new providers.JsonRpcProvider("http://eth-devnet2:8545")
 );
 const SOL_PRIVATE_KEY = web3.Keypair.fromSecretKey(
-  new Uint8Array([
-    14, 173, 153, 4, 176, 224, 201, 111, 32, 237, 183, 185, 159, 247, 22, 161,
-    89, 84, 215, 209, 212, 137, 10, 92, 157, 49, 29, 192, 101, 164, 152, 70, 87,
-    65, 8, 174, 214, 157, 175, 126, 98, 90, 54, 24, 100, 177, 247, 77, 19, 112,
-    47, 44, 165, 109, 233, 102, 14, 86, 109, 29, 134, 145, 132, 141,
-  ])
-); // from https://github.com/wormhole-foundation/wormhole/blob/main/solana/keys/solana-devnet.json
+  new Uint8Array(solanaTiltKey)
+);
 const SOL_PUBLIC_KEY = SOL_PRIVATE_KEY.publicKey;
 const SOL_CONNECTION = new web3.Connection(
   "http://solana-devnet:8899",
   "confirmed"
 );
 const SOL_CORE_ADDRESS = "Bridge1p5gheXUvJ6jGWGeCsgPKgnE3YgdGKRVCMY9o";
-const SOL_NTT_CONTRACT = new NTT(SOL_CONNECTION, {
-  nttId: "NTTManager111111111111111111111111111111111",
-  wormholeId: SOL_CORE_ADDRESS,
-});
 const RELAYER_CONTRACT = "0x53855d4b64E9A3CF59A84bc768adA716B5536BC5";
 
 // Wormhole format means that addresses are bytes32 instead of addresses when using them to support other chains.
@@ -89,8 +92,39 @@ function addressToBytes32(address: string): string {
   return `0x000000000000000000000000${address.substring(2)}`;
 }
 
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+async function waitForRelay(
+  tx: ContractReceipt,
+  chainId: ChainId,
+  sourceProvider: providers.Provider,
+  destinationProvider: providers.Provider,
+  retryTime: number = 100
+) {
+  const log = getWormholeLog(
+    tx,
+    CONTRACTS.DEVNET.ethereum.core,
+    addressToBytes32(RELAYER_CONTRACT).substring(2),
+    0
+  );
+  const deliveryHash = await getDeliveryHashFromLog(
+    log.log,
+    chainId,
+    sourceProvider,
+    tx.blockHash
+  );
+  const wormholeRelayer = WormholeRelayer__factory.connect(
+    RELAYER_CONTRACT,
+    destinationProvider
+  );
+  let success = false;
+  while (!success) {
+    await new Promise((resolve) => setTimeout(resolve, retryTime));
+    const successBlock = await wormholeRelayer.deliverySuccessBlock(
+      deliveryHash
+    );
+    if (successBlock.gt("0")) {
+      success = true;
+    }
+  }
 }
 
 async function tryAndWaitThrice(
@@ -112,10 +146,10 @@ async function tryAndWaitThrice(
   }
 }
 
-async function deployEth(
+async function deployEvm(
   signer: Wallet,
-  chain_id: number,
-  chainName: ChainName
+  chainName: ChainName,
+  mode: Mode
 ): Promise<EVMChainDetails> {
   // Deploy libraries used by various things
   console.log("Deploying libraries of transceiverStructs and trimmedAmounts");
@@ -126,19 +160,14 @@ async function deployEth(
   const trimmedAmountContract = await trimmedAmountFactory.deploy();
 
   // Deploy the NTT token
-  let NTTAddress;
-  let tokenSetting;
-  if (chain_id == 2) {
-    // ETH?
-    console.log("Deploy locking NTT token");
-    const ERC20LockingFactory = new DummyToken__factory(signer);
-    NTTAddress = await ERC20LockingFactory.deploy();
-    tokenSetting = 0; // Lock
-  } else {
-    console.log("Deploy burning NTT token");
-    const ERC20BurningFactory = new DummyTokenMintAndBurn__factory(signer);
-    NTTAddress = await ERC20BurningFactory.deploy();
-    tokenSetting = 1; // Burn
+  const NTTAddress = await new (mode === "locking"
+    ? DummyToken__factory
+    : DummyTokenMintAndBurn__factory)(signer).deploy();
+
+  if (mode === "locking") {
+    await tryAndWaitThrice(() =>
+      NTTAddress.mintDummy(ETH_PUBLIC_KEY, utils.parseEther("100"))
+    );
   }
 
   const transceiverStructsAddress = await transceiverStructsContract.address;
@@ -151,14 +180,16 @@ async function deployEth(
     "src/libraries/TrimmedAmount.sol:TrimmedAmountLib": trimmedAmountAddress,
   };
 
+  const chainId = coalesceChainId(chainName);
+
   // https://github.com/search?q=repo%3Awormhole-foundation%2Fwormhole-connect%20__factory&type=code
   // https://github.com/wormhole-foundation/wormhole/blob/00f504ef452ae2d94fa0024c026be2d8cf903ad5/clients/js/src/evm.ts#L335
   console.log("Deploying manager implementation");
   const wormholeManager = new NttManager__factory(myObj, signer);
   const managerAddress = await wormholeManager.deploy(
     ERC20NTTAddress, // Token address
-    tokenSetting, // Lock
-    chain_id, // chain id
+    mode === "locking" ? 0 : 1, // Lock
+    chainId, // chain id
     0, // Locking time
     true
   );
@@ -220,8 +251,9 @@ async function deployEth(
 
   return {
     type: "evm",
-    chainId: chain_id,
+    chainId,
     chainName,
+    mode,
     transceiverAddress: transceiverProxyAddress.address,
     managerAddress: managerProxyAddress.address,
     NTTTokenAddress: ERC20NTTAddress,
@@ -230,8 +262,20 @@ async function deployEth(
   };
 }
 
-async function initSolana(): Promise<SolanaChainDetails> {
-  console.log("Using public key", SOL_PUBLIC_KEY.toString());
+async function initSolana(
+  mode: Mode,
+  nttId: NttProgramId
+): Promise<SolanaChainDetails> {
+  console.log(
+    "Using public key",
+    SOL_PUBLIC_KEY.toString(),
+    "and manager address",
+    nttId
+  );
+  const manager = new NTT(SOL_CONNECTION, {
+    nttId,
+    wormholeId: SOL_CORE_ADDRESS,
+  });
   const mint = await spl.createMint(
     SOL_CONNECTION,
     SOL_PRIVATE_KEY,
@@ -247,45 +291,44 @@ async function initSolana(): Promise<SolanaChainDetails> {
     SOL_PUBLIC_KEY
   );
   console.log("Created token account", tokenAccount.toString());
-  // await spl.mintTo(
-  //   SOL_CONNECTION,
-  //   SOL_PRIVATE_KEY,
-  //   mint,
-  //   tokenAccount,
-  //   SOL_PRIVATE_KEY,
-  //   BigInt(10000000)
-  // );
-  // console.log("Minted 10000000 tokens");
+  if (mode === "locking") {
+    await spl.mintTo(
+      SOL_CONNECTION,
+      SOL_PRIVATE_KEY,
+      mint,
+      tokenAccount,
+      SOL_PRIVATE_KEY,
+      utils.parseUnits("100", 9).toBigInt()
+    );
+    console.log("Minted 10000000 tokens");
+  }
   await spl.setAuthority(
     SOL_CONNECTION,
     SOL_PRIVATE_KEY,
     mint,
     SOL_PRIVATE_KEY,
     0, // mint
-    SOL_NTT_CONTRACT.tokenAuthorityAddress()
+    manager.tokenAuthorityAddress()
   );
   console.log(
     "Set token authority to",
-    SOL_NTT_CONTRACT.tokenAuthorityAddress().toString()
+    manager.tokenAuthorityAddress().toString()
   );
 
-  await SOL_NTT_CONTRACT.initialize({
+  await manager.initialize({
     payer: SOL_PRIVATE_KEY,
     owner: SOL_PRIVATE_KEY,
     chain: "solana",
     mint,
     outboundLimit: new BN(1000000000),
-    mode: "burning",
+    mode,
   });
-  console.log(
-    "Initialized ntt at",
-    SOL_NTT_CONTRACT.program.programId.toString()
-  );
+  console.log("Initialized ntt at", manager.program.programId.toString());
 
-  await SOL_NTT_CONTRACT.registerTransceiver({
+  await manager.registerTransceiver({
     payer: SOL_PRIVATE_KEY,
     owner: SOL_PRIVATE_KEY,
-    transceiver: SOL_NTT_CONTRACT.program.programId,
+    transceiver: manager.program.programId,
   });
   console.log("Registered transceiver with self");
 
@@ -293,618 +336,94 @@ async function initSolana(): Promise<SolanaChainDetails> {
     type: "solana",
     chainId: 1,
     chainName: "solana",
-    transceiverAddress: SOL_NTT_CONTRACT.emitterAccountAddress().toString(),
-    managerAddress: SOL_NTT_CONTRACT.program.programId.toString(),
+    mode,
+    transceiverAddress: manager.emitterAccountAddress().toString(),
+    managerAddress: manager.program.programId.toString(),
     NTTTokenAddress: mint.toString(),
     wormholeCoreAddress: SOL_CORE_ADDRESS,
     signer: SOL_PRIVATE_KEY,
+    manager,
   };
 }
 
-async function link(
-  ethInfo: EVMChainDetails,
-  bscInfo: EVMChainDetails,
-  solInfo: SolanaChainDetails
-) {
-  // Hook up all the important things together
-  /*
-    - Manager peer
-    - Wormhole peer
-    - inbound limits
-    https://github.com/wormhole-foundation/example-native-token-transfers/blob/main/evm/test/IntegrationStandalone.t.sol
-    */
+async function setupPeer(targetInfo: ChainDetails, peerInfo: ChainDetails) {
+  const managerAddress =
+    peerInfo.type === "evm"
+      ? addressToBytes32(peerInfo.managerAddress)
+      : `0x${peerInfo.manager.program.programId.toBuffer().toString("hex")}`;
+  const transceiverEmitter =
+    peerInfo.type === "evm"
+      ? addressToBytes32(peerInfo.transceiverAddress)
+      : `0x${peerInfo.manager
+          .emitterAccountAddress()
+          .toBuffer()
+          .toString("hex")}`;
+  const tokenDecimals = peerInfo.type === "evm" ? 18 : 9;
+  const inboundLimit =
+    targetInfo.type === "evm"
+      ? utils.parseEther("10000").toString()
+      : "1000000000";
+  if (targetInfo.type === "evm") {
+    const manager = NttManager__factory.connect(
+      targetInfo.managerAddress,
+      targetInfo.signer
+    );
+    const transceiver = WormholeTransceiver__factory.connect(
+      targetInfo.transceiverAddress,
+      targetInfo.signer
+    );
+    await tryAndWaitThrice(() =>
+      manager.setPeer(
+        peerInfo.chainId,
+        managerAddress,
+        tokenDecimals,
+        inboundLimit
+      )
+    );
+    await tryAndWaitThrice(() =>
+      transceiver.setWormholePeer(peerInfo.chainId, transceiverEmitter)
+    );
+    if (peerInfo.type === "evm") {
+      await tryAndWaitThrice(() =>
+        transceiver.setIsWormholeEvmChain(peerInfo.chainId, true)
+      );
+      await tryAndWaitThrice(() =>
+        transceiver.setIsWormholeRelayingEnabled(peerInfo.chainId, true)
+      );
+    }
+  } else if (targetInfo.type === "solana") {
+    await targetInfo.manager.setWormholeTransceiverPeer({
+      payer: SOL_PRIVATE_KEY,
+      owner: SOL_PRIVATE_KEY,
+      chain: coalesceChainName(peerInfo.chainId),
+      address: Buffer.from(transceiverEmitter.substring(2), "hex"),
+    });
+    await targetInfo.manager.setPeer({
+      payer: SOL_PRIVATE_KEY,
+      owner: SOL_PRIVATE_KEY,
+      chain: coalesceChainName(peerInfo.chainId),
+      address: Buffer.from(managerAddress.substring(2), "hex"),
+      limit: new BN(inboundLimit),
+      tokenDecimals,
+    });
+  }
+}
+
+async function link(chainInfos: ChainDetails[]) {
   console.log("\nStarting linking process");
   console.log("========================");
-
-  const manager1 = NttManager__factory.connect(
-    ethInfo.managerAddress,
-    ETH_SIGNER
-  );
-  const manager2 = NttManager__factory.connect(
-    bscInfo.managerAddress,
-    BSC_SIGNER
-  );
-
-  const transceiver1 = WormholeTransceiver__factory.connect(
-    ethInfo.transceiverAddress,
-    ETH_SIGNER
-  );
-  const transceiver2 = WormholeTransceiver__factory.connect(
-    bscInfo.transceiverAddress,
-    BSC_SIGNER
-  );
-
-  // Would make sense to store the 'client' with a generalized interface instead of the
-  console.log("Set manager peers");
-  await tryAndWaitThrice(() =>
-    manager1.setPeer(
-      bscInfo.chainId,
-      addressToBytes32(bscInfo.managerAddress),
-      18, // decimals
-      utils.parseEther("10000")
-    )
-  );
-  await tryAndWaitThrice(() =>
-    manager1.setPeer(
-      solInfo.chainId,
-      `0x${SOL_NTT_CONTRACT.program.programId.toBuffer().toString("hex")}`,
-      9, // decimals
-      utils.parseEther("10000")
-    )
-  );
-  await tryAndWaitThrice(() =>
-    manager2.setPeer(
-      ethInfo.chainId,
-      addressToBytes32(ethInfo.managerAddress),
-      18, // decimals
-      utils.parseEther("10000")
-    )
-  );
-  await tryAndWaitThrice(() =>
-    manager2.setPeer(
-      solInfo.chainId,
-      `0x${SOL_NTT_CONTRACT.program.programId.toBuffer().toString("hex")}`,
-      9, // decimals
-      utils.parseEther("10000")
-    )
-  );
-
-  console.log("Set wormhole Peers");
-  await tryAndWaitThrice(() =>
-    transceiver1.setWormholePeer(
-      bscInfo.chainId,
-      addressToBytes32(bscInfo.transceiverAddress)
-    )
-  );
-  await tryAndWaitThrice(() =>
-    transceiver1.setWormholePeer(
-      solInfo.chainId,
-      `0x${SOL_NTT_CONTRACT.emitterAccountAddress().toBuffer().toString("hex")}`
-    )
-  );
-  await tryAndWaitThrice(() =>
-    transceiver2.setWormholePeer(
-      ethInfo.chainId,
-      addressToBytes32(ethInfo.transceiverAddress)
-    )
-  );
-  await tryAndWaitThrice(() =>
-    transceiver2.setWormholePeer(
-      solInfo.chainId,
-      `0x${SOL_NTT_CONTRACT.emitterAccountAddress().toBuffer().toString("hex")}`
-    )
-  );
-
-  console.log("Setting transceiver to be an EVM transceiver");
-  await tryAndWaitThrice(() =>
-    transceiver1.setIsWormholeEvmChain(bscInfo.chainId, true)
-  );
-  await tryAndWaitThrice(() =>
-    transceiver2.setIsWormholeEvmChain(ethInfo.chainId, true)
-  );
-
-  console.log("Enable relaying");
-  await tryAndWaitThrice(() =>
-    transceiver1.setIsWormholeRelayingEnabled(bscInfo.chainId, true)
-  );
-  await tryAndWaitThrice(() =>
-    transceiver2.setIsWormholeRelayingEnabled(ethInfo.chainId, true)
-  );
-
-  console.log("Set Solana peers");
-  await SOL_NTT_CONTRACT.setWormholeTransceiverPeer({
-    payer: SOL_PRIVATE_KEY,
-    owner: SOL_PRIVATE_KEY,
-    chain: "ethereum",
-    address: Buffer.from(
-      addressToBytes32(ethInfo.transceiverAddress).substring(2),
-      "hex"
-    ),
-  });
-  await SOL_NTT_CONTRACT.setWormholeTransceiverPeer({
-    payer: SOL_PRIVATE_KEY,
-    owner: SOL_PRIVATE_KEY,
-    chain: "bsc",
-    address: Buffer.from(
-      addressToBytes32(bscInfo.transceiverAddress).substring(2),
-      "hex"
-    ),
-  });
-  await SOL_NTT_CONTRACT.setPeer({
-    payer: SOL_PRIVATE_KEY,
-    owner: SOL_PRIVATE_KEY,
-    chain: "ethereum",
-    address: Buffer.from(
-      addressToBytes32(ethInfo.managerAddress).substring(2),
-      "hex"
-    ),
-    limit: new BN(1000000000),
-    tokenDecimals: 18,
-  });
-  await SOL_NTT_CONTRACT.setPeer({
-    payer: SOL_PRIVATE_KEY,
-    owner: SOL_PRIVATE_KEY,
-    chain: "bsc",
-    address: Buffer.from(
-      addressToBytes32(bscInfo.managerAddress).substring(2),
-      "hex"
-    ),
-    limit: new BN(1000000000),
-    tokenDecimals: 18,
-  });
-
+  for (const targetInfo of chainInfos) {
+    for (const peerInfo of chainInfos) {
+      if (targetInfo === peerInfo) continue;
+      console.log(
+        `Registering ${peerInfo.chainName} on ${targetInfo.chainName}`
+      );
+      await setupPeer(targetInfo, peerInfo);
+    }
+  }
   console.log("Finished linking!");
 }
 
-async function test(
-  ethInfo: EVMChainDetails,
-  bscInfo: EVMChainDetails,
-  solInfo: SolanaChainDetails
-) {
-  /*
-    Tests to run 
-    - Basic Move from A to B with balance checks
-    - Corrupted or bad VAA usage
-    - Relayer vs non-relayer path
-    */
-  console.log("\nStarting tests");
-  console.log("========================");
-
-  await BackAndForthBaseTest(ethInfo, bscInfo);
-  await BackAndForthEvmToSolTest(ethInfo, solInfo);
-  await BackAndForthEvmToSolTest(bscInfo, solInfo, true);
-  await BackAndForthBaseRelayerTest(ethInfo, bscInfo);
-}
-
-async function BackAndForthBaseTest(
-  chain1: EVMChainDetails,
-  chain2: EVMChainDetails
-) {
-  console.log("Basic back and forth");
-
-  const manager1 = NttManager__factory.connect(
-    chain1.managerAddress,
-    ETH_SIGNER
-  );
-  const manager2 = NttManager__factory.connect(
-    chain2.managerAddress,
-    BSC_SIGNER
-  );
-
-  const token1 = DummyToken__factory.connect(
-    chain1.NTTTokenAddress,
-    ETH_SIGNER
-  );
-  const token2 = DummyTokenMintAndBurn__factory.connect(
-    chain2.NTTTokenAddress,
-    BSC_SIGNER
-  );
-
-  const amount = utils.parseEther("1");
-  await tryAndWaitThrice(() => token1.mintDummy(ETH_PUBLIC_KEY, amount));
-
-  {
-    // Send the cross-chain call
-    await tryAndWaitThrice(() => token1.approve(chain1.managerAddress, amount));
-
-    // cast call --rpc-url ws://eth-devnet2:8545 0x80EaE59c5f92F9f65338bba4F26FFC8Ca2b6224A "transfer(uint256,uint16,bytes32,bool,bytes)"  1000000000000000000 4 0x000000000000000000000000467fD9FEA4e77AC79504a23B45631D29e42eaa4A false 0x01000101 --from 0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1
-    const balanceManagerBeforeSend1 = await token1.balanceOf(
-      chain1.managerAddress
-    );
-    const balanceUserBeforeSend1 = await token1.balanceOf(ETH_PUBLIC_KEY);
-
-    const txResponse = await tryAndWaitThrice(() =>
-      manager1["transfer(uint256,uint16,bytes32,bool,bytes)"](
-        amount,
-        chain2.chainId,
-        addressToBytes32(ETH_PUBLIC_KEY),
-        false,
-        "0x01000101"
-      )
-    );
-
-    const balanceManagerAfterSend1 = await token1.balanceOf(
-      chain1.managerAddress
-    );
-    const balanceUserAfterSend1 = await token1.balanceOf(ETH_PUBLIC_KEY);
-    if (!balanceManagerAfterSend1.eq(balanceManagerBeforeSend1.add(amount))) {
-      console.log("Manager amount 1 incorrect");
-    }
-
-    if (!balanceUserAfterSend1.eq(balanceUserBeforeSend1.sub(amount))) {
-      console.log("User amount 1 incorrect");
-    }
-
-    console.log("Finish initial transfer");
-
-    const balanceBeforeRecv = await token2.balanceOf(ETH_PUBLIC_KEY);
-    await receive(
-      <ChainId>chain1.chainId,
-      getEmitterAddressEth(chain1.transceiverAddress),
-      parseSequenceFromLogEth(txResponse, chain1.wormholeCoreAddress),
-      chain2
-    );
-
-    const balanceAfterRecv = await token2.balanceOf(ETH_PUBLIC_KEY);
-    if (!balanceAfterRecv.eq(balanceBeforeRecv.add(amount))) {
-      console.log("User amount 1 receive incorrect");
-    }
-    console.log("Finish initial receive");
-  }
-
-  {
-    ///
-    // Send the cross-chain call back to the original
-    ///
-    await tryAndWaitThrice(() => token2.approve(chain2.managerAddress, amount));
-
-    const balanceManagerBeforeSend2 = await token2.balanceOf(
-      chain1.managerAddress
-    );
-    const balanceUserBeforeSend2 = await token2.balanceOf(ETH_PUBLIC_KEY);
-
-    const txResponse = await tryAndWaitThrice(() =>
-      manager2["transfer(uint256,uint16,bytes32,bool,bytes)"](
-        amount,
-        chain1.chainId,
-        addressToBytes32(ETH_PUBLIC_KEY),
-        false,
-        "0x01000101"
-      )
-    );
-    console.log("Finish second transfer");
-
-    const balanceManagerAfterSend2 = await token2.balanceOf(
-      chain1.managerAddress
-    );
-    const balanceUserAfterSend2 = await token2.balanceOf(ETH_PUBLIC_KEY);
-    if (!balanceManagerAfterSend2.eq(0) || !balanceManagerBeforeSend2.eq(0)) {
-      console.log("Manager on burn chain has funds");
-    }
-
-    if (!balanceUserBeforeSend2.sub(amount).eq(balanceUserAfterSend2)) {
-      console.log("User didn't transfer proper amount of funds on burn chain");
-    }
-
-    // Received the sent funds
-    const balanceBeforeRecv = await token1.balanceOf(ETH_PUBLIC_KEY);
-    await receive(
-      <ChainId>chain2.chainId,
-      getEmitterAddressEth(chain2.transceiverAddress),
-      parseSequenceFromLogEth(txResponse, chain2.wormholeCoreAddress),
-      chain1
-    );
-    console.log("Finish second receive");
-
-    const balanceAfterRecv = await token1.balanceOf(ETH_PUBLIC_KEY);
-    if (!balanceBeforeRecv.add(amount).eq(balanceAfterRecv)) {
-      console.log("ReceiveMessage on back length failed");
-    }
-  }
-}
-
-async function BackAndForthEvmToSolTest(
-  evmChain: EVMChainDetails,
-  solChain: SolanaChainDetails,
-  sourceBurn?: boolean
-) {
-  console.log(`EVM (${evmChain.chainId}) <> Solana back and forth`);
-
-  const evmManager = NttManager__factory.connect(
-    evmChain.managerAddress,
-    evmChain.signer
-  );
-  const evmToken = (
-    evmChain.chainName === "ethereum"
-      ? DummyToken__factory
-      : DummyTokenMintAndBurn__factory
-  ).connect(evmChain.NTTTokenAddress, evmChain.signer);
-
-  const amount = utils.parseEther("1");
-  const scaledAmount = utils.parseUnits("1", 9);
-  await tryAndWaitThrice(() => evmToken.mintDummy(ETH_PUBLIC_KEY, amount));
-
-  const mintAddress = await SOL_NTT_CONTRACT.mintAccountAddress();
-  const associatedTokenAddress = spl.getAssociatedTokenAddressSync(
-    mintAddress,
-    SOL_PUBLIC_KEY
-  );
-  const custodyAddress = await SOL_NTT_CONTRACT.custodyAccountAddress(
-    mintAddress
-  );
-
-  {
-    console.log(`Sending ${amount.toString()} (${scaledAmount.toString()})`);
-
-    await tryAndWaitThrice(() =>
-      evmToken.approve(evmChain.managerAddress, amount)
-    );
-
-    const balanceManagerBeforeSend1 = await evmToken.balanceOf(
-      evmChain.managerAddress
-    );
-    const balanceUserBeforeSend1 = await evmToken.balanceOf(ETH_PUBLIC_KEY);
-
-    const txResponse = await tryAndWaitThrice(() =>
-      evmManager["transfer(uint256,uint16,bytes32,bool,bytes)"](
-        amount,
-        1,
-        `0x${SOL_PUBLIC_KEY.toBuffer().toString("hex")}`,
-        false,
-        "0x01000101"
-      )
-    );
-
-    const balanceManagerAfterSend1 = await evmToken.balanceOf(
-      evmChain.managerAddress
-    );
-    const balanceUserAfterSend1 = await evmToken.balanceOf(ETH_PUBLIC_KEY);
-    if (
-      (sourceBurn && !balanceManagerAfterSend1.eq(BigNumber.from("0"))) ||
-      !balanceManagerAfterSend1.eq(balanceManagerBeforeSend1.add(amount))
-    ) {
-      console.log("Manager amount 1 incorrect");
-    }
-
-    if (!balanceUserAfterSend1.eq(balanceUserBeforeSend1.sub(amount))) {
-      console.log("User amount 1 incorrect");
-    }
-
-    console.log("Finish initial transfer");
-
-    const balanceBeforeRecv = BigNumber.from(
-      (await SOL_CONNECTION.getTokenAccountBalance(associatedTokenAddress))
-        .value.amount
-    );
-    await receive(
-      <ChainId>evmChain.chainId,
-      getEmitterAddressEth(evmChain.transceiverAddress),
-      parseSequenceFromLogEth(txResponse, evmChain.wormholeCoreAddress),
-      solChain
-    );
-
-    const balanceAfterRecv = BigNumber.from(
-      (await SOL_CONNECTION.getTokenAccountBalance(associatedTokenAddress))
-        .value.amount
-    );
-    if (!balanceAfterRecv.eq(balanceBeforeRecv.add(scaledAmount))) {
-      console.log(
-        `User amount 1 receive incorrect: before ${balanceBeforeRecv.toString()}, after ${balanceAfterRecv.toString()}`
-      );
-    }
-    console.log("Finish initial receive");
-  }
-
-  {
-    const balanceManagerBeforeSend2 = BigNumber.from(
-      (await SOL_CONNECTION.getTokenAccountBalance(custodyAddress)).value.amount
-    );
-    const balanceUserBeforeSend2 = BigNumber.from(
-      (await SOL_CONNECTION.getTokenAccountBalance(associatedTokenAddress))
-        .value.amount
-    );
-
-    const outboxItem = await SOL_NTT_CONTRACT.transfer({
-      payer: SOL_PRIVATE_KEY,
-      from: associatedTokenAddress,
-      fromAuthority: SOL_PRIVATE_KEY,
-      amount: new BN(scaledAmount.toString()),
-      recipientChain: evmChain.chainName,
-      recipientAddress: Buffer.from(
-        addressToBytes32(ETH_PUBLIC_KEY).substring(2),
-        "hex"
-      ),
-      shouldQueue: false,
-    });
-    console.log("Finish second transfer");
-
-    const balanceManagerAfterSend2 = BigNumber.from(
-      (await SOL_CONNECTION.getTokenAccountBalance(custodyAddress)).value.amount
-    );
-    const balanceUserAfterSend2 = BigNumber.from(
-      (await SOL_CONNECTION.getTokenAccountBalance(associatedTokenAddress))
-        .value.amount
-    );
-    if (!balanceManagerAfterSend2.eq(0) || !balanceManagerBeforeSend2.eq(0)) {
-      console.log("Manager on burn chain has funds");
-    }
-
-    if (!balanceUserBeforeSend2.sub(scaledAmount).eq(balanceUserAfterSend2)) {
-      console.log("User didn't transfer proper amount of funds on burn chain");
-    }
-
-    // Received the sent funds
-    const balanceBeforeRecv = await evmToken.balanceOf(ETH_PUBLIC_KEY);
-    const wormholeMessage =
-      SOL_NTT_CONTRACT.wormholeMessageAccountAddress(outboxItem);
-    const wormholeMessageAccount = await SOL_CONNECTION.getAccountInfo(
-      wormholeMessage
-    );
-    if (wormholeMessageAccount === null) {
-      throw new Error("wormhole message account not found");
-    }
-
-    const messageData = PostedMessageData.deserialize(
-      wormholeMessageAccount.data
-    );
-    await receive(
-      1,
-      SOL_NTT_CONTRACT.emitterAccountAddress().toBuffer().toString("hex"),
-      messageData.message.sequence.toString(),
-      evmChain
-    );
-    console.log("Finish second receive");
-
-    const balanceAfterRecv = await evmToken.balanceOf(ETH_PUBLIC_KEY);
-    if (!balanceBeforeRecv.add(amount).eq(balanceAfterRecv)) {
-      console.log("ReceiveMessage on back length failed");
-    }
-  }
-}
-
-// Relayer base calls
-async function BackAndForthBaseRelayerTest(
-  chain1: ChainDetails,
-  chain2: ChainDetails
-) {
-  console.log("Basic back and forth on relayer");
-
-  const manager1 = NttManager__factory.connect(
-    chain1.managerAddress,
-    ETH_SIGNER
-  );
-  const manager2 = NttManager__factory.connect(
-    chain2.managerAddress,
-    BSC_SIGNER
-  );
-
-  const token1 = DummyToken__factory.connect(
-    chain1.NTTTokenAddress,
-    ETH_SIGNER
-  );
-  const token2 = DummyTokenMintAndBurn__factory.connect(
-    chain2.NTTTokenAddress,
-    BSC_SIGNER
-  );
-
-  const amount = utils.parseEther("1");
-
-  await tryAndWaitThrice(() => token1.mintDummy(ETH_PUBLIC_KEY, amount));
-
-  {
-    // Send the cross-chain call
-    await tryAndWaitThrice(() => token1.approve(chain1.managerAddress, amount));
-
-    console.log("Transfer with relayer from 2 to 4");
-    const balanceUserBeforeSend = await token2.balanceOf(ETH_PUBLIC_KEY);
-
-    const tx = await tryAndWaitThrice(() =>
-      manager1["transfer(uint256,uint16,bytes32,bool,bytes)"](
-        amount,
-        chain2.chainId,
-        addressToBytes32(ETH_PUBLIC_KEY),
-        false,
-        "0x01000100",
-        { value: utils.parseEther("1") }
-      )
-    ); // with relayer
-    console.log("sent!", tx.transactionHash, "waiting for relay...");
-
-    // Wait for the relaying and VAA process to pick this up and transmit it.
-    const log = getWormholeLog(
-      tx,
-      CONTRACTS.DEVNET.ethereum.core,
-      addressToBytes32(RELAYER_CONTRACT).substring(2),
-      0
-    );
-    const deliveryHash = await getDeliveryHashFromLog(
-      log.log,
-      2,
-      ETH_SIGNER.provider,
-      tx.blockHash
-    );
-    const wormholeRelayer = WormholeRelayer__factory.connect(
-      RELAYER_CONTRACT,
-      BSC_SIGNER.provider
-    );
-    let success = false;
-    while (!success) {
-      await delay(500);
-      const successBlock = await wormholeRelayer.deliverySuccessBlock(
-        deliveryHash
-      );
-      if (successBlock.gt("0")) {
-        success = true;
-      }
-    }
-
-    const balanceUserAfterSend = await token2.balanceOf(ETH_PUBLIC_KEY);
-    if (!balanceUserBeforeSend.add(amount).eq(balanceUserAfterSend)) {
-      console.log("User received a funky balance");
-    }
-  }
-
-  {
-    ///
-    // Send the cross-chain call back
-    ///
-    await tryAndWaitThrice(() => token2.approve(chain2.managerAddress, amount));
-
-    console.log("Transfer with relayer from 4 to 2");
-
-    const balanceUserBeforeSend = await token1.balanceOf(ETH_PUBLIC_KEY);
-    const tx = await tryAndWaitThrice(() =>
-      manager2["transfer(uint256,uint16,bytes32,bool,bytes)"](
-        amount,
-        chain1.chainId,
-        addressToBytes32(ETH_PUBLIC_KEY),
-        false,
-        "0x01000100",
-        { value: utils.parseEther("1") }
-      )
-    ); // with relayer
-    console.log("sent!", tx.transactionHash, "waiting for relay...");
-
-    // Wait for the relaying and VAA process to pick this up and transmit it.
-    const log = getWormholeLog(
-      tx,
-      CONTRACTS.DEVNET.bsc.core,
-      addressToBytes32(RELAYER_CONTRACT).substring(2),
-      0
-    );
-    const deliveryHash = await getDeliveryHashFromLog(
-      log.log,
-      4,
-      BSC_SIGNER.provider,
-      tx.blockHash
-    );
-    const wormholeRelayer = WormholeRelayer__factory.connect(
-      RELAYER_CONTRACT,
-      ETH_SIGNER.provider
-    );
-    let success = false;
-    while (!success) {
-      await delay(500);
-      const successBlock = await wormholeRelayer.deliverySuccessBlock(
-        deliveryHash
-      );
-      if (successBlock.gt("0")) {
-        success = true;
-      }
-    }
-
-    const balanceUserAfterSend = await token1.balanceOf(ETH_PUBLIC_KEY);
-    if (!balanceUserBeforeSend.add(amount).eq(balanceUserAfterSend)) {
-      console.log("User received a funky balance when relayed back");
-    }
-
-    console.log("Finished basic relayer call test");
-  }
-}
-
-/*
-Receive funds via collecting and submitting the VAA that we need to the endpoint to recvMessage.
-*/
 async function receive(
   chainId: ChainId,
   emitterAddress: string,
@@ -938,7 +457,7 @@ async function receive(
       SOL_PUBLIC_KEY,
       vaa
     );
-    const released = await SOL_NTT_CONTRACT.redeem({
+    const released = await chainDest.manager.redeem({
       payer: SOL_PRIVATE_KEY,
       vaa,
     });
@@ -947,28 +466,241 @@ async function receive(
   }
 }
 
-async function run() {
-  // Deploy the stuff if not cached
-  // Chain 1
-  console.log("\nDeploying on eth-devnet");
-  console.log("===============================================");
-  const ethInfo = await deployEth(ETH_SIGNER, 2, "ethereum"); // Deploying on ETH
-
-  // Chain 2
-  console.log("\nDeploying on eth-devnet2");
-  console.log("===============================================");
-  const bscInfo = await deployEth(BSC_SIGNER, 4, "bsc"); // Deploying on the other network
-
-  // Solana setup
-  console.log("\nInitializing on solana-devnet");
-  console.log("===============================================");
-  const solInfo = await initSolana();
-
-  // Put everything together so that calls work across chains
-  await link(ethInfo, bscInfo, solInfo);
-
-  await test(ethInfo, bscInfo, solInfo);
+async function getManagerAndUserBalance(
+  chain: ChainDetails
+): Promise<[BigNumber, BigNumber]> {
+  if (chain.type === "evm") {
+    const token = DummyToken__factory.connect(
+      chain.NTTTokenAddress,
+      chain.signer
+    );
+    return [
+      await token.balanceOf(chain.managerAddress),
+      await token.balanceOf(ETH_PUBLIC_KEY),
+    ];
+  } else if (chain.type === "solana") {
+    const mintAddress = await chain.manager.mintAccountAddress();
+    const associatedTokenAddress = spl.getAssociatedTokenAddressSync(
+      mintAddress,
+      SOL_PUBLIC_KEY
+    );
+    const custodyAddress = await chain.manager.custodyAccountAddress(
+      mintAddress
+    );
+    return [
+      BigNumber.from(
+        (await SOL_CONNECTION.getTokenAccountBalance(custodyAddress)).value
+          .amount
+      ),
+      BigNumber.from(
+        (await SOL_CONNECTION.getTokenAccountBalance(associatedTokenAddress))
+          .value.amount
+      ),
+    ];
+  }
 }
 
-// Main function
-run();
+async function transferWithChecks(
+  sourceChain: ChainDetails,
+  destinationChain: ChainDetails,
+  useRelayer: boolean = false
+) {
+  const amount = utils.parseEther("1");
+  const scaledAmount = utils.parseUnits("1", 9);
+  let emitterAddress: string;
+  let sequence: string;
+
+  const [managerBalanceBeforeSend, userBalanceBeforeSend] =
+    await getManagerAndUserBalance(sourceChain);
+  const [managerBalanceBeforeRecv, userBalanceBeforeRecv] =
+    await getManagerAndUserBalance(destinationChain);
+
+  if (sourceChain.type === "evm") {
+    const manager = NttManager__factory.connect(
+      sourceChain.managerAddress,
+      sourceChain.signer
+    );
+    const token = DummyToken__factory.connect(
+      sourceChain.NTTTokenAddress,
+      sourceChain.signer
+    );
+    await tryAndWaitThrice(() =>
+      token.approve(sourceChain.managerAddress, amount)
+    );
+    const txResponse = await tryAndWaitThrice(() =>
+      manager["transfer(uint256,uint16,bytes32,bool,bytes)"](
+        amount,
+        destinationChain.chainId,
+        destinationChain.type === "evm"
+          ? addressToBytes32(ETH_PUBLIC_KEY)
+          : `0x${SOL_PUBLIC_KEY.toBuffer().toString("hex")}`,
+        false,
+        useRelayer ? "0x01000100" : "0x01000101",
+        useRelayer ? { value: utils.parseEther("1") } : {}
+      )
+    );
+    if (useRelayer && destinationChain.type === "evm") {
+      await waitForRelay(
+        txResponse,
+        sourceChain.chainId,
+        sourceChain.signer.provider,
+        destinationChain.signer.provider
+      );
+    }
+    emitterAddress = getEmitterAddressEth(sourceChain.transceiverAddress);
+    sequence = parseSequenceFromLogEth(
+      txResponse,
+      sourceChain.wormholeCoreAddress
+    );
+  } else if (sourceChain.type === "solana") {
+    const mintAddress = await sourceChain.manager.mintAccountAddress();
+    const associatedTokenAddress = spl.getAssociatedTokenAddressSync(
+      mintAddress,
+      SOL_PUBLIC_KEY
+    );
+    const outboxItem = await sourceChain.manager.transfer({
+      payer: SOL_PRIVATE_KEY,
+      from: associatedTokenAddress,
+      fromAuthority: SOL_PRIVATE_KEY,
+      amount: new BN(scaledAmount.toString()),
+      recipientChain: destinationChain.chainName,
+      recipientAddress: Buffer.from(
+        addressToBytes32(ETH_PUBLIC_KEY).substring(2),
+        "hex"
+      ),
+      shouldQueue: false,
+    });
+    const wormholeMessage =
+      sourceChain.manager.wormholeMessageAccountAddress(outboxItem);
+    const wormholeMessageAccount = await SOL_CONNECTION.getAccountInfo(
+      wormholeMessage
+    );
+    if (wormholeMessageAccount === null) {
+      throw new Error("wormhole message account not found");
+    }
+    const messageData = PostedMessageData.deserialize(
+      wormholeMessageAccount.data
+    );
+    emitterAddress = sourceChain.manager
+      .emitterAccountAddress()
+      .toBuffer()
+      .toString("hex");
+    sequence = messageData.message.sequence.toString();
+  }
+
+  if (!useRelayer) {
+    await receive(
+      sourceChain.chainId,
+      emitterAddress,
+      sequence,
+      destinationChain
+    );
+  }
+
+  const [managerBalanceAfterSend, userBalanceAfterSend] =
+    await getManagerAndUserBalance(sourceChain);
+  const [managerBalanceAfterRecv, userBalanceAfterRecv] =
+    await getManagerAndUserBalance(destinationChain);
+  const sourceCheckAmount =
+    sourceChain.type === "solana" ? scaledAmount : amount;
+  const destinationCheckAmount =
+    destinationChain.type === "solana" ? scaledAmount : amount;
+
+  if (
+    sourceChain.mode === "burning"
+      ? !managerBalanceAfterSend.eq(BigNumber.from("0"))
+      : !managerBalanceAfterSend.eq(
+          managerBalanceBeforeSend.add(sourceCheckAmount)
+        )
+  ) {
+    throw new Error(
+      `Source manager amount incorrect: before ${managerBalanceBeforeSend.toString()}, after ${managerBalanceAfterSend.toString()}`
+    );
+  }
+  if (!userBalanceAfterSend.eq(userBalanceBeforeSend.sub(sourceCheckAmount))) {
+    throw new Error(
+      `Source user amount incorrect: before ${userBalanceBeforeSend.toString()}, after ${userBalanceAfterSend.toString()}`
+    );
+  }
+  if (
+    destinationChain.mode === "burning"
+      ? !managerBalanceAfterRecv.eq(BigNumber.from("0"))
+      : !managerBalanceAfterRecv.eq(
+          managerBalanceBeforeRecv.sub(destinationCheckAmount)
+        )
+  ) {
+    throw new Error(
+      `Destination manager amount incorrect: before ${managerBalanceBeforeRecv.toString()}, after ${managerBalanceAfterRecv.toString()}`
+    );
+  }
+  if (
+    !userBalanceAfterRecv.eq(userBalanceBeforeRecv.add(destinationCheckAmount))
+  ) {
+    throw new Error(
+      `Destination user amount incorrect: before ${userBalanceBeforeRecv.toString()}, after ${userBalanceAfterRecv.toString()}`
+    );
+  }
+}
+
+async function testEthHub() {
+  console.log("\n\n\n***\nEth Hub Test\n***");
+  console.log("\nDeploying on eth-devnet");
+  console.log("===============================================");
+  const ethInfo = await deployEvm(ETH_SIGNER, "ethereum", "locking");
+  console.log("\nDeploying on eth-devnet2");
+  console.log("===============================================");
+  const bscInfo = await deployEvm(BSC_SIGNER, "bsc", "burning");
+  console.log("\nInitializing on solana-devnet");
+  console.log("===============================================");
+  const solInfo = await initSolana(
+    "burning",
+    "NTTManager111111111111111111111111111111111"
+  );
+  await link([ethInfo, bscInfo, solInfo]);
+  console.log("\nStarting tests");
+  console.log("========================");
+  console.log("Eth <> BSC");
+  await transferWithChecks(ethInfo, bscInfo);
+  await transferWithChecks(bscInfo, ethInfo);
+  console.log(`Eth <> Solana`);
+  await transferWithChecks(ethInfo, solInfo);
+  await transferWithChecks(solInfo, ethInfo);
+  console.log(`BSC <> Solana`);
+  await transferWithChecks(ethInfo, bscInfo);
+  await transferWithChecks(bscInfo, solInfo);
+  await transferWithChecks(solInfo, bscInfo);
+  console.log("Eth <> BSC with relay");
+  await transferWithChecks(ethInfo, bscInfo, true);
+  await transferWithChecks(bscInfo, ethInfo, true);
+  // TODO: corrupted or bad VAA usage
+}
+
+async function testSolanaHub() {
+  console.log("\n\n\n***\nSolana Hub Test\n***");
+  console.log("\nDeploying on eth-devnet");
+  console.log("===============================================");
+  const ethInfo = await deployEvm(ETH_SIGNER, "ethereum", "burning");
+  console.log("\nDeploying on eth-devnet2");
+  console.log("===============================================");
+  const bscInfo = await deployEvm(BSC_SIGNER, "bsc", "burning");
+  console.log("\nInitializing on solana-devnet");
+  console.log("===============================================");
+  const solInfo = await initSolana(
+    "locking",
+    "NTTManager222222222222222222222222222222222"
+  );
+  await link([ethInfo, bscInfo, solInfo]);
+  console.log("\nStarting tests");
+  console.log("========================");
+  console.log("Solana -> Eth -> BSC -> Solana");
+  await transferWithChecks(solInfo, ethInfo);
+  await transferWithChecks(ethInfo, bscInfo);
+  await transferWithChecks(bscInfo, solInfo);
+}
+
+async function test() {
+  await testEthHub();
+  await testSolanaHub();
+}
+
+test();

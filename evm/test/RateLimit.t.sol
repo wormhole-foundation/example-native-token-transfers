@@ -2,6 +2,7 @@
 
 import "forge-std/Test.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
+import "../src/interfaces/IManagerBase.sol";
 import "../src/NttManager/NttManager.sol";
 import "./mocks/DummyTransceiver.sol";
 import "../src/mocks/DummyToken.sol";
@@ -35,13 +36,17 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         guardian = new WormholeSimulator(address(wormhole), DEVNET_GUARDIAN_PK);
 
         DummyToken t = new DummyToken();
-        NttManager implementation =
-            new MockNttManagerContract(address(t), INttManager.Mode.LOCKING, chainId, 1 days, false);
+        NttManager implementation = new MockNttManagerContract(
+            address(t), IManagerBase.Mode.LOCKING, chainId, 1 days, false
+        );
 
         nttManager = MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         nttManager.initialize();
 
         nttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 9, type(uint64).max);
+
+        DummyTransceiver e = new DummyTransceiver(address(nttManager));
+        nttManager.setTransceiver(address(e));
     }
 
     function test_outboundRateLimit_setLimitSimple() public {

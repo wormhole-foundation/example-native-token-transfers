@@ -4,6 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 import "forge-std/Test.sol";
 
 import "../src/libraries/TransceiverStructs.sol";
+import "../src/interfaces/IManagerBase.sol";
 import "../src/Transceiver/WormholeTransceiver/WormholeTransceiver.sol";
 import "../src/interfaces/INttManager.sol";
 
@@ -18,7 +19,7 @@ contract TestTransceiverStructs is Test {
         TransceiverStructs.TransceiverInit memory ti = TransceiverStructs.TransceiverInit({
             transceiverIdentifier: wh_prefix,
             nttManagerAddress: hex"BABABABABABA",
-            nttManagerMode: uint8(INttManager.Mode.LOCKING),
+            nttManagerMode: uint8(IManagerBase.Mode.LOCKING),
             tokenAddress: hex"DEDEDEDEDEDEDE",
             tokenDecimals: 16
         });
@@ -141,8 +142,8 @@ contract TestTransceiverStructs is Test {
         bytes memory junk = "junk";
 
         vm.expectRevert(
-            abi.encodeWithSignature(
-                "LengthMismatch(uint256,uint256)", message.length + junk.length, message.length
+            abi.encodeWithSelector(
+                BytesParsing.LengthMismatch.selector, message.length + junk.length, message.length
             )
         );
         TransceiverStructs.parseNttManagerMessage(abi.encodePacked(message, junk));
@@ -169,8 +170,8 @@ contract TestTransceiverStructs is Test {
         bytes memory junk = "junk";
 
         vm.expectRevert(
-            abi.encodeWithSignature(
-                "LengthMismatch(uint256,uint256)", message.length + junk.length, message.length
+            abi.encodeWithSelector(
+                BytesParsing.LengthMismatch.selector, message.length + junk.length, message.length
             )
         );
         TransceiverStructs.parseNativeTokenTransfer(abi.encodePacked(message, junk));
