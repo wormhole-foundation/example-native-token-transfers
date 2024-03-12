@@ -120,6 +120,15 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
     );
 
     let accs = ctx.accounts;
+
+    // TODO If functionality is added to disable transceivers, this check should be modified to
+    // ensure that, if all transceivers have been disabled, that an error is returned. Otherwise it
+    // may be possible to permanently lose funds.
+    // No transceivers have been registered yet
+    if accs.common.config.next_transceiver_id == 0 {
+        return Err(NTTError::NoRegisteredTransceivers.into());
+    }
+
     let TransferArgs {
         mut amount,
         recipient_chain,
@@ -222,6 +231,15 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
     );
 
     let accs = ctx.accounts;
+
+    // TODO If functionality is added to disable transceivers, this check should be modified to
+    // ensure that, if all transceivers have been disabled, that an error is returned. Otherwise it
+    // may be possible to permanently lose funds.
+    // No transceivers have been registered yet
+    if accs.common.config.next_transceiver_id == 0 {
+        return Err(NTTError::NoRegisteredTransceivers.into());
+    }
+
     let TransferArgs {
         mut amount,
         recipient_chain,

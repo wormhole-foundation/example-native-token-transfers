@@ -43,4 +43,6 @@ pub enum NTTError {
     BadAmountAfterBurn,
     #[msg("ZeroThreshold")]
     ZeroThreshold,
+    #[msg("NoRegisteredTransceivers")]
+    NoRegisteredTransceivers,
 }
