@@ -95,20 +95,28 @@ describe("example-native-token-transfers", () => {
         mode: "locking",
       });
 
-      await ntt.registerTransceiver({
+      const transceiver = await ntt.registerTransceiver({
         payer,
         owner: payer,
         transceiver: ntt.program.programId,
       });
 
-      await ntt.setWormholeTransceiverPeer({
+      if (transceiver === null) {
+        throw new Error('did not register transceiver')
+      }
+
+      const transceiverPeer = await ntt.setWormholeTransceiverPeer({
         payer,
         owner: payer,
         chain: "ethereum",
         address: Buffer.from("transceiver".padStart(32, "\0")),
       });
 
-      await ntt.setPeer({
+      if (transceiverPeer === null) {
+        throw new Error('did not set transceiver peer')
+      }
+
+      const peer = await ntt.setPeer({
         payer,
         owner: payer,
         chain: "ethereum",
@@ -116,6 +124,11 @@ describe("example-native-token-transfers", () => {
         limit: new BN(1000000),
         tokenDecimals: 18,
       });
+
+      if (peer === null) {
+        throw new Error('did not set peer')
+      }
+
     });
 
     it("Can send tokens", async () => {

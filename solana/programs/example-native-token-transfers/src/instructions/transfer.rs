@@ -22,6 +22,11 @@ pub struct Transfer<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
+    // Ensure that there exists at least one enabled transceiver
+    #[account(
+        constraint = config.next_transceiver_id != 0 @ NTTError::NoRegisteredTransceivers,
+        constraint = !config.enabled_transceivers.is_empty() @ NTTError::NoRegisteredTransceivers,
+    )]
     pub config: NotPausedConfig<'info>,
 
     #[account(
@@ -120,6 +125,7 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
     );
 
     let accs = ctx.accounts;
+
     let TransferArgs {
         mut amount,
         recipient_chain,
@@ -223,6 +229,7 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
     );
 
     let accs = ctx.accounts;
+
     let TransferArgs {
         mut amount,
         recipient_chain,
