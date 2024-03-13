@@ -11,7 +11,8 @@ contract MockWormholeTransceiverContract is WormholeTransceiver {
         address wormholeRelayerAddr,
         address specialRelayerAddr,
         uint8 _consistencyLevel,
-        uint256 _gasLimit
+        uint256 _gasLimit,
+        ManagerType _managerType
     )
         WormholeTransceiver(
             nttManager,
@@ -19,7 +20,8 @@ contract MockWormholeTransceiverContract is WormholeTransceiver {
             wormholeRelayerAddr,
             specialRelayerAddr,
             _consistencyLevel,
-            _gasLimit
+            _gasLimit,
+            _managerType
         )
     {}
 
@@ -37,7 +39,8 @@ contract MockWormholeTransceiverMigrateBasic is WormholeTransceiver {
         address wormholeRelayerAddr,
         address specialRelayerAddr,
         uint8 _consistencyLevel,
-        uint256 _gasLimit
+        uint256 _gasLimit,
+        ManagerType _managerType
     )
         WormholeTransceiver(
             nttManager,
@@ -45,7 +48,8 @@ contract MockWormholeTransceiverMigrateBasic is WormholeTransceiver {
             wormholeRelayerAddr,
             specialRelayerAddr,
             _consistencyLevel,
-            _gasLimit
+            _gasLimit,
+            _managerType
         )
     {}
 
@@ -61,7 +65,8 @@ contract MockWormholeTransceiverImmutableAllow is WormholeTransceiver {
         address wormholeRelayerAddr,
         address specialRelayerAddr,
         uint8 _consistencyLevel,
-        uint256 _gasLimit
+        uint256 _gasLimit,
+        ManagerType _managerType
     )
         WormholeTransceiver(
             nttManager,
@@ -69,7 +74,8 @@ contract MockWormholeTransceiverImmutableAllow is WormholeTransceiver {
             wormholeRelayerAddr,
             specialRelayerAddr,
             _consistencyLevel,
-            _gasLimit
+            _gasLimit,
+            _managerType
         )
     {}
 
@@ -91,7 +97,8 @@ contract MockWormholeTransceiverLayoutChange is WormholeTransceiver {
         address wormholeRelayerAddr,
         address specialRelayerAddr,
         uint8 _consistencyLevel,
-        uint256 _gasLimit
+        uint256 _gasLimit,
+        ManagerType _managerType
     )
         WormholeTransceiver(
             nttManager,
@@ -99,7 +106,8 @@ contract MockWormholeTransceiverLayoutChange is WormholeTransceiver {
             wormholeRelayerAddr,
             specialRelayerAddr,
             _consistencyLevel,
-            _gasLimit
+            _gasLimit,
+            _managerType
         )
     {}
 

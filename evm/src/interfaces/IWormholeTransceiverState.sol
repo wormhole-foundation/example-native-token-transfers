@@ -4,6 +4,17 @@ pragma solidity >=0.8.8 <0.9.0;
 import "../libraries/TransceiverStructs.sol";
 
 interface IWormholeTransceiverState {
+    enum ManagerType {
+        ERC20,
+        ERC721
+    }
+
+    enum RelayingType {
+        Standard,
+        Special,
+        Manual
+    }
+
     /// @notice Emitted when a message is sent from the transceiver.
     /// @dev Topic0
     ///      0x375a56c053c4d19a2e3445e97b7a28bf4e908617ce6d766e1e03a9d3f5276271.
@@ -37,6 +48,9 @@ interface IWormholeTransceiverState {
     /// @param chainId The chain ID to set.
     /// @param isEvm A boolean indicating whether relaying is enabled.
     event SetIsWormholeEvmChain(uint16 chainId, bool isEvm);
+
+    /// @notice Emitted when a ManagerType does not exist.
+    error InvalidManagerType();
 
     /// @notice Additonal messages are not allowed.
     /// @dev Selector: 0xc504ea29.

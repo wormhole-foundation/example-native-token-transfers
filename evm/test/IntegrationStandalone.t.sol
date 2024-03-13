@@ -11,6 +11,7 @@ import "../src/interfaces/IRateLimiter.sol";
 import "../src/interfaces/ITransceiver.sol";
 import "../src/interfaces/IManagerBase.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
+import "../src/interfaces/IWormholeTransceiverState.sol";
 import {Utils} from "./libraries/Utils.sol";
 import {DummyToken, DummyTokenMintAndBurn} from "./NttManager.t.sol";
 import "../src/interfaces/IWormholeTransceiver.sol";
@@ -77,7 +78,8 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
         wormholeTransceiverChain1 = MockWormholeTransceiverContract(
             address(new ERC1967Proxy(address(wormholeTransceiverChain1Implementation), ""))
@@ -114,7 +116,8 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
         wormholeTransceiverChain2 = MockWormholeTransceiverContract(
             address(new ERC1967Proxy(address(wormholeTransceiverChain2Implementation), ""))
@@ -475,7 +478,8 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
 
         wormholeTransceiverChain1_2 = MockWormholeTransceiverContract(
@@ -493,7 +497,8 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
 
         wormholeTransceiverChain2_2 = MockWormholeTransceiverContract(

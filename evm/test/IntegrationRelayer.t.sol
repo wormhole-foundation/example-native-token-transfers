@@ -111,7 +111,8 @@ contract TestEndToEndRelayer is
             address(relayerSource),
             address(0x0),
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
 
         wormholeTransceiverChain1 = MockWormholeTransceiverContract(
@@ -144,7 +145,8 @@ contract TestEndToEndRelayer is
             address(relayerTarget),
             address(0x0),
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
 
         wormholeTransceiverChain2 = MockWormholeTransceiverContract(
@@ -497,7 +499,8 @@ contract TestRelayerEndToEndManual is TestEndToEndRelayerBase, IRateLimiterEvent
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
         wormholeTransceiverChain1 = MockWormholeTransceiverContract(
             address(new ERC1967Proxy(address(wormholeTransceiverChain1), ""))
@@ -524,7 +527,8 @@ contract TestRelayerEndToEndManual is TestEndToEndRelayerBase, IRateLimiterEvent
             address(relayer), // TODO - add support for this later
             address(0x0), // TODO - add support for this later
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
         wormholeTransceiverChain2 = MockWormholeTransceiverContract(
             address(new ERC1967Proxy(address(wormholeTransceiverChain2), ""))

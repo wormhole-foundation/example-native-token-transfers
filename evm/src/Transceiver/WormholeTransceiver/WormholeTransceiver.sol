@@ -39,7 +39,8 @@ contract WormholeTransceiver is
         address wormholeRelayerAddr,
         address specialRelayerAddr,
         uint8 _consistencyLevel,
-        uint256 _gasLimit
+        uint256 _gasLimit,
+        IWormholeTransceiverState.ManagerType _managerType
     )
         WormholeTransceiverState(
             nttManager,
@@ -47,7 +48,8 @@ contract WormholeTransceiver is
             wormholeRelayerAddr,
             specialRelayerAddr,
             _consistencyLevel,
-            _gasLimit
+            _gasLimit,
+            _managerType
         )
     {}
 

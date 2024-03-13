@@ -28,6 +28,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     ISpecialRelayer public immutable specialRelayer;
     uint256 immutable wormholeTransceiver_evmChainId;
     uint256 public immutable gasLimit;
+    ManagerType public immutable managerType;
 
     // ==================== Constants ================================================
 
@@ -51,7 +52,8 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
         address wormholeRelayerAddr,
         address specialRelayerAddr,
         uint8 _consistencyLevel,
-        uint256 _gasLimit
+        uint256 _gasLimit,
+        ManagerType _managerType
     ) Transceiver(nttManager) {
         wormhole = IWormhole(wormholeCoreBridge);
         wormholeRelayer = IWormholeRelayer(wormholeRelayerAddr);
@@ -59,12 +61,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
         wormholeTransceiver_evmChainId = block.chainid;
         consistencyLevel = _consistencyLevel;
         gasLimit = _gasLimit;
-    }
-
-    enum RelayingType {
-        Standard,
-        Special,
-        Manual
+        managerType = _managerType;
     }
 
     function _initialize() internal override {
@@ -73,14 +70,20 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     }
 
     function _initializeTransceiver() internal {
-        TransceiverStructs.TransceiverInit memory init = TransceiverStructs.TransceiverInit({
-            transceiverIdentifier: WH_TRANSCEIVER_INIT_PREFIX,
-            nttManagerAddress: toWormholeFormat(nttManager),
-            nttManagerMode: INttManager(nttManager).getMode(),
-            tokenAddress: toWormholeFormat(nttManagerToken),
-            tokenDecimals: INttManager(nttManager).tokenDecimals()
-        });
-        wormhole.publishMessage(0, TransceiverStructs.encodeTransceiverInit(init), consistencyLevel);
+        if (managerType == ManagerType.ERC20) {
+            TransceiverStructs.TransceiverInit memory init = TransceiverStructs.TransceiverInit({
+                transceiverIdentifier: WH_TRANSCEIVER_INIT_PREFIX,
+                nttManagerAddress: toWormholeFormat(nttManager),
+                nttManagerMode: INttManager(nttManager).getMode(),
+                tokenAddress: toWormholeFormat(nttManagerToken),
+                tokenDecimals: INttManager(nttManager).tokenDecimals()
+            });
+            wormhole.publishMessage(0, TransceiverStructs.encodeTransceiverInit(init), consistencyLevel);
+        } else if (managerType == ManagerType.ERC721) {
+            // Skip emitting message for ERC721.
+        } else {
+            revert InvalidManagerType();
+        }
     }
 
     function _checkImmutables() internal view override {
