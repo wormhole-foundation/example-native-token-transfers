@@ -72,7 +72,7 @@ for chain in $operating_chains; do
   skip_rate_limit=$(jq --raw-output ".skipRateLimit" <<< $config)
 
   implementation_constructor_args=$(\
-    cast abi-encode "constructor(address,uint16,uint16,uint64,bool)" \
+    cast abi-encode "constructor(address,uint8,uint16,uint64,bool)" \
     "$token" "$mode" "$chain" "$rate_limit_duration" "$skip_rate_limit" \
   )
 
