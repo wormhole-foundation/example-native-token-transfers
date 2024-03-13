@@ -28,10 +28,10 @@ contract GovernanceTest is Test {
     Governance governance;
     WormholeSimulator guardian;
     GovernedContract myContract;
-    IWormhole constant wormhole = IWormhole(0x706abc4E45D419950511e474C7B9Ed348A4a716c);
+    IWormhole constant wormhole = IWormhole(0x4a8bc80Ed5a4067f1CCf107057b8270E0cC11A78);
 
     function setUp() public {
-        string memory url = "https://ethereum-goerli.publicnode.com";
+        string memory url = "https://ethereum-sepolia-rpc.publicnode.com";
         vm.createSelectFork(url);
 
         guardian = new WormholeSimulator(address(wormhole), DEVNET_GUARDIAN_PK);

@@ -51,10 +51,10 @@ contract TestUpgrades is Test, IRateLimiterEvents {
     address userD = address(0xABC);
 
     address relayer = address(0x28D8F1Be96f97C1387e94A53e00eCcFb4E75175a);
-    IWormhole wormhole = IWormhole(0x706abc4E45D419950511e474C7B9Ed348A4a716c);
+    IWormhole wormhole = IWormhole(0x4a8bc80Ed5a4067f1CCf107057b8270E0cC11A78);
 
     function setUp() public virtual {
-        string memory url = "https://ethereum-goerli.publicnode.com";
+        string memory url = "https://ethereum-sepolia-rpc.publicnode.com";
         vm.createSelectFork(url);
         initialBlockTimestamp = vm.getBlockTimestamp();
 
@@ -596,10 +596,10 @@ contract TestInitialize is Test {
     address userA = address(0x123);
 
     address relayer = address(0x28D8F1Be96f97C1387e94A53e00eCcFb4E75175a);
-    IWormhole wormhole = IWormhole(0x706abc4E45D419950511e474C7B9Ed348A4a716c);
+    IWormhole wormhole = IWormhole(0x4a8bc80Ed5a4067f1CCf107057b8270E0cC11A78);
 
     function test_doubleInitialize() public {
-        string memory url = "https://ethereum-goerli.publicnode.com";
+        string memory url = "https://ethereum-sepolia-rpc.publicnode.com";
         vm.createSelectFork(url);
 
         vm.chainId(chainId1);
@@ -620,7 +620,7 @@ contract TestInitialize is Test {
     }
 
     function test_cannotFrontrunInitialize() public {
-        string memory url = "https://ethereum-goerli.publicnode.com";
+        string memory url = "https://ethereum-sepolia-rpc.publicnode.com";
         vm.createSelectFork(url);
 
         vm.chainId(chainId1);

@@ -43,8 +43,8 @@ contract TestNttManager is Test, IRateLimiterEvents {
     DummyTransceiver dummyTransceiver;
 
     function setUp() public {
-        string memory url = "https://ethereum-goerli.publicnode.com";
-        IWormhole wormhole = IWormhole(0x706abc4E45D419950511e474C7B9Ed348A4a716c);
+        string memory url = "https://ethereum-sepolia-rpc.publicnode.com";
+        IWormhole wormhole = IWormhole(0x4a8bc80Ed5a4067f1CCf107057b8270E0cC11A78);
         vm.createSelectFork(url);
         initialBlockTimestamp = vm.getBlockTimestamp();
 
