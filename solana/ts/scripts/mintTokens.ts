@@ -20,7 +20,7 @@ const mint = new PublicKey(mintAddress);
   // TODO: gracefully handle cases where ata already exists...
   try {
     ata = await createAssociatedTokenAccount(connection, deployerKeypair, mint, mintRecipient);
-    console.log("Created ATA ad address:", ata.toBase58());
+    console.log("Created ATA at address:", ata.toBase58());
   } catch (err) {
     console.error("Failed to create ATA");
     throw err;

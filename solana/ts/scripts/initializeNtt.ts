@@ -28,7 +28,7 @@ if (!nttProgramId) {
   const nttManagerPk = ntt.tokenAuthorityAddress();
 
   // make ntt-manager the mint authority
-  // TODO: this might fail if the authority has already been set
+  // TODO: this will fail if the authority has already been set
   await setAuthority(
     connection, 
     deployerKeypair, 
@@ -38,6 +38,8 @@ if (!nttProgramId) {
     nttManagerPk,
   );
   console.log(`Authority set to ${nttManagerPk.toBase58()}`);
+  
+  console.log("Manager Emitter Address:", await ntt.emitterAccountAddress().toBase58());
 
   await ntt.initialize({
     payer: deployerKeypair,
@@ -53,8 +55,9 @@ if (!nttProgramId) {
   await ntt.registerTransceiver({
     payer: deployerKeypair,
     owner: deployerKeypair,
-    transceiver: new PublicKey(wormholeProgramId),
+    transceiver: new PublicKey(ntt.program.programId),
   });
-  console.log(`Transceiver registered at: ${wormholeProgramId}`);
+  console.log(`Transceiver registered at: ${ntt.program.programId}`);
+
 })();
 
