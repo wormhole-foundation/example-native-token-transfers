@@ -9,11 +9,17 @@
         "ecmaVersion": "latest",
         "sourceType": "module"
     },
-    plugins: [
-        '@stylistic'
+    "plugins": [
+        "@stylistic"
     ],
     "rules": {
-        '@stylistic/indent': ['error', 2],
-        '@stylistic/max-len': ['error', 80],
+        "@stylistic/indent": [
+            "error",
+            2
+        ],
+        "@stylistic/max-len": [
+            "error",
+            80
+        ]
     }
 }

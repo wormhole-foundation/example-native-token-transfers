@@ -24,9 +24,6 @@ pub struct Transfer<'info> {
 
     pub config: NotPausedConfig<'info>,
 
-    /// This signer will be encoded in the outbox.
-    sender: Signer<'info>,
-
     #[account(
         mut,
         address = config.mint,
@@ -38,6 +35,8 @@ pub struct Transfer<'info> {
         mut,
         token::mint = mint,
     )]
+    /// CHECK: the spl token program will check that the session_authority
+    ///        account can spend these tokens.
     pub from: InterfaceAccount<'info, token_interface::TokenAccount>,
 
     pub token_program: Interface<'info, token_interface::TokenInterface>,
@@ -52,14 +51,6 @@ pub struct Transfer<'info> {
     #[account(mut)]
     pub outbox_rate_limit: Account<'info, OutboxRateLimit>,
 
-    /// CHECK: This authority will need to have been delegated authority to
-    /// transfer or burn tokens in the [from](Self::from) account.
-    #[account(
-        seeds = [crate::TOKEN_AUTHORITY_SEED],
-        bump,
-    )]
-    token_authority: AccountInfo<'info>,
-
     pub system_program: Program<'info, System>,
 }
 
@@ -69,6 +60,23 @@ pub struct TransferArgs {
     pub recipient_chain: ChainId,
     pub recipient_address: [u8; 32],
     pub should_queue: bool,
+}
+
+impl TransferArgs {
+    pub fn keccak256(&self) -> solana_program::keccak::Hash {
+        let TransferArgs {
+            amount,
+            recipient_chain,
+            recipient_address,
+            should_queue,
+        } = self;
+        solana_program::keccak::hashv(&[
+            amount.to_be_bytes().as_ref(),
+            recipient_chain.id.to_be_bytes().as_ref(),
+            recipient_address,
+            &[*should_queue as u8],
+        ])
+    }
 }
 
 // Burn/mint
@@ -92,9 +100,18 @@ pub struct TransferBurn<'info> {
         bump = peer.bump,
     )]
     pub peer: Account<'info, NttManagerPeer>,
+
+    #[account(
+        seeds = [
+            crate::SESSION_AUTHORITY_SEED,
+            common.from.owner.as_ref(),
+            args.keccak256().as_ref()
+        ],
+        bump,
+    )]
+    pub session_authority: AccountInfo<'info>,
 }
 
-// TODO: fees for relaying?
 pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<()> {
     require_eq!(
         ctx.accounts.common.config.mode,
@@ -123,11 +140,13 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
             token_interface::Burn {
                 mint: accs.common.mint.to_account_info(),
                 from: accs.common.from.to_account_info(),
-                authority: accs.common.token_authority.to_account_info(),
+                authority: accs.session_authority.to_account_info(),
             },
             &[&[
-                crate::TOKEN_AUTHORITY_SEED,
-                &[ctx.bumps.common.token_authority],
+                crate::SESSION_AUTHORITY_SEED,
+                accs.common.from.owner.as_ref(),
+                args.keccak256().as_ref(),
+                &[ctx.bumps.session_authority],
             ]],
         ),
         amount,
@@ -170,14 +189,22 @@ pub struct TransferLock<'info> {
     pub peer: Account<'info, NttManagerPeer>,
 
     #[account(
+        seeds = [
+            crate::SESSION_AUTHORITY_SEED,
+            common.from.owner.as_ref(),
+            args.keccak256().as_ref()
+        ],
+        bump,
+    )]
+    pub session_authority: AccountInfo<'info>,
+
+    #[account(
         mut,
         address = common.config.custody
     )]
     pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
 }
 
-// TODO: fees for relaying?
-// TODO: factor out common bits
 pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<()> {
     require_eq!(
         ctx.accounts.common.config.mode,
@@ -206,12 +233,14 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
             token_interface::TransferChecked {
                 from: accs.common.from.to_account_info(),
                 to: accs.custody.to_account_info(),
-                authority: accs.common.token_authority.to_account_info(),
+                authority: accs.session_authority.to_account_info(),
                 mint: accs.common.mint.to_account_info(),
             },
             &[&[
-                crate::TOKEN_AUTHORITY_SEED,
-                &[ctx.bumps.common.token_authority],
+                crate::SESSION_AUTHORITY_SEED,
+                accs.common.from.owner.as_ref(),
+                args.keccak256().as_ref(),
+                &[ctx.bumps.session_authority],
             ]],
         ),
         amount,
@@ -260,7 +289,7 @@ fn insert_into_outbox(
 
     common.outbox_item.set_inner(OutboxItem {
         amount: trimmed_amount,
-        sender: common.sender.key(),
+        sender: common.from.owner,
         recipient_chain,
         recipient_ntt_manager,
         recipient_address,

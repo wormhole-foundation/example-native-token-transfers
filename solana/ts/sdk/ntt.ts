@@ -1,11 +1,11 @@
-import { type ChainName, toChainId, coalesceChainId, type ChainId, SignedVaa } from '@certusone/wormhole-sdk'
-import { serializeLayout, toChainId as SDKv2toChainId } from "@wormhole-foundation/sdk-base";
+import { type ChainName, toChainId, coalesceChainId, type ChainId, type SignedVaa } from '@certusone/wormhole-sdk'
+import { serializeLayout, toChainId as SDKv2toChainId } from '@wormhole-foundation/sdk-base'
 import {
   deserialize,
   nttManagerMessageLayout,
-  NttManagerMessage,
-  nativeTokenTransferLayout,
-} from "@wormhole-foundation/sdk-definitions";
+  type NttManagerMessage,
+  nativeTokenTransferLayout
+} from '@wormhole-foundation/sdk-definitions'
 import { derivePostedVaaKey, getWormholeDerivedAccounts } from '@certusone/wormhole-sdk/lib/cjs/solana/wormhole'
 import { BN, translateError, type IdlAccounts, Program } from '@coral-xyz/anchor'
 import { associatedAddress } from '@coral-xyz/anchor/dist/cjs/utils/token'
@@ -16,7 +16,7 @@ import {
   Transaction,
   sendAndConfirmTransaction,
   type TransactionSignature,
-  Connection
+  type Connection
 } from '@solana/web3.js'
 import { Keccak } from 'sha3'
 import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from '../../target/types/example_native_token_transfers'
@@ -44,6 +44,12 @@ export type ExampleNativeTokenTransfers = OmitGenerics<RawExampleNativeTokenTran
 export type Config = IdlAccounts<ExampleNativeTokenTransfers>['config']
 export type InboxItem = IdlAccounts<ExampleNativeTokenTransfers>['inboxItem']
 
+export interface TransferArgs {
+  amount: BN
+  recipientChain: { id: ChainId }
+  recipientAddress: number[]
+  shouldQueue: boolean
+}
 
 export const NTT_PROGRAM_IDS = [
   "nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS",
@@ -110,6 +116,19 @@ export class NTT {
     hasher.update(Buffer.from(chainIdToBeBytes(chainId)))
     hasher.update(serialized)
     return this.derivePda(['inbox_item', hasher.digest()])
+  }
+
+  sessionAuthorityAddress(sender: PublicKey, args: TransferArgs): PublicKey {
+    const { amount, recipientChain, recipientAddress, shouldQueue } = args
+    const serialized = Buffer.concat([
+      amount.toArrayLike(Buffer, 'be', 8),
+      Buffer.from(new BN(recipientChain.id).toArrayLike(Buffer, 'be', 2)),
+      Buffer.from(new Uint8Array(recipientAddress)),
+      Buffer.from([shouldQueue ? 1 : 0])
+    ])
+    const hasher = new Keccak(256)
+    hasher.update(serialized)
+    return this.derivePda(['session_authority', sender.toBytes(), hasher.digest()])
   }
 
   tokenAuthorityAddress(): PublicKey {
@@ -224,9 +243,15 @@ export class NTT {
 
     const signers = [args.payer, args.fromAuthority, outboxItem]
 
+    const transferArgs: TransferArgs = {
+      amount: args.amount,
+      recipientChain: { id: toChainId(args.recipientChain) },
+      recipientAddress: Array.from(args.recipientAddress),
+      shouldQueue: args.shouldQueue
+    }
     const approveIx = splToken.createApproveInstruction(
       args.from,
-      this.tokenAuthorityAddress(),
+      this.sessionAuthorityAddress(args.fromAuthority.publicKey, transferArgs),
       args.fromAuthority.publicKey,
       BigInt(args.amount.toString())
     );
@@ -272,26 +297,27 @@ export class NTT {
     const chainId = toChainId(args.recipientChain)
     const mint = await this.mintAccountAddress(config)
 
+    const transferArgs: TransferArgs = {
+      amount: args.amount,
+      recipientChain: { id: chainId },
+      recipientAddress: Array.from(args.recipientAddress),
+      shouldQueue: args.shouldQueue
+    }
+
     return await this.program.methods
-      .transferBurn({
-        amount: args.amount,
-        recipientChain: { id: chainId },
-        recipientAddress: Array.from(args.recipientAddress),
-        shouldQueue: args.shouldQueue
-      })
+      .transferBurn(transferArgs)
       .accounts({
         common: {
           payer: args.payer,
           config: { config: this.configAccountAddress() },
           mint,
           from: args.from,
-          sender: args.fromAuthority,
           outboxItem: args.outboxItem,
-          outboxRateLimit: this.outboxRateLimitAccountAddress(),
-          tokenAuthority: this.tokenAuthorityAddress(),
+          outboxRateLimit: this.outboxRateLimitAccountAddress()
         },
         peer: this.peerAccountAddress(args.recipientChain),
-        inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain)
+        inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain),
+        sessionAuthority: this.sessionAuthorityAddress(args.fromAuthority, transferArgs)
       })
       .instruction()
   }
@@ -320,28 +346,29 @@ export class NTT {
     const chainId = toChainId(args.recipientChain)
     const mint = await this.mintAccountAddress(config)
 
+    const transferArgs: TransferArgs = {
+      amount: args.amount,
+      recipientChain: { id: chainId },
+      recipientAddress: Array.from(args.recipientAddress),
+      shouldQueue: args.shouldQueue
+    }
+
     return await this.program.methods
-      .transferLock({
-        amount: args.amount,
-        recipientChain: { id: chainId },
-        recipientAddress: Array.from(args.recipientAddress),
-        shouldQueue: args.shouldQueue
-      })
+      .transferLock(transferArgs)
       .accounts({
         common: {
           payer: args.payer,
           config: { config: this.configAccountAddress() },
           mint,
           from: args.from,
-          sender: args.fromAuthority,
           tokenProgram: await this.tokenProgram(config),
           outboxItem: args.outboxItem,
-          outboxRateLimit: this.outboxRateLimitAccountAddress(),
-          tokenAuthority: this.tokenAuthorityAddress(),
+          outboxRateLimit: this.outboxRateLimitAccountAddress()
         },
         peer: this.peerAccountAddress(args.recipientChain),
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain),
-        custody: await this.custodyAccountAddress(config)
+        custody: await this.custodyAccountAddress(config),
+        sessionAuthority: this.sessionAuthorityAddress(args.fromAuthority, transferArgs)
       })
       .instruction()
   }
@@ -431,8 +458,8 @@ export class NTT {
           inboxItem: this.inboxItemAccountAddress(args.chain, args.nttMessage),
           recipient: getAssociatedTokenAddressSync(mint, recipientAddress),
           mint,
-          tokenAuthority: this.tokenAuthorityAddress(),
-        },
+          tokenAuthority: this.tokenAuthorityAddress()
+        }
       })
       .instruction()
   }
@@ -490,7 +517,7 @@ export class NTT {
           inboxItem: this.inboxItemAccountAddress(args.chain, args.nttMessage),
           recipient: getAssociatedTokenAddressSync(mint, recipientAddress),
           mint,
-          tokenAuthority: this.tokenAuthorityAddress(),
+          tokenAuthority: this.tokenAuthorityAddress()
         },
         custody: await this.custodyAccountAddress(config)
       })
@@ -525,7 +552,7 @@ export class NTT {
     owner: Keypair
     chain: ChainName
     address: ArrayLike<number>
-    limit: BN,
+    limit: BN
     tokenDecimals: number
     config?: Config
   }) {
@@ -540,10 +567,9 @@ export class NTT {
         owner: args.owner.publicKey,
         config: this.configAccountAddress(),
         peer: this.peerAccountAddress(args.chain),
-        inboxRateLimit: this.inboxRateLimitAccountAddress(args.chain),
-      }).instruction();
-    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner]);
-
+        inboxRateLimit: this.inboxRateLimitAccountAddress(args.chain)
+      }).instruction()
+    return await sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner])
   }
 
   async setWormholeTransceiverPeer(args: {
@@ -561,10 +587,10 @@ export class NTT {
         payer: args.payer.publicKey,
         owner: args.owner.publicKey,
         config: this.configAccountAddress(),
-        peer: this.transceiverPeerAccountAddress(args.chain),
-      }).instruction();
+        peer: this.transceiverPeerAccountAddress(args.chain)
+      }).instruction()
 
-    let wormholeMessage = Keypair.generate()
+    const wormholeMessage = Keypair.generate()
     const whAccs = getWormholeDerivedAccounts(this.program.programId, this.wormholeId)
     const broadcastIx = await this.program.methods.broadcastWormholePeer({ chainId: toChainId(args.chain) })
       .accounts({
@@ -579,8 +605,8 @@ export class NTT {
           sequence: whAccs.wormholeSequence,
           program: this.wormholeId
         }
-      }).instruction();
-    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage]);
+      }).instruction()
+    return await sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage])
   }
 
   async registerTransceiver(args: {
@@ -594,10 +620,10 @@ export class NTT {
         owner: args.owner.publicKey,
         config: this.configAccountAddress(),
         transceiver: args.transceiver,
-        registeredTransceiver: this.registeredTransceiverAddress(args.transceiver),
-      }).instruction();
+        registeredTransceiver: this.registeredTransceiverAddress(args.transceiver)
+      }).instruction()
 
-    let wormholeMessage = Keypair.generate()
+    const wormholeMessage = Keypair.generate()
     const whAccs = getWormholeDerivedAccounts(this.program.programId, this.wormholeId)
     const broadcastIx = await this.program.methods.broadcastWormholeId()
       .accounts({
@@ -612,9 +638,9 @@ export class NTT {
           sequence: whAccs.wormholeSequence,
           program: this.wormholeId
         }
-      }).instruction();
-    return sendAndConfirmTransaction(
-      this.program.provider.connection, new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage]);
+      }).instruction()
+    return await sendAndConfirmTransaction(
+      this.program.provider.connection, new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage])
   }
 
   async createReceiveWormholeMessageInstruction(args: {
@@ -628,7 +654,7 @@ export class NTT {
       throw new Error('Contract is paused')
     }
 
-    const wormholeNTT = deserialize("NTT:WormholeTransfer", args.vaa)
+    const wormholeNTT = deserialize('NTT:WormholeTransfer', args.vaa)
     const nttMessage = wormholeNTT.payload.nttManagerPayload
     // NOTE: we do an 'as ChainId' cast here, which is generally unsafe.
     // TODO: explain why this is fine here
@@ -644,10 +670,9 @@ export class NTT {
       transceiverMessage: this.transceiverMessageAccountAddress(
         chainId,
         nttMessage.id
-      ),
-    }).instruction();
+      )
+    }).instruction()
   }
-
 
   async createRedeemInstruction(args: {
     payer: PublicKey
@@ -660,7 +685,7 @@ export class NTT {
       throw new Error('Contract is paused')
     }
 
-    const wormholeNTT = deserialize("NTT:WormholeTransfer", args.vaa)
+    const wormholeNTT = deserialize('NTT:WormholeTransfer', args.vaa)
     const nttMessage = wormholeNTT.payload.nttManagerPayload
     // NOTE: we do an 'as ChainId' cast here, which is generally unsafe.
     // TODO: explain why this is fine here
@@ -680,7 +705,7 @@ export class NTT {
         mint: await this.mintAccountAddress(config),
         inboxItem: this.inboxItemAccountAddress(chainId, nttMessage),
         inboxRateLimit,
-        outboxRateLimit: this.outboxRateLimitAccountAddress(),
+        outboxRateLimit: this.outboxRateLimitAccountAddress()
       })
       .instruction()
   }
@@ -705,11 +730,10 @@ export class NTT {
       payer: args.payer.publicKey
     }
 
-    const wormholeNTT = deserialize("NTT:WormholeTransfer", args.vaa)
+    const wormholeNTT = deserialize('NTT:WormholeTransfer', args.vaa)
     const nttMessage = wormholeNTT.payload.nttManagerPayload
     // TODO: explain why this is fine here
     const chainId = SDKv2toChainId(wormholeNTT.emitterChain) as ChainId
-
 
     // Here we create a transaction with three instructions:
     // 1. receive wormhole messsage (vaa)

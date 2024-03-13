@@ -106,13 +106,13 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
         &test_data.ntt,
         &test_data.user_token_account,
         &test_data.user.pubkey(),
-        args.amount,
+        &args,
     )
     .submit_with_signers(&[&test_data.user], ctx)
     .await
     .unwrap();
     transfer(&test_data.ntt, accs, args, mode)
-        .submit_with_signers(&[&test_data.user, &outbox_item], ctx)
+        .submit_with_signers(&[&outbox_item], ctx)
         .await
         .unwrap();
 
@@ -213,13 +213,13 @@ async fn test_burn_mode_burns_tokens() {
         &test_data.ntt,
         &test_data.user_token_account,
         &test_data.user.pubkey(),
-        args.amount,
+        &args,
     )
     .submit_with_signers(&[&test_data.user], &mut ctx)
     .await
     .unwrap();
     transfer(&test_data.ntt, accs, args, Mode::Burning)
-        .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
+        .submit_with_signers(&[&outbox_item], &mut ctx)
         .await
         .unwrap();
 
@@ -261,13 +261,13 @@ async fn locking_mode_locks_tokens() {
         &test_data.ntt,
         &test_data.user_token_account,
         &test_data.user.pubkey(),
-        args.amount,
+        &args,
     )
     .submit_with_signers(&[&test_data.user], &mut ctx)
     .await
     .unwrap();
     transfer(&test_data.ntt, accs, args, Mode::Locking)
-        .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
+        .submit_with_signers(&[&outbox_item], &mut ctx)
         .await
         .unwrap();
 
@@ -314,13 +314,13 @@ async fn test_rate_limit() {
         &test_data.ntt,
         &test_data.user_token_account,
         &test_data.user.pubkey(),
-        args.amount,
+        &args,
     )
     .submit_with_signers(&[&test_data.user], &mut ctx)
     .await
     .unwrap();
     transfer(&test_data.ntt, accs, args, Mode::Locking)
-        .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
+        .submit_with_signers(&[&outbox_item], &mut ctx)
         .await
         .unwrap();
 
@@ -345,14 +345,14 @@ async fn test_transfer_wrong_mode() {
         &test_data.ntt,
         &test_data.user_token_account,
         &test_data.user.pubkey(),
-        args.amount,
+        &args,
     )
     .submit_with_signers(&[&test_data.user], &mut ctx)
     .await
     .unwrap();
     // make sure we can't transfer in the wrong mode
     let err = transfer(&test_data.ntt, accs.clone(), args.clone(), Mode::Locking)
-        .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
+        .submit_with_signers(&[&outbox_item], &mut ctx)
         .await
         .unwrap_err();
 
@@ -398,13 +398,13 @@ async fn test_large_tx_queue() {
         &test_data.ntt,
         &test_data.user_token_account,
         &test_data.user.pubkey(),
-        args.amount,
+        &args,
     )
     .submit_with_signers(&[&test_data.user], &mut ctx)
     .await
     .unwrap();
     transfer(&test_data.ntt, accs, args, Mode::Locking)
-        .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
+        .submit_with_signers(&[&outbox_item], &mut ctx)
         .await
         .unwrap();
 
@@ -441,13 +441,13 @@ async fn test_cant_transfer_when_paused() {
         &test_data.ntt,
         &test_data.user_token_account,
         &test_data.user.pubkey(),
-        args.amount,
+        &args,
     )
     .submit_with_signers(&[&test_data.user], &mut ctx)
     .await
     .unwrap();
     let err = transfer(&test_data.ntt, accs.clone(), args.clone(), Mode::Locking)
-        .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
+        .submit_with_signers(&[&outbox_item], &mut ctx)
         .await
         .unwrap_err();
 
@@ -472,13 +472,13 @@ async fn test_cant_transfer_when_paused() {
         &test_data.ntt,
         &test_data.user_token_account,
         &test_data.user.pubkey(),
-        args.amount,
+        &args,
     )
     .submit_with_signers(&[&test_data.user], &mut ctx)
     .await
     .unwrap();
     transfer(&test_data.ntt, accs, args, Mode::Locking)
-        .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
+        .submit_with_signers(&[&outbox_item], &mut ctx)
         .await
         .unwrap();
 }
@@ -503,13 +503,13 @@ async fn test_large_tx_no_queue() {
         &test_data.ntt,
         &test_data.user_token_account,
         &test_data.user.pubkey(),
-        args.amount,
+        &args,
     )
     .submit_with_signers(&[&test_data.user], &mut ctx)
     .await
     .unwrap();
     let err = transfer(&test_data.ntt, accs, args, Mode::Locking)
-        .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
+        .submit_with_signers(&[&outbox_item], &mut ctx)
         .await
         .unwrap_err();
 
@@ -535,13 +535,13 @@ async fn test_cant_release_queued() {
         &test_data.ntt,
         &test_data.user_token_account,
         &test_data.user.pubkey(),
-        args.amount,
+        &args,
     )
     .submit_with_signers(&[&test_data.user], &mut ctx)
     .await
     .unwrap();
     transfer(&test_data.ntt, accs, args, Mode::Locking)
-        .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
+        .submit_with_signers(&[&outbox_item], &mut ctx)
         .await
         .unwrap();
 
@@ -609,13 +609,13 @@ async fn test_cant_release_twice() {
         &test_data.ntt,
         &test_data.user_token_account,
         &test_data.user.pubkey(),
-        args.amount,
+        &args,
     )
     .submit_with_signers(&[&test_data.user], &mut ctx)
     .await
     .unwrap();
     transfer(&test_data.ntt, accs, args, Mode::Locking)
-        .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
+        .submit_with_signers(&[&outbox_item], &mut ctx)
         .await
         .unwrap();
 

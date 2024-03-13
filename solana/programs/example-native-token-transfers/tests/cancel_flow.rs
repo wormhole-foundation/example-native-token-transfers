@@ -219,13 +219,13 @@ async fn test_cancel() {
         &test_data.ntt,
         &test_data.user_token_account,
         &test_data.user.pubkey(),
-        args.amount,
+        &args,
     )
     .submit_with_signers(&[&test_data.user], &mut ctx)
     .await
     .unwrap();
     transfer(&test_data.ntt, accs, args, Mode::Locking)
-        .submit_with_signers(&[&test_data.user, &outbox_item], &mut ctx)
+        .submit_with_signers(&[&outbox_item], &mut ctx)
         .await
         .unwrap();
 

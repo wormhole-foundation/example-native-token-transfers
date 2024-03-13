@@ -25,12 +25,14 @@ pub fn transfer(ntt: &NTT, transfer: Transfer, args: TransferArgs, mode: Mode) -
 
 pub fn transfer_burn(ntt: &NTT, transfer: Transfer, args: TransferArgs) -> Instruction {
     let chain_id = args.recipient_chain.id;
+    let session_authority = ntt.session_authority(&transfer.from_authority, &args);
     let data = example_native_token_transfers::instruction::TransferBurn { args };
 
     let accounts = example_native_token_transfers::accounts::TransferBurn {
         common: common(ntt, &transfer),
         inbox_rate_limit: ntt.inbox_rate_limit(chain_id),
         peer: transfer.peer,
+        session_authority,
     };
 
     Instruction {
@@ -42,6 +44,7 @@ pub fn transfer_burn(ntt: &NTT, transfer: Transfer, args: TransferArgs) -> Instr
 
 pub fn transfer_lock(ntt: &NTT, transfer: Transfer, args: TransferArgs) -> Instruction {
     let chain_id = args.recipient_chain.id;
+    let session_authority = ntt.session_authority(&transfer.from_authority, &args);
     let data = example_native_token_transfers::instruction::TransferLock { args };
 
     let accounts = example_native_token_transfers::accounts::TransferLock {
@@ -49,6 +52,7 @@ pub fn transfer_lock(ntt: &NTT, transfer: Transfer, args: TransferArgs) -> Instr
         inbox_rate_limit: ntt.inbox_rate_limit(chain_id),
         peer: transfer.peer,
         custody: ntt.custody(&transfer.mint),
+        session_authority,
     };
     Instruction {
         program_id: example_native_token_transfers::ID,
@@ -61,15 +65,15 @@ pub fn approve_token_authority(
     ntt: &NTT,
     user_token_account: &Pubkey,
     user: &Pubkey,
-    amount: u64,
+    args: &TransferArgs,
 ) -> Instruction {
     spl_token_2022::instruction::approve(
         &spl_token::id(), // TODO: look into how token account was originally created
         user_token_account,
-        &ntt.token_authority(),
+        &ntt.session_authority(user, args),
         user,
         &[user],
-        amount,
+        args.amount,
     )
     .unwrap()
 }
@@ -80,13 +84,11 @@ fn common(ntt: &NTT, transfer: &Transfer) -> example_native_token_transfers::acc
         config: NotPausedConfig {
             config: ntt.config(),
         },
-        sender: transfer.from_authority,
         mint: transfer.mint,
         from: transfer.from,
         token_program: Token::id(),
         outbox_item: transfer.outbox_item,
         outbox_rate_limit: ntt.outbox_rate_limit(),
-        token_authority: ntt.token_authority(),
         system_program: System::id(),
     }
 }
