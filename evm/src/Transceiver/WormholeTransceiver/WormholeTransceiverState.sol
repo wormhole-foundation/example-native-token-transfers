@@ -78,7 +78,9 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
                 tokenAddress: toWormholeFormat(nttManagerToken),
                 tokenDecimals: INttManager(nttManager).tokenDecimals()
             });
-            wormhole.publishMessage(0, TransceiverStructs.encodeTransceiverInit(init), consistencyLevel);
+            wormhole.publishMessage(
+                0, TransceiverStructs.encodeTransceiverInit(init), consistencyLevel
+            );
         } else if (managerType == ManagerType.ERC721) {
             // Skip emitting message for ERC721.
         } else {
