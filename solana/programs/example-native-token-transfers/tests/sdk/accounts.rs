@@ -1,11 +1,13 @@
 use anchor_lang::prelude::Pubkey;
 use example_native_token_transfers::{
     config::Config,
+    instructions::TransferArgs,
     queue::{
         inbox::{InboxItem, InboxRateLimit},
         outbox::OutboxRateLimit,
     },
     registered_transceiver::RegisteredTransceiver,
+    SESSION_AUTHORITY_SEED, TOKEN_AUTHORITY_SEED,
 };
 use ntt_messages::{ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage};
 use sha3::{Digest, Keccak256};
@@ -89,6 +91,31 @@ impl NTT {
         inbox_rate_limit
     }
 
+    pub fn session_authority(&self, sender: &Pubkey, args: &TransferArgs) -> Pubkey {
+        let TransferArgs {
+            amount,
+            recipient_chain,
+            recipient_address,
+            should_queue,
+        } = args;
+        let mut hasher = Keccak256::new();
+
+        hasher.update(&amount.to_be_bytes());
+        hasher.update(&recipient_chain.id.to_be_bytes());
+        hasher.update(&recipient_address);
+        hasher.update(&[*should_queue as u8]);
+
+        let (session_authority, _) = Pubkey::find_program_address(
+            &[
+                SESSION_AUTHORITY_SEED.as_ref(),
+                sender.as_ref(),
+                &hasher.finalize(),
+            ],
+            &self.program,
+        );
+        session_authority
+    }
+
     pub fn inbox_item(
         &self,
         chain: u16,
@@ -107,7 +134,7 @@ impl NTT {
 
     pub fn token_authority(&self) -> Pubkey {
         let (token_authority, _) =
-            Pubkey::find_program_address(&[b"token_authority".as_ref()], &self.program);
+            Pubkey::find_program_address(&[TOKEN_AUTHORITY_SEED.as_ref()], &self.program);
         token_authority
     }
 

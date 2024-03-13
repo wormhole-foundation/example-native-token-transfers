@@ -36,7 +36,31 @@ cfg_if::cfg_if! {
     }
 }
 
-const TOKEN_AUTHORITY_SEED: &[u8] = b"token_authority";
+pub const TOKEN_AUTHORITY_SEED: &[u8] = b"token_authority";
+
+/// The seed for the session authority account.
+///
+/// These accounts are used in the `transfer_*` instructions. The user first
+/// approves the session authority to spend the tokens, and then the session
+/// authority burns or locks the tokens.
+/// This is to avoid the user having to pass their own authority to the program,
+/// which in general is dangerous, especially for upgradeable programs.
+///
+/// There is a session authority associated with each transfer, and is seeded by
+/// the sender's pubkey, and (the hash of) all the transfer arguments.
+/// These seeds essentially encode the user's intent when approving the
+/// spending.
+///
+/// In practice, the approve instruction is going to be atomically bundled with
+/// the transfer instruction, so this encoding makes no difference.
+/// However, it does allow it to be done in a separate transaction without the
+/// risk of a malicious actor redirecting the funds by frontrunning the transfer
+/// instruction.
+/// In other words, the transfer instruction has no degrees of freedom; all the
+/// arguments are determined in the approval step. Then transfer can be
+/// permissionlessly invoked by anyone (even if in practice it's going to be the
+/// user, atomically).
+pub const SESSION_AUTHORITY_SEED: &[u8] = b"session_authority";
 
 #[program]
 pub mod example_native_token_transfers {
