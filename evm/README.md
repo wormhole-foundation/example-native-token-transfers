@@ -198,9 +198,10 @@ $ cast --help
 
 #### Environment Setup
 
-Copy the sample environment file located in `env/` into the target subdirectory of your choice (currently `testnet` or `mainnet`) and prefix the filename with your blockchain of choice:
+Copy the sample environment file located in `env/` into the target subdirectory of your choice (e.g., `testnet` or `mainnet`) and prefix the filename with your blockchain of choice:
 
 ```
+mkdir env/testnet
 cp env/.env.sample env/testnet/sepolia.env
 ```
 
@@ -208,7 +209,7 @@ Do this for each blockchain network that the `NTTManager` and `WormholeTransceiv
 
 #### Config Setup
 
-Before deploying the contracts, navigate to the `cfg` directory and copy the sample file. Make sure to preserve the existing name:
+Before deploying the contracts, navigate to the `evm/cfg` directory and copy the sample file. Make sure to preserve the existing name:
 
 ```
 cd cfg
@@ -216,7 +217,7 @@ cd cfg
 cp WormholeNttConfig.json.sample WormholeNttConfig.json
 ```
 
-Configure each network to your liking (including adding/removing networks). We will eventually add the addresses of the deployed contracts to this file.
+Configure each network to your liking (including adding/removing networks). We will eventually add the addresses of the deployed contracts to this file. Navigate back to the `evm` directory.
 
 #### Deploy
 
@@ -230,7 +231,7 @@ bash sh/deploy_wormhole_ntt.sh -n NETWORK_TYPE -c CHAIN_NAME -k PRIVATE_KEY
 -c avalanche, ethereum, sepolia
 ```
 
-Save the deployed proxy contract addresses in the `WormholeNttConfig.json` file.
+Save the deployed proxy contract addresses (see the forge script output) in the `WormholeNttConfig.json` file.
 
 #### Configuration
 

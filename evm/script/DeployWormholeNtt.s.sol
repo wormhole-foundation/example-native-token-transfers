@@ -3,17 +3,19 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import {Script, console2} from "forge-std/Script.sol";
 
+import "../src/interfaces/IManagerBase.sol";
 import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IWormholeTransceiver.sol";
 
 import {NttManager} from "../src/NttManager/NttManager.sol";
 import {WormholeTransceiver} from "../src/Transceiver/WormholeTransceiver/WormholeTransceiver.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ParseNttConfig} from "./helpers/ParseNttConfig.sol";
 
-contract DeployWormholeNtt is Script {
+contract DeployWormholeNtt is Script, ParseNttConfig {
     struct DeploymentParams {
         address token;
-        INttManager.Mode mode;
+        IManagerBase.Mode mode;
         uint16 wormholeChainId;
         uint64 rateLimitDuration;
         bool shouldSkipRatelimiter;
@@ -45,7 +47,8 @@ contract DeployWormholeNtt is Script {
 
         nttManagerProxy.initialize();
 
-        console2.log("NttManager deployed at: ", address(nttManagerProxy));
+        console2.log("NttManager deployed at: ");
+        console2.logBytes32(toUniversalAddress(address(nttManagerProxy)));
 
         return address(nttManagerProxy);
     }
@@ -69,22 +72,27 @@ contract DeployWormholeNtt is Script {
 
         transceiverProxy.initialize();
 
-        console2.log("Wormhole Transceiver deployed at: ", address(transceiverProxy));
+        console2.log("Wormhole Transceiver deployed at: ");
+        console2.logBytes32(toUniversalAddress(address(transceiverProxy)));
 
         return address(transceiverProxy);
     }
 
-    function configureNttManger(
+    function configureNttManager(
         address nttManager,
         address transceiver,
-        uint64 outboundLimit
+        uint64 outboundLimit,
+        bool shouldSkipRateLimiter
     ) public {
-        INttManager(nttManager).setTransceiver(transceiver);
+        IManagerBase(nttManager).setTransceiver(transceiver);
         console2.log("Transceiver address set on NttManager: ", transceiver);
 
-        INttManager(nttManager).setOutboundLimit(outboundLimit);
-        console2.log("Outbound rate limit set on NttManager: ", outboundLimit);
+        if (!shouldSkipRateLimiter) {
+            INttManager(nttManager).setOutboundLimit(outboundLimit);
+            console2.log("Outbound rate limit set on NttManager: ", outboundLimit);
+        }
 
+        // Hardcoded to one since these scripts handle Wormhole-only deployments.
         INttManager(nttManager).setThreshold(1);
         console2.log("Threshold set on NttManager: %d", uint256(1));
     }
@@ -97,9 +105,9 @@ contract DeployWormholeNtt is Script {
         // Mode.
         uint8 mode = uint8(vm.envUint("RELEASE_MODE"));
         if (mode == 0) {
-            params.mode = INttManager.Mode.LOCKING;
+            params.mode = IManagerBase.Mode.LOCKING;
         } else if (mode == 1) {
-            params.mode = INttManager.Mode.BURNING;
+            params.mode = IManagerBase.Mode.BURNING;
         } else {
             revert("Invalid mode");
         }
@@ -141,7 +149,9 @@ contract DeployWormholeNtt is Script {
         address transceiver = deployWormholeTransceiver(params, manager);
 
         // Configure NttManager.
-        configureNttManger(manager, transceiver, params.outboundLimit);
+        configureNttManager(
+            manager, transceiver, params.outboundLimit, params.shouldSkipRatelimiter
+        );
 
         vm.stopBroadcast();
     }

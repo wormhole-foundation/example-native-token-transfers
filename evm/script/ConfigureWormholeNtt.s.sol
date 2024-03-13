@@ -51,7 +51,7 @@ contract ConfigureWormholeNtt is ParseNttConfig {
 
                 // Set EVM chain.
                 if (targetConfig.isEvmChain) {
-                    wormholeTransceiver.setIsWormholeEvmChain(targetConfig.chainId);
+                    wormholeTransceiver.setIsWormholeEvmChain(targetConfig.chainId, true);
                     console2.log("EVM chain set for chain", targetConfig.chainId);
                 } else {
                     console2.log("This is not an EVM chain, doing nothing");
@@ -72,13 +72,12 @@ contract ConfigureWormholeNtt is ParseNttConfig {
             } else {
                 // Set peer.
                 nttManager.setPeer(
-                    targetConfig.chainId, targetConfig.nttManager, targetConfig.decimals
+                    targetConfig.chainId,
+                    targetConfig.nttManager,
+                    targetConfig.decimals,
+                    targetConfig.inboundLimit
                 );
                 console2.log("Peer set for chain", targetConfig.chainId);
-
-                // Configure the inbound limit.
-                nttManager.setInboundLimit(targetConfig.inboundLimit, targetConfig.chainId);
-                console2.log("Inbound limit set for chain ", targetConfig.chainId);
             }
         }
     }

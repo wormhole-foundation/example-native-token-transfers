@@ -4,6 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 import {console2} from "forge-std/Script.sol";
 
 import "../src/interfaces/INttManager.sol";
+import "../src/interfaces/IManagerBase.sol";
 
 import {NttManager} from "../src/NttManager/NttManager.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -46,9 +47,9 @@ contract UpgradeNttManager is ParseNttConfig {
         // Mode.
         uint8 mode = uint8(vm.envUint("RELEASE_MODE"));
         if (mode == 0) {
-            params.mode = INttManager.Mode.LOCKING;
+            params.mode = IManagerBase.Mode.LOCKING;
         } else if (mode == 1) {
-            params.mode = INttManager.Mode.BURNING;
+            params.mode = IManagerBase.Mode.BURNING;
         } else {
             revert("Invalid mode");
         }
