@@ -35,6 +35,8 @@ pub struct Config {
     pub enabled_transceivers: Bitmap,
     /// Pause the program. This is useful for upgrades and other maintenance.
     pub paused: bool,
+    /// The custody account that holds tokens in locking mode.
+    pub custody: Pubkey,
 }
 
 impl Config {

@@ -12,7 +12,6 @@ use crate::{
     queue::{outbox::OutboxRateLimit, rate_limit::RateLimitState},
 };
 
-// TODO: upgradeability
 #[derive(Accounts)]
 #[instruction(args: InitializeArgs)]
 pub struct Initialize<'info> {
@@ -102,6 +101,7 @@ pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> 
         // NOTE: can't be changed for now
         threshold: 1,
         enabled_transceivers: Bitmap::new(),
+        custody: ctx.accounts.custody.key(),
     });
 
     ctx.accounts.rate_limit.set_inner(OutboxRateLimit {

@@ -104,7 +104,10 @@ pub struct ReleaseInboundUnlock<'info> {
     common: ReleaseInbound<'info>,
 
     /// CHECK: the token program checks if this indeed the right authority for the mint
-    #[account(mut)]
+    #[account(
+        mut,
+        address = common.config.custody
+    )]
     pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
 }
 
