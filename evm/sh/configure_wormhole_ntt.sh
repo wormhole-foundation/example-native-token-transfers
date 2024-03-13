@@ -58,4 +58,5 @@ forge script $FORGE_SCRIPTS/ConfigureWormholeNtt.s.sol \
     --rpc-url $rpc \
     --broadcast \
     --private-key $private_key \
-    --slow
+    --slow \
+    --skip test
