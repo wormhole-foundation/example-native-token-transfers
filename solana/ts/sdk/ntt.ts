@@ -312,7 +312,6 @@ export class NTT {
           config: { config: this.configAccountAddress() },
           mint,
           from: args.from,
-          sender: args.fromAuthority,
           outboxItem: args.outboxItem,
           outboxRateLimit: this.outboxRateLimitAccountAddress()
         },
@@ -362,7 +361,6 @@ export class NTT {
           config: { config: this.configAccountAddress() },
           mint,
           from: args.from,
-          sender: args.fromAuthority,
           tokenProgram: await this.tokenProgram(config),
           outboxItem: args.outboxItem,
           outboxRateLimit: this.outboxRateLimitAccountAddress()

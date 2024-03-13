@@ -24,14 +24,6 @@ pub struct Transfer<'info> {
 
     pub config: NotPausedConfig<'info>,
 
-    /// This account will be encoded in the outbox.
-    /// CHECK: the sender is the owner of the from account, and the session
-    ///        authority is seeded by this account.
-    ///        This means that while the sender doesn't sign this current
-    ///        transaction, they signed an approval (to the session authority),
-    ///        encoding their intent about where the tokens should go.
-    sender: AccountInfo<'info>,
-
     #[account(
         mut,
         address = config.mint,
@@ -42,8 +34,9 @@ pub struct Transfer<'info> {
     #[account(
         mut,
         token::mint = mint,
-        token::authority = sender
     )]
+    /// CHECK: the spl token program will check that the session_authority
+    ///        account can spend these tokens.
     pub from: InterfaceAccount<'info, token_interface::TokenAccount>,
 
     pub token_program: Interface<'info, token_interface::TokenInterface>,
@@ -111,7 +104,7 @@ pub struct TransferBurn<'info> {
     #[account(
         seeds = [
             crate::SESSION_AUTHORITY_SEED,
-            common.sender.key().as_ref(),
+            common.from.owner.as_ref(),
             args.keccak256().as_ref()
         ],
         bump,
@@ -151,7 +144,7 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
             },
             &[&[
                 crate::SESSION_AUTHORITY_SEED,
-                accs.common.sender.key().as_ref(),
+                accs.common.from.owner.as_ref(),
                 args.keccak256().as_ref(),
                 &[ctx.bumps.session_authority],
             ]],
@@ -198,7 +191,7 @@ pub struct TransferLock<'info> {
     #[account(
         seeds = [
             crate::SESSION_AUTHORITY_SEED,
-            common.sender.key().as_ref(),
+            common.from.owner.as_ref(),
             args.keccak256().as_ref()
         ],
         bump,
@@ -245,7 +238,7 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
             },
             &[&[
                 crate::SESSION_AUTHORITY_SEED,
-                accs.common.sender.key().as_ref(),
+                accs.common.from.owner.as_ref(),
                 args.keccak256().as_ref(),
                 &[ctx.bumps.session_authority],
             ]],
@@ -296,7 +289,7 @@ fn insert_into_outbox(
 
     common.outbox_item.set_inner(OutboxItem {
         amount: trimmed_amount,
-        sender: common.sender.key(),
+        sender: common.from.owner,
         recipient_chain,
         recipient_ntt_manager,
         recipient_address,

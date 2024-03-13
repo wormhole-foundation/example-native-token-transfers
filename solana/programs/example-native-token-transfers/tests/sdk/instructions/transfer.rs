@@ -84,7 +84,6 @@ fn common(ntt: &NTT, transfer: &Transfer) -> example_native_token_transfers::acc
         config: NotPausedConfig {
             config: ntt.config(),
         },
-        sender: transfer.from_authority,
         mint: transfer.mint,
         from: transfer.from,
         token_program: Token::id(),
