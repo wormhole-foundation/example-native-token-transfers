@@ -171,8 +171,7 @@ pub struct TransferLock<'info> {
 
     #[account(
         mut,
-        token::mint = common.mint,
-        token::authority = common.token_authority,
+        address = common.config.custody
     )]
     pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
 }
