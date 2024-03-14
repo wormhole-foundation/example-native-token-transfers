@@ -2,16 +2,16 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 interface INTTToken {
-    /// @notice the caller is not the minter.
+    /// @notice Error when the caller is not the minter.
     /// @dev Selector 0x5fb5729e.
     /// @param caller The caller of the function.
     error CallerNotMinter(address caller);
 
-    /// @notice the minter is the zero address.
+    /// @notice Error when the minter is the zero address.
     /// @dev Selector 0x04a208c7.
     error InvalidMinterZeroAddress();
 
-    /// @notice insufficient balance to burn the amount.
+    /// @notice Error when insufficient balance to burn the amount.
     /// @dev Selector 0xcf479181.
     /// @param balance The balance of the account.
     /// @param amount The amount to burn.
@@ -23,7 +23,14 @@ interface INTTToken {
     /// @param newMinter The new minter.
     event NewMinter(address newMinter);
 
+    // NOTE: the `mint` method is not present in the standard ERC20 interface.
     function mint(address account, uint256 amount) external;
+
+    // NOTE: the `setMinter` method is not present in the standard ERC20 interface.
     function setMinter(address newMinter) external;
+
+    // NOTE: NttTokens in `burn` mode require the `burn` method to be present.
+    //       This method is not present in the standard ERC20 interface, but is
+    //       found in the `ERC20Burnable` interface.
     function burn(uint256 amount) external;
 }
