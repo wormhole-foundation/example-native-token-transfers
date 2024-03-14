@@ -664,7 +664,7 @@ export class NTT {
 
     return await this.program.methods.receiveWormholeMessage().accounts({
       payer: args.payer,
-      config: this.configAccountAddress(),
+      config: { config: this.configAccountAddress() },
       peer: transceiverPeer,
       vaa: derivePostedVaaKey(this.wormholeId, Buffer.from(wormholeNTT.hash)),
       transceiverMessage: this.transceiverMessageAccountAddress(
@@ -760,7 +760,8 @@ export class NTT {
       nttMessage,
       recipient: new PublicKey(nttMessage.payload.recipientAddress.toUint8Array()),
       chain: chainId,
-      revertOnDelay: false
+      revertOnDelay: false,
+      config: config
     }
 
     if (config.mode.locking != null) {
