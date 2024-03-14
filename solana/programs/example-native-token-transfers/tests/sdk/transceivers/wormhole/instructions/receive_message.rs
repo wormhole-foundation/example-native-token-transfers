@@ -17,7 +17,9 @@ pub fn receive_message(ntt: &NTT, accs: ReceiveMessage) -> Instruction {
 
     let accounts = example_native_token_transfers::accounts::ReceiveMessage {
         payer: accs.payer,
-        config: ntt.config(),
+        config: example_native_token_transfers::accounts::NotPausedConfig {
+            config: ntt.config(),
+        },
         peer: accs.peer,
         vaa: accs.vaa,
         transceiver_message: ntt.transceiver_message(accs.chain_id, accs.id),
