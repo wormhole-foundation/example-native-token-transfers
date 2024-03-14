@@ -9,4 +9,5 @@ interface INTTToken {
 
     function mint(address account, uint256 amount) external;
     function setMinter(address newMinter) external;
+    function burn(uint256 amount) external;
 }
