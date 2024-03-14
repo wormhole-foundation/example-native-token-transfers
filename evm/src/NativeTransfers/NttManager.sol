@@ -475,11 +475,6 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         }
     }
 
-    function _initializeTokenDecimals() internal view returns (uint8) {
-        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
-        return abi.decode(queriedDecimals, (uint8));
-    }
-
     function _trimTransferAmount(
         uint256 amount,
         uint16 toChain
