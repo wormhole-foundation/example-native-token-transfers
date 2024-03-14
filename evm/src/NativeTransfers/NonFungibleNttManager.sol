@@ -101,7 +101,7 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
         TransceiverStructs.ManagerMessage memory payload
-    ) external onlyTransceiver {
+    ) external onlyTransceiver whenNotPaused {
         _verifyPeer(sourceChainId, sourceNttManagerAddress);
 
         // Compute manager message digest and record transceiver attestation.
@@ -116,7 +116,7 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
         TransceiverStructs.ManagerMessage memory message
-    ) public {
+    ) public whenNotPaused {
         // verify chain has not forked
         checkFork(evmChainId);
 
@@ -215,16 +215,10 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
             )
         );
 
-        // Cache and verify peer.
-        bytes32 destinationPeer = _getPeersStorage()[recipientChain].peerAddress;
-        if (destinationPeer == bytes32(0)) {
-            revert InvalidPeer(recipientChain, destinationPeer);
-        }
-
         // send the message
         _sendMessageToTransceivers(
             recipientChain,
-            destinationPeer,
+            _getPeersStorage()[recipientChain].peerAddress,
             priceQuotes,
             instructions,
             enabledTransceivers,

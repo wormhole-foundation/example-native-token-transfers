@@ -362,7 +362,7 @@ contract TestNonFungibleNttManager is Test {
         nftOne.setApprovalForAll(address(managerOne), true);
         vm.expectRevert(
             abi.encodeWithSelector(
-                INonFungibleNttManager.InvalidPeer.selector, targetChain, bytes32(0)
+                IManagerBase.PeerNotRegistered.selector, targetChain
             )
         );
         managerOne.transfer(
@@ -410,6 +410,26 @@ contract TestNonFungibleNttManager is Test {
         vm.expectRevert("ERC721: transfer from incorrect owner");
         managerOne.transfer(
             tokenIds2,
+            chainIdTwo,
+            toWormholeFormat(recipient),
+            new bytes(1)
+        );
+    }
+
+    function test_cannotTransferWhenPaused() public {
+        uint256 nftCount = 1;
+        uint256 startId = 0;
+
+        address recipient = makeAddr("recipient");
+        uint256[] memory tokenIds = _mintNftBatch(nftOne, recipient, nftCount, startId);
+
+        vm.prank(owner);
+        managerOne.pause();
+
+        vm.startPrank(recipient);
+        vm.expectRevert(PausableUpgradeable.RequireContractIsNotPaused.selector);
+        managerOne.transfer(
+            tokenIds,
             chainIdTwo,
             toWormholeFormat(recipient),
             new bytes(1)
