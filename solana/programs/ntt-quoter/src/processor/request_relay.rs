@@ -58,6 +58,9 @@ const GWEI: u64 = u64::pow(10, 9);
 
 //TODO built-in u128 division likely still wastes a ton of compute units
 //     might be more efficient to use f64 or ruint crate
+// SECURITY: Integer division is OK here. The calling code is responsible for understanding that
+// this function returns the quotient of the operation and that the remainder will be lost.
+#[allow(clippy::integer_division)]
 fn mul_div(scalar: u64, numerator: u64, denominator: u64) -> u64 {
     if scalar > 0 {
         //avoid potentially expensive u128 division

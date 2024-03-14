@@ -46,11 +46,16 @@ impl RateLimitState {
     /// Returns the capacity of the rate limiter.
     /// On-chain programs and unit tests should always use [`capacity`].
     /// This function is useful in solana-program-test, where the clock sysvar
-    ///
+    /// SECURITY: Integer division is OK here. We are not that concerned with precision. Removing
+    /// the remainder in this case is arguably more secure as it reduces the available capacity.
+    /// SECURITY: Sign loss is OK here. It is a conversion performed on a timestamp that must always be
+    /// positive.
+    #[allow(clippy::integer_division)]
+    #[allow(clippy::cast_sign_loss)]
     pub fn capacity_at(&self, now: UnixTimestamp) -> u64 {
         assert!(self.last_tx_timestamp <= now);
 
-        let limit = self.limit as u128;
+        let limit = u128::from(self.limit);
 
         // morally this is
         // capacity = old_capacity + (limit / rate_limit_duration) * time_passed
@@ -67,7 +72,7 @@ impl RateLimitState {
 
         let calculated_capacity = {
             let time_passed = now - self.last_tx_timestamp;
-            capacity_at_last_tx as u128
+            u128::from(capacity_at_last_tx)
                 + time_passed as u128 * limit / (Self::RATE_LIMIT_DURATION as u128)
         };
 
@@ -127,6 +132,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::integer_division)]
     fn test_rate_limit() {
         let now = current_timestamp();
         let mut rate_limit_state = RateLimitState {

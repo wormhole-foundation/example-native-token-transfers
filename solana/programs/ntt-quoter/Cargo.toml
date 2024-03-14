@@ -19,6 +19,9 @@ solana-devnet = []
 tilt-devnet = []
 tilt-devnet2 = ["tilt-devnet"]
 
+[lints]
+workspace = true
+
 [dependencies]
 anchor-lang = { workspace = true, features = ["init-if-needed"] }
 solana-program.workspace = true

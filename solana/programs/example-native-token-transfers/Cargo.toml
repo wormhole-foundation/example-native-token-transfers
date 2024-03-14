@@ -26,6 +26,9 @@ solana-devnet = [ "wormhole-anchor-sdk/solana-devnet" ]
 tilt-devnet = [ "wormhole-anchor-sdk/tilt-devnet" ]
 tilt-devnet2 = [ "tilt-devnet" ]
 
+[lints]
+workspace = true
+
 [dependencies]
 ahash = "=0.8.5"
 
