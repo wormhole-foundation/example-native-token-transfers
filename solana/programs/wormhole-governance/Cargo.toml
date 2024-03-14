@@ -23,6 +23,9 @@ solana-devnet = [ "wormhole-anchor-sdk/solana-devnet" ]
 tilt-devnet = [ "wormhole-anchor-sdk/tilt-devnet" ]
 tilt-devnet2 = [ "tilt-devnet" ]
 
+[lints]
+workspace = true
+
 [dependencies]
 anchor-lang.workspace = true
 solana-program.workspace = true

@@ -50,6 +50,9 @@ impl TrimmedAmount {
         }
     }
 
+    // Integer division is allowed here. The purpose of using it here is to remove the remainder so
+    // there is no risk.
+    #[allow(clippy::integer_division)]
     fn scale(amount: u64, from_decimals: u8, to_decimals: u8) -> u64 {
         if from_decimals == to_decimals {
             return amount;

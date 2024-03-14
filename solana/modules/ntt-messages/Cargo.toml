@@ -9,6 +9,9 @@ wormhole = []
 hash = [ "solana-program" ]
 anchor = [ "anchor-lang" ]
 
+[lints]
+workspace = true
+
 [dependencies]
 anchor-lang = { workspace = true, optional = true }
 wormhole-io.workspace = true

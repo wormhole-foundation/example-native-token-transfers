@@ -74,7 +74,7 @@ impl TransferArgs {
             amount.to_be_bytes().as_ref(),
             recipient_chain.id.to_be_bytes().as_ref(),
             recipient_address,
-            &[*should_queue as u8],
+            &[u8::from(*should_queue)],
         ])
     }
 }
