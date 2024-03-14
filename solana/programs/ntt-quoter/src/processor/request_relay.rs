@@ -9,6 +9,7 @@ use crate::{
     error::NttQuoterError,
     state::{Instance, RegisteredChain, RegisteredNtt, RelayRequest},
 };
+use std::result::Result as StdResult;
 
 //TODO eventually drop the released constraint and instead implement release by relayer
 fn check_release_constraint_and_fetch_chain_id(
@@ -30,6 +31,10 @@ pub struct RequestRelay<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
+    #[account(
+        constraint = instance.sol_price != 0 @
+            NttQuoterError::PriceCannotBeZero
+    )]
     pub instance: Account<'info, Instance>,
 
     #[account(
@@ -76,20 +81,32 @@ pub struct RequestRelayArgs {
 
 const GWEI: u64 = u64::pow(10, 9);
 
+/// Performs a multiply-divide operation on u64 inputs, using u128s as intermediate terms to prevent overflow.
+///
+/// # Errors
+///
+/// This function can return either a [`NttQuoterError::DivByZero`] when `denominator` is zero or a
+/// [`NttQuoterError::ScalingOverflow`] error if the final result cannot be converted back to a
+/// u64.
 //TODO built-in u128 division likely still wastes a ton of compute units
 //     might be more efficient to use f64 or ruint crate
 // SECURITY: Integer division is OK here. The calling code is responsible for understanding that
 // this function returns the quotient of the operation and that the remainder will be lost.
 #[allow(clippy::integer_division)]
-fn mul_div(scalar: u64, numerator: u64, denominator: u64) -> u64 {
-    if scalar > 0 {
-        //avoid potentially expensive u128 division
-        ((scalar as u128) * (numerator as u128) / (denominator as u128))
-            .try_into()
-            .unwrap()
-    } else {
-        0
+fn mul_div(scalar: u64, numerator: u64, denominator: u64) -> StdResult<u64, NttQuoterError> {
+    if denominator == 0 {
+        return Err(NttQuoterError::DivByZero);
     }
+
+    //avoid potentially expensive u128 division
+    if scalar == 0 || numerator == 0 {
+        return Ok(0);
+    }
+
+    u64::try_from(u128::from(scalar) * u128::from(numerator) / u128::from(denominator))
+        .map_or(Err(NttQuoterError::ScalingOverflow), |quotient| {
+            Ok(quotient)
+        })
 }
 
 pub fn request_relay(ctx: Context<RequestRelay>, args: RequestRelayArgs) -> Result<()> {
@@ -107,20 +124,20 @@ pub fn request_relay(ctx: Context<RequestRelay>, args: RequestRelayArgs) -> Resu
                 accs.registered_chain.gas_price,
                 accs.registered_ntt.gas_cost as u64,
                 GWEI,
-            );
+            )?;
 
         //usd/target_native[usd, 6 decimals] * target_native[gwei, 9 decimals] = usd[usd, 6 decimals]
         let target_native_in_usd = mul_div(
             accs.registered_chain.native_price,
             target_native_in_gwei,
             GWEI,
-        );
+        )?;
 
         let total_in_usd = target_native_in_usd + accs.registered_chain.base_price;
 
         //total_fee[sol, 9 decimals] = total_usd[usd, 6 decimals] / (sol_price[usd, 6 decimals]
         mul_div(total_in_usd, LAMPORTS_PER_SOL, accs.instance.sol_price)
-    };
+    }?;
 
     let rent_in_lamports = sysvar::rent::Rent::get()?.minimum_balance(8 + RelayRequest::INIT_SPACE);
     let fee_minus_rent = relay_fee_in_lamports.saturating_sub(rent_in_lamports);
