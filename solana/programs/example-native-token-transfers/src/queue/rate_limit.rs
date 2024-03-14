@@ -45,14 +45,13 @@ impl RateLimitState {
 
     /// Returns the capacity of the rate limiter.
     /// On-chain programs and unit tests should always use [`capacity`].
-    /// This function is useful in solana-program-test, where the clock sysvar
-    ///
+    /// This function is useful in solana-program-test.
     pub fn capacity_at(&self, now: UnixTimestamp) -> u64 {
         assert!(self.last_tx_timestamp <= now);
 
         let limit = self.limit as u128;
 
-        // morally this is
+        // Normally this is
         // capacity = old_capacity + (limit / rate_limit_duration) * time_passed
         //
         // but we instead write it as
@@ -65,10 +64,23 @@ impl RateLimitState {
 
         let capacity_at_last_tx = self.capacity_at_last_tx;
 
+        // NOTE: If the logic here is changed, make sure to update the fuzzing block too.
+        #[cfg(not(fuzzing))]
         let calculated_capacity = {
             let time_passed = now - self.last_tx_timestamp;
             capacity_at_last_tx as u128
                 + time_passed as u128 * limit / (Self::RATE_LIMIT_DURATION as u128)
+        };
+
+        #[cfg(fuzzing)]
+        let calculated_capacity = {
+            // In the unlikely case of an underflow when fuzzing timestamps, just return
+            // `calculated_capacity` unchanged
+            let time_passed = now.checked_sub(self.last_tx_timestamp);
+            match time_passed {
+                Some(time_passed) => capacity_at_last_tx as u128 + time_passed as u128 * limit / (Self::RATE_LIMIT_DURATION as u128),
+                None => u128::from(capacity_at_last_tx),
+            }
         };
 
         calculated_capacity.min(limit) as u64

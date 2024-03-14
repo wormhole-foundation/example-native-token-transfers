@@ -132,7 +132,8 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
         &mut amount,
         accs.common.mint.decimals,
         accs.peer.token_decimals,
-    );
+    )
+    .map_err(NTTError::from)?;
 
     token_interface::burn(
         CpiContext::new_with_signer(
@@ -225,7 +226,8 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
         &mut amount,
         accs.common.mint.decimals,
         accs.peer.token_decimals,
-    );
+    )
+    .map_err(NTTError::from)?;
 
     token_interface::transfer_checked(
         CpiContext::new_with_signer(
