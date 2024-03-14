@@ -112,12 +112,8 @@ contract TestNonFungibleNttManager is Test {
             deployNonFungibleManager(address(nftOne), IManagerBase.Mode.LOCKING, chainIdOne, true);
         managerTwo =
             deployNonFungibleManager(address(nftTwo), IManagerBase.Mode.BURNING, chainIdTwo, true);
-        managerThree = deployNonFungibleManager(
-            address(nftOne),
-            IManagerBase.Mode.BURNING,
-            chainIdThree,
-            true
-        );
+        managerThree =
+            deployNonFungibleManager(address(nftOne), IManagerBase.Mode.BURNING, chainIdThree, true);
 
         // Wormhole Transceivers.
         transceiverOne = deployWormholeTranceiver(address(managerOne));
@@ -231,7 +227,7 @@ contract TestNonFungibleNttManager is Test {
         managerOne.setPeer(chainId, newPeer);
     }
 
-    // ============================ Business Logic Tests ==================================
+    // ============================ Transfer Tests ======================================
 
     function test_lockAndMint(uint256 nftCount, uint256 startId) public {
         nftCount = bound(nftCount, 1, managerOne.getMaxBatchSize());
@@ -266,7 +262,9 @@ contract TestNonFungibleNttManager is Test {
             vm.startPrank(address(managerOne));
             uint256[] memory tokenIds =
                 _mintNftBatch(nftOne, address(managerOne), nftCount, startId);
-            assertTrue(_isBatchOwner(nftOne, tokenIds, address(managerOne)), "Manager should own NFTs");
+            assertTrue(
+                _isBatchOwner(nftOne, tokenIds, address(managerOne)), "Manager should own NFTs"
+            );
             vm.stopPrank();
         }
 
@@ -311,6 +309,111 @@ contract TestNonFungibleNttManager is Test {
         assertTrue(managerTwo.isMessageExecuted(_computeMessageDigest(chainIdThree, encodedVm)));
         assertTrue(_isBatchBurned(nftOne, tokenIds), "NFTs should be burned");
         assertTrue(_isBatchOwner(nftTwo, tokenIds, recipient), "Recipient should own NFTs");
+    }
+
+    // ================================ Negative Transfer Tests ==================================
+
+    function test_cannotTransferZeroTokens() public {
+        uint256[] memory tokenIds = new uint256[](0);
+        address recipient = makeAddr("recipient");
+
+        vm.startPrank(recipient);
+        vm.expectRevert(abi.encodeWithSelector(INonFungibleNttManager.ZeroTokenIds.selector));
+        managerOne.transfer(
+            tokenIds,
+            chainIdTwo,
+            toWormholeFormat(recipient),
+            new bytes(1)
+        );
+    }
+
+    function test_cannotTransferExceedsMaxBatchSize() public {
+        uint256 nftCount = managerOne.getMaxBatchSize() + 1;
+        uint256 startId = 0;
+
+        address recipient = makeAddr("recipient");
+        uint256[] memory tokenIds = _mintNftBatch(nftOne, recipient, nftCount, startId);
+
+        vm.startPrank(recipient);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                INonFungibleNttManager.ExceedsMaxBatchSize.selector,
+                nftCount,
+                managerOne.getMaxBatchSize()
+            )
+        );
+        managerOne.transfer(
+            tokenIds,
+            chainIdTwo,
+            toWormholeFormat(recipient),
+            new bytes(1)
+        );
+    }
+
+    function test_cannotTransferToInvalidChain() public {
+        uint256 nftCount = 1;
+        uint256 startId = 0;
+        uint16 targetChain = 69;
+
+        address recipient = makeAddr("recipient");
+        uint256[] memory tokenIds = _mintNftBatch(nftOne, recipient, nftCount, startId);
+
+        vm.startPrank(recipient);
+        nftOne.setApprovalForAll(address(managerOne), true);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                INonFungibleNttManager.InvalidPeer.selector, targetChain, bytes32(0)
+            )
+        );
+        managerOne.transfer(
+            tokenIds,
+            targetChain,
+            toWormholeFormat(recipient),
+            new bytes(1)
+        );
+    }
+
+    function test_cannotTransferInvalidRecipient() public {
+        uint256 nftCount = 1;
+        uint256 startId = 0;
+
+        address recipient = makeAddr("recipient");
+        uint256[] memory tokenIds = _mintNftBatch(nftOne, recipient, nftCount, startId);
+
+        vm.startPrank(recipient);
+        nftOne.setApprovalForAll(address(managerOne), true);
+        vm.expectRevert(INonFungibleNttManager.InvalidRecipient.selector);
+        managerOne.transfer(
+            tokenIds,
+            chainIdTwo,
+            bytes32(0), // Invalid Recipient.
+            new bytes(1)
+        );
+    }
+
+    function test_cannotTransferDuplicateNfts() public {
+        uint256 nftCount = 2;
+        uint256 startId = 0;
+
+        address recipient = makeAddr("recipient");
+        uint256[] memory tokenIds = _mintNftBatch(nftOne, recipient, nftCount, startId);
+
+        // Create new tokenIds array.
+        uint256[] memory tokenIds2 = new uint256[](nftCount + 1);
+        for (uint256 i = 0; i < nftCount; i++) {
+            tokenIds2[i] = tokenIds[i];
+        }
+        tokenIds2[nftCount] = tokenIds[0];
+
+        vm.startPrank(recipient);
+        nftOne.setApprovalForAll(address(managerOne), true);
+        vm.expectRevert("ERC721: transfer from incorrect owner");
+        managerOne.transfer(
+            tokenIds2,
+            chainIdTwo,
+            toWormholeFormat(recipient),
+            new bytes(1)
+        );
     }
 
     // ==================================== Helpers =======================================
