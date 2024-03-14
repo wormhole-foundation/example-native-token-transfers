@@ -38,6 +38,10 @@ contract DummyNft is ERC721 {
         revert("Locking nttManager should not call 'burn()'");
     }
 
+    function exists(uint256 tokenId) public view returns (bool) {
+        return _exists(tokenId);
+    }
+
     function _baseURI() internal view virtual override returns (string memory baseUri) {
         baseUri = new string(_baseUriLength);
         bytes32 tmp = _baseUri;

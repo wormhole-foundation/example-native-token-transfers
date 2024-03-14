@@ -31,6 +31,7 @@ import "../src/mocks/DummyNft.sol";
 contract TestNonFungibleNttManager is Test {
     uint16 constant chainIdOne = 2;
     uint16 constant chainIdTwo = 6;
+    uint16 constant chainIdThree = 10;
     bytes4 constant WH_TRANSCEIVER_PAYLOAD_PREFIX = 0x9945FF10;
     uint256 constant DEVNET_GUARDIAN_PK =
         0xcfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0;
@@ -47,8 +48,10 @@ contract TestNonFungibleNttManager is Test {
     DummyNftMintAndBurn nftTwo;
     INonFungibleNttManager managerOne;
     INonFungibleNttManager managerTwo;
+    INonFungibleNttManager managerThree;
     WormholeTransceiver transceiverOne;
     WormholeTransceiver transceiverTwo;
+    WormholeTransceiver transceiverThree;
 
     function deployNonFungibleManager(
         address nft,
@@ -109,20 +112,32 @@ contract TestNonFungibleNttManager is Test {
             deployNonFungibleManager(address(nftOne), IManagerBase.Mode.LOCKING, chainIdOne, true);
         managerTwo =
             deployNonFungibleManager(address(nftTwo), IManagerBase.Mode.BURNING, chainIdTwo, true);
+        managerThree = deployNonFungibleManager(
+            address(nftOne),
+            IManagerBase.Mode.BURNING,
+            chainIdThree,
+            true
+        );
 
         // Wormhole Transceivers.
         transceiverOne = deployWormholeTranceiver(address(managerOne));
         transceiverTwo = deployWormholeTranceiver(address(managerTwo));
+        transceiverThree = deployWormholeTranceiver(address(managerThree));
 
         transceiverOne.setWormholePeer(chainIdTwo, toWormholeFormat(address(transceiverTwo)));
         transceiverTwo.setWormholePeer(chainIdOne, toWormholeFormat(address(transceiverOne)));
+        transceiverTwo.setWormholePeer(chainIdThree, toWormholeFormat(address(transceiverThree)));
+        transceiverThree.setWormholePeer(chainIdTwo, toWormholeFormat(address(transceiverTwo)));
 
         // Register transceivers and peers.
         managerOne.setTransceiver(address(transceiverOne));
         managerTwo.setTransceiver(address(transceiverTwo));
+        managerThree.setTransceiver(address(transceiverThree));
 
         managerOne.setPeer(chainIdTwo, toWormholeFormat(address(managerTwo)));
         managerTwo.setPeer(chainIdOne, toWormholeFormat(address(managerOne)));
+        managerTwo.setPeer(chainIdThree, toWormholeFormat(address(managerThree)));
+        managerThree.setPeer(chainIdTwo, toWormholeFormat(address(managerTwo)));
 
         vm.stopPrank();
     }
@@ -218,48 +233,8 @@ contract TestNonFungibleNttManager is Test {
 
     // ============================ Business Logic Tests ==================================
 
-    function test_transferLocked(uint256 nftCount, uint256 startId) public {
+    function test_lockAndMint(uint256 nftCount, uint256 startId) public {
         nftCount = bound(nftCount, 1, managerOne.getMaxBatchSize());
-        startId = bound(startId, 0, type(uint256).max - nftCount);
-
-        address recipient = makeAddr("recipient");
-        uint256[] memory tokenIds = _mintNftBatch(nftOne, recipient, nftCount, startId);
-
-        // Call the specified manager to transfer the batch.
-        bytes memory encodedVm = _approveAndTransferBatch(
-            managerOne, transceiverOne, nftOne, tokenIds, recipient, chainIdTwo, true
-        )[0];
-
-        // Check if the NFTs are locked.
-        for (uint256 i = 0; i < nftCount; i++) {
-            uint256 tokenId = tokenIds[i];
-            assertEq(nftOne.ownerOf(tokenId), address(managerOne), "NFT should be locked");
-        }
-
-        // Verify the manager message
-        bytes memory vmPayload = guardian.wormhole().parseVM(encodedVm).payload;
-        (, TransceiverStructs.ManagerMessage memory message) = TransceiverStructs
-            .parseTransceiverAndManagerMessage(WH_TRANSCEIVER_PAYLOAD_PREFIX, vmPayload);
-
-        assertEq(uint256(message.id), managerOne.nextMessageSequence() - 1);
-        assertEq(message.sender, toWormholeFormat(recipient));
-
-        // Verify the non-fungible transfer message.
-        TransceiverStructs.NonFungibleNativeTokenTransfer memory nftTransfer =
-            TransceiverStructs.parseNonFungibleNativeTokenTransfer(message.payload);
-
-        assertEq(nftTransfer.to, toWormholeFormat(recipient));
-        assertEq(nftTransfer.toChain, chainIdTwo);
-        assertEq(nftTransfer.payload, new bytes(0));
-        assertEq(nftTransfer.tokenIds.length, nftCount);
-
-        for (uint256 i = 0; i < nftCount; i++) {
-            assertEq(nftTransfer.tokenIds[i], tokenIds[i]);
-        }
-    }
-
-    function test_receiveMessageAndMint(uint256 nftCount, uint256 startId) public {
-        nftCount = bound(nftCount, 1, managerTwo.getMaxBatchSize());
         startId = bound(startId, 0, type(uint256).max - nftCount);
 
         address recipient = makeAddr("recipient");
@@ -270,13 +245,72 @@ contract TestNonFungibleNttManager is Test {
             managerOne, transceiverOne, nftOne, tokenIds, recipient, chainIdTwo, true
         )[0];
 
-        // Receive the message and mint the NFTs.
+        _verifyTransferPayload(encodedVm, managerOne, recipient, chainIdTwo, tokenIds);
+
+        // Receive the message and mint the NFTs on managerTwo.
         transceiverTwo.receiveMessage(encodedVm);
 
-        // Verify state changes.
+        // Verify state changes. The NFTs should still be locked on managerOne, and a new
+        // batch of NFTs should be minted on managerTwo.
         assertTrue(managerTwo.isMessageExecuted(_computeMessageDigest(chainIdOne, encodedVm)));
         assertTrue(_isBatchOwner(nftTwo, tokenIds, recipient), "Recipient should own NFTs");
         assertTrue(_isBatchOwner(nftOne, tokenIds, address(managerOne)), "Manager should own NFTs");
+    }
+
+    function test_burnAndUnlock(uint256 nftCount, uint256 startId) public {
+        nftCount = bound(nftCount, 1, managerTwo.getMaxBatchSize());
+        startId = bound(startId, 0, type(uint256).max - nftCount);
+
+        // Mint nftOne to managerOne to "lock" them.
+        {
+            vm.startPrank(address(managerOne));
+            uint256[] memory tokenIds =
+                _mintNftBatch(nftOne, address(managerOne), nftCount, startId);
+            assertTrue(_isBatchOwner(nftOne, tokenIds, address(managerOne)), "Manager should own NFTs");
+            vm.stopPrank();
+        }
+
+        address recipient = makeAddr("recipient");
+        uint256[] memory tokenIds = _mintNftBatch(nftTwo, recipient, nftCount, startId);
+
+        // Burn the NFTs on managerTwo.
+        bytes memory encodedVm = _approveAndTransferBatch(
+            managerTwo, transceiverTwo, nftTwo, tokenIds, recipient, chainIdOne, true
+        )[0];
+
+        _verifyTransferPayload(encodedVm, managerTwo, recipient, chainIdOne, tokenIds);
+
+        // Receive the message and unlock the NFTs on managerOne.
+        transceiverOne.receiveMessage(encodedVm);
+
+        // Verify state changes.
+        assertTrue(managerOne.isMessageExecuted(_computeMessageDigest(chainIdTwo, encodedVm)));
+        assertTrue(_isBatchBurned(nftTwo, tokenIds), "NFTs should be burned");
+        assertTrue(_isBatchOwner(nftOne, tokenIds, recipient), "Recipient should own NFTs");
+    }
+
+    function test_burnAndMint(uint256 nftCount, uint256 startId) public {
+        nftCount = bound(nftCount, 1, managerOne.getMaxBatchSize());
+        startId = bound(startId, 0, type(uint256).max - nftCount);
+
+        address recipient = makeAddr("recipient");
+        uint256[] memory tokenIds = _mintNftBatch(nftOne, recipient, nftCount, startId);
+
+        // Burn the NFTs on managerThree.
+        bytes memory encodedVm = _approveAndTransferBatch(
+            managerThree, transceiverThree, nftOne, tokenIds, recipient, chainIdTwo, true
+        )[0];
+
+        _verifyTransferPayload(encodedVm, managerThree, recipient, chainIdTwo, tokenIds);
+
+        // Receive the message and mint the NFTs on managerTwo.
+        transceiverTwo.receiveMessage(encodedVm);
+
+        // Verify state changes. The NFTs should've been burned on managerThree, and a new
+        // batch of NFTs should be minted on managerTwo.
+        assertTrue(managerTwo.isMessageExecuted(_computeMessageDigest(chainIdThree, encodedVm)));
+        assertTrue(_isBatchBurned(nftOne, tokenIds), "NFTs should be burned");
+        assertTrue(_isBatchOwner(nftTwo, tokenIds, recipient), "Recipient should own NFTs");
     }
 
     // ==================================== Helpers =======================================
@@ -294,6 +328,49 @@ contract TestNonFungibleNttManager is Test {
             }
         }
         return isOwner;
+    }
+
+    function _isBatchBurned(
+        DummyNftMintAndBurn nft,
+        uint256[] memory tokenIds
+    ) internal view returns (bool) {
+        bool isBurned = true;
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            if (nft.exists(tokenIds[i])) {
+                isBurned = false;
+                break;
+            }
+        }
+        return isBurned;
+    }
+
+    function _verifyTransferPayload(
+        bytes memory transferMessage,
+        INonFungibleNttManager manager,
+        address recipient,
+        uint16 targetChain,
+        uint256[] memory tokenIds
+    ) internal {
+        // Verify the manager message
+        bytes memory vmPayload = guardian.wormhole().parseVM(transferMessage).payload;
+        (, TransceiverStructs.ManagerMessage memory message) = TransceiverStructs
+            .parseTransceiverAndManagerMessage(WH_TRANSCEIVER_PAYLOAD_PREFIX, vmPayload);
+
+        assertEq(uint256(message.id), manager.nextMessageSequence() - 1);
+        assertEq(message.sender, toWormholeFormat(recipient));
+
+        // Verify the non-fungible transfer message.
+        TransceiverStructs.NonFungibleNativeTokenTransfer memory nftTransfer =
+            TransceiverStructs.parseNonFungibleNativeTokenTransfer(message.payload);
+
+        assertEq(nftTransfer.to, toWormholeFormat(recipient));
+        assertEq(nftTransfer.toChain, targetChain);
+        assertEq(nftTransfer.payload, new bytes(0));
+        assertEq(nftTransfer.tokenIds.length, tokenIds.length);
+
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            assertEq(nftTransfer.tokenIds[i], tokenIds[i]);
+        }
     }
 
     function _computeMessageDigest(
@@ -319,10 +396,10 @@ contract TestNonFungibleNttManager is Test {
     ) internal returns (bytes[] memory encodedVms) {
         // Transfer NFTs as the owner of the NFTs.
         vm.startPrank(recipient);
-        nft.setApprovalForAll(address(managerOne), true);
+        nft.setApprovalForAll(address(manager), true);
 
         vm.recordLogs();
-        managerOne.transfer(
+        manager.transfer(
             tokenIds,
             targetChain,
             toWormholeFormat(recipient),
@@ -331,7 +408,7 @@ contract TestNonFungibleNttManager is Test {
         vm.stopPrank();
 
         // Fetch the wormhole message.
-        encodedVms = _getWormholeMessage(vm.getRecordedLogs(), managerOne.chainId());
+        encodedVms = _getWormholeMessage(vm.getRecordedLogs(), manager.chainId());
     }
 
     function _mintNftBatch(
