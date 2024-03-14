@@ -6,8 +6,9 @@ import {Script, console2} from "forge-std/Script.sol";
 import "../src/interfaces/IManagerBase.sol";
 import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IWormholeTransceiver.sol";
+import "../src/interfaces/IWormholeTransceiverState.sol";
 
-import {NttManager} from "../src/NttManager/NttManager.sol";
+import {NttManager} from "../src/NativeTransfers/NttManager.sol";
 import {WormholeTransceiver} from "../src/Transceiver/WormholeTransceiver/WormholeTransceiver.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {ParseNttConfig} from "./helpers/ParseNttConfig.sol";
@@ -64,7 +65,8 @@ contract DeployWormholeNtt is Script, ParseNttConfig {
             params.wormholeRelayerAddr,
             params.specialRelayerAddr,
             params.consistencyLevel,
-            params.gasLimit
+            params.gasLimit,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
 
         WormholeTransceiver transceiverProxy =

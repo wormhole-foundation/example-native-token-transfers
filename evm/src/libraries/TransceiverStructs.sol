@@ -66,18 +66,18 @@ library TransceiverStructs {
 
     /// @notice Parse a ManagerMessage.
     /// @param encoded The byte array corresponding to the encoded message
-    /// @return nttManagerMessage The parsed ManagerMessage struct.
+    /// @return managerMessage The parsed ManagerMessage struct.
     function parseManagerMessage(bytes memory encoded)
         public
         pure
-        returns (ManagerMessage memory nttManagerMessage)
+        returns (ManagerMessage memory managerMessage)
     {
         uint256 offset = 0;
-        (nttManagerMessage.id, offset) = encoded.asBytes32Unchecked(offset);
-        (nttManagerMessage.sender, offset) = encoded.asBytes32Unchecked(offset);
+        (managerMessage.id, offset) = encoded.asBytes32Unchecked(offset);
+        (managerMessage.sender, offset) = encoded.asBytes32Unchecked(offset);
         uint256 payloadLength;
         (payloadLength, offset) = encoded.asUint16Unchecked(offset);
-        (nttManagerMessage.payload, offset) = encoded.sliceUnchecked(offset, payloadLength);
+        (managerMessage.payload, offset) = encoded.sliceUnchecked(offset, payloadLength);
         encoded.checkLength(offset);
     }
 
@@ -270,13 +270,13 @@ library TransceiverStructs {
         bytes4 prefix,
         bytes32 sourceNttManagerAddress,
         bytes32 recipientNttManagerAddress,
-        bytes memory nttManagerMessage,
+        bytes memory managerMessage,
         bytes memory transceiverPayload
     ) public pure returns (TransceiverMessage memory, bytes memory) {
         TransceiverMessage memory transceiverMessage = TransceiverMessage({
             sourceNttManagerAddress: sourceNttManagerAddress,
             recipientNttManagerAddress: recipientNttManagerAddress,
-            nttManagerPayload: nttManagerMessage,
+            nttManagerPayload: managerMessage,
             transceiverPayload: transceiverPayload
         });
         bytes memory encoded = encodeTransceiverMessage(prefix, transceiverMessage);

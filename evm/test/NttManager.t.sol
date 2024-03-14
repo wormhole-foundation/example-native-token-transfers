@@ -9,7 +9,7 @@ import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
 import "../src/interfaces/IManagerBase.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
-import "../src/NttManager/TransceiverRegistry.sol";
+import "../src/NativeTransfers/shared/TransceiverRegistry.sol";
 import "../src/libraries/PausableUpgradeable.sol";
 import {Utils} from "./libraries/Utils.sol";
 
@@ -209,7 +209,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
         vm.expectRevert(
             abi.encodeWithSelector(PausableUpgradeable.RequireContractIsNotPaused.selector)
         );
-        TransceiverStructs.NttManagerMessage memory message;
+        TransceiverStructs.ManagerMessage memory message;
         nttManager.executeMsg(0, bytes32(0), message);
 
         bytes memory transceiverMessage;
@@ -634,7 +634,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
         vm.expectRevert(
             abi.encodeWithSelector(
                 IManagerBase.TransceiverAlreadyAttestedToMessage.selector,
-                TransceiverStructs.nttManagerMessageDigest(
+                TransceiverStructs.managerMessageDigest(
                     TransceiverHelpersLib.SENDING_CHAIN_ID, m
                 )
             )

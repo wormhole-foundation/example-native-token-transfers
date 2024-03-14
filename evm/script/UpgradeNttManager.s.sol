@@ -6,7 +6,7 @@ import {console2} from "forge-std/Script.sol";
 import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IManagerBase.sol";
 
-import {NttManager} from "../src/NttManager/NttManager.sol";
+import {NttManager} from "../src/NativeTransfers/NttManager.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {ParseNttConfig} from "./helpers/ParseNttConfig.sol";
