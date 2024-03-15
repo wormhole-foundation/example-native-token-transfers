@@ -1,0 +1,12 @@
+{
+  "InboxItem": [
+    {
+      "defined": "TokenTransfer"
+    }
+  ],
+  "ValidatedTransceiverMessage": [
+    {
+      "defined": "NativeTokenTransfer"
+    }
+  ]
+}

@@ -7,7 +7,7 @@ import {
   nativeTokenTransferLayout
 } from '@wormhole-foundation/sdk-definitions'
 import { derivePostedVaaKey, getWormholeDerivedAccounts } from '@certusone/wormhole-sdk/lib/cjs/solana/wormhole'
-import { BN, translateError, type IdlAccounts, Program } from '@coral-xyz/anchor'
+import { BN, translateError, type IdlAccounts, Program, IdlTypes } from '@coral-xyz/anchor'
 import { associatedAddress } from '@coral-xyz/anchor/dist/cjs/utils/token'
 import { getAssociatedTokenAddressSync } from '@solana/spl-token'
 import {
@@ -19,7 +19,7 @@ import {
   type Connection
 } from '@solana/web3.js'
 import { Keccak } from 'sha3'
-import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from '../../target/types/example_native_token_transfers'
+import { type ExampleNativeTokenTransfers } from '../../target/types/example_native_token_transfers'
 import { BPF_LOADER_UPGRADEABLE_PROGRAM_ID, programDataAddress, chainIdToBeBytes, derivePda } from './utils'
 import * as splToken from '@solana/spl-token';
 import IDL from '../../target/idl/example_native_token_transfers.json';
@@ -29,20 +29,9 @@ export * from './utils/wormhole'
 export const nttMessageLayout = nttManagerMessageLayout(nativeTokenTransferLayout);
 export type NttMessage = NttManagerMessage<typeof nativeTokenTransferLayout>;
 
-// This is a workaround for the fact that the anchor idl doesn't support generics
-// yet. This type is used to remove the generics from the idl types.
-type OmitGenerics<T> = {
-  [P in keyof T]: T[P] extends Record<"generics", any>
-  ? never
-  : T[P] extends object
-  ? OmitGenerics<T[P]>
-  : T[P];
-};
-
-export type ExampleNativeTokenTransfers = OmitGenerics<RawExampleNativeTokenTransfers>
-
 export type Config = IdlAccounts<ExampleNativeTokenTransfers>['config']
-export type InboxItem = IdlAccounts<ExampleNativeTokenTransfers>['inboxItem']
+export type InboxItem<A> = IdlAccounts<ExampleNativeTokenTransfers>['inboxItem'] & { payload: A }
+export type TokenTransfer = IdlTypes<ExampleNativeTokenTransfers>['TokenTransfer']
 
 export interface TransferArgs {
   amount: BN
@@ -443,7 +432,7 @@ export class NTT {
     }
 
     const recipientAddress =
-      args.recipient ?? (await this.getInboxItem(args.chain, args.nttMessage)).recipientAddress
+      args.recipient ?? (await this.getInboxItem(args.chain, args.nttMessage)).payload.recipientAddress
 
     const mint = await this.mintAccountAddress(config)
 
@@ -502,7 +491,7 @@ export class NTT {
     }
 
     const recipientAddress =
-      args.recipient ?? (await this.getInboxItem(args.chain, args.nttMessage)).recipientAddress
+      args.recipient ?? (await this.getInboxItem(args.chain, args.nttMessage)).payload.recipientAddress
 
     const mint = await this.mintAccountAddress(config)
 
@@ -803,7 +792,7 @@ export class NTT {
     return (await this.getConfig(config)).tokenProgram
   }
 
-  async getInboxItem(chain: ChainName | ChainId, nttMessage: NttMessage): Promise<InboxItem> {
+  async getInboxItem(chain: ChainName | ChainId, nttMessage: NttMessage): Promise<InboxItem<TokenTransfer>> {
     return await this.program.account.inboxItem.fetch(this.inboxItemAccountAddress(chain, nttMessage))
   }
 

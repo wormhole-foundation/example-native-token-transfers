@@ -65,6 +65,8 @@ pub const SESSION_AUTHORITY_SEED: &[u8] = b"session_authority";
 #[program]
 pub mod example_native_token_transfers {
 
+    use ntt_messages::ntt::NativeTokenTransfer;
+
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> {
@@ -161,4 +163,5 @@ pub mod example_native_token_transfers {
     ) -> Result<()> {
         transceivers::wormhole::instructions::broadcast_peer(ctx, args)
     }
+
 }

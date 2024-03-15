@@ -5,7 +5,7 @@ use ntt_messages::mode::Mode;
 use crate::{
     config::*,
     error::NTTError,
-    queue::inbox::{InboxItem, ReleaseStatus},
+    queue::inbox::{InboxItem, ReleaseStatus, TokenTransfer},
 };
 
 #[derive(Accounts)]
@@ -16,11 +16,11 @@ pub struct ReleaseInbound<'info> {
     pub config: NotPausedConfig<'info>,
 
     #[account(mut)]
-    pub inbox_item: Account<'info, InboxItem>,
+    pub inbox_item: Account<'info, InboxItem<TokenTransfer>>,
 
     #[account(
         mut,
-        associated_token::authority = inbox_item.recipient_address,
+        associated_token::authority = inbox_item.payload.recipient_address,
         associated_token::mint = mint
     )]
     pub recipient: InterfaceAccount<'info, token_interface::TokenAccount>,
@@ -91,7 +91,7 @@ pub fn release_inbound_mint(
                     &[ctx.bumps.common.token_authority],
                 ]],
             ),
-            inbox_item.amount,
+            inbox_item.payload.amount,
         ),
         Mode::Locking => Err(NTTError::InvalidMode.into()),
     }
@@ -151,7 +151,7 @@ pub fn release_inbound_unlock(
                     &[ctx.bumps.common.token_authority],
                 ]],
             ),
-            inbox_item.amount,
+            inbox_item.payload.amount,
             ctx.accounts.common.mint.decimals,
         ),
     }

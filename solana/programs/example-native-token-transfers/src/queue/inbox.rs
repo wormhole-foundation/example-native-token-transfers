@@ -6,16 +6,20 @@ use crate::{bitmap::Bitmap, clock::current_timestamp, error::NTTError};
 
 use super::rate_limit::RateLimitState;
 
-#[account]
-#[derive(InitSpace)]
-// TODO: generalise this to arbitrary inbound messages (via a generic parameter in place of amount and recipient info)
-pub struct InboxItem {
-    pub init: bool,
-    pub bump: u8,
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq, InitSpace)]
+pub struct TokenTransfer {
     pub amount: u64,
     pub recipient_address: Pubkey,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct InboxItem<A: AnchorDeserialize + AnchorSerialize + Space> {
+    pub init: bool,
+    pub bump: u8,
     pub votes: Bitmap,
     pub release_status: ReleaseStatus,
+    pub payload: A,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq, InitSpace)]
@@ -25,7 +29,7 @@ pub enum ReleaseStatus {
     Released,
 }
 
-impl InboxItem {
+impl<A: AnchorDeserialize + AnchorSerialize + Space> InboxItem<A> {
     pub const SEED_PREFIX: &'static [u8] = b"inbox_item";
 
     /// Attempt to release the transfer.
