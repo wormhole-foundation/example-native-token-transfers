@@ -918,7 +918,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         uint256 totalAmt = (type(uint64).max) / (10 ** decimals);
         // avoids the ZeroAmount() error
         // cannot transfer more than what's available
-        vm.assume(transferAmt > 0 && transferAmt <= totalAmt);
+        transferAmt = bound(transferAmt, 1, totalAmt);
         // this ensures that the transfer is always queued up
         vm.assume(limitAmt < transferAmt);
 

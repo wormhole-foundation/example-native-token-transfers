@@ -316,7 +316,7 @@ contract TrimmingTest is Test {
         uint256 untrimmedAmt = trimmedAmt.untrim(fromDecimals);
         uint256 untrimmedAmt2 = trimmedAmt2.untrim(fromDecimals);
 
-        // trimming is the left inverse of trimming
+        // trimming is the left inverse of untrimming
         // invariant: forall (x: TrimmedAmount, fromDecimals: uint8, toDecimals: uint8),
         //            (x.amount <= type(uint64).max)
         //                    => (trim(untrim(x)) == x)
