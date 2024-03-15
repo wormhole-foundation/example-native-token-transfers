@@ -221,25 +221,6 @@ contract TrimmingTest is Test {
         assertEq(expectedIsLt, isLt);
     }
 
-    // invariant: forall (x: TrimmedAmount, aDecimals: uint8, bDecimals: uint8),
-    //            (x.amount <= type(uint64).max)
-    //                    => (trim(untrim(x)) == x)
-    function testFuzz_trimIsLeftInverse(uint256 amount, uint8 aDecimals, uint8 bDecimals) public {
-        // restrict inputs up to u64MAX. Inputs above u64 are tested elsewhere
-        amount = bound(amount, 0, type(uint64).max);
-        vm.assume(aDecimals <= 50);
-        vm.assume(bDecimals <= 50);
-
-        // initialize TrimmedAmount
-        TrimmedAmount trimmedAmount = amount.trim(aDecimals, bDecimals);
-
-        // trimming is the left inverse of trimming
-        // e.g. trim(untrim(x)) == x
-        TrimmedAmount amountRoundTrip = (trimmedAmount.untrim(bDecimals)).trim(bDecimals, aDecimals);
-
-        assertEq(trimmedAmount.getAmount(), amountRoundTrip.getAmount());
-    }
-
     // invariant: forall (TrimmedAmount a, TrimmedAmount b)
     //            a.saturatingAdd(b).amount <= type(uint64).max
     function testFuzz_saturatingAddDoesNotOverflow(TrimmedAmount a, TrimmedAmount b) public {
@@ -315,5 +296,77 @@ contract TrimmingTest is Test {
         assert(expectedTrimmedSum == trimmedSum);
         assertEq(expectedTrimmedSum.getAmount(), trimmedSum.getAmount());
         assertEq(expectedTrimmedSum.getDecimals(), trimmedSum.getDecimals());
+    }
+
+    function testFuzz_trimmingInvariants(
+        uint256 amount,
+        uint256 amount2,
+        uint8 fromDecimals,
+        uint8 midDecimals,
+        uint8 toDecimals
+    ) public {
+        // restrict inputs up to u64MAX. Inputs above u64 are tested elsewhere
+        amount = bound(amount, 0, type(uint64).max);
+        amount2 = bound(amount, 0, type(uint64).max);
+        vm.assume(fromDecimals <= 50);
+        vm.assume(toDecimals <= 50);
+
+        TrimmedAmount trimmedAmt = amount.trim(fromDecimals, toDecimals);
+        TrimmedAmount trimmedAmt2 = amount2.trim(fromDecimals, toDecimals);
+        uint256 untrimmedAmt = trimmedAmt.untrim(fromDecimals);
+        uint256 untrimmedAmt2 = trimmedAmt2.untrim(fromDecimals);
+
+        // trimming is the left inverse of trimming
+        // invariant: forall (x: TrimmedAmount, fromDecimals: uint8, toDecimals: uint8),
+        //            (x.amount <= type(uint64).max)
+        //                    => (trim(untrim(x)) == x)
+        TrimmedAmount amountRoundTrip = untrimmedAmt.trim(fromDecimals, toDecimals);
+        assertEq(trimmedAmt.getAmount(), amountRoundTrip.getAmount());
+
+        // trimming is a NOOP
+        // invariant:
+        //     forall (x: uint256, y: uint8, z: uint8),
+        //            (y < z && (y < 8 || z < 8)), trim(x) == x
+        if (fromDecimals <= toDecimals && (fromDecimals < 8 || toDecimals < 8)) {
+            assertEq(trimmedAmt.getAmount(), uint64(amount));
+        }
+
+        // invariant: source amount is always greater than or equal to the trimmed amount
+        // this is also captured by the invariant above
+        assertGe(amount, trimmedAmt.getAmount());
+
+        // invariant: trimmed amount must not exceed the untrimmed amount
+        assertLe(trimmedAmt.getAmount(), untrimmedAmt);
+
+        // invariant: untrimmed amount must not exceed the source amount
+        assertLe(untrimmedAmt, amount);
+
+        // invariant:
+        //         the number of decimals after trimming must not exceed
+        //         the number of decimals before trimming
+        assertLe(trimmedAmt.getDecimals(), fromDecimals);
+
+        // invariant:
+        //      trimming and untrimming preserve ordering relations
+        if (amount > amount2) {
+            assertGt(untrimmedAmt, untrimmedAmt2);
+        } else if (amount < amount2) {
+            assertLt(untrimmedAmt, untrimmedAmt2);
+        } else {
+            assertEq(untrimmedAmt, untrimmedAmt2);
+        }
+
+        // invariant: trimming and untrimming are commutative when
+        //            the number of decimals are the same and less than or equal to 8
+        if (fromDecimals <= 8 && fromDecimals == toDecimals) {
+            assertEq(amount, untrimmedAmt);
+        }
+
+        // invariant: trimming and untrimming are associative
+        //            when there is no intermediate loss of precision
+        vm.assume(midDecimals >= fromDecimals);
+        TrimmedAmount trimmedAmtA = amount.trim(fromDecimals, midDecimals);
+        TrimmedAmount trimmedAmtB = amount.trim(fromDecimals, toDecimals);
+        assertEq(trimmedAmtA.untrim(toDecimals), trimmedAmtB.untrim(toDecimals));
     }
 }
