@@ -19,9 +19,9 @@ interface INTTToken {
 
     /// @notice The minter has been changed.
     /// @dev Topic0
-    ///     0x6adffd5c93085d835dac6f3b40adf7c242ca4b3284048d20c3d8a501748dc973.
+    ///      0x0b5e7be615a67a819aff3f47c967d1535cead1b98db60fafdcbf22dcaa8fa5a9.
     /// @param newMinter The new minter.
-    event NewMinter(address newMinter);
+    event NewMinter(address previousMinter, address newMinter);
 
     // NOTE: the `mint` method is not present in the standard ERC20 interface.
     function mint(address account, uint256 amount) external;
