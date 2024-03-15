@@ -15,6 +15,8 @@ import { NttQuoter as Idl } from '../../target/types/ntt_quoter'
 import IDL from "../../target/idl/ntt_quoter.json";
 import { U64, programDataLayout, programDataAddress, chainIdToBeBytes, derivePda } from "./utils";
 
+type QuoterInstanceState = NonNullable<Awaited<ReturnType<typeof NttQuoter.prototype.tryGetInstance>>>;
+
 //constants that must match ntt-quoter lib.rs / implementation:
 const EVM_GAS_COST = 250_000;
 const USD_UNIT     = 1e6;
@@ -37,12 +39,20 @@ export class NttQuoter {
 
   async calcRelayCostInSol(chain: Chain, requestedGasDropoffEth: number) {
     const [chainData, instanceData, rentCost] = await Promise.all([
-      this.getRegisteredChain(chain),
-      this.getInstance(),
+      this.tryGetRegisteredChain(chain),
+      this.tryGetInstance(),
       this.program.provider.connection.getMinimumBalanceForRentExemption(
         this.program.account.relayRequest.size
       )
     ]);
+
+    if (instanceData === null) {
+      throw new Error("Quoter contract is not initialized.");
+    }
+
+    if (chainData === null) {
+      throw new Error(`Chain ${chain} is not registered.`);
+    }
 
     if (requestedGasDropoffEth > chainData.maxGasDropoffEth)
       throw new Error("Requested gas dropoff exceeds allowed maximum");
@@ -78,9 +88,9 @@ export class NttQuoter {
 
   // ---- admin/assistant (=authority) relevant functions ----
 
-  async getInstance() {
-    const data = await this.program.account.instance.fetch(this.instance);
-    return {
+  async tryGetInstance() {
+    const data = await this.program.account.instance.fetchNullable(this.instance);
+    return data && {
       owner:        data.owner,
       assistant:    data.assistant,
       feeRecipient: data.feeRecipient,
@@ -88,12 +98,12 @@ export class NttQuoter {
     };
   }
 
-  async getRegisteredChain(chain: Chain) {
-    const data = await this.program.account.registeredChain.fetch(
+  async tryGetRegisteredChain(chain: Chain) {
+    const data = await this.program.account.registeredChain.fetchNullable(
       this.registeredChainPda(toChainId(chain))
     );
     
-    return {
+    return data && {
       paused:           data.basePrice.eq(U64.MAX),
       maxGasDropoffEth: U64.from(data.maxGasDropoff, GWEI_PER_ETH),
       basePriceUsd:     U64.from(data.basePrice,     USD_UNIT    ),
@@ -112,10 +122,11 @@ export class NttQuoter {
     return relayRequest ? U64.from(relayRequest.requestedGasDropoff, GWEI_PER_ETH) : null;
   }
 
-  async createInitalizeInstruction(feeRecipient: PublicKey) {
-    if(!this.program.account.instance.fetchNullable(this.instance))
-      throw new Error("Already initialized");
 
+  async createInitializeInstruction(feeRecipient: PublicKey) {
+    const instance = await this.tryGetInstance();
+    if (instance === null)
+      throw new Error("Quoter is already initialized");
     const programData = programDataAddress(this.program.programId);
 
     const accInfo = await this.program.provider.connection.getAccountInfo(programData);
@@ -135,8 +146,8 @@ export class NttQuoter {
     }).instruction();
   }
 
-  async createSetAssistantInstruction(assistant: PublicKey) {
-    const {owner, assistant: currentAssistant} = await this.getInstance();
+  async createSetAssistantInstruction(instance: QuoterInstanceState, assistant: PublicKey) {
+    const {owner, assistant: currentAssistant} = instance;
     if (currentAssistant.equals(assistant))
       throw new Error("Is already assistant");
 
@@ -147,11 +158,11 @@ export class NttQuoter {
     }).instruction();
   }
 
-  async createSetFeeRecipientInstruction(feeRecipient: PublicKey) {
+  async createSetFeeRecipientInstruction(instance: QuoterInstanceState, feeRecipient: PublicKey) {
     if (feeRecipient.equals(PublicKey.default))
       throw new Error("Fee recipient cannot be default public key");
 
-    const {owner, feeRecipient: currentFeeRecipient} = await this.getInstance();
+    const {owner, feeRecipient: currentFeeRecipient} = instance;
     if (currentFeeRecipient.equals(feeRecipient))
       throw new Error("Is already feeRecipient");
 
@@ -232,7 +243,7 @@ export class NttQuoter {
     }).instruction();
   }
 
-  // ---- private ----
+  // ---- PDA derivation methods ----
 
   private registeredChainPda(chainId: number) {
     return derivePda(
