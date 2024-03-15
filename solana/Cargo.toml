@@ -12,7 +12,7 @@ warnings = "deny"
 [workspace.lints.clippy]
 # The following rules should be enabled but conflict with other open PRs.
 # TODO enable the commented rules below
-# cast_possible_truncation = "deny"
+cast_possible_truncation = "deny"
 # cast_lossless= "deny"
 # as_conversions = "deny"
 # arithmetic_side_effects = "deny"

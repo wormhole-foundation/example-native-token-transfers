@@ -41,7 +41,6 @@ impl Bitmap {
         Ok(BM::<128>::from_value(self.map).get(usize::from(index)))
     }
 
-    #[allow(clippy::cast_possible_truncation)]
     pub fn count_enabled_votes(&self, enabled: Bitmap) -> u8 {
         let bm = BM::<128>::from_value(self.map) & BM::<128>::from_value(enabled.map);
         bm.len()

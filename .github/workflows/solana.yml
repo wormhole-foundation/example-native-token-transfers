@@ -50,7 +50,7 @@ jobs:
         run: cargo check --workspace --tests --manifest-path Cargo.toml
 
       - name: Run `cargo clippy`
-        run: cargo clippy --workspace --tests --manifest-path Cargo.toml -- -Dclippy::cast_possible_truncation
+        run: cargo clippy --workspace --tests --manifest-path solana/Cargo.toml -- -Dclippy::cast_possible_truncation
 
       - name: Cache solana tools
         id: cache-solana
