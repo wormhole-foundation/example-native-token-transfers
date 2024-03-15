@@ -7,3 +7,6 @@
 [submodule "lib/wormhole-solidity-sdk"]
 	path = evm/lib/wormhole-solidity-sdk
 	url = https://github.com/wormhole-foundation/wormhole-solidity-sdk
+[submodule "evm/lib/solidity-bytes-utils"]
+	path = evm/lib/solidity-bytes-utils
+	url = https://github.com/GNSPS/solidity-bytes-utils
