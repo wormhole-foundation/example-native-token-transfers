@@ -67,6 +67,8 @@ interface INonFungibleNttManager is IManagerBase {
     /// @param thisChain The current chain.
     error InvalidTargetChain(uint16 targetChain, uint16 thisChain);
 
+    error InvalidTokenIdWidth(uint8 tokenIdWidth);
+
     /// @notice Sets the corresponding peer.
     /// @dev The NonFungiblenttManager that executes the message sets the source NonFungibleNttManager
     /// as the peer.

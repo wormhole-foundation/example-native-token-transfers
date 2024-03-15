@@ -19,6 +19,7 @@ library TransceiverStructs {
     /// @param prefix The prefix that was found in the encoded message.
     error IncorrectPrefix(bytes4 prefix);
     error UnorderedInstructions();
+    error TokenIdTooLarge(uint256 tokenId, uint256 max);
 
     /// @dev Prefix for all NativeTokenTransfer payloads
     ///      This is 0x99'N''T''T'
@@ -147,8 +148,18 @@ library TransceiverStructs {
         encoded.checkLength(offset);
     }
 
-    /// @dev Native Token Transfer payload.
-    ///     TODO: Document wire format.
+    /// @dev Non-Fungible Native Token Transfer payload.
+    ///      The wire format is as follows:
+    ///      - NON_FUNGIBLE_NTT_PREFIX - 4 bytes
+    ///      - to - 32 bytes
+    ///      - toChain - 2 bytes
+    ///      - batchSize - 2 bytes
+    ///      - for each encoded tokenId:
+    ///          - tokenIdWidth - 1 byte
+    ///          - tokenId - `tokenIdWidth` bytes
+    ///      - payloadLength - 2 bytes
+    ///      - payload - `payloadLength` bytes
+
     struct NonFungibleNativeTokenTransfer {
         /// @notice Address of the recipient.
         bytes32 to;
@@ -160,19 +171,18 @@ library TransceiverStructs {
         bytes payload;
     }
 
-    function encodeNonFungibleNativeTokenTransfer(NonFungibleNativeTokenTransfer memory nft)
-        public
-        pure
-        returns (bytes memory encoded)
-    {
+    function encodeNonFungibleNativeTokenTransfer(
+        NonFungibleNativeTokenTransfer memory nft,
+        uint8 tokenIdWidth
+    ) public pure returns (bytes memory encoded) {
         uint16 batchSize = uint16(nft.tokenIds.length);
         uint16 payloadLen = uint16(nft.payload.length);
 
         bytes memory encodedTokenIds = abi.encodePacked(batchSize);
         for (uint256 i = 0; i < batchSize; ++i) {
-            // For now encode each token ID as 32 bytes long.
-            // TODO: Optimize this to encode only the necessary bytes.
-            encodedTokenIds = abi.encodePacked(encodedTokenIds, uint8(32), nft.tokenIds[i]);
+            encodedTokenIds = abi.encodePacked(
+                encodedTokenIds, tokenIdWidth, encodeTokenId(nft.tokenIds[i], tokenIdWidth)
+            );
         }
 
         return abi.encodePacked(
@@ -200,9 +210,9 @@ library TransceiverStructs {
 
         uint256[] memory tokenIds = new uint256[](batchSize);
         for (uint256 i = 0; i < batchSize; ++i) {
-            uint8 tokenIdLength;
-            (tokenIdLength, offset) = encoded.asUint8Unchecked(offset);
-            (tokenIds[i], offset) = encoded.asUint256Unchecked(offset);
+            uint256 tokenId;
+            (offset, tokenId) = parseTokenId(encoded, offset);
+            tokenIds[i] = tokenId;
         }
         nonFungibleNtt.tokenIds = tokenIds;
 
@@ -212,6 +222,76 @@ library TransceiverStructs {
         (nonFungibleNtt.payload, offset) = encoded.sliceUnchecked(offset, payloadLength);
 
         encoded.checkLength(offset);
+    }
+
+    function encodeTokenId(
+        uint256 tokenId,
+        uint8 tokenIdWidth
+    ) public pure returns (bytes memory) {
+        if (tokenIdWidth == 1) {
+            if (tokenId > type(uint8).max) {
+                revert TokenIdTooLarge(tokenId, type(uint8).max);
+            } else {
+                return abi.encodePacked(uint8(tokenId));
+            }
+        } else if (tokenIdWidth == 2) {
+            if (tokenId > type(uint16).max) {
+                revert TokenIdTooLarge(tokenId, type(uint16).max);
+            } else {
+                return abi.encodePacked(uint16(tokenId));
+            }
+        } else if (tokenIdWidth == 4) {
+            if (tokenId > type(uint32).max) {
+                revert TokenIdTooLarge(tokenId, type(uint32).max);
+            } else {
+                return abi.encodePacked(uint32(tokenId));
+            }
+        } else if (tokenIdWidth == 8) {
+            if (tokenId > type(uint64).max) {
+                revert TokenIdTooLarge(tokenId, type(uint64).max);
+            } else {
+                return abi.encodePacked(uint64(tokenId));
+            }
+        } else if (tokenIdWidth == 16) {
+            if (tokenId > type(uint128).max) {
+                revert TokenIdTooLarge(tokenId, type(uint128).max);
+            } else {
+                return abi.encodePacked(uint128(tokenId));
+            }
+        } else {
+            return abi.encodePacked(uint256(tokenId));
+        }
+    }
+
+    function parseTokenId(
+        bytes memory encoded,
+        uint256 offset
+    ) public pure returns (uint256 nextOffset, uint256 tokenId) {
+        uint8 tokenIdWidth;
+        (tokenIdWidth, nextOffset) = encoded.asUint8Unchecked(offset);
+        if (tokenIdWidth == 1) {
+            uint8 tokenIdValue;
+            (tokenIdValue, nextOffset) = encoded.asUint8Unchecked(nextOffset);
+            tokenId = tokenIdValue;
+        } else if (tokenIdWidth == 2) {
+            uint16 tokenIdValue;
+            (tokenIdValue, nextOffset) = encoded.asUint16Unchecked(nextOffset);
+            tokenId = tokenIdValue;
+        } else if (tokenIdWidth == 4) {
+            uint32 tokenIdValue;
+            (tokenIdValue, nextOffset) = encoded.asUint32Unchecked(nextOffset);
+            tokenId = tokenIdValue;
+        } else if (tokenIdWidth == 8) {
+            uint64 tokenIdValue;
+            (tokenIdValue, nextOffset) = encoded.asUint64Unchecked(nextOffset);
+            tokenId = tokenIdValue;
+        } else if (tokenIdWidth == 16) {
+            uint128 tokenIdValue;
+            (tokenIdValue, nextOffset) = encoded.asUint128Unchecked(nextOffset);
+            tokenId = tokenIdValue;
+        } else {
+            (tokenId, nextOffset) = encoded.asUint256Unchecked(nextOffset);
+        }
     }
 
     /// @dev Message emitted by Transceiver implementations.

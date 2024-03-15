@@ -24,11 +24,14 @@ import "./libraries/NttManagerHelpers.sol";
 import {Utils} from "./libraries/Utils.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../src/libraries/external/OwnableUpgradeable.sol";
+import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 
 import "./mocks/MockTransceivers.sol";
 import "../src/mocks/DummyNft.sol";
 
 contract TestNonFungibleNttManager is Test {
+    using BytesParsing for bytes;
+
     uint16 constant chainIdOne = 2;
     uint16 constant chainIdTwo = 6;
     uint16 constant chainIdThree = 10;
@@ -40,6 +43,7 @@ contract TestNonFungibleNttManager is Test {
     address relayer = 0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470;
     uint8 consistencyLevel = 1;
     uint256 baseGasLimit = 500000;
+    uint8 tokenIdWidth = 2;
 
     address owner = makeAddr("owner");
 
@@ -60,7 +64,7 @@ contract TestNonFungibleNttManager is Test {
         bool shouldInitialize
     ) internal returns (INonFungibleNttManager) {
         NonFungibleNttManager implementation =
-            new NonFungibleNttManager(address(nft), _mode, _chainId);
+            new NonFungibleNttManager(address(nft), tokenIdWidth, _mode, _chainId);
 
         NonFungibleNttManager proxy =
             NonFungibleNttManager(address(new ERC1967Proxy(address(implementation), "")));
@@ -227,11 +231,59 @@ contract TestNonFungibleNttManager is Test {
         managerOne.setPeer(chainId, newPeer);
     }
 
-    // ============================ Transfer Tests ======================================
+    // ============================ Serde Tests ======================================
 
-    function test_lockAndMint(uint256 nftCount, uint256 startId) public {
+    function test_serde(
+        uint8 tokenIdWidth,
+        bytes32 to,
+        uint16 toChain,
+        bytes memory payload,
+        uint256 nftCount,
+        uint256 startId
+    ) public {
+        // Narrow the search.
+        tokenIdWidth = uint8(bound(tokenIdWidth, 1, 32));
+        // Ugly, but necessary.
+        vm.assume(
+            tokenIdWidth == 1 || tokenIdWidth == 2 || tokenIdWidth == 4 || tokenIdWidth == 8
+                || tokenIdWidth == 16 || tokenIdWidth == 32
+        );
+        vm.assume(to != bytes32(0));
+        vm.assume(toChain != 0);
         nftCount = bound(nftCount, 1, managerOne.getMaxBatchSize());
         startId = bound(startId, 0, type(uint256).max - nftCount);
+
+        TransceiverStructs.NonFungibleNativeTokenTransfer memory nftTransfer = TransceiverStructs
+            .NonFungibleNativeTokenTransfer({
+            to: to,
+            toChain: toChain,
+            payload: payload,
+            tokenIds: _createBatchTokenIds(nftCount, startId)
+        });
+
+        bytes memory encoded =
+            TransceiverStructs.encodeNonFungibleNativeTokenTransfer(nftTransfer, 32);
+
+        TransceiverStructs.NonFungibleNativeTokenTransfer memory out =
+            TransceiverStructs.parseNonFungibleNativeTokenTransfer(encoded);
+
+        assertEq(out.to, to, "To address should be the same");
+        assertEq(out.toChain, toChain, "To chain should be the same");
+        assertEq(out.payload, payload, "Payload should be the same");
+        assertEq(
+            out.tokenIds.length, nftTransfer.tokenIds.length, "TokenIds length should be the same"
+        );
+
+        for (uint256 i = 0; i < nftCount; i++) {
+            assertEq(out.tokenIds[i], nftTransfer.tokenIds[i], "TokenId should be the same");
+        }
+    }
+
+    // ============================ Transfer Tests ======================================
+
+    function test_lockAndMint(uint16 nftCount, uint16 startId) public {
+        nftCount = uint16(bound(nftCount, 1, managerOne.getMaxBatchSize()));
+        startId = uint16(bound(startId, 0, type(uint16).max - nftCount));
 
         address recipient = makeAddr("recipient");
         uint256[] memory tokenIds = _mintNftBatch(nftOne, recipient, nftCount, startId);
@@ -253,9 +305,9 @@ contract TestNonFungibleNttManager is Test {
         assertTrue(_isBatchOwner(nftOne, tokenIds, address(managerOne)), "Manager should own NFTs");
     }
 
-    function test_burnAndUnlock(uint256 nftCount, uint256 startId) public {
-        nftCount = bound(nftCount, 1, managerTwo.getMaxBatchSize());
-        startId = bound(startId, 0, type(uint256).max - nftCount);
+    function test_burnAndUnlock(uint16 nftCount, uint16 startId) public {
+        nftCount = uint16(bound(nftCount, 1, managerOne.getMaxBatchSize()));
+        startId = uint16(bound(startId, 0, type(uint16).max - nftCount));
 
         // Mint nftOne to managerOne to "lock" them.
         {
@@ -287,9 +339,9 @@ contract TestNonFungibleNttManager is Test {
         assertTrue(_isBatchOwner(nftOne, tokenIds, recipient), "Recipient should own NFTs");
     }
 
-    function test_burnAndMint(uint256 nftCount, uint256 startId) public {
-        nftCount = bound(nftCount, 1, managerOne.getMaxBatchSize());
-        startId = bound(startId, 0, type(uint256).max - nftCount);
+    function test_burnAndMint(uint16 nftCount, uint16 startId) public {
+        nftCount = uint16(bound(nftCount, 1, managerOne.getMaxBatchSize()));
+        startId = uint16(bound(startId, 0, type(uint16).max - nftCount));
 
         address recipient = makeAddr("recipient");
         uint256[] memory tokenIds = _mintNftBatch(nftOne, recipient, nftCount, startId);
@@ -483,9 +535,7 @@ contract TestNonFungibleNttManager is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                INonFungibleNttManager.InvalidTargetChain.selector,
-                chainIdThree,
-                chainIdTwo
+                INonFungibleNttManager.InvalidTargetChain.selector, chainIdThree, chainIdTwo
             )
         );
         transceiverTwo.receiveMessage(encodedVm);
@@ -601,6 +651,17 @@ contract TestNonFungibleNttManager is Test {
             arr[i] = tokenId;
 
             nft.mint(recipient, tokenId);
+        }
+        return arr;
+    }
+
+    function _createBatchTokenIds(
+        uint256 len,
+        uint256 start
+    ) internal pure returns (uint256[] memory) {
+        uint256[] memory arr = new uint256[](len);
+        for (uint256 i = 0; i < len; i++) {
+            arr[i] = start + i;
         }
         return arr;
     }

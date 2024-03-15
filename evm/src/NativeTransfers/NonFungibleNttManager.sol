@@ -21,11 +21,25 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
 
     // =============== Immutables ============================================================
 
+    // Hard cap on the number of NFTs that can be transferred in a single batch. This is to prevent
+    // the contract from running out of gas when processing large batches of NFTs.
     uint8 constant MAX_BATCH_SIZE = 50;
+
+    // The number of bytes each NFT token ID occupies in the payload. All tokenIDs must fit within
+    // this width.
+    uint8 immutable tokenIdWidth;
 
     // =============== Setup =================================================================
 
-    constructor(address _token, Mode _mode, uint16 _chainId) ManagerBase(_token, _mode, _chainId) {}
+    constructor(
+        address _token,
+        uint8 _tokenIdWidth,
+        Mode _mode,
+        uint16 _chainId
+    ) ManagerBase(_token, _mode, _chainId) {
+        _validateTokenIdWidth(_tokenIdWidth);
+        tokenIdWidth = _tokenIdWidth;
+    }
 
     function __NonFungibleNttManager_init() internal onlyInitializing {
         // check if the owner is the deployer of this contract
@@ -211,7 +225,7 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
             TransceiverStructs.ManagerMessage(
                 bytes32(uint256(sequence)),
                 toWormholeFormat(msg.sender),
-                TransceiverStructs.encodeNonFungibleNativeTokenTransfer(nft)
+                TransceiverStructs.encodeNonFungibleNativeTokenTransfer(nft, tokenIdWidth)
             )
         );
 
@@ -270,6 +284,15 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
     function _verifyPeer(uint16 sourceChainId, bytes32 peerAddress) internal view {
         if (_getPeersStorage()[sourceChainId].peerAddress != peerAddress) {
             revert InvalidPeer(sourceChainId, peerAddress);
+        }
+    }
+
+    function _validateTokenIdWidth(uint8 _tokenIdWidth) internal pure {
+        if (
+            _tokenIdWidth != 1 && _tokenIdWidth != 2 && _tokenIdWidth != 4 && _tokenIdWidth != 8
+                && _tokenIdWidth != 16 && _tokenIdWidth != 32
+        ) {
+            revert InvalidTokenIdWidth(_tokenIdWidth);
         }
     }
 }
