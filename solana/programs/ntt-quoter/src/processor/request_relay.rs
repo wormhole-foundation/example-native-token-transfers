@@ -19,7 +19,10 @@ fn check_release_constraint_and_fetch_chain_id(
     let mut acc_data: &[_] = &outbox_item.try_borrow_data()?;
     let item = OutboxItem::try_deserialize(&mut acc_data)?;
 
-    if !item.released.get(registered_ntt.wormhole_transceiver_index) {
+    let released = item
+        .released
+        .get(registered_ntt.wormhole_transceiver_index)?;
+    if !released {
         return Err(NttQuoterError::OutboxItemNotReleased.into());
     }
 
