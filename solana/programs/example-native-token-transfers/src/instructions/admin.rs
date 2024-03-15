@@ -229,7 +229,7 @@ pub fn register_transceiver(ctx: Context<RegisterTransceiver>) -> Result<()> {
             transceiver_address: ctx.accounts.transceiver.key(),
         });
 
-    ctx.accounts.config.enabled_transceivers.set(id, true);
+    ctx.accounts.config.enabled_transceivers.set(id, true)?;
     Ok(())
 }
 

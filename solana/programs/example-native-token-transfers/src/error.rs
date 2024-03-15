@@ -2,6 +2,7 @@ use anchor_lang::prelude::error_code;
 
 #[error_code]
 // TODO(csongor): rename
+#[derive(PartialEq)]
 pub enum NTTError {
     #[msg("CantReleaseYet")]
     CantReleaseYet,
@@ -43,4 +44,6 @@ pub enum NTTError {
     BadAmountAfterBurn,
     #[msg("ZeroThreshold")]
     ZeroThreshold,
+    #[msg("BitmapIndexOutOfBounds")]
+    BitmapIndexOutOfBounds,
 }

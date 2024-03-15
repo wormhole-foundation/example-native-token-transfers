@@ -31,11 +31,11 @@ impl OutboxItem {
             return Ok(false);
         }
 
-        if self.released.get(transceiver_index) {
+        if self.released.get(transceiver_index)? {
             return Err(NTTError::MessageAlreadySent.into());
         }
 
-        self.released.set(transceiver_index, true);
+        self.released.set(transceiver_index, true)?;
 
         Ok(true)
     }

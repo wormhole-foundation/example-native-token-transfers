@@ -370,7 +370,7 @@ async fn assert_queued(ctx: &mut ProgramTestContext, outbox_item: Pubkey) {
 
     let clock: Clock = ctx.banks_client.get_sysvar().await.unwrap();
 
-    assert!(!outbox_item_account.released.get(0));
+    assert!(!outbox_item_account.released.get(0).unwrap());
     assert!(outbox_item_account.release_timestamp > clock.unix_timestamp);
 }
 
