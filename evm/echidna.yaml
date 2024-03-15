@@ -1,0 +1,14 @@
+testMode: "assertion"
+
+deployContracts: [
+  ["0x1f1", "TransceiverStructs"],
+]
+
+cryticArgs: ["--compile-libraries=(TransceiverStructs,0x1f1)"]
+
+# Default is 0x6000, but we need to increase this as not compiled via ir
+codeSize: 0x8000
+
+stopOnFail: true
+
+# corpusDir: "corpus"
