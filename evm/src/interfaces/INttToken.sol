@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.8 <0.9.0;
 
-interface INTTToken {
+interface INttToken {
     /// @notice Error when the caller is not the minter.
     /// @dev Selector 0x5fb5729e.
     /// @param caller The caller of the function.

@@ -248,4 +248,4 @@ bash sh/configure_wormhole_ntt.sh -n NETWORK_TYPE -c CHAIN_NAME -k PRIVATE_KEY
 #### Additional Notes
 Tokens powered by NTT in __burn__ mode require the `burn` method to be present. This method is not present in the standard ERC20 interface, but is found in the `ERC20Burnable` interface.
 
-The `mint` and `setMinter` methods found in the [`INTTToken` Interface](src/interfaces/INTTToken.sol) are not found in the standard `ERC20` interface.
+The `mint` and `setMinter` methods found in the [`INttToken` Interface](src/interfaces/INTTToken.sol) are not found in the standard `ERC20` interface.

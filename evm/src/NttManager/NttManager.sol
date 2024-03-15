@@ -10,7 +10,7 @@ import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 import "../libraries/RateLimiter.sol";
 
 import "../interfaces/INttManager.sol";
-import "../interfaces/INTTToken.sol";
+import "../interfaces/INttToken.sol";
 import "../interfaces/ITransceiver.sol";
 
 import {ManagerBase} from "./ManagerBase.sol";
@@ -455,7 +455,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
             IERC20(token).safeTransfer(recipient, untrimmedAmount);
         } else if (mode == Mode.BURNING) {
             // mint tokens to the specified recipient
-            INTTToken(token).mint(recipient, untrimmedAmount);
+            INttToken(token).mint(recipient, untrimmedAmount);
         } else {
             revert InvalidMode(uint8(mode));
         }
