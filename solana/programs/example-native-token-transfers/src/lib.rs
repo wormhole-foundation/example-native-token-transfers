@@ -152,9 +152,15 @@ pub mod example_native_token_transfers {
     }
 
     pub fn release_wormhole_outbound(
-        ctx: Context<ReleaseOutbound>,
+        ctx: Context<ReleaseOutboundNativeTokenTransfer>,
         args: ReleaseOutboundArgs,
     ) -> Result<()> {
+        #[cfg(not(feature = "idl-build"))]
+        let ctx = Context {
+            accounts: &mut ctx.accounts.inner,
+            bumps: ctx.bumps.inner,
+            ..ctx
+        };
         transceivers::wormhole::instructions::release_outbound(ctx, args)
     }
 

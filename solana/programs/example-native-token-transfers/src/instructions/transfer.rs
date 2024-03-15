@@ -10,7 +10,7 @@ use crate::{
     peer::NttManagerPeer,
     queue::{
         inbox::InboxRateLimit,
-        outbox::{OutboxItem, OutboxRateLimit},
+        outbox::{OutboxItem, OutboxRateLimit, TokenTransferOutbox},
         rate_limit::RateLimitResult,
     },
 };
@@ -44,9 +44,9 @@ pub struct Transfer<'info> {
     #[account(
         init,
         payer = payer,
-        space = 8 + OutboxItem::INIT_SPACE,
+        space = 8 + OutboxItem::<TokenTransferOutbox>::INIT_SPACE,
     )]
-    pub outbox_item: Account<'info, OutboxItem>,
+    pub outbox_item: Account<'info, OutboxItem<TokenTransferOutbox>>,
 
     #[account(mut)]
     pub outbox_rate_limit: Account<'info, OutboxRateLimit>,
@@ -288,13 +288,15 @@ fn insert_into_outbox(
     };
 
     common.outbox_item.set_inner(OutboxItem {
-        amount: trimmed_amount,
         sender: common.from.owner,
         recipient_chain,
         recipient_ntt_manager,
-        recipient_address,
         release_timestamp,
         released: Bitmap::new(),
+        payload: TokenTransferOutbox {
+            amount: trimmed_amount,
+            recipient_address,
+        },
     });
 
     Ok(())

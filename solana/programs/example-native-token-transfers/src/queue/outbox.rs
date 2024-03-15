@@ -7,20 +7,24 @@ use crate::{bitmap::*, clock::current_timestamp, error::NTTError};
 
 use super::rate_limit::RateLimitState;
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq, InitSpace)]
+pub struct TokenTransferOutbox {
+    pub amount: TrimmedAmount,
+    pub recipient_address: [u8; 32],
+}
+
 #[account]
 #[derive(InitSpace, Debug, PartialEq, Eq)]
-// TODO: generalise this to arbitrary outbound messages (via a generic parameter in place of amount and recipient info)
-pub struct OutboxItem {
-    pub amount: TrimmedAmount,
+pub struct OutboxItem<A: AnchorDeserialize + AnchorSerialize + Space> {
     pub sender: Pubkey,
     pub recipient_chain: ChainId,
     pub recipient_ntt_manager: [u8; 32],
-    pub recipient_address: [u8; 32],
     pub release_timestamp: i64,
     pub released: Bitmap,
+    pub payload: A,
 }
 
-impl OutboxItem {
+impl<A: AnchorDeserialize + AnchorSerialize + Space> OutboxItem<A> {
     /// Attempt to release the transfer.
     /// Returns true if the transfer was released, false if it was not yet time to release it.
     /// TODO: this is duplicated in inbox.rs. factor out?

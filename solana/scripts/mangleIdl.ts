@@ -1,5 +1,5 @@
 import { type Idl } from '@coral-xyz/anchor'
-import { type IdlAccountDef, type IdlField, type IdlType, type IdlTypeDef, type IdlTypeDefTy, type IdlTypeDefTyStruct } from '@coral-xyz/anchor/dist/cjs/idl'
+import { IdlTypeDefined, type IdlAccountDef, type IdlField, type IdlType, type IdlTypeDef, type IdlTypeDefTy, type IdlTypeDefTyStruct } from '@coral-xyz/anchor/dist/cjs/idl'
 import fs from 'fs'
 import path from 'path'
 
@@ -53,7 +53,7 @@ idl.types =
 
 const instantiatedTypes = new Map<string, IdlType[]>()
 
-function instantiatedTypeName (name: string, tys: any[]): string {
+function instantiatedTypeName(name: string, tys: any[]): string {
   return `${name}${tys.map((ty) => ty.defined ?? ty).join('')}`
 }
 
@@ -64,17 +64,21 @@ interface IdlTypeDefinedWithTypeArgs {
   }
 }
 
-function isIdlTypeDefinedWithTypeArgs (
+function isIdlTypeDefinedWithTypeArgs(
   ty: any
 ): ty is IdlTypeDefinedWithTypeArgs {
   return ty.hasOwnProperty('definedWithTypeArgs')
+}
+
+function isIdlTypeDefined(ty: any): ty is IdlTypeDefined {
+  return ty.hasOwnProperty('defined')
 }
 
 interface IdlTypeTyArg {
   generic: string
 }
 
-function isIdlTypeTyArg (ty: any): ty is IdlTypeTyArg {
+function isIdlTypeTyArg(ty: any): ty is IdlTypeTyArg {
   return ty.hasOwnProperty('generic')
 }
 
@@ -99,7 +103,7 @@ type IdlTypeDefGeneric =
     type: IdlTypeDefTy | IdlTypeDefTyStructGeneric
   }
 
-function instantiateAccount (
+function instantiateAccount(
   ty: IdlAccountDefGeneric,
   tys: IdlType[]
 ): IdlAccountDef {
@@ -125,15 +129,16 @@ got ${tys.length} when instantiating ${ty.name}`)
   return ty
 }
 
-function instantiateStruct (
+function instantiateStruct(
   ty: IdlTypeDefTyStructGeneric,
   map: Map<string, IdlType>
 ): IdlTypeDefTyStruct {
   ty = structuredClone(ty)
 
   ty.fields.forEach((field: IdlFieldGeneric) => {
+    var v: IdlType | undefined
     if (isIdlTypeTyArg(field.type)) {
-      const v = map.get(field.type.generic)
+      v = map.get(field.type.generic)
       if (v === undefined) {
         throw new Error(`No type arg for ${field.type.generic}`)
       }
@@ -144,7 +149,7 @@ function instantiateStruct (
         // TODO: we could handle multiple args, but right now there's no need
         throw new Error(`Expected 1 type arg, got ${defined.args.length}`)
       }
-      const v = map.get(field.type.definedWithTypeArgs.args[0].type.generic)
+      v = map.get(field.type.definedWithTypeArgs.args[0].type.generic)
       if (v === undefined) {
         throw new Error(`No type arg for\
 ${field.type.definedWithTypeArgs.args[0].type.generic}`)
@@ -158,12 +163,17 @@ ${field.type.definedWithTypeArgs.args[0].type.generic}`)
       }
       instantiatedTypes.get(defined.name)?.push(v)
     }
+
+    if (v && isIdlTypeDefined(v) && types.get(v.defined) === undefined) {
+      throw new Error(`No type definition for ${v.defined}. Did you forget to\
+add it to the extra_idl package?`)
+    }
   })
 
   return ty
 }
 
-function instantiateType (ty: IdlTypeDefGeneric, tys: IdlType[]): IdlTypeDef {
+function instantiateType(ty: IdlTypeDefGeneric, tys: IdlType[]): IdlTypeDef {
   ty = structuredClone(ty)
 
   if (ty.generics === undefined) {
@@ -192,7 +202,7 @@ got ${tys.length} when instantiating ${ty.name}`)
   return ty
 }
 
-function getInstantiation (name: string): IdlType[] {
+function getInstantiation(name: string): IdlType[] {
   if (instantiations.hasOwnProperty(name)) {
     return instantiations[name]
   }

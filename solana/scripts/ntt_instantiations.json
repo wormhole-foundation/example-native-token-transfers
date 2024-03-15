@@ -1,7 +1,12 @@
 {
   "InboxItem": [
     {
-      "defined": "TokenTransfer"
+      "defined": "TokenTransferInbox"
+    }
+  ],
+  "OutboxItem": [
+    {
+      "defined": "TokenTransferOutbox"
     }
   ],
   "ValidatedTransceiverMessage": [

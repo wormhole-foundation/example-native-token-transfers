@@ -2,7 +2,7 @@ use anchor_lang::{
     prelude::*,
     system_program::{self, Transfer},
 };
-use example_native_token_transfers::queue::outbox::OutboxItem;
+use example_native_token_transfers::queue::outbox::{OutboxItem, TokenTransferOutbox};
 use solana_program::{native_token::LAMPORTS_PER_SOL, sysvar};
 
 use crate::{
@@ -34,7 +34,7 @@ pub struct RequestRelay<'info> {
         owner = example_native_token_transfers::ID,
         constraint = outbox_item.released.get(WORMHOLE_TRANSCEIVER_INDEX),
     )]
-    pub outbox_item: Account<'info, OutboxItem>,
+    pub outbox_item: Account<'info, OutboxItem<TokenTransferOutbox>>,
 
     #[account(
         init,

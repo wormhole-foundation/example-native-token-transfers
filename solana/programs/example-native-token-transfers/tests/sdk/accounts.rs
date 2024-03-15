@@ -3,7 +3,7 @@ use example_native_token_transfers::{
     config::Config,
     instructions::TransferArgs,
     queue::{
-        inbox::{InboxItem, InboxRateLimit, TokenTransfer},
+        inbox::{InboxItem, InboxRateLimit, TokenTransferInbox},
         outbox::OutboxRateLimit,
     },
     registered_transceiver::RegisteredTransceiver,
@@ -129,7 +129,10 @@ pub trait NTTAccounts {
         hasher.update(&TypePrefixedPayload::to_vec_payload(&ntt_manager_message));
 
         let (inbox_item, _) = Pubkey::find_program_address(
-            &[InboxItem::<TokenTransfer>::SEED_PREFIX, &hasher.finalize()],
+            &[
+                InboxItem::<TokenTransferInbox>::SEED_PREFIX,
+                &hasher.finalize(),
+            ],
             &self.program(),
         );
         inbox_item

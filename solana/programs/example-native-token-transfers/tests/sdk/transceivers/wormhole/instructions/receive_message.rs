@@ -32,7 +32,8 @@ pub fn receive_message(ntt: &NTT, accs: ReceiveMessage) -> Instruction {
             data: data.data(),
         }
     }
-    #[cfg(feature = "idl-build")] {
+    #[cfg(feature = "idl-build")]
+    {
         let _ = ntt;
         let _ = accs;
         unimplemented!()

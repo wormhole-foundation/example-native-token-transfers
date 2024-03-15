@@ -43,6 +43,10 @@ impl Config {
     pub const SEED_PREFIX: &'static [u8] = b"config";
 }
 
+pub mod accounts {
+    pub use super::__client_accounts_not_paused_config::NotPausedConfig;
+}
+
 #[derive(Accounts)]
 pub struct NotPausedConfig<'info> {
     #[account(

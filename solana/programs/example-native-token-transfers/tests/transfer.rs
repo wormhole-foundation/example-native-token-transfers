@@ -8,7 +8,7 @@ use example_native_token_transfers::{
     bitmap::Bitmap,
     error::NTTError,
     instructions::TransferArgs,
-    queue::outbox::{OutboxItem, OutboxRateLimit},
+    queue::outbox::{OutboxItem, OutboxRateLimit, TokenTransferOutbox},
     transceivers::wormhole::ReleaseOutboundArgs,
 };
 use ntt_messages::{
@@ -124,21 +124,24 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
         .await
         .unwrap();
 
-    let outbox_item_account: OutboxItem = ctx.get_account_data_anchor(outbox_item.pubkey()).await;
+    let outbox_item_account: OutboxItem<TokenTransferOutbox> =
+        ctx.get_account_data_anchor(outbox_item.pubkey()).await;
 
     assert_eq!(
         outbox_item_account,
         OutboxItem {
-            amount: TrimmedAmount {
-                amount: 1,
-                decimals: 7
-            },
             sender: test_data.user.pubkey(),
             recipient_chain: ChainId { id: 2 },
             recipient_ntt_manager: OTHER_MANAGER,
-            recipient_address: [1u8; 32],
             release_timestamp: clock.unix_timestamp,
             released: Bitmap::new(),
+            payload: TokenTransferOutbox {
+                amount: TrimmedAmount {
+                    amount: 1,
+                    decimals: 7
+                },
+                recipient_address: [1u8; 32],
+            }
         }
     );
 
@@ -156,7 +159,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
     .await
     .unwrap();
 
-    let outbox_item_account_after: OutboxItem =
+    let outbox_item_account_after: OutboxItem<TokenTransferOutbox> =
         ctx.get_account_data_anchor(outbox_item.pubkey()).await;
 
     // make sure the outbox item is now released, but nothing else has changed
@@ -494,7 +497,8 @@ async fn test_transfer_wrong_mode() {
 }
 
 async fn assert_queued(ctx: &mut ProgramTestContext, outbox_item: Pubkey) {
-    let outbox_item_account: OutboxItem = ctx.get_account_data_anchor(outbox_item).await;
+    let outbox_item_account: OutboxItem<TokenTransferOutbox> =
+        ctx.get_account_data_anchor(outbox_item).await;
 
     let clock: Clock = ctx.banks_client.get_sysvar().await.unwrap();
 

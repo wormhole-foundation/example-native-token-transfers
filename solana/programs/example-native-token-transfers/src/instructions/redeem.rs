@@ -9,7 +9,7 @@ use crate::{
     messages::ValidatedTransceiverMessage,
     peer::NttManagerPeer,
     queue::{
-        inbox::{InboxItem, InboxRateLimit, ReleaseStatus, TokenTransfer},
+        inbox::{InboxItem, InboxRateLimit, ReleaseStatus, TokenTransferInbox},
         outbox::OutboxRateLimit,
         rate_limit::RateLimitResult,
     },
@@ -55,9 +55,9 @@ pub struct Redeem<'info> {
     #[account(
         init_if_needed,
         payer = payer,
-        space = 8 + InboxItem::<TokenTransfer>::INIT_SPACE,
+        space = 8 + InboxItem::<TokenTransferInbox>::INIT_SPACE,
         seeds = [
-            InboxItem::<TokenTransfer>::SEED_PREFIX,
+            InboxItem::<TokenTransferInbox>::SEED_PREFIX,
             transceiver_message.message.ntt_manager_payload.keccak256(
                 transceiver_message.from_chain
             ).as_ref(),
@@ -69,7 +69,7 @@ pub struct Redeem<'info> {
     /// transceivers "vote" on messages (by delivering them). By making the inbox
     /// items content-addressed, we can ensure that disagreeing votes don't
     /// interfere with each other.
-    pub inbox_item: Account<'info, InboxItem<TokenTransfer>>,
+    pub inbox_item: Account<'info, InboxItem<TokenTransferInbox>>,
 
     #[account(
         mut,
@@ -105,7 +105,7 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
         accs.inbox_item.set_inner(InboxItem {
             init: true,
             bump: ctx.bumps.inbox_item,
-            payload: TokenTransfer {
+            payload: TokenTransferInbox {
                 amount,
                 recipient_address,
             },

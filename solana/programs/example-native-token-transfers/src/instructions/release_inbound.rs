@@ -5,7 +5,7 @@ use ntt_messages::mode::Mode;
 use crate::{
     config::*,
     error::NTTError,
-    queue::inbox::{InboxItem, ReleaseStatus, TokenTransfer},
+    queue::inbox::{InboxItem, ReleaseStatus, TokenTransferInbox},
 };
 
 #[derive(Accounts)]
@@ -16,7 +16,7 @@ pub struct ReleaseInbound<'info> {
     pub config: NotPausedConfig<'info>,
 
     #[account(mut)]
-    pub inbox_item: Account<'info, InboxItem<TokenTransfer>>,
+    pub inbox_item: Account<'info, InboxItem<TokenTransferInbox>>,
 
     #[account(
         mut,

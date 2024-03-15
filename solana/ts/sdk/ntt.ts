@@ -31,7 +31,7 @@ export type NttMessage = NttManagerMessage<typeof nativeTokenTransferLayout>;
 
 export type Config = IdlAccounts<ExampleNativeTokenTransfers>['config']
 export type InboxItem<A> = IdlAccounts<ExampleNativeTokenTransfers>['inboxItem'] & { payload: A }
-export type TokenTransfer = IdlTypes<ExampleNativeTokenTransfers>['TokenTransfer']
+export type TokenTransferInbox = IdlTypes<ExampleNativeTokenTransfers>['TokenTransferInbox']
 
 export interface TransferArgs {
   amount: BN
@@ -792,7 +792,7 @@ export class NTT {
     return (await this.getConfig(config)).tokenProgram
   }
 
-  async getInboxItem(chain: ChainName | ChainId, nttMessage: NttMessage): Promise<InboxItem<TokenTransfer>> {
+  async getInboxItem(chain: ChainName | ChainId, nttMessage: NttMessage): Promise<InboxItem<TokenTransferInbox>> {
     return await this.program.account.inboxItem.fetch(this.inboxItemAccountAddress(chain, nttMessage))
   }
 

@@ -1,12 +1,15 @@
 use anchor_lang::prelude::*;
-use example_native_token_transfers::queue::inbox::TokenTransfer;
+use example_native_token_transfers::queue::{
+    inbox::TokenTransferInbox, outbox::TokenTransferOutbox,
+};
 use ntt_messages::ntt::NativeTokenTransfer;
 
 declare_id!("1izrS2eLspuoshBa4od3zPQz9aWJxT4DzKMK2wm9sGS");
 
 #[account]
 pub struct Types {
-    pub token_transfer: TokenTransfer,
+    pub token_transfer_inbox: TokenTransferInbox,
+    pub token_transfer_outbox: TokenTransferOutbox,
     pub native_token_transfer: NativeTokenTransfer,
 }
 

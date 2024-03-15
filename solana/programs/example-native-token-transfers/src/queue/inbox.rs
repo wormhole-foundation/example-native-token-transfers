@@ -7,7 +7,7 @@ use crate::{bitmap::Bitmap, clock::current_timestamp, error::NTTError};
 use super::rate_limit::RateLimitState;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq, InitSpace)]
-pub struct TokenTransfer {
+pub struct TokenTransferInbox {
     pub amount: u64,
     pub recipient_address: Pubkey,
 }
