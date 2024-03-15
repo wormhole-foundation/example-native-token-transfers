@@ -1,3 +1,4 @@
+#![feature(type_changing_struct_update)]
 use anchor_lang::prelude::*;
 
 // TODO: is there a more elegant way of checking that these 3 features are mutually exclusive?
@@ -64,8 +65,6 @@ pub const SESSION_AUTHORITY_SEED: &[u8] = b"session_authority";
 
 #[program]
 pub mod example_native_token_transfers {
-
-    use ntt_messages::ntt::NativeTokenTransfer;
 
     use super::*;
 
@@ -142,7 +141,13 @@ pub mod example_native_token_transfers {
         transceivers::wormhole::instructions::set_transceiver_peer(ctx, args)
     }
 
-    pub fn receive_wormhole_message(ctx: Context<ReceiveMessage>) -> Result<()> {
+    pub fn receive_wormhole_message(ctx: Context<ReceiveMessageNativeTokenTransfer>) -> Result<()> {
+        #[cfg(not(feature = "idl-build"))]
+        let ctx = Context {
+            accounts: &mut ctx.accounts.inner,
+            bumps: ctx.bumps.inner,
+            ..ctx
+        };
         transceivers::wormhole::instructions::receive_message(ctx)
     }
 
@@ -163,5 +168,4 @@ pub mod example_native_token_transfers {
     ) -> Result<()> {
         transceivers::wormhole::instructions::broadcast_peer(ctx, args)
     }
-
 }
