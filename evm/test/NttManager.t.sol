@@ -634,9 +634,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
         vm.expectRevert(
             abi.encodeWithSelector(
                 IManagerBase.TransceiverAlreadyAttestedToMessage.selector,
-                TransceiverStructs.managerMessageDigest(
-                    TransceiverHelpersLib.SENDING_CHAIN_ID, m
-                )
+                TransceiverStructs.managerMessageDigest(TransceiverHelpersLib.SENDING_CHAIN_ID, m)
             )
         );
         e2.receiveMessage(encodedEm);

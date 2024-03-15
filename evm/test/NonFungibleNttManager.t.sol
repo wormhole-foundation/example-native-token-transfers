@@ -319,12 +319,7 @@ contract TestNonFungibleNttManager is Test {
 
         vm.startPrank(recipient);
         vm.expectRevert(abi.encodeWithSelector(INonFungibleNttManager.ZeroTokenIds.selector));
-        managerOne.transfer(
-            tokenIds,
-            chainIdTwo,
-            toWormholeFormat(recipient),
-            new bytes(1)
-        );
+        managerOne.transfer(tokenIds, chainIdTwo, toWormholeFormat(recipient), new bytes(1));
     }
 
     function test_cannotTransferExceedsMaxBatchSize() public {
@@ -342,12 +337,7 @@ contract TestNonFungibleNttManager is Test {
                 managerOne.getMaxBatchSize()
             )
         );
-        managerOne.transfer(
-            tokenIds,
-            chainIdTwo,
-            toWormholeFormat(recipient),
-            new bytes(1)
-        );
+        managerOne.transfer(tokenIds, chainIdTwo, toWormholeFormat(recipient), new bytes(1));
     }
 
     function test_cannotTransferToInvalidChain() public {
@@ -361,16 +351,9 @@ contract TestNonFungibleNttManager is Test {
         vm.startPrank(recipient);
         nftOne.setApprovalForAll(address(managerOne), true);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IManagerBase.PeerNotRegistered.selector, targetChain
-            )
+            abi.encodeWithSelector(IManagerBase.PeerNotRegistered.selector, targetChain)
         );
-        managerOne.transfer(
-            tokenIds,
-            targetChain,
-            toWormholeFormat(recipient),
-            new bytes(1)
-        );
+        managerOne.transfer(tokenIds, targetChain, toWormholeFormat(recipient), new bytes(1));
     }
 
     function test_cannotTransferInvalidRecipient() public {
@@ -408,12 +391,7 @@ contract TestNonFungibleNttManager is Test {
         vm.startPrank(recipient);
         nftOne.setApprovalForAll(address(managerOne), true);
         vm.expectRevert("ERC721: transfer from incorrect owner");
-        managerOne.transfer(
-            tokenIds2,
-            chainIdTwo,
-            toWormholeFormat(recipient),
-            new bytes(1)
-        );
+        managerOne.transfer(tokenIds2, chainIdTwo, toWormholeFormat(recipient), new bytes(1));
     }
 
     function test_cannotTransferWhenPaused() public {
@@ -428,12 +406,89 @@ contract TestNonFungibleNttManager is Test {
 
         vm.startPrank(recipient);
         vm.expectRevert(PausableUpgradeable.RequireContractIsNotPaused.selector);
-        managerOne.transfer(
-            tokenIds,
-            chainIdTwo,
-            toWormholeFormat(recipient),
-            new bytes(1)
+        managerOne.transfer(tokenIds, chainIdTwo, toWormholeFormat(recipient), new bytes(1));
+    }
+
+    function test_cannotExecuteMessagePeerNotRegistered() public {
+        uint256 nftCount = 1;
+        uint256 startId = 0;
+
+        address recipient = makeAddr("recipient");
+        uint256[] memory tokenIds = _mintNftBatch(nftOne, recipient, nftCount, startId);
+
+        // Register managerThree on managerOne, but not vice versa.
+        vm.startPrank(owner);
+        managerOne.setPeer(chainIdThree, toWormholeFormat(address(managerThree)));
+        transceiverThree.setWormholePeer(chainIdOne, toWormholeFormat(address(transceiverOne)));
+        vm.stopPrank();
+
+        // Burn the NFTs on managerThree.
+        bytes memory encodedVm = _approveAndTransferBatch(
+            managerOne, transceiverOne, nftOne, tokenIds, recipient, chainIdThree, true
+        )[0];
+
+        // Receive the message and mint the NFTs on managerTwo.
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                INonFungibleNttManager.InvalidPeer.selector,
+                chainIdOne,
+                toWormholeFormat(address(managerOne))
+            )
         );
+        transceiverThree.receiveMessage(encodedVm);
+    }
+
+    function test_cannotExecuteMessageNotApproved() public {
+        uint256 nftCount = 1;
+        uint256 startId = 0;
+
+        address recipient = makeAddr("recipient");
+        uint256[] memory tokenIds = _mintNftBatch(nftOne, recipient, nftCount, startId);
+
+        bytes memory encodedVm = _approveAndTransferBatch(
+            managerOne, transceiverOne, nftOne, tokenIds, recipient, chainIdTwo, true
+        )[0];
+
+        // Parse the manager message.
+        bytes memory vmPayload = guardian.wormhole().parseVM(encodedVm).payload;
+        (, TransceiverStructs.ManagerMessage memory message) = TransceiverStructs
+            .parseTransceiverAndManagerMessage(WH_TRANSCEIVER_PAYLOAD_PREFIX, vmPayload);
+
+        // Receive the message and mint the NFTs on managerTwo.
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IManagerBase.MessageNotApproved.selector,
+                _computeMessageDigest(chainIdOne, encodedVm)
+            )
+        );
+        managerTwo.executeMsg(chainIdOne, toWormholeFormat(address(managerOne)), message);
+    }
+
+    function test_cannotExecuteMessageInvalidTargetChain() public {
+        uint256 nftCount = 1;
+        uint256 startId = 0;
+
+        address recipient = makeAddr("recipient");
+        uint256[] memory tokenIds = _mintNftBatch(nftOne, recipient, nftCount, startId);
+
+        // Register a manager on managerOne with chainIdThree, but use managerTwo address.
+        // Otherwise, the recipient manager address would be unexpected.
+        vm.prank(owner);
+        managerOne.setPeer(chainIdThree, toWormholeFormat(address(managerTwo)));
+
+        // Send the batch to chainThree, but receive it on chainTwo.
+        bytes memory encodedVm = _approveAndTransferBatch(
+            managerOne, transceiverOne, nftOne, tokenIds, recipient, chainIdThree, true
+        )[0];
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                INonFungibleNttManager.InvalidTargetChain.selector,
+                chainIdThree,
+                chainIdTwo
+            )
+        );
+        transceiverTwo.receiveMessage(encodedVm);
     }
 
     // ==================================== Helpers =======================================
