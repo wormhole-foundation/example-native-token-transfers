@@ -22,7 +22,7 @@ pub struct Transfer<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    pub config: NotPausedConfig<'info>,
+    pub config: NotPausedConfig<'info, Config>,
 
     #[account(
         mut,

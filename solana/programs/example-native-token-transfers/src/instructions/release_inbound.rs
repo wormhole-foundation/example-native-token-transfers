@@ -13,7 +13,7 @@ pub struct ReleaseInbound<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    pub config: NotPausedConfig<'info>,
+    pub config: NotPausedConfig<'info, Config>,
 
     #[account(mut)]
     pub inbox_item: Account<'info, InboxItem<TokenTransferInbox>>,

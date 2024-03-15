@@ -47,23 +47,33 @@ pub mod accounts {
     pub use super::__client_accounts_not_paused_config::NotPausedConfig;
 }
 
-#[derive(Accounts)]
-pub struct NotPausedConfig<'info> {
-    #[account(
-        constraint = !config.paused @ crate::error::NTTError::Paused,
-    )]
-    config: Account<'info, Config>,
+pub trait Pausable: Clone + AccountDeserialize + AccountSerialize + Owner {
+    fn is_paused(&self) -> bool;
 }
 
-impl<'info> Deref for NotPausedConfig<'info> {
-    type Target = Config;
+impl Pausable for Config {
+    fn is_paused(&self) -> bool {
+        self.paused
+    }
+}
+
+#[derive(Accounts)]
+pub struct NotPausedConfig<'info, C: Pausable> {
+    #[account(
+        constraint = !config.is_paused() @ crate::error::NTTError::Paused,
+    )]
+    config: Account<'info, C>,
+}
+
+impl<'info, C: Pausable> Deref for NotPausedConfig<'info, C> {
+    type Target = C;
 
     fn deref(&self) -> &Self::Target {
         &self.config
     }
 }
 
-impl<'info> DerefMut for NotPausedConfig<'info> {
+impl<'info, C: Pausable> DerefMut for NotPausedConfig<'info, C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.config
     }
