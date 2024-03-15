@@ -221,34 +221,21 @@ contract TrimmingTest is Test {
         assertEq(expectedIsLt, isLt);
     }
 
-    function testFuzz_trimisNOOP(uint256 amount, uint8 aDecimals, uint8 bDecimals) {
-        uint256 amt = bound(amount, 1, type(uint64).max);
+    // invariant: forall (x: TrimmedAmount, aDecimals: uint8, bDecimals: uint8),
+    //            (x.amount <= type(uint64).max)
+    //                    => (trim(untrim(x)) == x)
+    function testFuzz_trimIsLeftInverse(uint256 amount, uint8 aDecimals, uint8 bDecimals) public {
+        // restrict inputs up to u64MAX. Inputs above u64 are tested elsewhere
+        amount = bound(amount, 0, type(uint64).max);
         vm.assume(aDecimals <= 50);
         vm.assume(bDecimals <= 50);
-
-    }
-
-    // invariant: forall (x: uint256, y: uint8, z: uint8),
-    //            (x <= type(uint64).max, y <= z)
-    //                    => (x.trim(x, 8).untrim(y) == x)
-    function testFuzz_trimIsLeftInverse(
-        uint256 amount,
-        uint8 aDecimals,
-        uint8 bDecimals
-    ) public {
-        uint256 amt = bound(amount, 1, type(uint64).max);
-        vm.assume(aDecimals <= 50);
-        vm.assume(bDecimals <= 50);
-
-        // NOTE: this is guaranteeed by trimming
-        vm.assume(aDecimals <= 8 && aDecimals <= bDecimals);
 
         // initialize TrimmedAmount
-        TrimmedAmount trimmedAmount = packTrimmedAmount(uint64(amt), aDecimals);
+        TrimmedAmount trimmedAmount = amount.trim(aDecimals, bDecimals);
 
         // trimming is the left inverse of trimming
-        uint256 amountUntrimmed = trimmedAmount.untrim(bDecimals);
-        TrimmedAmount amountRoundTrip = amountUntrimmed.trim(bDecimals, aDecimals);
+        // e.g. trim(untrim(x)) == x
+        TrimmedAmount amountRoundTrip = (trimmedAmount.untrim(bDecimals)).trim(bDecimals, aDecimals);
 
         assertEq(trimmedAmount.getAmount(), amountRoundTrip.getAmount());
     }
