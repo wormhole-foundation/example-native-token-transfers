@@ -3,6 +3,7 @@ use ntt_messages::errors::ScalingError;
 
 #[error_code]
 // TODO(csongor): rename
+#[derive(PartialEq)]
 pub enum NTTError {
     #[msg("CantReleaseYet")]
     CantReleaseYet,
@@ -48,6 +49,8 @@ pub enum NTTError {
     OverflowExponent,
     #[msg("OverflowScaledAmount")]
     OverflowScaledAmount,
+    #[msg("BitmapIndexOutOfBounds")]
+    BitmapIndexOutOfBounds,
 }
 
 impl From<ScalingError> for NTTError {
