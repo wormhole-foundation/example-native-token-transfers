@@ -8,6 +8,7 @@ abstract contract FuzzingHelpers {
     
     
     event LogAddress(address);
+    event LogUint256(uint256);
     event LogString(string);
     event AssertFail(string);
 
@@ -60,6 +61,10 @@ abstract contract FuzzingHelpers {
     }
 
     function minUint8(uint8 a, uint8 b) internal returns (uint8) {
+        return a < b ? a : b;
+    }
+
+    function minUint256(uint256 a, uint256 b) internal returns (uint256) {
         return a < b ? a : b;
     }
 }
