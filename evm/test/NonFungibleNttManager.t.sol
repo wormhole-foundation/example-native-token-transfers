@@ -144,6 +144,43 @@ contract TestNonFungibleNttManager is Test {
 
     // ================================== Admin Tests ==================================
 
+    function test_cannotDeployWithInvalidTokenIdWidth(uint8 _tokenIdWidth) public {
+        vm.assume(
+            _tokenIdWidth != 1 && _tokenIdWidth != 2 && _tokenIdWidth != 4 && _tokenIdWidth != 8
+                && _tokenIdWidth != 16 && _tokenIdWidth != 32
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                INonFungibleNttManager.InvalidTokenIdWidth.selector, _tokenIdWidth
+            )
+        );
+        NonFungibleNttManager implementation = new NonFungibleNttManager(
+            address(nftOne), _tokenIdWidth, IManagerBase.Mode.BURNING, chainIdOne
+        );
+    }
+
+    /// @dev We perform an upgrade with the existing tokenIdWidth to show that upgrades
+    /// are possible with the same tokenIdWidth. There is no specific error thrown when
+    /// the immutables check throws.
+    function test_cannotUpgradeWithDifferentTokenIdWidth() public {
+        vm.startPrank(owner);
+        {
+            NonFungibleNttManager newImplementation = new NonFungibleNttManager(
+                address(nftOne), tokenIdWidth, IManagerBase.Mode.LOCKING, chainIdOne
+            );
+            managerOne.upgrade(address(newImplementation));
+        }
+
+        uint8 newTokenIdWidth = 4;
+        NonFungibleNttManager newImplementation = new NonFungibleNttManager(
+            address(nftOne), newTokenIdWidth, IManagerBase.Mode.LOCKING, chainIdOne
+        );
+
+        vm.expectRevert();
+        managerOne.upgrade(address(newImplementation));
+    }
+
     function test_cannotInitalizeNotDeployer() public {
         // Don't initialize.
         vm.prank(owner);

@@ -27,7 +27,7 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
 
     // The number of bytes each NFT token ID occupies in the payload. All tokenIDs must fit within
     // this width.
-    uint8 immutable tokenIdWidth;
+    uint8 public immutable tokenIdWidth;
 
     // =============== Setup =================================================================
 
@@ -54,6 +54,14 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
         __NonFungibleNttManager_init();
         _checkThresholdInvariants();
         _checkTransceiversInvariants();
+    }
+
+    /// ============== Invariants =============================================
+
+    /// @dev When we add new immutables, this function should be updated
+    function _checkImmutables() internal view override {
+        super._checkImmutables();
+        assert(this.tokenIdWidth() == tokenIdWidth);
     }
 
     // =============== Storage ==============================================================
