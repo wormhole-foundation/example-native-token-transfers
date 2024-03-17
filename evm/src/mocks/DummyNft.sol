@@ -3,6 +3,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import {ERC721} from "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
+import {INonFungibleNttManager} from "../interfaces/INonFungibleNttManager.sol";
 
 contract DummyNft is ERC721 {
     // Common URI for all NFTs handled by this contract.
@@ -12,7 +13,7 @@ contract DummyNft is ERC721 {
     error BaseUriEmpty();
     error BaseUriTooLong();
 
-    constructor(bytes memory baseUri) ERC721("DummyNft", "DNTF") {
+    constructor(bytes memory baseUri) ERC721("DummyNft", "DNFT") {
         if (baseUri.length == 0) {
             revert BaseUriEmpty();
         }
@@ -52,17 +53,46 @@ contract DummyNft is ERC721 {
 }
 
 contract DummyNftMintAndBurn is DummyNft {
-    constructor(bytes memory baseUri) DummyNft(baseUri) {}
+    bool private reentrant;
+    address private owner;
+
+    constructor(bytes memory baseUri) DummyNft(baseUri) {
+        owner = msg.sender;
+    }
+
+    function setReentrant(bool enabled) public {
+        require(msg.sender == owner, "DummyNftMintAndBurn: not owner");
+        reentrant = enabled;
+    }
 
     function mint(address to, uint256 tokenId) public override {
-        // TODO - add access control here?
         _safeMint(to, tokenId);
+
+        _callback();
     }
 
     function burn(uint256 tokenId) public {
-        // TODO - add access control here?
         _burn(tokenId);
+
+        _callback();
     }
 
-    // TODO: Mint/Burn batches.
+    function safeTransferFrom(address from, address to, uint256 tokenId) public override {
+        super.safeTransferFrom(from, to, tokenId, "");
+
+        _callback();
+    }
+
+    function _callback() public {
+        if (!reentrant) {
+            return;
+        }
+
+        uint256[] memory tokenIds = new uint256[](1);
+        tokenIds[0] = 1;
+
+        INonFungibleNttManager(msg.sender).transfer(
+            tokenIds, 69, bytes32(uint256(uint160(msg.sender))), ""
+        );
+    }
 }

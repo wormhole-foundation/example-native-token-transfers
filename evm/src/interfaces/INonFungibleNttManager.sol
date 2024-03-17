@@ -87,6 +87,12 @@ interface INonFungibleNttManager is IManagerBase {
         bytes memory transceiverInstructions
     ) external payable returns (uint64);
 
+    function attestationReceived(
+        uint16 sourceChainId,
+        bytes32 sourceNttManagerAddress,
+        TransceiverStructs.ManagerMessage memory payload
+    ) external;
+
     function executeMsg(
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,

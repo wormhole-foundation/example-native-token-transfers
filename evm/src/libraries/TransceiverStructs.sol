@@ -29,7 +29,7 @@ library TransceiverStructs {
     ///     This is 0x99'N''F''T'
     bytes4 constant NON_FUNGIBLE_NTT_PREFIX = 0x994E4654;
 
-    /// @dev Message emitted and received by the nttManager contract.
+    /// @dev Message emitted and received by any Manager contract variant.
     ///      The wire format is as follows:
     ///      - id - 32 bytes
     ///      - sender - 32 bytes
