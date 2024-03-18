@@ -61,10 +61,11 @@ contract TestNonFungibleNttManager is Test {
         address nft,
         IManagerBase.Mode _mode,
         uint16 _chainId,
-        bool shouldInitialize
+        bool shouldInitialize,
+        uint8 _tokenIdWidth
     ) internal returns (INonFungibleNttManager) {
         NonFungibleNttManager implementation =
-            new NonFungibleNttManager(address(nft), tokenIdWidth, _mode, _chainId);
+            new NonFungibleNttManager(address(nft), _tokenIdWidth, _mode, _chainId);
 
         NonFungibleNttManager proxy =
             NonFungibleNttManager(address(new ERC1967Proxy(address(implementation), "")));
@@ -112,12 +113,15 @@ contract TestNonFungibleNttManager is Test {
         nftTwo = new DummyNftMintAndBurn(bytes("https://metadata.dn420.com/y/"));
 
         // Managers.
-        managerOne =
-            deployNonFungibleManager(address(nftOne), IManagerBase.Mode.LOCKING, chainIdOne, true);
-        managerTwo =
-            deployNonFungibleManager(address(nftTwo), IManagerBase.Mode.BURNING, chainIdTwo, true);
-        managerThree =
-            deployNonFungibleManager(address(nftOne), IManagerBase.Mode.BURNING, chainIdThree, true);
+        managerOne = deployNonFungibleManager(
+            address(nftOne), IManagerBase.Mode.LOCKING, chainIdOne, true, tokenIdWidth
+        );
+        managerTwo = deployNonFungibleManager(
+            address(nftTwo), IManagerBase.Mode.BURNING, chainIdTwo, true, tokenIdWidth
+        );
+        managerThree = deployNonFungibleManager(
+            address(nftOne), IManagerBase.Mode.BURNING, chainIdThree, true, tokenIdWidth
+        );
 
         // Wormhole Transceivers.
         transceiverOne = deployWormholeTranceiver(address(managerOne));
@@ -214,8 +218,9 @@ contract TestNonFungibleNttManager is Test {
     function test_cannotInitalizeNotDeployer() public {
         // Don't initialize.
         vm.prank(owner);
-        INonFungibleNttManager dummyManager =
-            deployNonFungibleManager(address(nftOne), IManagerBase.Mode.LOCKING, chainIdOne, false);
+        INonFungibleNttManager dummyManager = deployNonFungibleManager(
+            address(nftOne), IManagerBase.Mode.LOCKING, chainIdOne, false, tokenIdWidth
+        );
 
         vm.prank(makeAddr("notOwner"));
         vm.expectRevert(
@@ -628,6 +633,38 @@ contract TestNonFungibleNttManager is Test {
             bytes32(0), // Invalid Recipient.
             new bytes(1)
         );
+    }
+
+    function test_cannotTransferPayloadSizeExceeded() public {
+        // Deploy manager with 32 byte tokenIdWidth.
+        INonFungibleNttManager manager = deployNonFungibleManager(
+            address(nftOne), IManagerBase.Mode.BURNING, chainIdThree, true, 32
+        );
+        WormholeTransceiver transceiver = deployWormholeTranceiver(address(manager));
+        transceiver.setWormholePeer(chainIdTwo, toWormholeFormat(makeAddr("random")));
+        manager.setTransceiver(address(transceiver));
+        manager.setPeer(chainIdTwo, toWormholeFormat(makeAddr("random")));
+
+        // Since the NonFungibleNtt payload is currently 180 bytes (without the tokenIds),
+        // we should be able to cause the error by transferring with 21 tokenIds.
+        // floor((850 - 180) / 33) + 1 (32 bytes per tokenId, 1 byte for length).
+        uint256 nftCount = 21;
+        uint256 startId = 0;
+
+        address recipient = makeAddr("recipient");
+        uint256[] memory tokenIds = _mintNftBatch(nftOne, recipient, nftCount, startId);
+
+        vm.startPrank(recipient);
+        nftOne.setApprovalForAll(address(managerOne), true);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IWormholeTransceiver.ExceedsMaxPayloadSize.selector,
+                873,
+                transceiver.MAX_PAYLOAD_SIZE()
+            )
+        );
+        manager.transfer(tokenIds, chainIdTwo, toWormholeFormat(recipient), new bytes(1));
     }
 
     function test_cannotTransferDuplicateNfts() public {
@@ -1067,4 +1104,3 @@ contract TestNonFungibleNttManager is Test {
 
 // TODO:
 // 1) Relayer test
-// 2) Add max payload size and associated tests

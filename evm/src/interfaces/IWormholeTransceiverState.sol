@@ -127,4 +127,7 @@ interface IWormholeTransceiverState {
     /// @param chainId The Wormhole chain ID to set.
     /// @param isRelayingEnabled A boolean indicating whether special relaying is enabled.
     function setIsSpecialRelayingEnabled(uint16 chainId, bool isRelayingEnabled) external;
+
+    /// @notice Returns the maximum payload size for a Wormhole Transceiver message.
+    function MAX_PAYLOAD_SIZE() external view returns (uint16);
 }

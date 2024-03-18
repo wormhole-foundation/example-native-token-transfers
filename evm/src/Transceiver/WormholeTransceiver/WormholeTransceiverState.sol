@@ -22,6 +22,12 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     using BooleanFlagLib for BooleanFlag;
 
     // ==================== Immutables ===============================================
+
+    /// @dev Maximum payload size for any message. Since posting a message on Solana has a
+    ///      maximum size, all messages are restricted to this size. If this program is
+    ///      only used on EVM chains, this restriction can be removed.
+    uint16 public constant MAX_PAYLOAD_SIZE = 850;
+
     uint8 public immutable consistencyLevel;
     IWormhole public immutable wormhole;
     IWormholeRelayer public immutable wormholeRelayer;
@@ -34,7 +40,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
 
     /// @dev Prefix for all TransceiverMessage payloads
     ///      This is 0x99'E''W''H'
-    /// @notice Magic string (constant value set by messaging provider) that idenfies the payload as an transceiver-emitted payload.
+    /// @notice Magic string (constant value set by messaging provider) that identifies the payload as an transceiver-emitted payload.
     ///         Note that this is not a security critical field. It's meant to be used by messaging providers to identify which messages are Transceiver-related.
     bytes4 constant WH_TRANSCEIVER_PAYLOAD_PREFIX = 0x9945FF10;
 

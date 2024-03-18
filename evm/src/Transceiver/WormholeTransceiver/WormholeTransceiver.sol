@@ -192,6 +192,11 @@ contract WormholeTransceiver is
             new bytes(0)
         );
 
+        // Verify that the transceiver message is small enough to be posted on Solana.
+        if (encodedTransceiverPayload.length > MAX_PAYLOAD_SIZE) {
+            revert ExceedsMaxPayloadSize(encodedTransceiverPayload.length, MAX_PAYLOAD_SIZE);
+        }
+
         WormholeTransceiverInstruction memory weIns =
             parseWormholeTransceiverInstruction(instruction.payload);
 
