@@ -179,34 +179,29 @@ contract WormholeTransceiver is
         TransceiverStructs.TransceiverInstruction memory instruction,
         bytes memory nttManagerMessage
     ) internal override {
-        (
-            TransceiverStructs.TransceiverMessage memory transceiverMessage,
-            bytes memory encodedTransceiverPayload
-        ) = TransceiverStructs.buildAndEncodeTransceiverMessage(
-            WH_TRANSCEIVER_PAYLOAD_PREFIX,
-            toWormholeFormat(caller),
-            recipientNttManagerAddress,
-            nttManagerMessage,
-            new bytes(0)
-        );
-
         WormholeTransceiverInstruction memory weIns =
             parseWormholeTransceiverInstruction(instruction.payload);
 
+        bytes memory encodedPayload;
+        TransceiverStructs.TransceiverMessage memory transceiverMessage;
+
         if (!weIns.shouldSkipRelayerSend && _shouldRelayViaStandardRelaying(recipientChain)) {
+            (transceiverMessage, encodedPayload) = _encodePayload(caller, recipientNttManagerAddress, nttManagerMessage, false);
+
             wormholeRelayer.sendPayloadToEvm{value: deliveryPayment}(
                 recipientChain,
                 fromWormholeFormat(getWormholePeer(recipientChain)),
-                encodedTransceiverPayload,
+                encodedPayload, 
                 0,
                 gasLimit
             );
 
             emit RelayingInfo(uint8(RelayingType.Standard), deliveryPayment);
         } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
+            (transceiverMessage, encodedPayload) = _encodePayload(caller, recipientNttManagerAddress, nttManagerMessage, true);
             uint256 wormholeFee = wormhole.messageFee();
             uint64 sequence = wormhole.publishMessage{value: wormholeFee}(
-                0, encodedTransceiverPayload, consistencyLevel
+                0, encodedPayload, consistencyLevel
             );
             specialRelayer.requestDelivery{value: deliveryPayment - wormholeFee}(
                 getNttManagerToken(), recipientChain, 0, sequence
@@ -214,8 +209,9 @@ contract WormholeTransceiver is
 
             emit RelayingInfo(uint8(RelayingType.Special), deliveryPayment);
         } else {
+            (transceiverMessage, encodedPayload) = _encodePayload(caller, recipientNttManagerAddress, nttManagerMessage, false);
             wormhole.publishMessage{value: deliveryPayment}(
-                0, encodedTransceiverPayload, consistencyLevel
+                0, encodedPayload, consistencyLevel
             );
 
             emit RelayingInfo(uint8(RelayingType.Manual), deliveryPayment);
@@ -254,5 +250,39 @@ contract WormholeTransceiver is
     function _verifyBridgeVM(IWormhole.VM memory vm) internal view returns (bool) {
         checkFork(wormholeTransceiver_evmChainId);
         return getWormholePeer(vm.emitterChainId) == vm.emitterAddress;
+    }
+
+    function _encodePayload(
+        address caller,
+        bytes32 recipientNttManagerAddress,
+        bytes memory nttManagerMessage,
+        bool isSpecialRelayer
+    ) internal view returns (
+        TransceiverStructs.TransceiverMessage memory,
+        bytes memory
+    ) {
+        // Transceiver payload is prefixed with 2 bytes
+        // representing the version of the payload.
+        // The rest of the bytes are the -actual- payload data.
+        // In payload v1, the payload data is a boolean
+        // representing whether the message should be picked
+        // up by the special relayer or not.
+        bytes memory transceiverPayload = abi.encodePacked(
+            uint16(1),
+            isSpecialRelayer
+        );
+
+        (
+            TransceiverStructs.TransceiverMessage memory transceiverMessage,
+            bytes memory encodedPayload
+        ) = TransceiverStructs.buildAndEncodeTransceiverMessage(
+            WH_TRANSCEIVER_PAYLOAD_PREFIX,
+            toWormholeFormat(caller),
+            recipientNttManagerAddress,
+            nttManagerMessage,
+            transceiverPayload
+        );
+
+        return (transceiverMessage, encodedPayload);
     }
 }
