@@ -1,6 +1,9 @@
 import { Chain } from "@wormhole-foundation/sdk-base";
 import { NttQuoter } from "../sdk";
-import { Connection, Keypair, PublicKey, Signer, Transaction, TransactionInstruction, sendAndConfirmTransaction } from "@solana/web3.js";
+import { PublicKey, TransactionInstruction } from "@solana/web3.js";
+
+import { connection, getSigner, getEnv } from "./env";
+import { ledgerSignAndSend } from "./helpers";
 
 interface Config {
   /**
@@ -15,11 +18,7 @@ interface Config {
    * NTT quoter address encoded in base58.
    */
   nttQuoterProgramId: string;
-  prices: Partial<Record<Chain, Quotes>>;
-  /**
-   * RPC URL for Solana.
-   */
-  rpcUrl: string;
+  prices: Record<Chain, Quotes>;
 }
 
 interface Quotes {
@@ -41,64 +40,76 @@ interface Quotes {
   gasPriceGwei: string,
 }
 
-async function sendTransaction(instructions: TransactionInstruction[], provider: Connection, signers: Signer[]) {
-  const tx = new Transaction();
-  tx.add(...instructions);
-  await sendAndConfirmTransaction(provider, tx, signers, {maxRetries: 10});
-}
-
 async function run() {
-  const config = {} as Config;
-  const rpcUrl = config.rpcUrl;
+  const signer = await getSigner();
+  const signerPk = new PublicKey(await signer.getAddress());
+
+  const config = {
+    assistant: getEnv("SOLANA_QUOTER_ASSISTANT"),
+    feeRecipient: getEnv("SOLANA_QUOTER_FEE_RECIPIENT"),
+    nttQuoterProgramId: getEnv("SOLANA_QUOTER_PROGRAM_ID"),
+  } as Config;
+
   const feeRecipient = new PublicKey(config.feeRecipient);
   const assistant = new PublicKey(config.assistant);
-  const signer = Keypair.fromSecretKey(Buffer.from("some key passed in by arg"));
 
-  const provider = new Connection(rpcUrl, "confirmed");
-  const quoter = new NttQuoter(provider, config.nttQuoterProgramId);
+  const quoter = new NttQuoter(connection, config.nttQuoterProgramId);
 
-  // TODO: many of these instructions can probably be put together in a single transaction though probably not all of them.
   let instanceState = await quoter.tryGetInstance();
+
   if (instanceState === null) {
-    const initInstruction = await quoter.createInitializeInstruction(feeRecipient);
-    await sendTransaction([initInstruction], provider, [signer]);
-    instanceState = (await quoter.tryGetInstance());
-    if (instanceState === null) throw new Error(`Quoter instance account is empty.
-- Maybe the initialization transaction rolled off the blockchain.
-- Maybe the account query was answered by a node that is not synchronized`);
-  } else if (!instanceState.feeRecipient.equals(feeRecipient)) {
+    throw new Error("Can't configure a quoter un-initialized.");
+  }
+
+  const configurationInstructions: TransactionInstruction[] = [];
+
+  if (!instanceState.feeRecipient.equals(feeRecipient)) {
     const feeRecipientInstruction = await quoter.createSetFeeRecipientInstruction(instanceState, new PublicKey(config.feeRecipient));
-    await sendTransaction([feeRecipientInstruction], provider, [signer]);
+    configurationInstructions.push(feeRecipientInstruction);
   }
 
   if (!instanceState.assistant.equals(assistant)) {
     const assistantInstruction = await quoter.createSetAssistantInstruction(instanceState, new PublicKey(config.assistant));
-    await sendTransaction([assistantInstruction], provider, [signer]);
+    configurationInstructions.push(assistantInstruction);
+  } 
+
+  // add any other global configs here...
+
+  try {
+    await ledgerSignAndSend(configurationInstructions, []);
+  } catch (error) {
+    console.error("Failed to configure quoter contract:", error);
   }
 
   for (const [chain, peer] of Object.entries(config.prices)) {
-    const instructions: TransactionInstruction[] = [];
-    let registeredChainInfo = await quoter.tryGetRegisteredChain(chain as Chain);
-    if (registeredChainInfo === null) {
-      instructions.push(await quoter.createRegisterChainInstruction(signer.publicKey, chain as Chain));
+    try {
+      await configurePeer(quoter, chain as Chain, peer, signerPk);
+    } catch (error) {
+      console.error(`Failed to configure ${chain} peer. Error: `, error);
     }
-
-    if (registeredChainInfo === null ||
-        registeredChainInfo.maxGasDropoffEth !== Number(peer.maxGasDropoffEth) ||
-        registeredChainInfo.basePriceUsd !== Number(peer.basePriceUsd)) {
-      instructions.push(await quoter.createUpdateChainParamsInstruction(signer.publicKey, chain as Chain, Number(peer.maxGasDropoffEth), Number(peer.basePriceUsd)));
-    }
-
-    if (registeredChainInfo === null ||
-        registeredChainInfo.nativePriceUsd !== Number(peer.nativePriceUsd) ||
-        registeredChainInfo.gasPriceGwei !== Number(peer.gasPriceGwei)) {
-      instructions.push(await quoter.createUpdateChainPricesInstruction(signer.publicKey, chain as Chain, Number(peer.nativePriceUsd), Number(peer.gasPriceGwei)));
-    }
-
-    console.log(`Sending price updates for chain ${chain}`);
-    // TODO: can we actually string these three instructions together or is it too much?
-    await sendTransaction(instructions, provider, [signer]);
   }
+}
+
+async function configurePeer(quoter: NttQuoter, chain: Chain, peer: Quotes, signerPk: PublicKey) {
+  const instructions: TransactionInstruction[] = [];
+  let registeredChainInfo = await quoter.tryGetRegisteredChain(chain as Chain);
+  if (registeredChainInfo === null) {
+    instructions.push(await quoter.createRegisterChainInstruction(signerPk, chain as Chain));
+  }
+
+  if (registeredChainInfo === null ||
+      registeredChainInfo.maxGasDropoffEth !== Number(peer.maxGasDropoffEth) ||
+      registeredChainInfo.basePriceUsd !== Number(peer.basePriceUsd)) {
+    instructions.push(await quoter.createUpdateChainParamsInstruction(signerPk, chain as Chain, Number(peer.maxGasDropoffEth), Number(peer.basePriceUsd)));
+  }
+
+  if (registeredChainInfo === null ||
+      registeredChainInfo.nativePriceUsd !== Number(peer.nativePriceUsd) ||
+      registeredChainInfo.gasPriceGwei !== Number(peer.gasPriceGwei)) {
+    instructions.push(await quoter.createUpdateChainPricesInstruction(signerPk, chain as Chain, Number(peer.nativePriceUsd), Number(peer.gasPriceGwei)));
+  }
+
+  return ledgerSignAndSend(instructions, []);
 }
 
 run();

@@ -1,35 +1,33 @@
 import {
-  Connection,
+  Transaction,
   TransactionInstruction,
-  TransactionMessage,
-  VersionedTransaction,
   Keypair,
   PublicKey,
 } from "@solana/web3.js";
 
-export async function buildTransaction({
-  connection,
-  payer,
-  signers,
-  instructions,
-}: {
-  connection: Connection;
-  payer: PublicKey;
-  signers: Keypair[];
-  instructions: TransactionInstruction[];
-}): Promise<VersionedTransaction> {
-  let blockhash = await connection.getLatestBlockhash().then(res => res.blockhash);
+import { SolanaLedgerSigner } from "@xlabs-xyz/ledger-signer-solana";
+import { connection, getSigner } from "./env";
 
-  const messageV0 = new TransactionMessage({
-    payerKey: payer,
-    recentBlockhash: blockhash,
-    instructions,
-  }).compileToV0Message();
+export async function ledgerSignAndSend(instructions: TransactionInstruction[], signers: Keypair[]) {
+  const deployerSigner = await getSigner();
+  const deployerPk = new PublicKey(await deployerSigner.getAddress());
 
-  const tx = new VersionedTransaction(messageV0);
+  const tx = new Transaction();
+  tx.add(...instructions);
 
-  tx.sign(signers);
-  // signers.forEach(s => tx.sign([s]));
+  const recentBlockHash = await connection.getRecentBlockhash();
+  
+  tx.recentBlockhash = recentBlockHash.blockhash;
+  tx.feePayer = deployerPk;
+  
+  signers.forEach((signer) => tx.partialSign(signer));
 
-  return tx;
+  await addLedgerSignature(tx, deployerSigner, deployerPk);
+
+  return connection.sendRawTransaction(tx.serialize());
+}
+
+export async function addLedgerSignature(tx: Transaction, signer: SolanaLedgerSigner, signerPk: PublicKey) {
+  const signedByPayer = await signer.signTransaction(tx.compileMessage().serialize());
+  tx.addSignature(signerPk, signedByPayer);
 }
