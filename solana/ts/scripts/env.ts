@@ -4,13 +4,22 @@ import {
   Commitment,
 } from "@solana/web3.js";
 import { ChainId } from "@certusone/wormhole-sdk";
+import { SolanaLedgerSigner } from "@xlabs-xyz/ledger-signer-solana";
 
-const deployerSecretKey = process.env.SOLANA_DEPLOYER_SECRET_KEY;
-if (!deployerSecretKey) {
-  throw new Error("SOLANA_DEPLOYER_SECRET_KEY is not set");
+if (!process.env.LEDGER_DERIVATION_PATH) {
+  throw new Error("LEDGER_DERIVATION_PATH is not set");
 }
 
-export const deployerKeypair = Keypair.fromSecretKey(new Uint8Array(JSON.parse(deployerSecretKey)));
+const derivationPath = process.env.LEDGER_DERIVATION_PATH! as string;
+
+let signer
+export async function getSigner(): Promise<SolanaLedgerSigner> {
+  if (!signer) {
+    signer = await SolanaLedgerSigner.create(derivationPath)
+  }
+
+  return signer;
+}
 
 export const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
 
