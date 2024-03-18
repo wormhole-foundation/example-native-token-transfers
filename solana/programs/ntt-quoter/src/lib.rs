@@ -9,7 +9,7 @@ mod state;
 //  the derive accounts macro is implemented (and I don't have the time to fix it, create a PR,
 //  and wait for a release):
 //  https://github.com/coral-xyz/anchor/blob/216b56e26f5080ec652b098849e177ec560d602f/lang/derive/space/src/lib.rs#L110-L143
-//nevertheless, I'll at least use these types to annotate variables
+// Nevertheless, I'll at least use these types to annotate variables:
 // type ChainId = u16;
 // type UsdPrice = u64; //with 6 decimals (just like usdc)
 // type GasPrice = u64; //in wei, i.e. 18 decimals

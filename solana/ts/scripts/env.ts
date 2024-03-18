@@ -21,6 +21,14 @@ export async function getSigner(): Promise<SolanaLedgerSigner> {
   return signer;
 }
 
+export function getEnv(key: string): string {
+  if (!process.env[key]) {
+    throw new Error(`${key} not found on environment`);
+  }
+  
+  return process.env[key]!;
+}
+
 export const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
 
 export const connectionCommitmentLevel = (process.env.SOLANA_COMMITMENT || "confirmed") as Commitment;
