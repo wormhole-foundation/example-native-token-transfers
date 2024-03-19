@@ -154,10 +154,7 @@ pub struct RegisterNtt<'info> {
     system_program: Program<'info, System>,
 }
 
-pub fn register_ntt(
-    ctx: Context<RegisterNtt>,
-    args: RegisterNttArgs
-) -> Result<()> {
+pub fn register_ntt(ctx: Context<RegisterNtt>, args: RegisterNttArgs) -> Result<()> {
     ctx.accounts.registered_ntt.bump = ctx.bumps.registered_ntt;
     ctx.accounts.registered_ntt.wormhole_transceiver_index = args.wormhole_transceiver_index;
     ctx.accounts.registered_ntt.gas_cost = args.gas_cost;
