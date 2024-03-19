@@ -139,8 +139,6 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
 
     let before = accs.common.from.amount;
 
-    // Missing ownership checks are OK here. These accounts are verified via
-    // implicit constraints in `InterfaceAccount`, `TokenAccount` and `Mint` defined above.
     token_interface::burn(
         CpiContext::new_with_signer(
             accs.common.token_program.to_account_info(),
@@ -248,8 +246,6 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
 
     let before = accs.custody.amount;
 
-    // Missing ownership checks are OK here. These accounts are verified via
-    // implicit constraints in `InterfaceAccount`, `TokenAccount` and `Mint` defined above.
     token_interface::transfer_checked(
         CpiContext::new_with_signer(
             accs.common.token_program.to_account_info(),
