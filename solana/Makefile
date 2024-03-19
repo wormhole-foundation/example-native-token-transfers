@@ -15,6 +15,9 @@ _anchor-build:
 anchor-test: node_modules build target/idl/example_native_token_transfers.json
 	anchor test --skip-build
 
+anchor-test-detach: node_modules build target/idl/example_native_token_transfers.json
+	anchor test --skip-build --detach
+
 node_modules: package-lock.json
 	npm ci
 
