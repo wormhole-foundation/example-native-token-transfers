@@ -137,7 +137,7 @@ export class NttQuoter {
 
   async createInitializeInstruction(feeRecipient: PublicKey) {
     const instance = await this.tryGetInstance();
-    if (instance === null)
+    if (instance !== null)
       throw new Error("Quoter is already initialized");
     const programData = programDataAddress(this.program.programId);
 
