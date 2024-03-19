@@ -16,12 +16,12 @@ import IDL from "../../target/idl/ntt_quoter.json";
 import { U64, programDataLayout, programDataAddress, chainIdToBeBytes, derivePda } from "./utils";
 
 //constants that must match ntt-quoter lib.rs / implementation:
-const EVM_GAS_COST = 250_000;
 const USD_UNIT     = 1e6;
 const WEI_PER_GWEI = 1e9;
 const GWEI_PER_ETH = 1e9;
 const SEED_PREFIX_INSTANCE         = "instance";
 const SEED_PREFIX_REGISTERED_CHAIN = "registered_chain";
+const SEED_PREFIX_REGISTERED_NTT   = "registered_ntt";
 const SEED_PREFIX_RELAY_REQUEST    = "relay_request";
 
 export class NttQuoter {
@@ -35,9 +35,10 @@ export class NttQuoter {
 
   // ---- user relevant functions ----
 
-  async calcRelayCostInSol(chain: Chain, requestedGasDropoffEth: number) {
-    const [chainData, instanceData, rentCost] = await Promise.all([
+  async calcRelayCostInSol(nttProgramId: PublicKey, chain: Chain, requestedGasDropoffEth: number) {
+    const [chainData, nttData, instanceData, rentCost] = await Promise.all([
       this.getRegisteredChain(chain),
+      this.getRegisteredNtt(nttProgramId),
       this.getInstance(),
       this.program.provider.connection.getMinimumBalanceForRentExemption(
         this.program.account.relayRequest.size
@@ -48,7 +49,7 @@ export class NttQuoter {
       throw new Error("Requested gas dropoff exceeds allowed maximum");
 
     const totalNativeGasCostUsd = chainData.nativePriceUsd *
-      (requestedGasDropoffEth + chainData.gasPriceGwei * EVM_GAS_COST * GWEI_PER_ETH);
+      (requestedGasDropoffEth + chainData.gasPriceGwei * nttData.gasCost * GWEI_PER_ETH);
 
     const totalCostSol = rentCost +
       (chainData.basePriceUsd + totalNativeGasCostUsd) / instanceData.solPriceUsd;
@@ -99,6 +100,17 @@ export class NttQuoter {
       basePriceUsd:     U64.from(data.basePrice,     USD_UNIT    ),
       nativePriceUsd:   U64.from(data.nativePrice,   USD_UNIT    ),
       gasPriceGwei:     U64.from(data.gasPrice,      WEI_PER_GWEI),
+    };
+  }
+
+  async getRegisteredNtt(nttProgramId: PublicKey) {
+    const data = await this.program.account.registeredNtt.fetch(
+      this.registeredNttPda(nttProgramId)
+    );
+    
+    return {
+      gasCost: data.gasCost,
+      wormholeTransceiverIndex: data.wormholeTransceiverIndex,
     };
   }
 
@@ -172,6 +184,36 @@ export class NttQuoter {
     }).instruction();
   }
 
+  async createRegisterNttInstruction(
+    authority: PublicKey,
+    nttProgramId: PublicKey,
+    gasCost: number,
+    wormholeTransceiverIndex: number,
+  ) {
+    return this.program.methods.registerNtt({
+      nttProgramId,
+      gasCost,
+      wormholeTransceiverIndex,
+    }).accounts({
+      authority,
+      instance: this.instance,
+      registeredNtt: this.registeredNttPda(nttProgramId),
+      systemProgram: SystemProgram.programId,
+    }).instruction();
+  }
+
+  async createDeregisterNttInstruction(
+    authority: PublicKey,
+    nttProgramId: PublicKey,
+  ) {
+    return this.program.methods.deregisterNtt({ nttProgramId }).accounts({
+      authority,
+      instance: this.instance,
+      registeredNtt: this.registeredNttPda(nttProgramId),
+      systemProgram: SystemProgram.programId,
+    }).instruction();
+  }
+
   async createUpdateSolPriceInstruction(authority: PublicKey, solPriceUsd: number) {
     return this.program.methods.updateSolPrice({
       solPrice: U64.to(solPriceUsd, USD_UNIT),
@@ -237,6 +279,13 @@ export class NttQuoter {
   private registeredChainPda(chainId: number) {
     return derivePda(
       [SEED_PREFIX_REGISTERED_CHAIN, chainIdToBeBytes(chainId)],
+      this.program.programId
+    );
+  }
+
+  private registeredNttPda(nttProgramId: PublicKey) {
+    return derivePda(
+      [SEED_PREFIX_REGISTERED_NTT, nttProgramId.toBytes()],
       this.program.programId
     );
   }

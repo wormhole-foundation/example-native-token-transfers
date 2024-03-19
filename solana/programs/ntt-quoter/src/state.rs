@@ -36,6 +36,18 @@ impl RegisteredChain {
 
 #[account]
 #[derive(Debug, InitSpace)]
+pub struct RegisteredNtt {
+    pub bump: u8,
+    pub wormhole_transceiver_index: u8,
+    pub gas_cost: u32,
+}
+
+impl RegisteredNtt {
+    pub const SEED_PREFIX: &'static [u8] = b"registered_ntt";
+}
+
+#[account]
+#[derive(Debug, InitSpace)]
 pub struct RelayRequest {
     pub requested_gas_dropoff: u64, //NativeAmount (gwei)
 }
