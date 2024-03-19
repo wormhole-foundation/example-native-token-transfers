@@ -89,8 +89,12 @@ pub fn request_relay(ctx: Context<RequestRelay>, args: RequestRelayArgs) -> Resu
     );
 
     let relay_fee_in_lamports = {
-        let target_native_in_gwei = args.gas_dropoff +
-            mul_div(accs.registered_chain.gas_price, accs.registered_ntt.gas_cost as u64, GWEI);
+        let target_native_in_gwei = args.gas_dropoff
+            + mul_div(
+                accs.registered_chain.gas_price,
+                accs.registered_ntt.gas_cost as u64,
+                GWEI,
+            );
 
         //usd/target_native[usd, 6 decimals] * target_native[gwei, 9 decimals] = usd[usd, 6 decimals]
         let target_native_in_usd = mul_div(
