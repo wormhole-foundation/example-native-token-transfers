@@ -5,6 +5,7 @@ import {
 } from "@solana/web3.js";
 import { ChainId } from "@certusone/wormhole-sdk";
 import { SolanaLedgerSigner } from "@xlabs-xyz/ledger-signer-solana";
+import { Chain, chainIdToChain, chains } from "@wormhole-foundation/sdk-base";
 
 if (!process.env.LEDGER_DERIVATION_PATH) {
   throw new Error("LEDGER_DERIVATION_PATH is not set");
@@ -79,3 +80,41 @@ export const evmNttDeployments: NttDeployment[] = [
     limit: 100000000000000,
   },
 ];
+
+interface PeerQuotes {
+  // Specified in Gwei per Eth units.
+  maxGasDropoffEth: string,
+  // The base price 10^-6 dollars.
+  basePriceUsd: string,
+  // Specified in 10^-6 dollars
+  nativePriceUsd: string,
+  // Specified in Gwei units.
+  gasPriceGwei: string,
+}
+
+export const peerQuotes: Partial<Record<Chain, PeerQuotes>> = {
+  [chainIdToChain(10002)]: {
+    maxGasDropoffEth: "0",
+    basePriceUsd: "5000000",
+    nativePriceUsd: "3500000000",
+    gasPriceGwei: "50",
+  },
+  [chainIdToChain(10003)]: {
+    maxGasDropoffEth: "0",
+    basePriceUsd: "5000000",
+    nativePriceUsd: "3500000000",
+    gasPriceGwei: "50",
+  },
+  [chainIdToChain(10004)]: {
+    maxGasDropoffEth: "0",
+    basePriceUsd: "5000000",
+    nativePriceUsd: "3500000000",
+    gasPriceGwei: "50",
+  },
+  [chainIdToChain(10005)]: {
+    maxGasDropoffEth: "0",
+    basePriceUsd: "5000000",
+    nativePriceUsd: "3500000000",
+    gasPriceGwei: "50",
+  },
+};

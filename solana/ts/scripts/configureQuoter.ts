@@ -1,54 +1,29 @@
-import { Chain } from "@wormhole-foundation/sdk-base";
+import { Chain, isChain } from "@wormhole-foundation/sdk-base";
 import { NttQuoter } from "../sdk";
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 
-import { connection, getSigner, getEnv } from "./env";
+import { connection, getSigner, getEnv, peerQuotes, PeerQuotes } from "./env";
 import { ledgerSignAndSend } from "./helpers";
+import { inspect } from 'util';
 
-interface Config {
-  /**
-   * Fee recipient address encoded in base58.
-   */
+interface QuoterConfig {
+  // Fee recipient address encoded in base58.
   feeRecipient: string;
-  /**
-   * Assistant address encoded in base58. This account is able to update prices in the contract.
-   */
+  // Assistant address encoded in base58. This account is able to update prices in the contract.
   assistant: string;
-  /**
-   * NTT quoter address encoded in base58.
-   */
+  // NTT quoter address encoded in base58.
   nttQuoterProgramId: string;
-  prices: Record<Chain, Quotes>;
 }
 
-interface Quotes {
-  /**
-   * Specified in Gwei per Eth units.
-   */
-  maxGasDropoffEth: string,
-  /**
-   * Specified in microdollars (10^-6 dollars).
-   */
-  basePriceUsd: string,
-  /**
-   * Specified in microdollars (10^-6 dollars).
-   */
-  nativePriceUsd: string,
-  /**
-   * Specified in wei per Gwei units.
-   */
-  gasPriceGwei: string,
-}
+const config: QuoterConfig = {
+  assistant: getEnv("SOLANA_QUOTER_ASSISTANT"),
+  feeRecipient: getEnv("SOLANA_QUOTER_FEE_RECIPIENT"),
+  nttQuoterProgramId: getEnv("SOLANA_QUOTER_PROGRAM_ID"),
+};
 
 async function run() {
   const signer = await getSigner();
   const signerPk = new PublicKey(await signer.getAddress());
-
-  const config = {
-    assistant: getEnv("SOLANA_QUOTER_ASSISTANT"),
-    feeRecipient: getEnv("SOLANA_QUOTER_FEE_RECIPIENT"),
-    nttQuoterProgramId: getEnv("SOLANA_QUOTER_PROGRAM_ID"),
-  } as Config;
 
   const feeRecipient = new PublicKey(config.feeRecipient);
   const assistant = new PublicKey(config.assistant);
@@ -76,13 +51,20 @@ async function run() {
   // add any other global configs here...
 
   try {
-    await ledgerSignAndSend(configurationInstructions, []);
+    if (configurationInstructions.length)
+      await ledgerSignAndSend(configurationInstructions, []);
   } catch (error) {
     console.error("Failed to configure quoter contract:", error);
+    return;
   }
 
-  for (const [chain, peer] of Object.entries(config.prices)) {
+  for (const [chain, peer] of Object.entries(peerQuotes)) {
+    if (!isChain(chain)) {
+      throw new Error(`Invalid chain name: ${chain}`);
+    }
+
     try {
+      console.log("Configuring peer chain: ", chain);
       await configurePeer(quoter, chain as Chain, peer, signerPk);
     } catch (error) {
       console.error(`Failed to configure ${chain} peer. Error: `, error);
@@ -90,9 +72,10 @@ async function run() {
   }
 }
 
-async function configurePeer(quoter: NttQuoter, chain: Chain, peer: Quotes, signerPk: PublicKey) {
+async function configurePeer(quoter: NttQuoter, chain: Chain, peer: PeerQuotes, signerPk: PublicKey) {
   const instructions: TransactionInstruction[] = [];
   let registeredChainInfo = await quoter.tryGetRegisteredChain(chain as Chain);
+  console.log("registered info", inspect(registeredChainInfo));
   if (registeredChainInfo === null) {
     instructions.push(await quoter.createRegisterChainInstruction(signerPk, chain as Chain));
   }
@@ -109,6 +92,11 @@ async function configurePeer(quoter: NttQuoter, chain: Chain, peer: Quotes, sign
     instructions.push(await quoter.createUpdateChainPricesInstruction(signerPk, chain as Chain, Number(peer.nativePriceUsd), Number(peer.gasPriceGwei)));
   }
 
+  if (instructions.length === 0) {
+    console.log("No updates needed for chain: ", chain);
+    return;
+  }
+  
   return ledgerSignAndSend(instructions, []);
 }
 
