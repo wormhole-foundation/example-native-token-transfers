@@ -90,6 +90,83 @@ contract FuzzNttManager is FuzzingHelpers {
         }
     }
 
+    function transferWithQoLEntrypoint(uint256 amount, uint16 recipientChainId, bytes32 recipient, bytes32 peerContract, uint8 peerDecimals, uint256 inboundLimit) public {
+        require(peerContract != bytes32(0));
+
+        // Make sure the peer is set to a valid config
+        peerDecimals = uint8(clampBetween(peerDecimals, 1, type(uint8).max));
+        recipientChainId = uint16(clampBetween(recipientChainId, 1, type(uint16).max));
+        setPeer(recipientChainId, peerContract, peerDecimals, inboundLimit, true);
+
+        uint8 decimals = ERC20(dummyToken).decimals();
+        uint8 minDecimals =  minUint8(8, minUint8(decimals, peerDecimals));
+
+        amount = clampBetween(amount, 10 ** (decimals - minDecimals), type(uint64).max * 10 ** (decimals - minUint8(8, decimals)));
+        amount = TrimmedAmountLib.scale(amount, decimals, minDecimals);
+        amount = TrimmedAmountLib.scale(amount, minDecimals, decimals);
+
+        uint256 currentOutboundCapacity = nttManager.getCurrentOutboundCapacity();
+        uint256 currentInboundCapacity = nttManager.getCurrentInboundCapacity(recipientChainId);
+
+        try nttManager.transfer(amount, recipientChainId, recipient) {
+            if (amount < currentOutboundCapacity) {
+                // Check we ran down the outbound rate limit as expected
+                assertWithMsg(
+                    nttManager.getCurrentOutboundCapacity() == currentOutboundCapacity - amount,
+                    "NttManager: transfer outbound rate limit not reduced as expected"
+                );
+
+                // Check we increase the inbound rate limit as expected
+                IRateLimiter.RateLimitParams memory inboundParams = nttManager.getInboundLimitParams(recipientChainId);
+                assertWithMsg(
+                    nttManager.getCurrentInboundCapacity(recipientChainId) == minUint256(currentInboundCapacity + amount, TrimmedAmountLib.scale(TrimmedAmountLib.getAmount(inboundParams.limit), minUint8(8, decimals), decimals)),
+                    "NttManager: transfer inbound rate limit not increased as expected"
+                );
+            }
+            else {
+                // We were able to transfer when we shouldn't have been able to
+                assertWithMsg(
+                    false,
+                    "NttManager: transfer unexpectedly succeeded"
+                );
+            }
+        }
+        catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            if (amount == 0) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(INttManager.ZeroAmount.selector),
+                    "NttManager: transfer expected to fail if sending with 0 amount"
+                );
+            }
+            else if (recipient == bytes32(0)) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(INttManager.InvalidRecipient.selector),
+                    "NttManager: transfer expected to fail if sending to 0 address"
+                );
+            }
+            else if (peerDecimals == 0) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(INttManager.InvalidPeerDecimals.selector),
+                    "NttManager: transfer expected to fail if sending to a peer with 0 decimals"
+                );
+            }
+            else if (amount > currentOutboundCapacity) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IRateLimiter.NotEnoughCapacity.selector),
+                    "NttManager: transfer expected to fail if exceeding rate limit"
+                );
+            }
+            else {
+                assertWithMsg(
+                    false,
+                    "NttManager: transfer unexpected revert"
+                );
+            }
+        }
+    }
+
     function transferShouldQueueProperly(uint256 amount, uint16 recipientChainId, bytes32 recipient, bytes32 peerContract, uint8 peerDecimals, uint256 inboundLimit, bool shouldQueue) public {
         require(peerContract != bytes32(0));
 
