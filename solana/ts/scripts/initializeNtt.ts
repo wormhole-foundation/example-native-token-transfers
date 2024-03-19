@@ -1,63 +1,75 @@
-
-import { setAuthority } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, createSetAuthorityInstruction, setAuthority } from '@solana/spl-token';
 import { BN } from '@coral-xyz/anchor'
-import { PublicKey } from "@solana/web3.js";
+import { Keypair, PublicKey } from "@solana/web3.js";
 
 import { NTT } from "../sdk";
-import { connection, deployerKeypair, mintAddress, wormholeProgramId, nttProgramId } from "./env";
+import { connection, getSigner, getEnv } from './env';
+import { ledgerSignAndSend } from './helpers';
 
-if (!mintAddress) {
-  throw new Error("MINT_ADDRESS is not set");
-}
-const mint = new PublicKey(mintAddress);
-
-if (!wormholeProgramId) {
-  throw new Error("WORMHOLE_PROGRAM_ID is not set");
-}
-
-if (!nttProgramId) {
-  throw new Error("NTT_PROGRAM_ID is not set");
+type InitConfig = {
+  mintAddress: string,
+  wormholeProgramId: string,
+  nttProgramId: string,
 }
 
 (async () => {
+  const config: InitConfig = {
+    mintAddress: getEnv("MINT_ADDRESS"),
+    wormholeProgramId: getEnv("WORMHOLE_PROGRAM_ID"),
+    nttProgramId: getEnv("NTT_PROGRAM_ID"),
+  };
+  const signer = await getSigner();
+  const signerPk = new PublicKey(await signer.getAddress());
+
+  const mint = new PublicKey(config.mintAddress);
+
   const ntt = new NTT(connection, {
-    nttId: nttProgramId as any,
-    wormholeId: wormholeProgramId as any,
+    nttId: config.nttProgramId as any,
+    wormholeId: config.wormholeProgramId as any,
   });
 
   const nttManagerPk = ntt.tokenAuthorityAddress();
 
-  // make ntt-manager the mint authority
-  // TODO: this will fail if the authority has already been set
-  await setAuthority(
-    connection, 
-    deployerKeypair, 
-    mint, 
-    deployerKeypair.publicKey, 
-    0, 
+  const setAuthorityInstruction = createSetAuthorityInstruction(
+    mint,
+    signerPk,
+    0,
     nttManagerPk,
+    undefined, // for multi-sig
+    TOKEN_PROGRAM_ID, // might also be TOKEN_2022_PROGRAM_ID
   );
+
+  await ledgerSignAndSend([setAuthorityInstruction], [])
+
   console.log(`Authority set to ${nttManagerPk.toBase58()}`);
   
   console.log("Manager Emitter Address:", await ntt.emitterAccountAddress().toBase58());
 
-  await ntt.initialize({
-    payer: deployerKeypair,
-    owner: deployerKeypair,
+  const initializeNttIx = await ntt.createInitializeInstruction({
+    payer: signerPk,
+    owner: signerPk,
     chain: "solana",
     mint,
     // TODO: this two properties should also be configurable
     outboundLimit: new BN(10000000000000),
     mode: "locking",
   });
+
+  await ledgerSignAndSend([initializeNttIx], []);
+
   console.log("NTT initialized succesfully!");
 
-  await ntt.registerTransceiver({
-    payer: deployerKeypair,
-    owner: deployerKeypair,
+  const wormholeMessageKeys = Keypair.generate();
+
+  const registerTransceiverIxs = await ntt.createRegisterTransceiverInstructions({
+    payer: signerPk,
+    owner: signerPk,
+    wormholeMessage: wormholeMessageKeys.publicKey,
     transceiver: new PublicKey(ntt.program.programId),
   });
-  console.log(`Transceiver registered at: ${ntt.program.programId}`);
 
+  await ledgerSignAndSend(registerTransceiverIxs, [wormholeMessageKeys]);
+  
+  console.log(`Transceiver registered at: ${ntt.program.programId}`);
 })();
 

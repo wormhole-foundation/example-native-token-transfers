@@ -212,9 +212,9 @@ export class NTT {
 
   // Instructions
 
-  async initialize(args: {
-    payer: Keypair
-    owner: Keypair
+  async createInitializeInstruction(args: {
+    payer: PublicKey
+    owner: PublicKey
     chain: ChainName
     mint: PublicKey
     outboundLimit: BN
@@ -233,8 +233,8 @@ export class NTT {
     const ix = await this.program.methods
       .initialize({ chainId, limit: args.outboundLimit, mode })
       .accounts({
-        payer: args.payer.publicKey,
-        deployer: args.owner.publicKey,
+        payer: args.payer,
+        deployer: args.owner,
         programData: programDataAddress(this.program.programId),
         config: this.configAccountAddress(),
         mint: args.mint,
@@ -244,6 +244,23 @@ export class NTT {
         custody: await this.custodyAccountAddress(args.mint),
         bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
       }).instruction();
+    return ix;
+  }
+
+  async initialize(args: {
+    payer: Keypair
+    owner: Keypair
+    chain: ChainName
+    mint: PublicKey
+    outboundLimit: BN
+    mode: 'burning' | 'locking'
+  }) {
+    const initializeInstruction = this.createInitializeInstruction({
+      ...args,
+      payer: args.payer.publicKey,
+      owner: args.owner.publicKey,
+    });
+
     return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner]);
   }
 
@@ -654,38 +671,56 @@ export class NTT {
     return await sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage])
   }
 
-  async registerTransceiver(args: {
-    payer: Keypair
-    owner: Keypair
+  async createRegisterTransceiverInstructions(args: {
+    payer: PublicKey
+    owner: PublicKey
     transceiver: PublicKey
+    wormholeMessage: PublicKey
   }) {
-    const ix = await this.program.methods.registerTransceiver()
+    const registerIx = await this.program.methods.registerTransceiver()
       .accounts({
-        payer: args.payer.publicKey,
-        owner: args.owner.publicKey,
+        payer: args.payer,
+        owner: args.owner,
         config: this.configAccountAddress(),
         transceiver: args.transceiver,
         registeredTransceiver: this.registeredTransceiverAddress(args.transceiver)
       }).instruction()
 
-    const wormholeMessage = Keypair.generate()
-    const whAccs = getWormholeDerivedAccounts(this.program.programId, this.wormholeId)
-    const broadcastIx = await this.program.methods.broadcastWormholeId()
-      .accounts({
-        payer: args.payer.publicKey,
-        config: this.configAccountAddress(),
-        mint: await this.mintAccountAddress(),
-        wormholeMessage: wormholeMessage.publicKey,
-        emitter: this.emitterAccountAddress(),
-        wormhole: {
-          bridge: whAccs.wormholeBridge,
-          feeCollector: whAccs.wormholeFeeCollector,
-          sequence: whAccs.wormholeSequence,
-          program: this.wormholeId
-        }
-      }).instruction()
+      
+      const whAccs = getWormholeDerivedAccounts(this.program.programId, this.wormholeId)
+      const broadcastIx = await this.program.methods.broadcastWormholeId()
+        .accounts({
+          payer: args.payer,
+          config: this.configAccountAddress(),
+          mint: await this.mintAccountAddress(),
+          wormholeMessage: args.wormholeMessage,
+          emitter: this.emitterAccountAddress(),
+          wormhole: {
+            bridge: whAccs.wormholeBridge,
+            feeCollector: whAccs.wormholeFeeCollector,
+            sequence: whAccs.wormholeSequence,
+            program: this.wormholeId
+          }
+        }).instruction()
+
+      return [registerIx, broadcastIx];
+  }
+
+  async registerTransceiver(args: {
+    payer: Keypair
+    owner: Keypair
+    transceiver: PublicKey
+  }) {
+    const wormholeMessage = Keypair.generate();
+    const instructions = await this.createRegisterTransceiverInstructions({
+      ...args,
+      payer: args.payer.publicKey,
+      owner: args.owner.publicKey,
+      wormholeMessage: wormholeMessage.publicKey
+    });
+
     return await sendAndConfirmTransaction(
-      this.program.provider.connection, new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage])
+      this.program.provider.connection, new Transaction().add(...instructions), [args.payer, args.owner, wormholeMessage])
   }
 
   async setOutboundLimit(args: {

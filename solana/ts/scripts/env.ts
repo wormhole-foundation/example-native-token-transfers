@@ -25,7 +25,7 @@ export function getEnv(key: string): string {
   if (!process.env[key]) {
     throw new Error(`${key} not found on environment`);
   }
-  
+
   return process.env[key]!;
 }
 
@@ -34,14 +34,6 @@ export const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.c
 export const connectionCommitmentLevel = (process.env.SOLANA_COMMITMENT || "confirmed") as Commitment;
 
 export const connection = new Connection(rpcUrl, connectionCommitmentLevel);
-
-export const mintRecipientAddress = process.env.MINT_RECIPIENT_ADDRESS;
-
-export const mintAddress = process.env.MINT_ADDRESS;
-
-export const wormholeProgramId = process.env.WORMHOLE_PROGRAM_ID;
-
-export const nttProgramId = process.env.NTT_PROGRAM_ID;
 
 export type NttDeployment = {
   chainId: ChainId;
