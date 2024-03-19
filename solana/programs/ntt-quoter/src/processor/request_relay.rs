@@ -7,8 +7,7 @@ use solana_program::{native_token::LAMPORTS_PER_SOL, sysvar};
 
 use crate::{
     error::NttQuoterError,
-    state::{Instance, RegisteredChain, RelayRequest},
-    EVM_GAS_COST, WORMHOLE_TRANSCEIVER_INDEX,
+    state::{Instance, RegisteredChain, RegisteredNtt, RelayRequest},
 };
 
 #[derive(Accounts)]
@@ -29,10 +28,18 @@ pub struct RequestRelay<'info> {
     )]
     pub registered_chain: Account<'info, RegisteredChain>,
 
+    #[account(
+        seeds = [
+            RegisteredNtt::SEED_PREFIX,
+            (&outbox_item as &dyn AsRef<AccountInfo<'info>>).as_ref().owner.to_bytes().as_ref()
+        ],
+        bump = registered_ntt.bump,
+    )]
+    pub registered_ntt: Account<'info, RegisteredNtt>,
+
     //TODO eventually drop the released constraint and instead implement release by relayer
     #[account(
-        owner = example_native_token_transfers::ID,
-        constraint = outbox_item.released.get(WORMHOLE_TRANSCEIVER_INDEX),
+        constraint = outbox_item.released.get(registered_ntt.wormhole_transceiver_index),
     )]
     pub outbox_item: Account<'info, OutboxItem>,
 
@@ -82,8 +89,8 @@ pub fn request_relay(ctx: Context<RequestRelay>, args: RequestRelayArgs) -> Resu
     );
 
     let relay_fee_in_lamports = {
-        let target_native_in_gwei =
-            args.gas_dropoff + mul_div(accs.registered_chain.gas_price, EVM_GAS_COST, GWEI);
+        let target_native_in_gwei = args.gas_dropoff +
+            mul_div(accs.registered_chain.gas_price, accs.registered_ntt.gas_cost as u64, GWEI);
 
         //usd/target_native[usd, 6 decimals] * target_native[gwei, 9 decimals] = usd[usd, 6 decimals]
         let target_native_in_usd = mul_div(
