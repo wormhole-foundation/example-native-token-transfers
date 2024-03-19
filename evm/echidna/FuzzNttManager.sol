@@ -7,6 +7,7 @@ import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../src/interfaces/IManagerBase.sol";
 import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
+import "../src/NttManager/TransceiverRegistry.sol";
 import "../src/libraries/external/OwnableUpgradeable.sol";
 import "./helpers/FuzzingHelpers.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -17,6 +18,14 @@ import "wormhole-solidity-sdk/Utils.sol";
 contract FuzzNttManager is FuzzingHelpers {
     uint64[] queuedOutboundTransfers;
     mapping(uint256 => bool) executedQueuedOutboundTransfers;
+    
+    // Keep track of transceiver state
+    uint256 numRegisteredTransceivers = 1; // We start with 1 transceiver by default
+    uint256 numEnabledTransceivers = 1;
+    mapping(address => bool) isTransceiverRegistered;
+    mapping(address => bool) isTransceiverEnabled;
+    address[] registeredTransceivers;
+
 
     NttManager nttManager;
     DummyToken dummyToken;
@@ -332,6 +341,132 @@ contract FuzzNttManager is FuzzingHelpers {
                 assertWithMsg(
                     false,
                     "NttManager: setInboundLimit unexpected revert"
+                );
+            }
+        }
+    }
+
+    function setTransceiver(bool newTransceiver, uint256 transceiverIndex) public {
+        address transceiver;
+        
+        if (newTransceiver) {
+            DummyTransceiver newDummyTransceiver = new DummyTransceiver(address(nttManager));
+            transceiver = address(newDummyTransceiver);
+        }
+        else {
+            transceiverIndex = clampBetween(transceiverIndex, 0, registeredTransceivers.length - 1);
+            transceiver = registeredTransceivers[transceiverIndex];
+        }
+        
+        try nttManager.setTransceiver(transceiver) {
+            // We only set these if the transceiver wasn't registered before
+            if (!isTransceiverRegistered[transceiver]) {
+                isTransceiverRegistered[transceiver] = true;
+                registeredTransceivers.push(transceiver);
+                numRegisteredTransceivers++;
+            }
+
+            isTransceiverEnabled[transceiver] = true;
+            numEnabledTransceivers++;
+        }
+        catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            if (isTransceiverRegistered[transceiver]) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(TransceiverRegistry.TransceiverAlreadyEnabled.selector),
+                    "NttManager: setTransceiver expected to fail if enabling an already enabled transceiver"
+                );
+            }
+            else if (numRegisteredTransceivers >= 64) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(TransceiverRegistry.TooManyTransceivers.selector),
+                    "NttManager: setTransceiver expected to fail if registering too many transceivers"
+                );
+            }
+            else if (transceiver == address(0)) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(TransceiverRegistry.InvalidTransceiverZeroAddress.selector),
+                    "NttManager: setTransceiver expected to fail if registering the 0 address"
+                );
+            }
+            else {
+                assertWithMsg(
+                    false,
+                    "NttManager: setTransceiver unexpected revert"
+                );
+            }
+        }
+    }
+
+    function removeTransceiver(bool registeredTransceiver, uint256 transceiverIndex) public {
+        address transceiver;
+        
+        if (registeredTransceiver) {
+            transceiverIndex = clampBetween(transceiverIndex, 0, registeredTransceivers.length - 1);
+            transceiver = registeredTransceivers[transceiverIndex];
+        }
+        else {
+            transceiver = address(uint160(transceiverIndex));
+        }
+
+        try nttManager.removeTransceiver(transceiver) {
+            isTransceiverEnabled[transceiver] = false;
+            numEnabledTransceivers--;
+        }
+        catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            if (!isTransceiverRegistered[transceiver]) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(TransceiverRegistry.NonRegisteredTransceiver.selector),
+                    "NttManager: removeTransceiver expected to fail if removing a non-registered transceiver"
+                );
+            }
+            else if (!isTransceiverEnabled[transceiver]) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(TransceiverRegistry.DisabledTransceiver.selector),
+                    "NttManager: removeTransceiver expected to fail if removing an already disabled transceiver"
+                );
+            }
+            else if (transceiver == address(0)) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(TransceiverRegistry.InvalidTransceiverZeroAddress.selector),
+                    "NttManager: removeTransceiver expected to fail if removing the 0 address"
+                );
+            }
+            else {
+                assertWithMsg(
+                    false,
+                    "NttManager: removeTransceiver unexpected revert"
+                );
+            }
+        }
+    }
+
+    function setThreshold(uint8 threshold) public {
+        try nttManager.setThreshold(threshold) {
+
+        }
+        catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            if (threshold == 0) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.ZeroThreshold.selector),
+                    "NttManager: setThreshold expected to fail if setting threshold to 0"
+                );
+            }
+            else if (threshold > numEnabledTransceivers) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.ThresholdTooHigh.selector),
+                    "NttManager: setThreshold expected to fail if trying to set threshold above num enabled transceivers"
+                );
+            }
+            else {
+                assertWithMsg(
+                    false,
+                    "NttManager: setThreshold unexpected revert"
                 );
             }
         }
