@@ -378,16 +378,16 @@ contract FuzzNttManager is FuzzingHelpers {
                     "NttManager: setTransceiver expected to fail if enabling an already enabled transceiver"
                 );
             }
-            else if (numRegisteredTransceivers >= 64) {
-                assertWithMsg(
-                    errorSelector == selectorToUint(TransceiverRegistry.TooManyTransceivers.selector),
-                    "NttManager: setTransceiver expected to fail if registering too many transceivers"
-                );
-            }
             else if (transceiver == address(0)) {
                 assertWithMsg(
                     errorSelector == selectorToUint(TransceiverRegistry.InvalidTransceiverZeroAddress.selector),
                     "NttManager: setTransceiver expected to fail if registering the 0 address"
+                );
+            }
+            else if (numRegisteredTransceivers >= 64) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(TransceiverRegistry.TooManyTransceivers.selector),
+                    "NttManager: setTransceiver expected to fail if registering too many transceivers"
                 );
             }
             else {
@@ -417,7 +417,13 @@ contract FuzzNttManager is FuzzingHelpers {
         catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
 
-            if (!isTransceiverRegistered[transceiver]) {
+            if (transceiver == address(0)) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(TransceiverRegistry.InvalidTransceiverZeroAddress.selector),
+                    "NttManager: removeTransceiver expected to fail if removing the 0 address"
+                );
+            }
+            else if (!isTransceiverRegistered[transceiver]) {
                 assertWithMsg(
                     errorSelector == selectorToUint(TransceiverRegistry.NonRegisteredTransceiver.selector),
                     "NttManager: removeTransceiver expected to fail if removing a non-registered transceiver"
@@ -427,12 +433,6 @@ contract FuzzNttManager is FuzzingHelpers {
                 assertWithMsg(
                     errorSelector == selectorToUint(TransceiverRegistry.DisabledTransceiver.selector),
                     "NttManager: removeTransceiver expected to fail if removing an already disabled transceiver"
-                );
-            }
-            else if (transceiver == address(0)) {
-                assertWithMsg(
-                    errorSelector == selectorToUint(TransceiverRegistry.InvalidTransceiverZeroAddress.selector),
-                    "NttManager: removeTransceiver expected to fail if removing the 0 address"
                 );
             }
             else {
