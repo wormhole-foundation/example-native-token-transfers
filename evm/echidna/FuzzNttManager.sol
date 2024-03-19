@@ -20,8 +20,8 @@ contract FuzzNttManager is FuzzingHelpers {
     mapping(uint256 => bool) executedQueuedOutboundTransfers;
     
     // Keep track of transceiver state
-    uint256 numRegisteredTransceivers = 1; // We start with 1 transceiver by default
-    uint256 numEnabledTransceivers = 1;
+    uint256 numRegisteredTransceivers;
+    uint256 numEnabledTransceivers;
     mapping(address => bool) isTransceiverRegistered;
     mapping(address => bool) isTransceiverEnabled;
     address[] registeredTransceivers;
@@ -38,18 +38,14 @@ contract FuzzNttManager is FuzzingHelpers {
         IERC20(dummyToken).approve(address(nttManager), type(uint256).max);
     }
 
-    function transferShouldSeizeTheRightAmount(uint256 amount, uint256 randomAddress, uint16 recipientChainId, uint8 peerDecimals, uint256 inboundLimit) public {
+    function transferShouldSeizeTheRightAmount(uint256 amount, uint256 randomAddress, uint16 recipientChainId) public {
+        INttManager.NttManagerPeer memory peer = nttManager.getPeer(recipientChainId);
+
         randomAddress = clampBetween(randomAddress, 1, type(uint256).max);
-        bytes32 validAddress = bytes32(randomAddress);
-        
-        // Make sure the peer is set to a valid config
-        peerDecimals = uint8(clampBetween(peerDecimals, 1, type(uint8).max));
-        recipientChainId = uint16(clampBetween(recipientChainId, 1, type(uint16).max));
-        setPeer(recipientChainId, validAddress, peerDecimals, inboundLimit, true);
-        
+        bytes32 validAddress = bytes32(randomAddress);     
 
         uint8 decimals = ERC20(dummyToken).decimals();
-        uint8 minDecimals =  minUint8(8, minUint8(decimals, peerDecimals));
+        uint8 minDecimals =  minUint8(8, minUint8(decimals, peer.tokenDecimals));
 
         amount = clampBetween(amount, 10 ** (decimals - minDecimals), type(uint64).max * 10 ** (decimals - minUint8(8, decimals)));
         amount = TrimmedAmountLib.scale(amount, decimals, minDecimals);
@@ -81,6 +77,24 @@ contract FuzzNttManager is FuzzingHelpers {
                     "NttManager: transfer expected to fail if sending with 0 amount"
                 );
             }
+            else if (peer.tokenDecimals == 0) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(INttManager.InvalidPeerDecimals.selector),
+                    "NttManager: transfer expected to fail if sending to a peer with 0 decimals"
+                );
+            }
+            else if (peer.peerAddress == bytes32(0)) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.PeerNotRegistered.selector),
+                    "NttManager: transfer expected to fail if sending to an unset peer"
+                );
+            } 
+            else if (numEnabledTransceivers == 0) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.NoEnabledTransceivers.selector),
+                    "NttManager: transfer expected to fail if sending when no transceivers are enabled"
+                );
+            }
             else {
                 assertWithMsg(
                     false,
@@ -90,16 +104,11 @@ contract FuzzNttManager is FuzzingHelpers {
         }
     }
 
-    function transferWithQoLEntrypoint(uint256 amount, uint16 recipientChainId, bytes32 recipient, bytes32 peerContract, uint8 peerDecimals, uint256 inboundLimit) public {
-        require(peerContract != bytes32(0));
-
-        // Make sure the peer is set to a valid config
-        peerDecimals = uint8(clampBetween(peerDecimals, 1, type(uint8).max));
-        recipientChainId = uint16(clampBetween(recipientChainId, 1, type(uint16).max));
-        setPeer(recipientChainId, peerContract, peerDecimals, inboundLimit, true);
+    function transferWithQoLEntrypoint(uint256 amount, uint16 recipientChainId, bytes32 recipient) public {
+        INttManager.NttManagerPeer memory peer = nttManager.getPeer(recipientChainId);
 
         uint8 decimals = ERC20(dummyToken).decimals();
-        uint8 minDecimals =  minUint8(8, minUint8(decimals, peerDecimals));
+        uint8 minDecimals =  minUint8(8, minUint8(decimals, peer.tokenDecimals));
 
         amount = clampBetween(amount, 10 ** (decimals - minDecimals), type(uint64).max * 10 ** (decimals - minUint8(8, decimals)));
         amount = TrimmedAmountLib.scale(amount, decimals, minDecimals);
@@ -146,16 +155,28 @@ contract FuzzNttManager is FuzzingHelpers {
                     "NttManager: transfer expected to fail if sending to 0 address"
                 );
             }
-            else if (peerDecimals == 0) {
+            else if (peer.tokenDecimals == 0) {
                 assertWithMsg(
                     errorSelector == selectorToUint(INttManager.InvalidPeerDecimals.selector),
                     "NttManager: transfer expected to fail if sending to a peer with 0 decimals"
                 );
             }
+            else if (peer.peerAddress == bytes32(0)) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.PeerNotRegistered.selector),
+                    "NttManager: transfer expected to fail if sending to an unset peer"
+                );
+            } 
             else if (amount > currentOutboundCapacity) {
                 assertWithMsg(
                     errorSelector == selectorToUint(IRateLimiter.NotEnoughCapacity.selector),
                     "NttManager: transfer expected to fail if exceeding rate limit"
+                );
+            }
+            else if (numEnabledTransceivers == 0) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.NoEnabledTransceivers.selector),
+                    "NttManager: transfer expected to fail if sending when no transceivers are enabled"
                 );
             }
             else {
@@ -167,16 +188,11 @@ contract FuzzNttManager is FuzzingHelpers {
         }
     }
 
-    function transferShouldQueueProperly(uint256 amount, uint16 recipientChainId, bytes32 recipient, bytes32 peerContract, uint8 peerDecimals, uint256 inboundLimit, bool shouldQueue) public {
-        require(peerContract != bytes32(0));
-
-        // Make sure the peer is set to a valid config
-        peerDecimals = uint8(clampBetween(peerDecimals, 1, type(uint8).max));
-        recipientChainId = uint16(clampBetween(recipientChainId, 1, type(uint16).max));
-        setPeer(recipientChainId, peerContract, peerDecimals, inboundLimit, true);
+    function transferShouldQueueProperly(uint256 amount, uint16 recipientChainId, bytes32 recipient, bool shouldQueue) public {
+        INttManager.NttManagerPeer memory peer = nttManager.getPeer(recipientChainId);
         
         uint8 decimals = ERC20(dummyToken).decimals();
-        uint8 minDecimals =  minUint8(8, minUint8(decimals, peerDecimals));
+        uint8 minDecimals =  minUint8(8, minUint8(decimals, peer.tokenDecimals));
 
         amount = clampBetween(amount, 10 ** (decimals - minDecimals), type(uint64).max * 10 ** (decimals - minUint8(8, decimals)));
         amount = TrimmedAmountLib.scale(amount, decimals, minDecimals);
@@ -253,10 +269,22 @@ contract FuzzNttManager is FuzzingHelpers {
                     "NttManager: transfer expected to fail if sending to 0 address"
                 );
             }
-            else if (peerDecimals == 0) {
+            else if (peer.tokenDecimals == 0) {
                 assertWithMsg(
                     errorSelector == selectorToUint(INttManager.InvalidPeerDecimals.selector),
                     "NttManager: transfer expected to fail if sending to a peer with 0 decimals"
+                );
+            }
+            else if (peer.peerAddress == bytes32(0)) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.PeerNotRegistered.selector),
+                    "NttManager: transfer expected to fail if sending to an unset peer"
+                );
+            }
+            else if (numEnabledTransceivers == 0) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.NoEnabledTransceivers.selector),
+                    "NttManager: transfer expected to fail if sending when no transceivers are enabled"
                 );
             }
             else if (!shouldQueue && amount > currentOutboundCapacity) {
@@ -560,11 +588,5 @@ contract FuzzNttManager is FuzzingHelpers {
         nttManager = NttManager(address(new ERC1967Proxy(address(implementation), "")));
         // Initialize the proxy
         nttManager.initialize();
-
-
-
-        // Set a transceiver since we need at least 1
-        dummyTransceiver = new DummyTransceiver(address(nttManager));
-        nttManager.setTransceiver(address(dummyTransceiver));
     }
 }
