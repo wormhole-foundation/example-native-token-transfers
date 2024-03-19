@@ -18,7 +18,7 @@ There are two basic components to NTT:
 
 
 <figure>
-  <img src="images/NTT-architecture--custom-attestation-2.png" alt="NTT Architecture Diagram">
+  <img src="images/ntt_architecture__with_custom_attestation.jpg" alt="NTT Architecture Diagram">
   <figcaption>Figure: NTT Architecture Diagram with Custom Attestations.</figcaption>
 </figure>
 
