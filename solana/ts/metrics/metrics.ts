@@ -23,15 +23,18 @@ export type OutputMetrics = {
   lastValidBlockHeight: number;
   successPercentage: number;
   transactionsPerSecond: number;
+  slotMap: Map<number, number>;
+  slotTimestamps: Map<number, number>;
+  avgPerSlot: number;
+  maxPerSlot: number;
 };
 
 export async function createOutputMetrics(
   config: Config,
   results: RpcResponseAndContext<SignatureStatus | null>[],
   lastValidBlockHeight: number,
-  wallTimeStart: number,
-  wallTimeEnd: number,
-  connection: Connection
+  startTime: number,
+  slotTimestamps: Map<number, number>
 ): Promise<OutputMetrics> {
   const totalTransactions = results.length;
   const totalTransactionsFailed = results.filter(
@@ -42,20 +45,7 @@ export async function createOutputMetrics(
   const successPercentage =
     (totalTransactionsSucceeded / totalTransactions) * 100;
   console.log("Last valid block height: ", lastValidBlockHeight);
-  console.log("Wall time start: ", wallTimeStart);
-  console.log("Wall time end: ", wallTimeEnd);
-  console.log("Wall time duration: ", wallTimeEnd - wallTimeStart);
-
-  const slotMap = new Map<number, number>();
-  results.forEach((result) => {
-    if (result.value?.slot) {
-      if (slotMap.get(result.value.slot)! > 1) {
-        slotMap.set(result.value.slot, slotMap.get(result.value.slot)! + 1);
-      } else {
-        slotMap.set(result.value.slot, 1);
-      }
-    }
-  });
+  const slotMap = createSlotMap(results);
 
   let lowInclusionSlot = Math.min(...slotMap.keys());
   let highInclusionSlot = Math.max(...slotMap.keys());
@@ -63,37 +53,52 @@ export async function createOutputMetrics(
 
   console.log("Low inclusion slot: ", lowInclusionSlot);
   console.log("High inclusion slot: ", highInclusionSlot);
+  console.log("Time start: " + startTime);
 
-  if (lowInclusionSlot && highInclusionSlot) {
-    let timestampLowInclusionSlot = (
-      await connection.getBlock(lowInclusionSlot)
-    )?.blockTime;
-    let timestampHighInclusionSlot = (
-      await connection.getBlock(highInclusionSlot)
-    )?.blockTime;
-
-    if (!timestampLowInclusionSlot || !timestampHighInclusionSlot) {
-      timestampHighInclusionSlot = 1;
-      timestampLowInclusionSlot = 0;
-    }
-
-    delta = timestampHighInclusionSlot - timestampLowInclusionSlot;
+  let timeEnd = 0;
+  let timeStart = startTime;
+  if (slotTimestamps.has(lowInclusionSlot)) {
+    console.log(
+      "low inclusion slot timestamp: ",
+      slotTimestamps.get(lowInclusionSlot)
+    );
+    timeStart = slotTimestamps.get(lowInclusionSlot)!;
+  } else {
+    console.log(
+      "ERROR : low inclusion slot timestamp not found, delta will use broadcast start time"
+    );
   }
+
+  if (slotTimestamps.has(highInclusionSlot)) {
+    console.log(
+      "High inclusion slot timestamp: ",
+      slotTimestamps.get(highInclusionSlot)
+    );
+    timeEnd = slotTimestamps.get(highInclusionSlot)!;
+  } else {
+    console.log(
+      "ERROR : high inclusion slot timestamp not found, delta will be incorrect"
+    );
+  }
+
+  delta = timeEnd - timeStart;
 
   console.log("Metrics: ");
   console.log("Total transactions: ", totalTransactions);
   console.log("Total transactions succeeded: ", totalTransactionsSucceeded);
   console.log("Total transactions failed: ", totalTransactionsFailed);
   console.log("Success percentage: ", successPercentage);
+  console.log("Inclusion timestamp delta: ", delta);
 
-  const transactionsPerSecond = (totalTransactionsSucceeded * 1000) / delta;
+  const transactionsPerSecond = totalTransactionsSucceeded / delta;
 
   console.log("Transactions per second (walltime): ", transactionsPerSecond);
 
-  // console.log("debug");
-  // results.forEach((result) => {
-  //   console.log(JSON.stringify(result, null, 2));
-  // });
+  const avgPerSlot =
+    totalTransactionsSucceeded / (highInclusionSlot - lowInclusionSlot + 1);
+  console.log("Average per slot: ", avgPerSlot);
+  const maxPerSlot = Math.max(...slotMap.values());
+  console.log("Max per slot: ", maxPerSlot);
 
   return {
     ...config,
@@ -103,7 +108,31 @@ export async function createOutputMetrics(
     lastValidBlockHeight,
     successPercentage,
     transactionsPerSecond,
+    slotMap,
+    slotTimestamps,
+    avgPerSlot,
+    maxPerSlot,
   };
+}
+
+function createSlotMap(
+  results: RpcResponseAndContext<SignatureStatus | null>[]
+): Map<number, number> {
+  const slotMap = new Map<number, number>();
+  results.forEach((result) => {
+    if (
+      result.value?.slot &&
+      isFinite(result.value.slot) &&
+      result.value.slot > 0
+    ) {
+      if (slotMap.get(result.value.slot)! > 0) {
+        slotMap.set(result.value.slot, slotMap.get(result.value.slot)! + 1);
+      } else {
+        slotMap.set(result.value.slot, 1);
+      }
+    }
+  });
+  return slotMap;
 }
 
 export function writeOutputMetrics(metrics: OutputMetrics) {

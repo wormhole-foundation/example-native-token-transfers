@@ -7,14 +7,17 @@ import {
   SystemProgram,
   PublicKey,
   sendAndConfirmTransaction,
+  BlockResponse,
 } from "@solana/web3.js";
 import { NTT } from "../sdk";
 import nacl from "tweetnacl";
 import {
+  UnsignedNttTransfer,
   airdrop,
   bulkFetchTxSignatures,
   createInitializeTransaction,
-  createNttBridgeTestTransaction,
+  createUnsignedNttBridgeTestTransaction,
+  initializeAllWallets,
   transactionBulkBroadcast,
 } from "./helpers";
 import {
@@ -22,8 +25,6 @@ import {
   createOutputMetrics,
   writeOutputMetrics,
 } from "./metrics";
-
-const SLOT_EXPIRATION_PERIOD = 300;
 
 export type Config = {
   envName: string;
@@ -44,9 +45,9 @@ const localhostConfig: Config = {
   nttId: "nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS",
   wormholeId: "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth",
   shouldAirdrop: true,
-  numberOfKeypairs: 250,
-  numberOfTotalTransactions: 750,
-  testTransferAmount: 1000,
+  numberOfKeypairs: 50,
+  numberOfTotalTransactions: 500,
+  testTransferAmount: 100,
 };
 
 const config = localhostConfig;
@@ -80,67 +81,39 @@ async function run() {
   // generate keypairs and create initializing transactions
   console.log("Generating " + config.numberOfKeypairs + " keypairs");
   const keypairs: Keypair[] = [];
-  const initializingTransactions: Transaction[] = [];
   const initializeRecentBlockhash = await connection.getRecentBlockhash();
   for (let i = 0; i < config.numberOfKeypairs; i++) {
     keypairs.push(Keypair.generate());
-    initializingTransactions.push(
-      createInitializeTransaction(
-        primaryTestWallet,
-        keypairs[i],
-        mintAccount,
-        initializeRecentBlockhash.blockhash,
-        config.testTransferAmount
-      )
-    );
   }
-  console.log("Generated keypairs and initializing transactions");
-
-  //TODO handle if some of the initializing transactions fail
-  //Bulk broadcast the initializing transactions
-  console.log("Broadcasting initializing transactions");
-  const initializingSignatures = await Promise.all(
-    transactionBulkBroadcast(initializingTransactions, connection)
+  console.log("Generated keypairs");
+  console.log("Initializing all test wallets for the generated keypairs");
+  const initializeSuccess = await initializeAllWallets(
+    primaryTestWallet,
+    keypairs,
+    config.testTransferAmount,
+    Math.ceil(config.numberOfTotalTransactions / config.numberOfKeypairs),
+    mintAccount,
+    initializeRecentBlockhash.blockhash,
+    connection
   );
 
-  //wait 3 seconds for inclusion to settle out
-  await new Promise((resolve) => setTimeout(resolve, 30000));
-
-  console.log("Finished broadcasting initializing transactions");
-  console.log("Pulling results of initializing transactions");
-  const initializingResults = await Promise.all(
-    bulkFetchTxSignatures(connection, initializingSignatures)
-  );
-  console.log("Pulled results of initializing transactions");
-  for (let i = 0; i < initializingResults.length; i++) {
-    if (
-      initializingResults[i].value === null ||
-      initializingResults[i].value?.err
-    ) {
-      console.log("debug:");
-      console.log(initializingSignatures[i]);
-      console.log(JSON.stringify(initializingResults[i], null, 2));
-      throw new Error("Failed to initialize keypair at index " + i);
-    }
+  if (!initializeSuccess) {
+    throw new Error("Failed to initialize keypairs");
   }
+
+  console.log("Initialized all test wallets");
 
   //create test transactions
   console.log("Creating test transactions");
-  const recentBlockhash = await connection.getLatestBlockhashAndContext();
 
-  const lastValidHeight = recentBlockhash.value.lastValidBlockHeight;
-
-  const signedHeight = recentBlockhash.context.slot;
-  console.log("Signed using blockhash for hestight : " + signedHeight);
-  console.log("Last possible valid height : ", lastValidHeight);
-
-  const testTransactions: Transaction[] = [];
+  //The test transactions require network to create,
+  //so we want to avoid signing them until the last moment to avoid latency
+  const testTransactionsUnsigned: UnsignedNttTransfer[] = [];
   for (let i = 0; i < config.numberOfTotalTransactions; i++) {
-    testTransactions.push(
-      await createNttBridgeTestTransaction(
+    testTransactionsUnsigned.push(
+      await createUnsignedNttBridgeTestTransaction(
         connection,
         keypairs[i % keypairs.length],
-        recentBlockhash.value.blockhash,
         config.nttId,
         config.wormholeId,
         mintAccount,
@@ -148,20 +121,74 @@ async function run() {
       )
     );
   }
-  console.log("Finished creating test transactions");
+  console.log("Finished creating unsigned transactions");
+
+  //pull the current timestamp of the slot at the start of this test
+  const recentBlockhash = await connection.getLatestBlockhashAndContext();
+  const lastValidHeight = recentBlockhash.value.lastValidBlockHeight;
+  const startBlock = await connection.getBlock(
+    recentBlockhash.value.lastValidBlockHeight - 300
+  ); //weird
+  if (
+    !startBlock ||
+    startBlock.blockTime === null ||
+    startBlock.blockTime === undefined
+  ) {
+    throw new Error("Failed to fetch start block time");
+  }
+  const timeStart = startBlock.blockTime;
+  console.log("Start time: ", timeStart);
+  console.log("Last valid height: ", lastValidHeight);
+
+  //sign all the transactions really quickly
+  console.log("Signing all test transactions");
+  const signedTestTransactions: Transaction[] = [];
+  for (let i = 0; i < config.numberOfTotalTransactions; i++) {
+    const unsignedTransaction = testTransactionsUnsigned[i];
+    unsignedTransaction.unsignedTransaction.recentBlockhash =
+      recentBlockhash.value.blockhash;
+    unsignedTransaction.unsignedTransaction.sign(
+      keypairs[i % keypairs.length],
+      unsignedTransaction.outboxKey
+    );
+    signedTestTransactions.push(unsignedTransaction.unsignedTransaction);
+  }
+  console.log("Finished signing all test transactions");
 
   //broadcast the transactions
-  const wallTimeStart = Date.now();
   console.log("Broadcasting test transactions");
-  const transactionSignatures = await Promise.all(
-    transactionBulkBroadcast(testTransactions, connection)
-  );
-  console.log("Finished broadcasting test transactions");
+
+  //NOTE: intentionally not awaiting this, as we want to immediately start pulling blocks.
+  const transactionSignaturesPromise = Promise.all(
+    transactionBulkBroadcast(signedTestTransactions, connection)
+  ).then((results) => {
+    console.log("Broadcasted all test transactions!!!!");
+    console.log("!!!!!!");
+    console.log("!!!!!!");
+    return results;
+  });
 
   let done = false;
+  const slotTimestamps = new Map<number, number>();
   while (!done) {
     //pull the current slotheight
     const currentSlot = await connection.getSlot();
+    let currentBlock: BlockResponse | null = null;
+
+    try {
+      currentBlock = await connection.getBlock(currentSlot);
+    } catch (error) {
+      console.log("Error fetching block: ", error);
+    }
+    //RPCs aggressively clean up old slots, so we need to keep track of the timestamps here
+    //because they wont be available during metrics processing.
+    if (
+      currentBlock &&
+      currentBlock.blockTime !== null &&
+      currentBlock.blockTime !== undefined
+    ) {
+      slotTimestamps.set(currentSlot, currentBlock.blockTime);
+    }
 
     //if the currentSlot is greater than the lastValidHeight, then we are done
     if (currentSlot > lastValidHeight) {
@@ -179,12 +206,15 @@ async function run() {
   console.log("Passed endtime of test.");
   //Pull all the transactions to see what percentage were included
 
-  console.log("waiting 1 second for inclusions to settle");
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  console.log("waiting 3 seconds for inclusions to settle");
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+
+  //Here is the part where we can't wait for the broadcast anymore
+  const transactionSignatureResults = await transactionSignaturesPromise;
 
   console.log("Fetching transaction signatures of all test transactions.");
   const transactionResults = await Promise.all(
-    bulkFetchTxSignatures(connection, transactionSignatures)
+    bulkFetchTxSignatures(connection, transactionSignatureResults)
   );
   console.log("Fetched transaction signatures of all test transactions.");
 
@@ -193,9 +223,8 @@ async function run() {
     config,
     transactionResults,
     lastValidHeight,
-    wallTimeStart,
-    wallTimeEnd,
-    connection
+    timeStart,
+    slotTimestamps
   );
 
   console.log("Writing output metrics");

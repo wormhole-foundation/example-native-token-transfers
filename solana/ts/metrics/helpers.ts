@@ -18,11 +18,15 @@ import fs from "fs";
 import { NTT } from "../../ts/sdk";
 import { BN } from "@coral-xyz/anchor";
 
+export type UnsignedNttTransfer = {
+  unsignedTransaction: Transaction;
+  outboxKey: Keypair;
+};
+
 export async function airdrop(
   testWalletLocation: string,
   connection: Connection
 ) {
-  console.log("Airdropping to test wallet");
   const testWallet = Keypair.fromSecretKey(
     Uint8Array.from(JSON.parse(fs.readFileSync(testWalletLocation).toString()))
   );
@@ -34,7 +38,6 @@ export async function airdrop(
     lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
     signature: tx,
   });
-  console.log("Airdrop complete");
 }
 
 export function createInitializeTransaction(
@@ -42,12 +45,12 @@ export function createInitializeTransaction(
   toWallet: Keypair,
   mint: PublicKey,
   recentBlockhash: string,
-  testTransferAmount: number
+  seedTestTokenAmount: number
 ): Transaction {
   let instructions: TransactionInstruction[] = [];
   instructions.push(seedWalletInstruction(fromWallet, toWallet, 100000000)); // 10 million lamports seems safe
   instructions = instructions.concat(
-    seedNttTestToken(mint, fromWallet, toWallet, testTransferAmount * 3)
+    seedNttTestToken(mint, fromWallet, toWallet, seedTestTokenAmount)
   );
 
   const output = new Transaction();
@@ -91,6 +94,7 @@ function seedNttTestToken(
   // console.log("debug: defaultTargetAta: ", defaultTargetAta.toBase58());
   // console.log("debug: defaultSourceAta: ", defaultSourceAta.toBase58());
   // console.log("debug: mint: ", mint.toBase58());
+
   //First create an associated token account for the toWallet for the mint
   const createAtaInstruction = createAssociatedTokenAccountInstruction(
     fromWallet.publicKey,
@@ -108,41 +112,31 @@ function seedNttTestToken(
     seedNttTokenAmount,
     9 //Assume token has 9 decimals
   );
-
-  //Tested that the funds can be sent back using the toWallet as owner signer, and the answer is yes
-  // const transferInstruction2 = createTransferCheckedInstruction(
-  //   defaultTargetAta,
-  //   mint,
-  //   defaultSourceAta,
-  //   toWallet.publicKey,
-  //   seedNttTokenAmount,
-  //   9 //Assume token has 9 decimals
-  // );
-
   //return the instructions
   return [createAtaInstruction, transferInstruction];
 }
 
-export async function createNttBridgeTestTransaction(
+export async function createUnsignedNttBridgeTestTransaction(
   connection: Connection,
   fromWallet: Keypair,
-  recentBlockhash: string,
   nttId: string,
   wormholeId: string,
   mint: PublicKey,
   amount: number
-): Promise<Transaction> {
+): Promise<UnsignedNttTransfer> {
   const outboxKeypair = Keypair.generate();
 
   const ntt = new NTT(connection, {
     nttId: nttId as any,
     wormholeId: wormholeId as any,
   });
+
   const nttConfig = await ntt.getConfig();
   const defaultSourceAta = getAssociatedTokenAccount(
     mint,
     fromWallet.publicKey
   );
+
   // const bridgeOwnerAcc = "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth";
   // const bridgeOppAcc = "2yVjuQwpsvdsrywzsJJVs9Ueh4zayyo5DYJbBNc3DDpn";
   // const bridgeOwnerPull = await connection.getAccountInfo(
@@ -222,11 +216,8 @@ export async function createNttBridgeTestTransaction(
 
   const output = new Transaction();
   output.add(approveIx, createTransferLockInstruction, outboundInstruction);
-  output.recentBlockhash = recentBlockhash;
-  console.log("debug: output: ", JSON.stringify(output, null, 2));
-  output.sign(fromWallet, outboxKeypair);
 
-  return output;
+  return { unsignedTransaction: output, outboxKey: outboxKeypair };
 }
 
 export function bulkFetchTxSignatures(
@@ -247,4 +238,62 @@ export function transactionBulkBroadcast(
       skipPreflight: true,
     })
   );
+}
+
+export function initializeAllWallets(
+  primaryWallet: Keypair,
+  testKeypairs: Keypair[],
+  testTransferAmount: number,
+  testTransfersPerWallet: number,
+  mint: PublicKey,
+  recentBlockhash: string,
+  connection: Connection
+): Promise<boolean> {
+  const allPromises: Promise<boolean>[] = [];
+  for (let i = 0; i < testKeypairs.length; i++) {
+    const transaction = createInitializeTransaction(
+      primaryWallet,
+      testKeypairs[i],
+      mint,
+      recentBlockhash,
+      testTransferAmount * testTransfersPerWallet
+    );
+    allPromises.push(
+      broadcastTransactionUntilComplete(
+        [primaryWallet, testKeypairs[i]],
+        transaction,
+        connection
+      )
+    );
+  }
+
+  return Promise.all(allPromises).then((results) => {
+    return results.every((result) => result);
+  });
+}
+
+export async function broadcastTransactionUntilComplete(
+  signers: Keypair[],
+  transaction: Transaction,
+  connection: Connection
+): Promise<boolean> {
+  let txid = await connection.sendRawTransaction(transaction.serialize(), {
+    skipPreflight: true,
+  });
+  let status = (await connection.getSignatureStatus(txid)).value;
+  while (status === null || status.err) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    if (status === null) {
+      status = (await connection.getSignatureStatus(txid)).value;
+    } else {
+      const recentBlockhash = await connection.getRecentBlockhash();
+      transaction.recentBlockhash = recentBlockhash.blockhash;
+      transaction.sign(...signers);
+      txid = await connection.sendRawTransaction(transaction.serialize(), {
+        skipPreflight: true,
+      });
+    }
+  }
+
+  return true;
 }
