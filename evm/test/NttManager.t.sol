@@ -320,7 +320,12 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         vm.expectRevert(abi.encodeWithSelector(IManagerBase.NoEnabledTransceivers.selector));
         nttManager.transfer(
-            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false, new bytes(1)
+            1 * 10 ** decimals,
+            chainId,
+            toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
+            false,
+            new bytes(1)
         );
     }
 
@@ -646,13 +651,28 @@ contract TestNttManager is Test, IRateLimiterEvents {
         token.approve(address(nttManager), 3 * 10 ** decimals);
 
         uint64 s1 = nttManager.transfer(
-            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false, new bytes(1)
+            1 * 10 ** decimals,
+            chainId,
+            toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
+            false,
+            new bytes(1)
         );
         uint64 s2 = nttManager.transfer(
-            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false, new bytes(1)
+            1 * 10 ** decimals,
+            chainId,
+            toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
+            false,
+            new bytes(1)
         );
         uint64 s3 = nttManager.transfer(
-            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false, new bytes(1)
+            1 * 10 ** decimals,
+            chainId,
+            toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
+            false,
+            new bytes(1)
         );
 
         assertEq(s1, 0);
@@ -682,11 +702,15 @@ contract TestNttManager is Test, IRateLimiterEvents {
         uint256 amount = type(uint64).max * 10 ** (decimals - 6);
 
         vm.expectRevert("SafeCast: value doesn't fit in 64 bits");
-        nttManager.transfer(amount, chainId, toWormholeFormat(user_B), false, new bytes(1));
+        nttManager.transfer(
+            amount, chainId, toWormholeFormat(user_B), toWormholeFormat(user_A), false, new bytes(1)
+        );
 
         // A (slightly) more sensible amount should work normally
         amount = (type(uint64).max * 10 ** (decimals - 6 - 2)) - 150000000000; // Subtract this to make sure we don't have dust
-        nttManager.transfer(amount, chainId, toWormholeFormat(user_B), false, new bytes(1));
+        nttManager.transfer(
+            amount, chainId, toWormholeFormat(user_B), toWormholeFormat(user_A), false, new bytes(1)
+        );
     }
 
     function test_attestationQuorum() public {
@@ -801,7 +825,14 @@ contract TestNttManager is Test, IRateLimiterEvents {
                 INttManager.TransferAmountHasDust.selector, amountWithDust, dustAmount
             )
         );
-        nttManager.transfer(amountWithDust, chainId, toWormholeFormat(to), false, new bytes(1));
+        nttManager.transfer(
+            amountWithDust,
+            chainId,
+            toWormholeFormat(to),
+            toWormholeFormat(from),
+            false,
+            new bytes(1)
+        );
 
         vm.stopPrank();
     }
@@ -914,6 +945,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
             1 * 10 ** t.decimals(),
             TransceiverHelpersLib.SENDING_CHAIN_ID,
             toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
             false,
             new bytes(1)
         );
@@ -954,6 +986,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
             1 * 10 ** 10,
             TransceiverHelpersLib.SENDING_CHAIN_ID,
             toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
             false,
             new bytes(1)
         );
@@ -981,6 +1014,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
             1 * 10 ** 7,
             TransceiverHelpersLib.SENDING_CHAIN_ID,
             toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
             false,
             new bytes(1)
         );
