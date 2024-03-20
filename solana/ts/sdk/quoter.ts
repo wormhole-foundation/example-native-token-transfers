@@ -58,9 +58,9 @@ export class NttQuoter {
       throw new Error("Requested gas dropoff exceeds allowed maximum");
 
     const totalNativeGasCostUsd = chainData.nativePriceUsd *
-      (requestedGasDropoffEth + chainData.gasPriceGwei * EVM_GAS_COST * GWEI_PER_ETH);
+      (requestedGasDropoffEth + chainData.gasPriceGwei * EVM_GAS_COST / GWEI_PER_ETH);
 
-    const totalCostSol = rentCost +
+    const totalCostSol = rentCost / LAMPORTS_PER_SOL +
       (chainData.basePriceUsd + totalNativeGasCostUsd) / instanceData.solPriceUsd;
     
     return totalCostSol;
