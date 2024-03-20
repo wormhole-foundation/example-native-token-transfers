@@ -41,4 +41,6 @@ pub enum NTTError {
     BadAmountAfterTransfer,
     #[msg("BadAmountAfterBurn")]
     BadAmountAfterBurn,
+    #[msg("ZeroThreshold")]
+    ZeroThreshold,
 }

@@ -22,6 +22,9 @@ pub struct Redeem<'info> {
     pub payer: Signer<'info>,
 
     // NOTE: this works when the contract is paused
+    #[account(
+        constraint = config.threshold > 0 @ NTTError::ZeroThreshold,
+    )]
     pub config: Account<'info, Config>,
 
     #[account(
