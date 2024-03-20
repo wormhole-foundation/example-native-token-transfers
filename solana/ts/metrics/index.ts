@@ -46,7 +46,7 @@ const localhostConfig: Config = {
   wormholeId: "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth",
   shouldAirdrop: true,
   numberOfKeypairs: 50,
-  numberOfTotalTransactions: 500,
+  numberOfTotalTransactions: 50,
   testTransferAmount: 100,
 };
 
@@ -159,8 +159,9 @@ async function run() {
   console.log("Broadcasting test transactions");
 
   //NOTE: intentionally not awaiting this, as we want to immediately start pulling blocks.
-  const transactionSignaturesPromise = Promise.all(
-    transactionBulkBroadcast(signedTestTransactions, connection)
+  const transactionSignaturesPromise = transactionBulkBroadcast(
+    signedTestTransactions,
+    connection
   ).then((results) => {
     console.log("Broadcasted all test transactions!!!!");
     console.log("!!!!!!");

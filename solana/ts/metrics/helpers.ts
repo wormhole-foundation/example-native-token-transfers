@@ -229,15 +229,33 @@ export function bulkFetchTxSignatures(
   );
 }
 
-export function transactionBulkBroadcast(
+export async function transactionBulkBroadcast(
   transactions: Transaction[],
   connection: Connection
-): Promise<string>[] {
-  return transactions.map((transaction) =>
-    connection.sendRawTransaction(transaction.serialize(), {
-      skipPreflight: true,
-    })
+): Promise<string[]> {
+  const transactionsSerialized = transactions.map((transaction) =>
+    transaction.serialize()
   );
+  const newConnection = new Connection(connection.rpcEndpoint, {
+    commitment: "processed",
+    confirmTransactionInitialTimeout: 1,
+  });
+  const promises: Promise<string>[] = [];
+  let strings: string[] = [];
+  for (let i = 0; i < transactionsSerialized.length; i++) {
+    //console.log("Broadcasting transaction ", i);
+    promises.push(
+      newConnection.sendRawTransaction(transactionsSerialized[i], {
+        skipPreflight: true,
+      })
+    );
+    //optional throttle
+    //await new Promise((resolve) => setTimeout(resolve, 1));
+  }
+
+  strings = await Promise.all(promises);
+
+  return strings;
 }
 
 export function initializeAllWallets(
