@@ -11,4 +11,6 @@ codeSize: 0x8000
 
 stopOnFail: true
 
+testLimit: 500000
+
 # corpusDir: "corpus"

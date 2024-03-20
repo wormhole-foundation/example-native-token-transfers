@@ -9,6 +9,7 @@ import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
 import "../src/NttManager/TransceiverRegistry.sol";
 import "../src/libraries/external/OwnableUpgradeable.sol";
+import "../src/libraries/TransceiverStructs.sol";
 import "./helpers/FuzzingHelpers.sol";
 import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "solidity-bytes-utils/BytesLib.sol";
@@ -26,6 +27,11 @@ contract FuzzNttManager is FuzzingHelpers {
     mapping(address => bool) isTransceiverEnabled;
     address[] registeredTransceivers;
 
+    // Instructions
+    uint256 constant numTransceiverInstructions = 10;
+    bytes[] orderedInstructions;
+    bytes[] unorderedInstructions;
+
 
     NttManager nttManager;
     DummyToken dummyToken;
@@ -33,6 +39,7 @@ contract FuzzNttManager is FuzzingHelpers {
 
     constructor() {
         _initialManagerSetup();
+        _generateMultipleTransceiverInstructions(numTransceiverInstructions);
         
         dummyToken.mintDummy(address(this), type(uint256).max);
         IERC20(dummyToken).approve(address(nttManager), type(uint256).max);
@@ -281,16 +288,104 @@ contract FuzzNttManager is FuzzingHelpers {
                     "NttManager: transfer expected to fail if sending to an unset peer"
                 );
             }
+            else if (!shouldQueue && amount > currentOutboundCapacity) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IRateLimiter.NotEnoughCapacity.selector),
+                    "NttManager: transfer expected to fail if exceeding rate limit and not queueing"
+                );
+            }
             else if (numEnabledTransceivers == 0) {
                 assertWithMsg(
                     errorSelector == selectorToUint(IManagerBase.NoEnabledTransceivers.selector),
                     "NttManager: transfer expected to fail if sending when no transceivers are enabled"
                 );
             }
+            else {
+                assertWithMsg(
+                    false,
+                    "NttManager: transfer unexpected revert"
+                );
+            }
+        }
+    }
+
+    function transferWithCustomTransceiverInstructions(uint256 amount, uint16 recipientChainId, bytes32 recipient, bool isOrdered, uint256 instructionIndex, bool shouldQueue) public {
+        INttManager.NttManagerPeer memory peer = nttManager.getPeer(recipientChainId);
+
+        instructionIndex = clampBetween(instructionIndex, 0, numTransceiverInstructions - 1);
+        bytes memory encodedInstructions;
+
+        if (isOrdered) {
+            encodedInstructions = orderedInstructions[instructionIndex];
+        }
+        else {
+            encodedInstructions = unorderedInstructions[instructionIndex];
+        }
+
+
+
+        uint8 decimals = ERC20(dummyToken).decimals();
+        uint8 minDecimals =  minUint8(8, minUint8(decimals, peer.tokenDecimals));
+
+        amount = clampBetween(amount, 10 ** (decimals - minDecimals), type(uint64).max * 10 ** (decimals - minUint8(8, decimals)));
+        amount = TrimmedAmountLib.scale(amount, decimals, minDecimals);
+        amount = TrimmedAmountLib.scale(amount, minDecimals, decimals);
+
+        uint256 currentOutboundCapacity = nttManager.getCurrentOutboundCapacity();
+    
+        
+        try nttManager.transfer(amount, recipientChainId, recipient, shouldQueue, encodedInstructions) {
+
+        }
+        catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            if (amount == 0) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(INttManager.ZeroAmount.selector),
+                    "NttManager: transfer expected to fail if sending with 0 amount"
+                );
+            }
+            else if (recipient == bytes32(0)) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(INttManager.InvalidRecipient.selector),
+                    "NttManager: transfer expected to fail if sending to 0 address"
+                );
+            }
+            else if (peer.tokenDecimals == 0) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(INttManager.InvalidPeerDecimals.selector),
+                    "NttManager: transfer expected to fail if sending to a peer with 0 decimals"
+                );
+            }
+            else if (peer.peerAddress == bytes32(0)) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.PeerNotRegistered.selector),
+                    "NttManager: transfer expected to fail if sending to an unset peer"
+                );
+            }
+            else if (errorSelector == selectorToUint(TransceiverStructs.InvalidInstructionIndex.selector)) {
+                TransceiverStructs.TransceiverInstruction[] memory instructions = 
+                    TransceiverStructs.parseTransceiverInstructions(encodedInstructions, numRegisteredTransceivers);
+                for (uint256 i = 0; i < instructions.length; ++i) {
+                    if (instructions[i].index < numRegisteredTransceivers) {
+                        assertWithMsg(
+                            false,
+                            "NttManager: transfer should not fail if instruction index is in bounds"
+                        );
+                    }
+                }
+            }
             else if (!shouldQueue && amount > currentOutboundCapacity) {
                 assertWithMsg(
                     errorSelector == selectorToUint(IRateLimiter.NotEnoughCapacity.selector),
                     "NttManager: transfer expected to fail if exceeding rate limit and not queueing"
+                );
+            }
+            else if (numEnabledTransceivers == 0) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.NoEnabledTransceivers.selector),
+                    "NttManager: transfer expected to fail if sending when no transceivers are enabled"
                 );
             }
             else {
@@ -348,6 +443,19 @@ contract FuzzNttManager is FuzzingHelpers {
                 assertWithMsg(
                     errorSelector == selectorToUint(IRateLimiter.OutboundQueuedTransferStillQueued.selector),
                     "NttManager: completeOutboundQueuedTransfer expected to fail if not queued for long enough"
+                );
+            }
+            else if (numEnabledTransceivers == 0) {
+                // TODO: When any queued transfers failed, can we reverse the funds out if we really need to???
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.NoEnabledTransceivers.selector),
+                    "NttManager: transfer expected to fail if sending when no transceivers are enabled"
+                );
+            }
+            else {
+                assertWithMsg(
+                    false,
+                    "NttManager: completeOutboundQueuedTransfer unexpected revert"
                 );
             }
 
@@ -588,5 +696,59 @@ contract FuzzNttManager is FuzzingHelpers {
         nttManager = NttManager(address(new ERC1967Proxy(address(implementation), "")));
         // Initialize the proxy
         nttManager.initialize();
+    }
+
+    function _psuedoRandomNumber(uint256 seed) internal returns(uint256) {
+        return uint(keccak256(abi.encodePacked(block.timestamp, msg.sender, seed)));
+    }
+
+    function _generateMultipleTransceiverInstructions(uint256 num) internal {
+        for (uint256 i = 0; i < num; ++i) {
+            _generateTransceiverInstructions(true, i);
+            _generateTransceiverInstructions(false, i);
+        }
+    }
+
+    function _generateTransceiverInstructions(bool isOrdered, uint256 seed) internal {
+        bytes memory encodedInstructions;
+        uint256 numInstructions = clampBetween(_psuedoRandomNumber(seed), 0, type(uint8).max);
+        
+        TransceiverStructs.TransceiverInstruction[] memory instructions = new TransceiverStructs.TransceiverInstruction[](numInstructions);
+
+        uint256 previousIndex = 0;
+
+        for (uint256 i = 0; i < uint256(numInstructions); ++i) {
+            // We've run out of room to still be ordered
+            if (previousIndex >= type(uint8).max - 1 && isOrdered) {
+                break;
+            }
+
+            uint256 newIndex = _psuedoRandomNumber(i);
+
+            if (isOrdered) {
+                newIndex = clampBetween(newIndex, previousIndex + 1, type(uint8).max);
+            }
+            else {
+                newIndex = clampBetween(newIndex, 0, type(uint8).max);
+            }
+
+            TransceiverStructs.TransceiverInstruction memory instruction = TransceiverStructs.TransceiverInstruction({
+                index: uint8(newIndex),
+                payload: new bytes(newIndex) // We generate an arbitrary length byte array (of zeros for now)
+            });
+
+            instructions[i] = instruction;
+
+            previousIndex = newIndex;
+        }
+
+        encodedInstructions = TransceiverStructs.encodeTransceiverInstructions(instructions);
+
+        if (isOrdered) {
+            orderedInstructions.push(encodedInstructions);
+        }
+        else {
+            unorderedInstructions.push(encodedInstructions);
+        }
     }
 }
