@@ -25,7 +25,7 @@ pub struct Redeem<'info> {
     #[account(
         constraint = config.threshold > 0 @ NTTError::ZeroThreshold,
         constraint = config.next_transceiver_id != 0 @ NTTError::NoRegisteredTransceivers,
-        constraint = config.enabled_transceivers.is_empty() @ NTTError::NoRegisteredTransceivers,
+        constraint = !config.enabled_transceivers.is_empty() @ NTTError::NoRegisteredTransceivers,
     )]
     pub config: Account<'info, Config>,
 

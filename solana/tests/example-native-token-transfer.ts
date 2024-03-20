@@ -63,20 +63,26 @@ describe('example-native-token-transfers', () => {
         mode: 'locking'
       })
 
-      await ntt.registerTransceiver({
+      const transceiver = await ntt.registerTransceiver({
         payer,
         owner: payer,
         transceiver: ntt.program.programId
       })
+      if (transceiver === null) {
+        throw new Error('did not register transceiver')
+      }
 
-      await ntt.setWormholeTransceiverPeer({
+      const transceiverPeer = await ntt.setWormholeTransceiverPeer({
         payer,
         owner: payer,
         chain: 'ethereum',
         address: Buffer.from('transceiver'.padStart(32, '\0')),
       })
+      if (transceiverPeer === null) {
+        throw new Error('did not set transceiver peer')
+      }
 
-      await ntt.setPeer({
+      const peer = await ntt.setPeer({
         payer,
         owner: payer,
         chain: 'ethereum',
@@ -84,6 +90,9 @@ describe('example-native-token-transfers', () => {
         limit: new BN(1000000),
         tokenDecimals: 18
       })
+      if (peer === null) {
+        throw new Error('did not set peer')
+      }
 
     });
 
@@ -101,7 +110,8 @@ describe('example-native-token-transfers', () => {
         amount,
         recipientChain: 'ethereum',
         recipientAddress: Array.from(user.publicKey.toBuffer()), // TODO: dummy
-        shouldQueue: false
+        shouldQueue: false,
+        config: await ntt.getConfig()
       })
 
       const wormholeMessage = ntt.wormholeMessageAccountAddress(outboxItem)
@@ -180,6 +190,7 @@ describe('example-native-token-transfers', () => {
       const released = await ntt.redeem({
         payer,
         vaa: vaaBuf,
+        config: await ntt.getConfig()
       })
 
       expect(released).to.equal(true)
