@@ -1,4 +1,19 @@
-# Message Lifecycle (Solana)
+# Solana 
+
+## Prequisities
+
+Ensure that you are using the correct version of the Solana and Anchor CLI tools by consulting `Anchor.toml`.
+```toml
+[toolchain]
+anchor_version = "0.29.0"   # CLI
+solana_version = "1.17.2"
+```
+
+You will also need to install the toolchain listed in `rust-toolchain`.
+
+## Design Overview
+
+### Message Lifecycle (Solana)
 
 1. **Transfer**
 
