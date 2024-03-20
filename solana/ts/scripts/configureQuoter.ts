@@ -13,12 +13,15 @@ interface QuoterConfig {
   assistant: string;
   // NTT quoter address encoded in base58.
   nttQuoterProgramId: string;
+  // The price of SOL in USD in 10e6 decimals
+  solPriceUsd: number;
 }
 
 const config: QuoterConfig = {
   assistant: getEnv("SOLANA_QUOTER_ASSISTANT"),
   feeRecipient: getEnv("SOLANA_QUOTER_FEE_RECIPIENT"),
   nttQuoterProgramId: getEnv("SOLANA_QUOTER_PROGRAM_ID"),
+  solPriceUsd: Number(getEnv("SOL_PRICE_USD")),
 };
 
 async function run() {
@@ -41,18 +44,28 @@ async function run() {
   if (!instanceState.feeRecipient.equals(feeRecipient)) {
     const feeRecipientInstruction = await quoter.createSetFeeRecipientInstruction(instanceState, new PublicKey(config.feeRecipient));
     configurationInstructions.push(feeRecipientInstruction);
+    console.log("Updating fee recipient to: ", config.feeRecipient);
   }
 
   if (!instanceState.assistant.equals(assistant)) {
     const assistantInstruction = await quoter.createSetAssistantInstruction(instanceState, new PublicKey(config.assistant));
     configurationInstructions.push(assistantInstruction);
-  } 
+    console.log("Updating assistant to: ", config.assistant);
+  }
+
+  if (instanceState.solPriceUsd !== config.solPriceUsd) {
+    const solPriceInstruction = await quoter.createUpdateSolPriceInstruction(signerPk, config.solPriceUsd);
+    configurationInstructions.push(solPriceInstruction);
+    console.log("Updating sol price to: ", config.solPriceUsd, configurationInstructions);
+  }
 
   // add any other global configs here...
 
   try {
-    if (configurationInstructions.length)
-      await ledgerSignAndSend(configurationInstructions, []);
+    if (configurationInstructions.length){
+      const signature = await ledgerSignAndSend(configurationInstructions, []);
+      console.log("Global config success. Tx=", signature);
+    }
   } catch (error) {
     console.error("Failed to configure quoter contract:", error);
     return;
@@ -75,7 +88,7 @@ async function run() {
 async function configurePeer(quoter: NttQuoter, chain: Chain, peer: PeerQuotes, signerPk: PublicKey) {
   const instructions: TransactionInstruction[] = [];
   let registeredChainInfo = await quoter.tryGetRegisteredChain(chain as Chain);
-  console.log("registered info", inspect(registeredChainInfo));
+  // console.log("registered info", inspect(registeredChainInfo));
   if (registeredChainInfo === null) {
     instructions.push(await quoter.createRegisterChainInstruction(signerPk, chain as Chain));
   }
