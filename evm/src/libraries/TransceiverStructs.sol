@@ -19,18 +19,23 @@ library TransceiverStructs {
     /// @param prefix The prefix that was found in the encoded message.
     error IncorrectPrefix(bytes4 prefix);
     error UnorderedInstructions();
+    error TokenIdTooLarge(uint256 tokenId, uint256 max);
 
     /// @dev Prefix for all NativeTokenTransfer payloads
     ///      This is 0x99'N''T''T'
     bytes4 constant NTT_PREFIX = 0x994E5454;
 
-    /// @dev Message emitted and received by the nttManager contract.
+    /// @dev Prefix for all NonFungibleNativeTokenTransfer payloads
+    ///     This is 0x99'N''F''T'
+    bytes4 constant NON_FUNGIBLE_NTT_PREFIX = 0x994E4654;
+
+    /// @dev Message emitted and received by any Manager contract variant.
     ///      The wire format is as follows:
     ///      - id - 32 bytes
     ///      - sender - 32 bytes
     ///      - payloadLength - 2 bytes
     ///      - payload - `payloadLength` bytes
-    struct NttManagerMessage {
+    struct ManagerMessage {
         /// @notice unique message identifier
         /// @dev This is incrementally assigned on EVM chains, but this is not
         /// guaranteed on other runtimes.
@@ -41,14 +46,14 @@ library TransceiverStructs {
         bytes payload;
     }
 
-    function nttManagerMessageDigest(
+    function managerMessageDigest(
         uint16 sourceChainId,
-        NttManagerMessage memory m
+        ManagerMessage memory m
     ) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(sourceChainId, encodeNttManagerMessage(m)));
+        return keccak256(abi.encodePacked(sourceChainId, encodeManagerMessage(m)));
     }
 
-    function encodeNttManagerMessage(NttManagerMessage memory m)
+    function encodeManagerMessage(ManagerMessage memory m)
         public
         pure
         returns (bytes memory encoded)
@@ -60,20 +65,20 @@ library TransceiverStructs {
         return abi.encodePacked(m.id, m.sender, payloadLength, m.payload);
     }
 
-    /// @notice Parse a NttManagerMessage.
+    /// @notice Parse a ManagerMessage.
     /// @param encoded The byte array corresponding to the encoded message
-    /// @return nttManagerMessage The parsed NttManagerMessage struct.
-    function parseNttManagerMessage(bytes memory encoded)
+    /// @return managerMessage The parsed ManagerMessage struct.
+    function parseManagerMessage(bytes memory encoded)
         public
         pure
-        returns (NttManagerMessage memory nttManagerMessage)
+        returns (ManagerMessage memory managerMessage)
     {
         uint256 offset = 0;
-        (nttManagerMessage.id, offset) = encoded.asBytes32Unchecked(offset);
-        (nttManagerMessage.sender, offset) = encoded.asBytes32Unchecked(offset);
+        (managerMessage.id, offset) = encoded.asBytes32Unchecked(offset);
+        (managerMessage.sender, offset) = encoded.asBytes32Unchecked(offset);
         uint256 payloadLength;
         (payloadLength, offset) = encoded.asUint16Unchecked(offset);
-        (nttManagerMessage.payload, offset) = encoded.sliceUnchecked(offset, payloadLength);
+        (managerMessage.payload, offset) = encoded.sliceUnchecked(offset, payloadLength);
         encoded.checkLength(offset);
     }
 
@@ -143,6 +148,152 @@ library TransceiverStructs {
         encoded.checkLength(offset);
     }
 
+    /// @dev Non-Fungible Native Token Transfer payload.
+    ///      The wire format is as follows:
+    ///      - NON_FUNGIBLE_NTT_PREFIX - 4 bytes
+    ///      - to - 32 bytes
+    ///      - toChain - 2 bytes
+    ///      - batchSize - 2 bytes
+    ///      - for each encoded tokenId:
+    ///          - tokenIdWidth - 1 byte
+    ///          - tokenId - `tokenIdWidth` bytes
+    ///      - payloadLength - 2 bytes
+    ///      - payload - `payloadLength` bytes
+
+    struct NonFungibleNativeTokenTransfer {
+        /// @notice Address of the recipient.
+        bytes32 to;
+        /// @notice Chain ID of the recipient
+        uint16 toChain;
+        /// @notice Array of tokenIds.
+        uint256[] tokenIds;
+        /// @notice Arbitrary payload per manager implementation.
+        bytes payload;
+    }
+
+    function encodeNonFungibleNativeTokenTransfer(
+        NonFungibleNativeTokenTransfer memory nft,
+        uint8 tokenIdWidth
+    ) public pure returns (bytes memory encoded) {
+        uint16 batchSize = uint16(nft.tokenIds.length);
+        uint16 payloadLen = uint16(nft.payload.length);
+
+        bytes memory encodedTokenIds = abi.encodePacked(batchSize);
+        for (uint256 i = 0; i < batchSize; ++i) {
+            encodedTokenIds = abi.encodePacked(
+                encodedTokenIds, tokenIdWidth, encodeTokenId(nft.tokenIds[i], tokenIdWidth)
+            );
+        }
+
+        return abi.encodePacked(
+            NON_FUNGIBLE_NTT_PREFIX, nft.to, nft.toChain, encodedTokenIds, payloadLen, nft.payload
+        );
+    }
+
+    function parseNonFungibleNativeTokenTransfer(bytes memory encoded)
+        public
+        pure
+        returns (NonFungibleNativeTokenTransfer memory nonFungibleNtt)
+    {
+        uint256 offset = 0;
+        bytes4 prefix;
+        (prefix, offset) = encoded.asBytes4Unchecked(offset);
+        if (prefix != NON_FUNGIBLE_NTT_PREFIX) {
+            revert IncorrectPrefix(prefix);
+        }
+
+        (nonFungibleNtt.to, offset) = encoded.asBytes32Unchecked(offset);
+        (nonFungibleNtt.toChain, offset) = encoded.asUint16Unchecked(offset);
+
+        uint16 batchSize;
+        (batchSize, offset) = encoded.asUint16Unchecked(offset);
+
+        uint256[] memory tokenIds = new uint256[](batchSize);
+        for (uint256 i = 0; i < batchSize; ++i) {
+            uint256 tokenId;
+            (offset, tokenId) = parseTokenId(encoded, offset);
+            tokenIds[i] = tokenId;
+        }
+        nonFungibleNtt.tokenIds = tokenIds;
+
+        // Decode arbitrary payload.
+        uint16 payloadLength;
+        (payloadLength, offset) = encoded.asUint16Unchecked(offset);
+        (nonFungibleNtt.payload, offset) = encoded.sliceUnchecked(offset, payloadLength);
+
+        encoded.checkLength(offset);
+    }
+
+    function encodeTokenId(
+        uint256 tokenId,
+        uint8 tokenIdWidth
+    ) public pure returns (bytes memory) {
+        if (tokenIdWidth == 1) {
+            if (tokenId > type(uint8).max) {
+                revert TokenIdTooLarge(tokenId, type(uint8).max);
+            } else {
+                return abi.encodePacked(uint8(tokenId));
+            }
+        } else if (tokenIdWidth == 2) {
+            if (tokenId > type(uint16).max) {
+                revert TokenIdTooLarge(tokenId, type(uint16).max);
+            } else {
+                return abi.encodePacked(uint16(tokenId));
+            }
+        } else if (tokenIdWidth == 4) {
+            if (tokenId > type(uint32).max) {
+                revert TokenIdTooLarge(tokenId, type(uint32).max);
+            } else {
+                return abi.encodePacked(uint32(tokenId));
+            }
+        } else if (tokenIdWidth == 8) {
+            if (tokenId > type(uint64).max) {
+                revert TokenIdTooLarge(tokenId, type(uint64).max);
+            } else {
+                return abi.encodePacked(uint64(tokenId));
+            }
+        } else if (tokenIdWidth == 16) {
+            if (tokenId > type(uint128).max) {
+                revert TokenIdTooLarge(tokenId, type(uint128).max);
+            } else {
+                return abi.encodePacked(uint128(tokenId));
+            }
+        } else {
+            return abi.encodePacked(uint256(tokenId));
+        }
+    }
+
+    function parseTokenId(
+        bytes memory encoded,
+        uint256 offset
+    ) public pure returns (uint256 nextOffset, uint256 tokenId) {
+        uint8 tokenIdWidth;
+        (tokenIdWidth, nextOffset) = encoded.asUint8Unchecked(offset);
+        if (tokenIdWidth == 1) {
+            uint8 tokenIdValue;
+            (tokenIdValue, nextOffset) = encoded.asUint8Unchecked(nextOffset);
+            tokenId = tokenIdValue;
+        } else if (tokenIdWidth == 2) {
+            uint16 tokenIdValue;
+            (tokenIdValue, nextOffset) = encoded.asUint16Unchecked(nextOffset);
+            tokenId = tokenIdValue;
+        } else if (tokenIdWidth == 4) {
+            uint32 tokenIdValue;
+            (tokenIdValue, nextOffset) = encoded.asUint32Unchecked(nextOffset);
+            tokenId = tokenIdValue;
+        } else if (tokenIdWidth == 8) {
+            uint64 tokenIdValue;
+            (tokenIdValue, nextOffset) = encoded.asUint64Unchecked(nextOffset);
+            tokenId = tokenIdValue;
+        } else if (tokenIdWidth == 16) {
+            uint128 tokenIdValue;
+            (tokenIdValue, nextOffset) = encoded.asUint128Unchecked(nextOffset);
+            tokenId = tokenIdValue;
+        } else {
+            (tokenId, nextOffset) = encoded.asUint256Unchecked(nextOffset);
+        }
+    }
+
     /// @dev Message emitted by Transceiver implementations.
     ///      Each message includes an Transceiver-specified 4-byte prefix.
     ///      The wire format is as follows:
@@ -199,13 +350,13 @@ library TransceiverStructs {
         bytes4 prefix,
         bytes32 sourceNttManagerAddress,
         bytes32 recipientNttManagerAddress,
-        bytes memory nttManagerMessage,
+        bytes memory managerMessage,
         bytes memory transceiverPayload
     ) public pure returns (TransceiverMessage memory, bytes memory) {
         TransceiverMessage memory transceiverMessage = TransceiverMessage({
             sourceNttManagerAddress: sourceNttManagerAddress,
             recipientNttManagerAddress: recipientNttManagerAddress,
-            nttManagerPayload: nttManagerMessage,
+            nttManagerPayload: managerMessage,
             transceiverPayload: transceiverPayload
         });
         bytes memory encoded = encodeTransceiverMessage(prefix, transceiverMessage);
@@ -246,22 +397,22 @@ library TransceiverStructs {
     }
 
     /// @dev Parses the payload of an Transceiver message and returns
-    ///      the parsed NttManagerMessage struct.
+    ///      the parsed ManagerMessage struct.
     /// @param expectedPrefix The prefix that should be encoded in the nttManager message.
     /// @param payload The payload sent across the wire.
-    function parseTransceiverAndNttManagerMessage(
+    function parseTransceiverAndManagerMessage(
         bytes4 expectedPrefix,
         bytes memory payload
-    ) public pure returns (TransceiverMessage memory, NttManagerMessage memory) {
+    ) public pure returns (TransceiverMessage memory, ManagerMessage memory) {
         // parse the encoded message payload from the Transceiver
         TransceiverMessage memory parsedTransceiverMessage =
             parseTransceiverMessage(expectedPrefix, payload);
 
         // parse the encoded message payload from the NttManager
-        NttManagerMessage memory parsedNttManagerMessage =
-            parseNttManagerMessage(parsedTransceiverMessage.nttManagerPayload);
+        ManagerMessage memory parsedManagerMessage =
+            parseManagerMessage(parsedTransceiverMessage.nttManagerPayload);
 
-        return (parsedTransceiverMessage, parsedNttManagerMessage);
+        return (parsedTransceiverMessage, parsedManagerMessage);
     }
 
     /// @dev Variable-length transceiver-specific instruction that can be passed by the caller to the nttManager.

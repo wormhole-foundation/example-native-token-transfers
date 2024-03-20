@@ -22,18 +22,25 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     using BooleanFlagLib for BooleanFlag;
 
     // ==================== Immutables ===============================================
+
+    /// @dev Maximum payload size for any message. Since posting a message on Solana has a
+    ///      maximum size, all messages are restricted to this size. If this program is
+    ///      only used on EVM chains, this restriction can be removed.
+    uint16 public constant MAX_PAYLOAD_SIZE = 850;
+
     uint8 public immutable consistencyLevel;
     IWormhole public immutable wormhole;
     IWormholeRelayer public immutable wormholeRelayer;
     ISpecialRelayer public immutable specialRelayer;
     uint256 immutable wormholeTransceiver_evmChainId;
     uint256 public immutable gasLimit;
+    ManagerType public immutable managerType;
 
     // ==================== Constants ================================================
 
     /// @dev Prefix for all TransceiverMessage payloads
     ///      This is 0x99'E''W''H'
-    /// @notice Magic string (constant value set by messaging provider) that idenfies the payload as an transceiver-emitted payload.
+    /// @notice Magic string (constant value set by messaging provider) that identifies the payload as an transceiver-emitted payload.
     ///         Note that this is not a security critical field. It's meant to be used by messaging providers to identify which messages are Transceiver-related.
     bytes4 constant WH_TRANSCEIVER_PAYLOAD_PREFIX = 0x9945FF10;
 
@@ -51,7 +58,8 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
         address wormholeRelayerAddr,
         address specialRelayerAddr,
         uint8 _consistencyLevel,
-        uint256 _gasLimit
+        uint256 _gasLimit,
+        ManagerType _managerType
     ) Transceiver(nttManager) {
         wormhole = IWormhole(wormholeCoreBridge);
         wormholeRelayer = IWormholeRelayer(wormholeRelayerAddr);
@@ -59,12 +67,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
         wormholeTransceiver_evmChainId = block.chainid;
         consistencyLevel = _consistencyLevel;
         gasLimit = _gasLimit;
-    }
-
-    enum RelayingType {
-        Standard,
-        Special,
-        Manual
+        managerType = _managerType;
     }
 
     function _initialize() internal override {
@@ -73,14 +76,22 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     }
 
     function _initializeTransceiver() internal {
-        TransceiverStructs.TransceiverInit memory init = TransceiverStructs.TransceiverInit({
-            transceiverIdentifier: WH_TRANSCEIVER_INIT_PREFIX,
-            nttManagerAddress: toWormholeFormat(nttManager),
-            nttManagerMode: INttManager(nttManager).getMode(),
-            tokenAddress: toWormholeFormat(nttManagerToken),
-            tokenDecimals: INttManager(nttManager).tokenDecimals()
-        });
-        wormhole.publishMessage(0, TransceiverStructs.encodeTransceiverInit(init), consistencyLevel);
+        if (managerType == ManagerType.ERC20) {
+            TransceiverStructs.TransceiverInit memory init = TransceiverStructs.TransceiverInit({
+                transceiverIdentifier: WH_TRANSCEIVER_INIT_PREFIX,
+                nttManagerAddress: toWormholeFormat(nttManager),
+                nttManagerMode: INttManager(nttManager).getMode(),
+                tokenAddress: toWormholeFormat(nttManagerToken),
+                tokenDecimals: INttManager(nttManager).tokenDecimals()
+            });
+            wormhole.publishMessage(
+                0, TransceiverStructs.encodeTransceiverInit(init), consistencyLevel
+            );
+        } else if (managerType == ManagerType.ERC721) {
+            // Skip emitting message for ERC721.
+        } else {
+            revert InvalidManagerType();
+        }
     }
 
     function _checkImmutables() internal view override {

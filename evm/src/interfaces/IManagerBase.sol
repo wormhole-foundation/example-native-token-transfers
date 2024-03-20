@@ -84,8 +84,8 @@ interface IManagerBase {
     /// @notice Error when the tranceiver already attested to the message.
     ///         To ensure the client does not continue to initiate calls to the attestationReceived function.
     /// @dev Selector 0x2113894.
-    /// @param nttManagerMessageHash The hash of the message.
-    error TransceiverAlreadyAttestedToMessage(bytes32 nttManagerMessageHash);
+    /// @param ManagerMessageHash The hash of the message.
+    error TransceiverAlreadyAttestedToMessage(bytes32 ManagerMessageHash);
 
     /// @notice Error when the message is not approved.
     /// @dev Selector 0x451c4fb0.

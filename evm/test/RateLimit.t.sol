@@ -3,7 +3,7 @@
 import "forge-std/Test.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
 import "../src/interfaces/IManagerBase.sol";
-import "../src/NttManager/NttManager.sol";
+import "../src/NativeTransfers/NttManager.sol";
 import "./mocks/DummyTransceiver.sol";
 import "../src/mocks/DummyToken.sol";
 import "./mocks/MockNttManager.sol";
@@ -506,7 +506,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](1);
         transceivers[0] = e1;
 
-        TransceiverStructs.NttManagerMessage memory m;
+        TransceiverStructs.ManagerMessage memory m;
         bytes memory encodedEm;
         {
             TransceiverStructs.TransceiverMessage memory em;
@@ -526,7 +526,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         }
 
         bytes32 digest =
-            TransceiverStructs.nttManagerMessageDigest(TransceiverHelpersLib.SENDING_CHAIN_ID, m);
+            TransceiverStructs.managerMessageDigest(TransceiverHelpersLib.SENDING_CHAIN_ID, m);
 
         // no quorum yet
         assertEq(token.balanceOf(address(user_B)), 0);
@@ -592,9 +592,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
             assertEq(entries[0].topics[1], toWormholeFormat(address(nttManager)));
             assertEq(
                 entries[0].topics[2],
-                TransceiverStructs.nttManagerMessageDigest(
-                    TransceiverHelpersLib.SENDING_CHAIN_ID, m
-                )
+                TransceiverStructs.managerMessageDigest(TransceiverHelpersLib.SENDING_CHAIN_ID, m)
             );
         }
     }

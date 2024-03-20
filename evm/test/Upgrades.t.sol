@@ -4,11 +4,12 @@ pragma solidity >=0.8.8 <0.9.0;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import "../src/NttManager/NttManager.sol";
+import "../src/NativeTransfers/NttManager.sol";
 import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IManagerBase.sol";
 import "../src/interfaces/IRateLimiter.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
+import "../src/interfaces/IWormholeTransceiverState.sol";
 import "../src/libraries/external/OwnableUpgradeable.sol";
 import "../src/libraries/external/Initializable.sol";
 import "../src/libraries/Implementation.sol";
@@ -76,7 +77,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
         wormholeTransceiverChain1 = MockWormholeTransceiverContract(
             address(new ERC1967Proxy(address(wormholeTransceiverChain1Implementation), ""))
@@ -104,7 +106,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
         wormholeTransceiverChain2 = MockWormholeTransceiverContract(
             address(new ERC1967Proxy(address(wormholeTransceiverChain2Implementation), ""))
@@ -160,7 +163,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
         wormholeTransceiverChain1.upgrade(address(wormholeTransceiverChain1Implementation));
 
@@ -193,7 +197,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
         wormholeTransceiverChain1.upgrade(address(wormholeTransceiverChain1Implementation));
 
@@ -229,7 +234,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
         wormholeTransceiverChain1.upgrade(address(newImplementation));
 
@@ -263,7 +269,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
 
         vm.expectRevert("Proper migrate called");
@@ -298,7 +305,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
 
         vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
@@ -332,7 +340,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
 
         //vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
@@ -399,7 +408,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
             address(relayer),
             address(0x0),
             FAST_CONSISTENCY_LEVEL,
-            GAS_LIMIT
+            GAS_LIMIT,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
         wormholeTransceiverChain1.upgrade(address(wormholeTransceiverChain1Implementation));
         basicFunctionality(); // Ensure that the upgrade was proper

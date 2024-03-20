@@ -52,11 +52,11 @@ interface ITransceiver {
     /// @param recipientChain The Wormhole chain ID of the recipient.
     /// @param instruction An additional Instruction provided by the Transceiver to be
     /// executed on the recipient chain.
-    /// @param nttManagerMessage A message to be sent to the nttManager on the recipient chain.
+    /// @param ManagerMessage A message to be sent to the nttManager on the recipient chain.
     function sendMessage(
         uint16 recipientChain,
         TransceiverStructs.TransceiverInstruction memory instruction,
-        bytes memory nttManagerMessage,
+        bytes memory ManagerMessage,
         bytes32 recipientNttManagerAddress
     ) external payable;
 

@@ -13,7 +13,7 @@ import "../interfaces/INttManager.sol";
 import "../interfaces/INttToken.sol";
 import "../interfaces/ITransceiver.sol";
 
-import {ManagerBase} from "./ManagerBase.sol";
+import {ManagerBase} from "./shared/ManagerBase.sol";
 
 /// @title NttManager
 /// @author Wormhole Project Contributors.
@@ -168,14 +168,14 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     function attestationReceived(
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
-        TransceiverStructs.NttManagerMessage memory payload
+        TransceiverStructs.ManagerMessage memory payload
     ) external onlyTransceiver whenNotPaused {
         _verifyPeer(sourceChainId, sourceNttManagerAddress);
 
         // Compute manager message digest and record transceiver attestation.
-        bytes32 nttManagerMessageHash = _recordTransceiverAttestation(sourceChainId, payload);
+        bytes32 ManagerMessageHash = _recordTransceiverAttestation(sourceChainId, payload);
 
-        if (isMessageApproved(nttManagerMessageHash)) {
+        if (isMessageApproved(ManagerMessageHash)) {
             executeMsg(sourceChainId, sourceNttManagerAddress, payload);
         }
     }
@@ -184,7 +184,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     function executeMsg(
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
-        TransceiverStructs.NttManagerMessage memory message
+        TransceiverStructs.ManagerMessage memory message
     ) public whenNotPaused {
         // verify chain has not forked
         checkFork(evmChainId);
@@ -408,9 +408,9 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
             amount, toWormholeFormat(token), recipient, recipientChain
         );
 
-        // construct the NttManagerMessage payload
-        bytes memory encodedNttManagerPayload = TransceiverStructs.encodeNttManagerMessage(
-            TransceiverStructs.NttManagerMessage(
+        // construct the ManagerMessage payload
+        bytes memory encodedNttManagerPayload = TransceiverStructs.encodeManagerMessage(
+            TransceiverStructs.ManagerMessage(
                 bytes32(uint256(seq)),
                 toWormholeFormat(sender),
                 TransceiverStructs.encodeNativeTokenTransfer(ntt)

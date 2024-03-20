@@ -4,6 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 import {console2} from "forge-std/Script.sol";
 
 import "../src/interfaces/IWormholeTransceiver.sol";
+import "../src/interfaces/IWormholeTransceiverState.sol";
 import "../src/interfaces/ITransceiver.sol";
 import "../src/interfaces/INttManager.sol";
 
@@ -39,7 +40,8 @@ contract UpgradeWormholeTransceiver is ParseNttConfig {
             params.wormholeRelayerAddr,
             params.specialRelayerAddr,
             params.consistencyLevel,
-            params.gasLimit
+            params.gasLimit,
+            IWormholeTransceiverState.ManagerType.ERC20
         );
 
         console2.log("WormholeTransceiver Implementation deployed at: ", address(implementation));

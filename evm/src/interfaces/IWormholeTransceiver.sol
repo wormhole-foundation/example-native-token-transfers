@@ -56,6 +56,12 @@ interface IWormholeTransceiver is IWormholeTransceiverState {
     /// @param vaaHash The hash of the VAA.
     error TransferAlreadyCompleted(bytes32 vaaHash);
 
+    /// @notice Error when the payload size exceeds the maximum allowed size.
+    /// @dev Selector: 0xf39ac4ba.
+    /// @param payloadSize The size of the payload.
+    /// @param maxPayloadSize The maximum allowed size.
+    error ExceedsMaxPayloadSize(uint256 payloadSize, uint256 maxPayloadSize);
+
     /// @notice Receive an attested message from the verification layer.
     ///         This function should verify the `encodedVm` and then deliver the attestation
     /// to the transceiver NttManager contract.
