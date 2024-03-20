@@ -171,6 +171,7 @@ abstract contract ManagerBase is
 
     function _sendMessageToTransceivers(
         uint16 recipientChain,
+        bytes32 refundAddress,
         bytes32 peerAddress,
         uint256[] memory priceQuotes,
         TransceiverStructs.TransceiverInstruction[] memory transceiverInstructions,
@@ -187,12 +188,15 @@ abstract contract ManagerBase is
         // call into transceiver contracts to send the message
         for (uint256 i = 0; i < numEnabledTransceivers; i++) {
             address transceiverAddr = enabledTransceivers[i];
+
+            bytes32 refundRecipient = refundAddress;
             // send it to the recipient nttManager based on the chain
             ITransceiver(transceiverAddr).sendMessage{value: priceQuotes[i]}(
                 recipientChain,
                 transceiverInstructions[transceiverInfos[transceiverAddr].index],
                 nttManagerMessage,
-                peerAddress
+                peerAddress,
+                refundRecipient
             );
         }
     }

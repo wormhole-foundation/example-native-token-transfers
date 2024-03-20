@@ -15,14 +15,21 @@ interface INttManager is IManagerBase {
 
     /// @notice Emitted when a message is sent from the nttManager.
     /// @dev Topic0
-    ///      0x9716fe52fe4e02cf924ae28f19f5748ef59877c6496041b986fbad3dae6a8ecf
+    ///      0x9cc8ade41ef46b98ba8bcad8c6bfa643934e6b84d3ce066cd38b5f0813bb2ae5.
     /// @param recipient The recipient of the message.
+    /// @param refundAddress The address on the destination chain to which the
+    ///                      refund of unused gas will be paid
     /// @param amount The amount transferred.
     /// @param fee The amount of ether sent along with the tx to cover the delivery fee.
     /// @param recipientChain The chain ID of the recipient.
     /// @param msgSequence The unique sequence ID of the message.
     event TransferSent(
-        bytes32 recipient, uint256 amount, uint256 fee, uint16 recipientChain, uint64 msgSequence
+        bytes32 recipient,
+        bytes32 refundAddress,
+        uint256 amount,
+        uint256 fee,
+        uint16 recipientChain,
+        uint64 msgSequence
     );
 
     /// @notice Emitted when the peer contract is updated.
@@ -125,6 +132,7 @@ interface INttManager is IManagerBase {
         uint256 amount,
         uint16 recipientChain,
         bytes32 recipient,
+        bytes32 refundAddress,
         bool shouldQueue,
         bytes memory encodedInstructions
     ) external payable returns (uint64 msgId);

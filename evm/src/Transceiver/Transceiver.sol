@@ -105,13 +105,15 @@ abstract contract Transceiver is
         uint16 recipientChain,
         TransceiverStructs.TransceiverInstruction memory instruction,
         bytes memory nttManagerMessage,
-        bytes32 recipientNttManagerAddress
+        bytes32 recipientNttManagerAddress,
+        bytes32 refundAddress
     ) external payable nonReentrant onlyNttManager {
         _sendMessage(
             recipientChain,
             msg.value,
             msg.sender,
             recipientNttManagerAddress,
+            refundAddress,
             instruction,
             nttManagerMessage
         );
@@ -124,6 +126,7 @@ abstract contract Transceiver is
         uint256 deliveryPayment,
         address caller,
         bytes32 recipientNttManagerAddress,
+        bytes32 refundAddress,
         TransceiverStructs.TransceiverInstruction memory transceiverInstruction,
         bytes memory nttManagerMessage
     ) internal virtual;

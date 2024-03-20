@@ -16,6 +16,7 @@ import {Utils} from "./libraries/Utils.sol";
 import {DummyToken, DummyTokenMintAndBurn} from "../src/mocks/DummyToken.sol";
 import {WormholeTransceiver} from "../src/Transceiver/WormholeTransceiver/WormholeTransceiver.sol";
 import "../src/libraries/TransceiverStructs.sol";
+import "./libraries/TransceiverHelpers.sol";
 import "./mocks/MockNttManager.sol";
 import "./mocks/MockTransceivers.sol";
 
@@ -28,7 +29,9 @@ import {WormholeRelayerBasicTest} from "wormhole-solidity-sdk/testing/WormholeRe
 
 contract TestEndToEndRelayerBase is Test {
     WormholeTransceiver wormholeTransceiverChain1;
+    WormholeTransceiver wormholeTransceiverChain1Other;
     WormholeTransceiver wormholeTransceiverChain2;
+    WormholeTransceiver wormholeTransceiverChain2Other;
 
     function buildTransceiverInstruction(bool relayer_off)
         public
@@ -118,8 +121,22 @@ contract TestEndToEndRelayer is
             address(new ERC1967Proxy(address(wormholeTransceiverChain1), ""))
         );
         wormholeTransceiverChain1.initialize();
+        wormholeTransceiverChain1Other = new MockWormholeTransceiverContract(
+            address(nttManagerChain1),
+            address(chainInfosTestnet[chainId1].wormhole),
+            address(relayerSource),
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL,
+            GAS_LIMIT
+        );
+
+        wormholeTransceiverChain1Other = MockWormholeTransceiverContract(
+            address(new ERC1967Proxy(address(wormholeTransceiverChain1Other), ""))
+        );
+        wormholeTransceiverChain1Other.initialize();
 
         nttManagerChain1.setTransceiver(address(wormholeTransceiverChain1));
+        nttManagerChain1.setTransceiver(address(wormholeTransceiverChain1Other));
         nttManagerChain1.setOutboundLimit(type(uint64).max);
         nttManagerChain1.setInboundLimit(type(uint64).max, chainId2);
         nttManagerChain1.setThreshold(1);
@@ -152,7 +169,22 @@ contract TestEndToEndRelayer is
         );
         wormholeTransceiverChain2.initialize();
 
+        wormholeTransceiverChain2Other = new MockWormholeTransceiverContract(
+            address(nttManagerChain2),
+            address(chainInfosTestnet[chainId2].wormhole),
+            address(relayerTarget),
+            address(0x0),
+            FAST_CONSISTENCY_LEVEL,
+            GAS_LIMIT
+        );
+
+        wormholeTransceiverChain2Other = MockWormholeTransceiverContract(
+            address(new ERC1967Proxy(address(wormholeTransceiverChain2Other), ""))
+        );
+        wormholeTransceiverChain2Other.initialize();
+
         nttManagerChain2.setTransceiver(address(wormholeTransceiverChain2));
+        nttManagerChain2.setTransceiver(address(wormholeTransceiverChain2Other));
         nttManagerChain2.setOutboundLimit(type(uint64).max);
         nttManagerChain2.setInboundLimit(type(uint64).max, chainId1);
 
@@ -218,7 +250,12 @@ contract TestEndToEndRelayer is
                 )
             );
             nttManagerChain1.transfer{value: priceQuote1}(
-                sendingAmount, chainId2, bytes32(uint256(uint160(userB))), false, instructions
+                sendingAmount,
+                chainId2,
+                bytes32(uint256(uint160(userB))),
+                bytes32(uint256(uint160(userB))),
+                false,
+                instructions
             );
 
             // set valid config
@@ -236,13 +273,23 @@ contract TestEndToEndRelayer is
                 )
             );
             nttManagerChain1.transfer{value: priceQuote1}(
-                sendingAmount - 1, chainId2, bytes32(uint256(uint160(userB))), false, instructions
+                sendingAmount - 1,
+                chainId2,
+                bytes32(uint256(uint160(userB))),
+                bytes32(uint256(uint160(userB))),
+                false,
+                instructions
             );
 
             // Zero funds error
             vm.expectRevert(abi.encodeWithSelector(INttManager.ZeroAmount.selector));
             nttManagerChain1.transfer{value: priceQuote1}(
-                0, chainId2, bytes32(uint256(uint160(userB))), false, instructions
+                0,
+                chainId2,
+                bytes32(uint256(uint160(userB))),
+                bytes32(uint256(uint160(userB))),
+                false,
+                instructions
             );
 
             // Not enough in gas costs from the 'quote'.
@@ -252,12 +299,22 @@ contract TestEndToEndRelayer is
                 )
             );
             nttManagerChain1.transfer{value: priceQuote1 - 1}(
-                sendingAmount, chainId2, bytes32(uint256(uint160(userB))), false, instructions
+                sendingAmount,
+                chainId2,
+                bytes32(uint256(uint160(userB))),
+                bytes32(uint256(uint160(userB))),
+                false,
+                instructions
             );
 
             // Do the payment with slightly more gas than needed. This should result in a *payback* of 1 wei.
             nttManagerChain1.transfer{value: priceQuote1 + 1}(
-                sendingAmount, chainId2, bytes32(uint256(uint160(userB))), false, instructions
+                sendingAmount,
+                chainId2,
+                bytes32(uint256(uint160(userB))),
+                bytes32(uint256(uint160(userB))),
+                false,
+                instructions
             );
 
             // Balance check on funds going in and out working as expected
@@ -345,6 +402,8 @@ contract TestEndToEndRelayer is
                 sendingAmount,
                 chainId2,
                 bytes32(uint256(uint160(userB))),
+                // refund the amount back to the user that sent the transfer
+                bytes32(uint256(uint160(userA))),
                 false,
                 encodeTransceiverInstruction(false)
             );
@@ -397,6 +456,7 @@ contract TestEndToEndRelayer is
                 sendingAmount,
                 chainId1,
                 bytes32(uint256(uint160(userD))),
+                bytes32(uint256(uint160(userC))),
                 false,
                 encodeTransceiverInstruction(false)
             );
@@ -435,6 +495,206 @@ contract TestEndToEndRelayer is
             token1.balanceOf(address(nttManagerChain1)) == 0,
             "NttManager has unintended funds going back"
         );
+    }
+
+    function setTransceiverPeers(
+        WormholeTransceiver transceiver,
+        WormholeTransceiver transceiverPeer,
+        WormholeTransceiver transceiverOther,
+        WormholeTransceiver transceiverPeerOther,
+        uint16 chainId
+    ) public {
+        transceiver.setWormholePeer(chainId, toWormholeFormat(address(transceiverPeer)));
+        transceiverOther.setWormholePeer(chainId, toWormholeFormat(address(transceiverPeerOther)));
+    }
+
+    function enableSR(WormholeTransceiver[2] memory transceivers, uint16 chainId) public {
+        for (uint256 i; i < transceivers.length; i++) {
+            transceivers[i].setIsWormholeRelayingEnabled(chainId, true);
+            transceivers[i].setIsWormholeEvmChain(chainId, true);
+        }
+    }
+
+    function quotePrices(
+        WormholeTransceiver[2] memory transceivers,
+        uint16 recipientChainId,
+        bool shouldSkipRelay
+    ) public view returns (uint256) {
+        uint256 quoteSum;
+        for (uint256 i; i < transceivers.length; i++) {
+            quoteSum = quoteSum
+                + transceivers[i].quoteDeliveryPrice(
+                    recipientChainId, buildTransceiverInstruction(shouldSkipRelay)
+                );
+        }
+
+        return quoteSum;
+    }
+
+    function prepareTransfer(
+        DummyToken token,
+        address user,
+        address contractAddr,
+        uint256 amount
+    ) public {
+        // Setting up the transfer
+        vm.startPrank(user);
+
+        token.mintDummy(user, amount);
+        token.approve(contractAddr, amount);
+    }
+
+    function computeManagerMessageDigest(
+        address from,
+        address to,
+        TrimmedAmount sendingAmount,
+        address tokenAddr,
+        uint16 sourceChainId,
+        uint16 recipientChainId
+    ) public returns (bytes32) {
+        TransceiverStructs.NttManagerMessage memory nttManagerMessage;
+        nttManagerMessage = TransceiverStructs.NttManagerMessage(
+            0,
+            toWormholeFormat(from),
+            TransceiverStructs.encodeNativeTokenTransfer(
+                TransceiverStructs.NativeTokenTransfer({
+                    amount: sendingAmount,
+                    sourceToken: toWormholeFormat(tokenAddr),
+                    to: toWormholeFormat(to),
+                    toChain: recipientChainId
+                })
+            )
+        );
+
+        return TransceiverStructs.nttManagerMessageDigest(sourceChainId, nttManagerMessage);
+    }
+
+    function getTotalSupply(uint256 forkId, DummyToken token) public returns (uint256) {
+        vm.selectFork(forkId);
+        return token.totalSupply();
+    }
+
+    function deliverViaRelayer() public {
+        vm.selectFork(sourceFork);
+        performDelivery();
+    }
+
+    // Send token through standard relayer
+    function transferTokenViaStandardRelayer(
+        address to,
+        address refund,
+        uint256 sendingAmount,
+        uint16 recipientChainId,
+        bool relayer_off
+    ) public {
+        WormholeTransceiver[2] memory transceivers =
+            [wormholeTransceiverChain1, wormholeTransceiverChain1Other];
+        uint256 quoteSum = quotePrices(transceivers, chainId2, relayer_off);
+        require(quoteSum > 0, "quoting is broken");
+
+        // refund the amount back to the user that sent the transfer
+        nttManagerChain1.transfer{value: quoteSum}(
+            sendingAmount,
+            recipientChainId,
+            toWormholeFormat(to),
+            toWormholeFormat(refund),
+            relayer_off,
+            encodeTransceiverInstruction(relayer_off)
+        );
+    }
+
+    function test_getRefundsAfterStandardRelay() public {
+        // record all of the logs for all of the occuring events
+        vm.recordLogs();
+
+        // Setup the information for interacting with the chains
+        vm.selectFork(targetFork);
+
+        // set peers
+        setTransceiverPeers(
+            wormholeTransceiverChain2,
+            wormholeTransceiverChain1,
+            wormholeTransceiverChain2Other,
+            wormholeTransceiverChain1Other,
+            chainId1
+        );
+        nttManagerChain2.setPeer(
+            chainId1, toWormholeFormat(address(nttManagerChain1)), 9, type(uint64).max
+        );
+
+        // setup token
+        DummyToken token2 = DummyTokenMintAndBurn(nttManagerChain2.token());
+
+        // enable standard relaying
+        enableSR([wormholeTransceiverChain2, wormholeTransceiverChain2Other], chainId1);
+
+        // set the manager and transceiver peers
+        vm.selectFork(sourceFork);
+        setTransceiverPeers(
+            wormholeTransceiverChain1,
+            wormholeTransceiverChain2,
+            wormholeTransceiverChain1Other,
+            wormholeTransceiverChain2Other,
+            chainId2
+        );
+        nttManagerChain1.setPeer(
+            chainId2, toWormholeFormat(address(nttManagerChain2)), 7, type(uint64).max
+        );
+
+        DummyToken token1 = DummyToken(nttManagerChain1.token());
+
+        // Enable general relaying on the chain to transfer for the funds.
+        enableSR([wormholeTransceiverChain1, wormholeTransceiverChain1Other], chainId2);
+        // enableSR(wormholeTransceiverChain1Other, chainId2);
+
+        uint256 sendingAmount = 5 * 10 ** token1.decimals();
+        prepareTransfer(token1, userA, address(nttManagerChain1), sendingAmount);
+
+        uint256 nttManagerBalanceBefore = token1.balanceOf(address(nttManagerChain1));
+        uint256 userBalanceBefore = token1.balanceOf(address(userA));
+
+        // Send token through standard relayer
+        transferTokenViaStandardRelayer(userB, userA, sendingAmount, chainId2, false);
+
+        // Balance check on funds going in and out working as expected
+        uint256 nttManagerBalanceAfter = token1.balanceOf(address(nttManagerChain1));
+        uint256 userBalanceAfter = token1.balanceOf(address(userB));
+        require(
+            nttManagerBalanceBefore + sendingAmount == nttManagerBalanceAfter,
+            "Should be locking the tokens"
+        );
+        require(
+            userBalanceBefore - sendingAmount == userBalanceAfter, "User should have sent tokens"
+        );
+        vm.stopPrank();
+
+        uint256 supplyBefore = getTotalSupply(targetFork, token2);
+
+        // Deliver the TX via the relayer mechanism.
+        deliverViaRelayer();
+        uint8 decimals = token1.decimals();
+
+        // Move to back to the target chain to look at how things were processed
+        vm.selectFork(targetFork);
+
+        // sanity checks
+        uint256 supplyAfter = token2.totalSupply();
+        require(sendingAmount + supplyBefore == supplyAfter, "Supplies not changed - minting");
+        require(token2.balanceOf(userB) == sendingAmount, "User didn't receive tokens");
+        require(token2.balanceOf(address(nttManagerChain2)) == 0, "NttManager has unintended funds");
+
+        bytes32 hash = computeManagerMessageDigest(
+            userA, userB, sendingAmount.trim(decimals, 7), address(token1), chainId1, chainId2
+        );
+        // number of attestations on the message should be equal to the number of transceivers
+        assertEq(nttManagerChain2.messageAttestations(hash), 2);
+
+        // check that the message has been executed at this point
+        // replay protecion in `executeMsg` should emit the `MessageAlreadyExecuted` event.
+        assertTrue(nttManagerChain2.isMessageExecuted(hash));
+
+        // balance of refund address should be > 0, given that the threshold < # of enabled transceivers
+        assertGt(userA.balance, 0);
     }
 
     function copyBytes(bytes memory _bytes) private pure returns (bytes memory) {
@@ -576,6 +836,7 @@ contract TestRelayerEndToEndManual is TestEndToEndRelayerBase, IRateLimiterEvent
                 sendingAmount,
                 chainId2,
                 bytes32(uint256(uint160(userB))),
+                bytes32(uint256(uint160(userA))),
                 false,
                 encodeTransceiverInstruction(false)
             );
@@ -707,6 +968,7 @@ contract TestRelayerEndToEndManual is TestEndToEndRelayerBase, IRateLimiterEvent
                 sendingAmount,
                 chainId2,
                 bytes32(uint256(uint160(userB))),
+                bytes32(uint256(uint160(userA))),
                 false,
                 encodeTransceiverInstruction(false)
             );

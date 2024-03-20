@@ -65,6 +65,7 @@ interface IRateLimiter {
     ///    - transceiverInstructions: additional instructions to be forwarded to the recipient chain.
     struct OutboundQueuedTransfer {
         bytes32 recipient;
+        bytes32 refundAddress;
         TrimmedAmount amount;
         uint64 txTimestamp;
         uint16 recipientChain;
