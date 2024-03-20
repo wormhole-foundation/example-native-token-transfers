@@ -41,6 +41,10 @@ describe('example-native-token-transfers', () => {
 
     tokenAccount = await spl.createAssociatedTokenAccount(connection, payer, mint, user.publicKey)
     await spl.mintTo(connection, payer, mint, tokenAccount, owner, BigInt(10000000))
+
+    //also mint to payer wallet
+    const payerTokenAccount = await spl.createAssociatedTokenAccount(connection, payer, mint, payer.publicKey)
+    await spl.mintTo(connection, payer, mint, payerTokenAccount, owner, BigInt(100000000))
   });
 
   describe('Locking', () => {

@@ -34,17 +34,19 @@ export type Config = {
   shouldAirdrop: boolean;
   numberOfKeypairs: number;
   numberOfTotalTransactions: number;
+  testTransferAmount: number;
 };
 
 const localhostConfig: Config = {
   envName: "local",
   solanaRpc: "http://localhost:8899",
-  testWalletLocation: "./keys/test.json", //TODO seed with test tokens in the test
+  testWalletLocation: "./keys/test.json",
   nttId: "nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS",
-  wormholeId: "3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5",
+  wormholeId: "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth",
   shouldAirdrop: true,
-  numberOfKeypairs: 1,
-  numberOfTotalTransactions: 1,
+  numberOfKeypairs: 250,
+  numberOfTotalTransactions: 750,
+  testTransferAmount: 1000,
 };
 
 const config = localhostConfig;
@@ -87,7 +89,8 @@ async function run() {
         primaryTestWallet,
         keypairs[i],
         mintAccount,
-        initializeRecentBlockhash.blockhash
+        initializeRecentBlockhash.blockhash,
+        config.testTransferAmount
       )
     );
   }
@@ -101,7 +104,7 @@ async function run() {
   );
 
   //wait 3 seconds for inclusion to settle out
-  await new Promise((resolve) => setTimeout(resolve, 3000));
+  await new Promise((resolve) => setTimeout(resolve, 30000));
 
   console.log("Finished broadcasting initializing transactions");
   console.log("Pulling results of initializing transactions");
@@ -110,13 +113,12 @@ async function run() {
   );
   console.log("Pulled results of initializing transactions");
   for (let i = 0; i < initializingResults.length; i++) {
-    console.log("debug:");
-    console.log(initializingResults[i]);
     if (
       initializingResults[i].value === null ||
       initializingResults[i].value?.err
     ) {
       console.log("debug:");
+      console.log(initializingSignatures[i]);
       console.log(JSON.stringify(initializingResults[i], null, 2));
       throw new Error("Failed to initialize keypair at index " + i);
     }
@@ -142,7 +144,7 @@ async function run() {
         config.nttId,
         config.wormholeId,
         mintAccount,
-        10 //amount
+        config.testTransferAmount
       )
     );
   }
@@ -192,7 +194,8 @@ async function run() {
     transactionResults,
     lastValidHeight,
     wallTimeStart,
-    wallTimeEnd
+    wallTimeEnd,
+    connection
   );
 
   console.log("Writing output metrics");
