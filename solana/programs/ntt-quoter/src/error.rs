@@ -12,6 +12,9 @@ pub enum NttQuoterError {
     #[msg("Relaying to the specified chain is disabled")]
     RelayingToChainDisabled = 0x4,
 
+    #[msg("Relaying to the specified chain is disabled")]
+    OutboxItemNotReleased = 0x5,
+
     #[msg("The fee recipient cannot be the default address (0x0)")]
     FeeRecipientCannotBeDefault = 0x101,
 
