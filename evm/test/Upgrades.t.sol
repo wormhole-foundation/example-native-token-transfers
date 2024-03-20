@@ -466,7 +466,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
             nttManagerChain1.transfer{value: totalQuote}(
                 sendingAmount,
                 chainId2,
-                bytes32(uint256(uint160(userB))),
+                toWormholeFormat(userB),
+                toWormholeFormat(userA),
                 false,
                 encodeTransceiverInstruction(true)
             );
@@ -539,7 +540,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
             nttManagerChain2.transfer{value: totalQuote}(
                 sendingAmount,
                 chainId1,
-                bytes32(uint256(uint160(userD))),
+                toWormholeFormat(userD),
+                toWormholeFormat(userC),
                 false,
                 encodeTransceiverInstruction(true)
             );
