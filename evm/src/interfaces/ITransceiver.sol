@@ -57,7 +57,8 @@ interface ITransceiver {
         uint16 recipientChain,
         TransceiverStructs.TransceiverInstruction memory instruction,
         bytes memory nttManagerMessage,
-        bytes32 recipientNttManagerAddress
+        bytes32 recipientNttManagerAddress,
+        bytes32 refundAddress
     ) external payable;
 
     /// @notice Upgrades the transceiver to a new implementation.

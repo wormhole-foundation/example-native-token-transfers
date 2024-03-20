@@ -284,6 +284,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         TrimmedAmount amount,
         uint16 recipientChain,
         bytes32 recipient,
+        bytes32 refundAddress,
         address senderAddress,
         bytes memory transceiverInstructions
     ) internal {
@@ -291,6 +292,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
             amount: amount,
             recipientChain: recipientChain,
             recipient: recipient,
+            refundAddress: refundAddress,
             txTimestamp: uint64(block.timestamp),
             sender: senderAddress,
             transceiverInstructions: transceiverInstructions

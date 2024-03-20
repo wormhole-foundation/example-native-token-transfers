@@ -150,7 +150,8 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint16 recipientChain,
         bytes32 recipient
     ) external payable nonReentrant whenNotPaused returns (uint64) {
-        return _transferEntryPoint(amount, recipientChain, recipient, false, new bytes(1));
+        return
+            _transferEntryPoint(amount, recipientChain, recipient, recipient, false, new bytes(1));
     }
 
     /// @inheritdoc INttManager
@@ -158,11 +159,12 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint256 amount,
         uint16 recipientChain,
         bytes32 recipient,
+        bytes32 refundAddress,
         bool shouldQueue,
         bytes memory transceiverInstructions
     ) external payable nonReentrant whenNotPaused returns (uint64) {
         return _transferEntryPoint(
-            amount, recipientChain, recipient, shouldQueue, transceiverInstructions
+            amount, recipientChain, recipient, refundAddress, shouldQueue, transceiverInstructions
         );
     }
 
@@ -280,6 +282,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
             queuedTransfer.amount,
             queuedTransfer.recipientChain,
             queuedTransfer.recipient,
+            queuedTransfer.refundAddress,
             queuedTransfer.sender,
             queuedTransfer.transceiverInstructions
         );
@@ -317,6 +320,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint256 amount,
         uint16 recipientChain,
         bytes32 recipient,
+        bytes32 refundAddress,
         bool shouldQueue,
         bytes memory transceiverInstructions
     ) internal returns (uint64) {
@@ -391,6 +395,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
                     trimmedAmount,
                     recipientChain,
                     recipient,
+                    refundAddress,
                     msg.sender,
                     transceiverInstructions
                 );
@@ -410,7 +415,13 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         _backfillInboundAmount(internalAmount, recipientChain);
 
         return _transfer(
-            sequence, trimmedAmount, recipientChain, recipient, msg.sender, transceiverInstructions
+            sequence,
+            trimmedAmount,
+            recipientChain,
+            recipient,
+            refundAddress,
+            msg.sender,
+            transceiverInstructions
         );
     }
 
@@ -419,6 +430,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         TrimmedAmount amount,
         uint16 recipientChain,
         bytes32 recipient,
+        bytes32 refundAddress,
         address sender,
         bytes memory transceiverInstructions
     ) internal returns (uint64 msgSequence) {
@@ -445,10 +457,14 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
             )
         );
 
+        // push onto the stack again to avoid stack too deep error
+        uint16 destinationChain = recipientChain;
+
         // send the message
         _sendMessageToTransceivers(
             recipientChain,
-            _getPeersStorage()[recipientChain].peerAddress,
+            refundAddress,
+            _getPeersStorage()[destinationChain].peerAddress,
             priceQuotes,
             instructions,
             enabledTransceivers,
@@ -457,14 +473,18 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
 
         // push it on the stack again to avoid a stack too deep error
         TrimmedAmount amt = amount;
-        uint16 destinationChain = recipientChain;
 
         emit TransferSent(
-            recipient, amt.untrim(tokenDecimals()), totalPriceQuote, destinationChain, seq
+            recipient,
+            refundAddress,
+            amt.untrim(tokenDecimals()),
+            totalPriceQuote,
+            destinationChain,
+            seq
         );
 
         // return the sequence number
-        return sequence;
+        return seq;
     }
 
     function _mintOrUnlockToRecipient(
