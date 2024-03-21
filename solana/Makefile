@@ -22,7 +22,7 @@ anchor-test:
 
 .PHONY: anchor-lint
 anchor-lint:
-	sh scripts/anchor-lint.sh
+	bash scripts/anchor-lint.sh
 
 node_modules: package-lock.json
 	npm ci
