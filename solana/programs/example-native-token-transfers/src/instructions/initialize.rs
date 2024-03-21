@@ -58,7 +58,10 @@ pub struct Initialize<'info> {
         seeds = [crate::TOKEN_AUTHORITY_SEED],
         bump,
     )]
-    pub token_authority: AccountInfo<'info>,
+    /// CHECK: [`token_authority`] is checked against the custody account and the [`mint`]'s mint_authority
+    /// In any case, this function is used to set the Config and initialize the program so we
+    /// assume the caller of this function will have total control over the program.
+    pub token_authority: UncheckedAccount<'info>,
 
     #[account(
         init_if_needed,
@@ -73,7 +76,7 @@ pub struct Initialize<'info> {
     /// function if  the token account has already been created.
     pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
 
-    /// CHECK: checked to be the appropriate token progrem when initialising the
+    /// CHECK: checked to be the appropriate token program when initialising the
     /// associated token account for the given mint.
     pub token_program: Interface<'info, token_interface::TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,

@@ -109,7 +109,8 @@ pub struct TransferBurn<'info> {
         ],
         bump,
     )]
-    pub session_authority: AccountInfo<'info>,
+    /// CHECK: The seeds constraint enforces that this is the correct account
+    pub session_authority: UncheckedAccount<'info>,
 }
 
 pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<()> {
@@ -206,7 +207,8 @@ pub struct TransferLock<'info> {
         ],
         bump,
     )]
-    pub session_authority: AccountInfo<'info>,
+    /// CHECK: The seeds constraint enforces that this is the correct account
+    pub session_authority: UncheckedAccount<'info>,
 
     #[account(
         mut,
