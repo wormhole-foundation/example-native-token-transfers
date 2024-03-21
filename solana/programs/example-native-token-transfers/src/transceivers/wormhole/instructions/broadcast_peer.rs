@@ -28,6 +28,7 @@ pub struct BroadcastPeer<'info> {
         seeds = [b"emitter"],
         bump
     )]
+    /// CHECK: The seeds constraint ensures that this is the correct address
     pub emitter: UncheckedAccount<'info>,
 
     pub wormhole: WormholeAccounts<'info>,

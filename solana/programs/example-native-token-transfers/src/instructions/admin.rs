@@ -33,13 +33,14 @@ pub struct TransferOwnership<'info> {
     pub owner: Signer<'info>,
 
     /// CHECK: This account will be the signer in the [claim_ownership] instruction.
-    new_owner: AccountInfo<'info>,
+    new_owner: UncheckedAccount<'info>,
 
     #[account(
         seeds = [b"upgrade_lock"],
         bump,
     )]
-    upgrade_lock: AccountInfo<'info>,
+    /// CHECK: The seeds constraint enforces that this is the correct address
+    upgrade_lock: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -89,7 +90,8 @@ pub struct ClaimOwnership<'info> {
         seeds = [b"upgrade_lock"],
         bump,
     )]
-    upgrade_lock: AccountInfo<'info>,
+    /// CHECK: The seeds constraint enforces that this is the correct address
+    upgrade_lock: UncheckedAccount<'info>,
 
     pub new_owner: Signer<'info>,
 
@@ -204,7 +206,9 @@ pub struct RegisterTransceiver<'info> {
     pub payer: Signer<'info>,
 
     #[account(executable)]
-    pub transceiver: AccountInfo<'info>,
+    /// CHECK: transceiver is meant to be a transceiver program. Arguably a `Program` constraint could be
+    /// used here that wraps the Transceiver account type.
+    pub transceiver: UncheckedAccount<'info>,
 
     #[account(
         init,

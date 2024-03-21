@@ -31,7 +31,8 @@ pub struct ReleaseInbound<'info> {
         seeds = [crate::TOKEN_AUTHORITY_SEED],
         bump,
     )]
-    pub token_authority: AccountInfo<'info>,
+    /// CHECK The seeds constraint ensures that this is the correct address
+    pub token_authority: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -112,7 +113,7 @@ pub fn release_inbound_mint<'info>(
             token_interface::MintTo {
                 mint: ctx.accounts.common.mint.to_account_info(),
                 to: ctx.accounts.common.custody.to_account_info(),
-                authority: ctx.accounts.common.token_authority.clone(),
+                authority: ctx.accounts.common.token_authority.to_account_info(),
             },
             &[&[
                 crate::TOKEN_AUTHORITY_SEED,
@@ -128,7 +129,7 @@ pub fn release_inbound_mint<'info>(
         ctx.accounts.common.custody.to_account_info(),
         ctx.accounts.common.mint.to_account_info(),
         ctx.accounts.common.recipient.to_account_info(),
-        ctx.accounts.common.token_authority.clone(),
+        ctx.accounts.common.token_authority.to_account_info(),
         ctx.remaining_accounts,
         inbox_item.amount,
         ctx.accounts.common.mint.decimals,
@@ -178,7 +179,7 @@ pub fn release_inbound_unlock<'info>(
         ctx.accounts.common.custody.to_account_info(),
         ctx.accounts.common.mint.to_account_info(),
         ctx.accounts.common.recipient.to_account_info(),
-        ctx.accounts.common.token_authority.clone(),
+        ctx.accounts.common.token_authority.to_account_info(),
         ctx.remaining_accounts,
         inbox_item.amount,
         ctx.accounts.common.mint.decimals,

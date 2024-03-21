@@ -136,8 +136,9 @@ pub struct TransferBurn<'info> {
         ],
         bump,
     )]
+    /// CHECK: The seeds constraint enforces that this is the correct account.
     /// See [`crate::SESSION_AUTHORITY_SEED`] for an explanation of the flow.
-    pub session_authority: AccountInfo<'info>,
+    pub session_authority: UncheckedAccount<'info>,
 
     #[account(
         seeds = [crate::TOKEN_AUTHORITY_SEED],
@@ -281,8 +282,9 @@ pub struct TransferLock<'info> {
         ],
         bump,
     )]
+    /// CHECK: The seeds constraint enforces that this is the correct account
     /// See [`crate::SESSION_AUTHORITY_SEED`] for an explanation of the flow.
-    pub session_authority: AccountInfo<'info>,
+    pub session_authority: UncheckedAccount<'info>,
 }
 
 pub fn transfer_lock<'info>(
