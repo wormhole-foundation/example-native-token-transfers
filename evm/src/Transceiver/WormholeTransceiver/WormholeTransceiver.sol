@@ -39,7 +39,7 @@ contract WormholeTransceiver is
         address wormholeRelayerAddr,
         address specialRelayerAddr,
         uint8 _consistencyLevel,
-        uint256 _gasLimit,
+        uint256 _attestationGasLimit,
         IWormholeTransceiverState.ManagerType _managerType
     )
         WormholeTransceiverState(
@@ -48,7 +48,7 @@ contract WormholeTransceiver is
             wormholeRelayerAddr,
             specialRelayerAddr,
             _consistencyLevel,
-            _gasLimit,
+            _attestationGasLimit,
             _managerType
         )
     {}
@@ -148,7 +148,8 @@ contract WormholeTransceiver is
 
     function _quoteDeliveryPrice(
         uint16 targetChain,
-        TransceiverStructs.TransceiverInstruction memory instruction
+        TransceiverStructs.TransceiverInstruction memory instruction,
+        uint256 managerExecutionCost
     ) internal view override returns (uint256 nativePriceQuote) {
         // Check the special instruction up front to see if we should skip sending via a relayer
         WormholeTransceiverInstruction memory weIns =
@@ -163,7 +164,9 @@ contract WormholeTransceiver is
         }
 
         if (_shouldRelayViaStandardRelaying(targetChain)) {
-            (uint256 cost,) = wormholeRelayer.quoteEVMDeliveryPrice(targetChain, 0, gasLimit);
+            (uint256 cost,) = wormholeRelayer.quoteEVMDeliveryPrice(
+                targetChain, 0, attestationGasLimit + managerExecutionCost
+            );
             return cost;
         } else if (isSpecialRelayingEnabled(targetChain)) {
             uint256 cost = specialRelayer.quoteDeliveryPrice(getNttManagerToken(), targetChain, 0);
@@ -176,6 +179,7 @@ contract WormholeTransceiver is
     function _sendMessage(
         uint16 recipientChain,
         uint256 deliveryPayment,
+        uint256 managerExecutionCost,
         address caller,
         bytes32 recipientNttManagerAddress,
         TransceiverStructs.TransceiverInstruction memory instruction,
@@ -206,7 +210,7 @@ contract WormholeTransceiver is
                 fromWormholeFormat(getWormholePeer(recipientChain)),
                 encodedTransceiverPayload,
                 0,
-                gasLimit
+                attestationGasLimit + managerExecutionCost
             );
 
             emit RelayingInfo(uint8(RelayingType.Standard), deliveryPayment);

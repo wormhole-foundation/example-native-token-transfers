@@ -95,9 +95,10 @@ abstract contract Transceiver is
     /// @inheritdoc ITransceiver
     function quoteDeliveryPrice(
         uint16 targetChain,
-        TransceiverStructs.TransceiverInstruction memory instruction
+        TransceiverStructs.TransceiverInstruction memory instruction,
+        uint256 managerExecutionCost
     ) external view returns (uint256) {
-        return _quoteDeliveryPrice(targetChain, instruction);
+        return _quoteDeliveryPrice(targetChain, instruction, managerExecutionCost);
     }
 
     /// @inheritdoc ITransceiver
@@ -105,11 +106,13 @@ abstract contract Transceiver is
         uint16 recipientChain,
         TransceiverStructs.TransceiverInstruction memory instruction,
         bytes memory ManagerMessage,
-        bytes32 recipientNttManagerAddress
+        bytes32 recipientNttManagerAddress,
+        uint256 managerExecutionCost
     ) external payable nonReentrant onlyNttManager {
         _sendMessage(
             recipientChain,
             msg.value,
+            managerExecutionCost,
             msg.sender,
             recipientNttManagerAddress,
             instruction,
@@ -122,6 +125,7 @@ abstract contract Transceiver is
     function _sendMessage(
         uint16 recipientChain,
         uint256 deliveryPayment,
+        uint256 managerExecutionCost,
         address caller,
         bytes32 recipientNttManagerAddress,
         TransceiverStructs.TransceiverInstruction memory transceiverInstruction,
@@ -147,6 +151,7 @@ abstract contract Transceiver is
 
     function _quoteDeliveryPrice(
         uint16 targetChain,
-        TransceiverStructs.TransceiverInstruction memory transceiverInstruction
+        TransceiverStructs.TransceiverInstruction memory transceiverInstruction,
+        uint256 managerExecutionCost
     ) internal view virtual returns (uint256);
 }

@@ -84,14 +84,14 @@ abstract contract ManagerBase is
         }
     }
 
-    // =============== External Logic =============================================================
+    // =============== Internal Logic ===========================================================
 
-    /// @inheritdoc IManagerBase
-    function quoteDeliveryPrice(
+    function _quoteDeliveryPrice(
         uint16 recipientChain,
         TransceiverStructs.TransceiverInstruction[] memory transceiverInstructions,
-        address[] memory enabledTransceivers
-    ) public view returns (uint256[] memory, uint256) {
+        address[] memory enabledTransceivers,
+        uint256 managerExecutionCost
+    ) internal view returns (uint256[] memory, uint256) {
         uint256 numEnabledTransceivers = enabledTransceivers.length;
         mapping(address => TransceiverInfo) storage transceiverInfos = _getTransceiverInfosStorage();
 
@@ -101,15 +101,13 @@ abstract contract ManagerBase is
             address transceiverAddr = enabledTransceivers[i];
             uint8 registeredTransceiverIndex = transceiverInfos[transceiverAddr].index;
             uint256 transceiverPriceQuote = ITransceiver(transceiverAddr).quoteDeliveryPrice(
-                recipientChain, transceiverInstructions[registeredTransceiverIndex]
+                recipientChain, transceiverInstructions[registeredTransceiverIndex], managerExecutionCost
             );
             priceQuotes[i] = transceiverPriceQuote;
             totalPriceQuote += transceiverPriceQuote;
         }
         return (priceQuotes, totalPriceQuote);
     }
-
-    // =============== Internal Logic ===========================================================
 
     function _recordTransceiverAttestation(
         uint16 sourceChainId,
@@ -160,6 +158,7 @@ abstract contract ManagerBase is
         uint16 recipientChain,
         bytes32 peerAddress,
         uint256[] memory priceQuotes,
+        uint256 managerExecutionCost,
         TransceiverStructs.TransceiverInstruction[] memory transceiverInstructions,
         address[] memory enabledTransceivers,
         bytes memory ManagerMessage
@@ -179,14 +178,16 @@ abstract contract ManagerBase is
                 recipientChain,
                 transceiverInstructions[transceiverInfos[transceiverAddr].index],
                 ManagerMessage,
-                peerAddress
+                peerAddress,
+                managerExecutionCost
             );
         }
     }
 
     function _prepareForTransfer(
         uint16 recipientChain,
-        bytes memory transceiverInstructions
+        bytes memory transceiverInstructions,
+        uint256 managerExecutionCost
     )
         internal
         returns (
@@ -214,7 +215,7 @@ abstract contract ManagerBase is
         }
 
         (uint256[] memory priceQuotes, uint256 totalPriceQuote) =
-            quoteDeliveryPrice(recipientChain, instructions, enabledTransceivers);
+            _quoteDeliveryPrice(recipientChain, instructions, enabledTransceivers, managerExecutionCost);
         {
             // check up front that msg.value will cover the delivery price
             if (msg.value < totalPriceQuote) {

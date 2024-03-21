@@ -110,6 +110,19 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
 
     // =============== External Interface ==================================================
 
+    function quoteDeliveryPrice(
+        uint16 recipientChain,
+        bytes memory transceiverInstructions
+    ) public view virtual returns (uint256[] memory, uint256) {
+        address[] memory enabledTransceivers = _getEnabledTransceiversStorage();
+
+        TransceiverStructs.TransceiverInstruction[] memory instructions = TransceiverStructs
+            .parseTransceiverInstructions(transceiverInstructions, enabledTransceivers.length);
+
+        // TODO: Compute execution cost here.
+        return _quoteDeliveryPrice(recipientChain, instructions, enabledTransceivers, 0);
+    }
+
     function transfer(
         uint256[] memory tokenIds,
         uint16 recipientChain,
@@ -213,12 +226,13 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
         }
 
         // Fetch quotes and prepare for transfer.
+        // TODO: compute execution cost here.
         (
             address[] memory enabledTransceivers,
             TransceiverStructs.TransceiverInstruction[] memory instructions,
             uint256[] memory priceQuotes,
             uint256 totalPriceQuote
-        ) = _prepareForTransfer(recipientChain, transceiverInstructions);
+        ) = _prepareForTransfer(recipientChain, transceiverInstructions, 0);
 
         uint64 sequence = _useMessageSequence();
 
@@ -242,6 +256,7 @@ contract NonFungibleNttManager is INonFungibleNttManager, ManagerBase {
             recipientChain,
             _getPeersStorage()[recipientChain].peerAddress,
             priceQuotes,
+            0,
             instructions,
             enabledTransceivers,
             encodedNttManagerPayload

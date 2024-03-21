@@ -204,7 +204,7 @@ contract TestEndToEndRelayer is
             uint256 userBalanceBefore = token1.balanceOf(address(userA));
 
             uint256 priceQuote1 = wormholeTransceiverChain1.quoteDeliveryPrice(
-                chainId2, buildTransceiverInstruction(false)
+                chainId2, buildTransceiverInstruction(false), 0
             );
             bytes memory instructions = encodeTransceiverInstruction(false);
 
@@ -341,7 +341,7 @@ contract TestEndToEndRelayer is
 
             nttManagerChain1.transfer{
                 value: wormholeTransceiverChain1.quoteDeliveryPrice(
-                    chainId2, buildTransceiverInstruction(false)
+                    chainId2, buildTransceiverInstruction(false), 0
                     )
             }(
                 sendingAmount,
@@ -393,7 +393,7 @@ contract TestEndToEndRelayer is
             supplyBefore = token2.totalSupply();
             nttManagerChain2.transfer{
                 value: wormholeTransceiverChain2.quoteDeliveryPrice(
-                    chainId1, buildTransceiverInstruction(false)
+                    chainId1, buildTransceiverInstruction(false), 0
                     )
             }(
                 sendingAmount,
@@ -574,7 +574,7 @@ contract TestRelayerEndToEndManual is TestEndToEndRelayerBase, IRateLimiterEvent
             vm.deal(userA, 1 ether);
             nttManagerChain1.transfer{
                 value: wormholeTransceiverChain1.quoteDeliveryPrice(
-                    chainId2, buildTransceiverInstruction(false)
+                    chainId2, buildTransceiverInstruction(false), 0
                     )
             }(
                 sendingAmount,
@@ -705,7 +705,7 @@ contract TestRelayerEndToEndManual is TestEndToEndRelayerBase, IRateLimiterEvent
             vm.deal(userA, 1 ether);
             nttManagerChain1.transfer{
                 value: wormholeTransceiverChain1.quoteDeliveryPrice(
-                    chainId2, buildTransceiverInstruction(false)
+                    chainId2, buildTransceiverInstruction(false), 0
                     )
             }(
                 sendingAmount,

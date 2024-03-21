@@ -143,6 +143,19 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     // ==================== External Interface ===============================================
 
     /// @inheritdoc INttManager
+    function quoteDeliveryPrice(
+        uint16 recipientChain,
+        bytes memory transceiverInstructions
+    ) public view virtual returns (uint256[] memory, uint256) {
+        address[] memory enabledTransceivers = _getEnabledTransceiversStorage();
+
+        TransceiverStructs.TransceiverInstruction[] memory instructions = TransceiverStructs
+            .parseTransceiverInstructions(transceiverInstructions, enabledTransceivers.length);
+
+        return _quoteDeliveryPrice(recipientChain, instructions, enabledTransceivers, 0);
+    }
+
+    /// @inheritdoc INttManager
     function transfer(
         uint256 amount,
         uint16 recipientChain,
@@ -394,12 +407,13 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         address sender,
         bytes memory transceiverInstructions
     ) internal returns (uint64 msgSequence) {
+        // TODO: compute execution cost here.
         (
             address[] memory enabledTransceivers,
             TransceiverStructs.TransceiverInstruction[] memory instructions,
             uint256[] memory priceQuotes,
             uint256 totalPriceQuote
-        ) = _prepareForTransfer(recipientChain, transceiverInstructions);
+        ) = _prepareForTransfer(recipientChain, transceiverInstructions, 0);
 
         // push it on the stack again to avoid a stack too deep error
         uint64 seq = sequence;
@@ -422,6 +436,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
             recipientChain,
             _getPeersStorage()[recipientChain].peerAddress,
             priceQuotes,
+            0,
             instructions,
             enabledTransceivers,
             encodedNttManagerPayload

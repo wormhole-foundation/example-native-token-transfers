@@ -14,7 +14,8 @@ contract DummyTransceiver is Transceiver, ITransceiverReceiver {
 
     function _quoteDeliveryPrice(
         uint16, /* recipientChain */
-        TransceiverStructs.TransceiverInstruction memory /* transceiverInstruction */
+        TransceiverStructs.TransceiverInstruction memory, /* transceiverInstruction */
+        uint256 /* managerExecutionCost */
     ) internal pure override returns (uint256) {
         return 0;
     }
@@ -22,6 +23,7 @@ contract DummyTransceiver is Transceiver, ITransceiverReceiver {
     function _sendMessage(
         uint16, /* recipientChain */
         uint256, /* deliveryPayment */
+        uint256, /* managerExecutionCost */
         address, /* caller */
         bytes32, /* recipientNttManagerAddress */
         TransceiverStructs.TransceiverInstruction memory, /* instruction */

@@ -33,7 +33,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     IWormholeRelayer public immutable wormholeRelayer;
     ISpecialRelayer public immutable specialRelayer;
     uint256 immutable wormholeTransceiver_evmChainId;
-    uint256 public immutable gasLimit;
+    uint256 public immutable attestationGasLimit;
     ManagerType public immutable managerType;
 
     // ==================== Constants ================================================
@@ -58,7 +58,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
         address wormholeRelayerAddr,
         address specialRelayerAddr,
         uint8 _consistencyLevel,
-        uint256 _gasLimit,
+        uint256 _attestationGasLimit,
         ManagerType _managerType
     ) Transceiver(nttManager) {
         wormhole = IWormhole(wormholeCoreBridge);
@@ -66,7 +66,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
         specialRelayer = ISpecialRelayer(specialRelayerAddr);
         wormholeTransceiver_evmChainId = block.chainid;
         consistencyLevel = _consistencyLevel;
-        gasLimit = _gasLimit;
+        attestationGasLimit = _attestationGasLimit;
         managerType = _managerType;
     }
 

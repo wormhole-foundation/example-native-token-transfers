@@ -41,11 +41,15 @@ interface ITransceiver {
     /// @param recipientChain The Wormhole chain ID of the target chain.
     /// @param instruction An additional Instruction provided by the Transceiver to be
     ///        executed on the recipient chain.
+    /// @param managerExecutionCost The cost of executing the manager message on the recipient chain.
+    ///        Depending on the target chain, the units may vary. For example, on Ethereum, this is
+    ///        the additional gas cost (in excess of the attestation cost) for executing the manager message.
     /// @return deliveryPrice The cost of delivering a message to the recipient chain,
     ///         in this chain's native token.
     function quoteDeliveryPrice(
         uint16 recipientChain,
-        TransceiverStructs.TransceiverInstruction memory instruction
+        TransceiverStructs.TransceiverInstruction memory instruction,
+        uint256 managerExecutionCost
     ) external view returns (uint256);
 
     /// @dev Send a message to another chain.
@@ -53,11 +57,15 @@ interface ITransceiver {
     /// @param instruction An additional Instruction provided by the Transceiver to be
     /// executed on the recipient chain.
     /// @param ManagerMessage A message to be sent to the nttManager on the recipient chain.
+    /// @param managerExecutionCost The cost of executing the manager message on the recipient chain.
+    ///        Depending on the target chain, the units may vary. For example, on Ethereum, this is
+    ///        the additional gas cost (in excess of the attestation cost) for executing the manager message.
     function sendMessage(
         uint16 recipientChain,
         TransceiverStructs.TransceiverInstruction memory instruction,
         bytes memory ManagerMessage,
-        bytes32 recipientNttManagerAddress
+        bytes32 recipientNttManagerAddress,
+        uint256 managerExecutionCost
     ) external payable;
 
     /// @notice Upgrades the transceiver to a new implementation.

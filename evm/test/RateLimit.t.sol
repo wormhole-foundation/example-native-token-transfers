@@ -986,7 +986,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](1);
         transceivers[0] = e1;
 
-        TransceiverStructs.NttManagerMessage memory m;
+        TransceiverStructs.ManagerMessage memory m;
         bytes memory encodedEm;
         uint256 inboundLimit = inboundLimitAmt;
         TrimmedAmount trimmedAmount = packTrimmedAmount(uint64(amount), 8);
@@ -1008,7 +1008,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         }
 
         bytes32 digest =
-            TransceiverStructs.nttManagerMessageDigest(TransceiverHelpersLib.SENDING_CHAIN_ID, m);
+            TransceiverStructs.managerMessageDigest(TransceiverHelpersLib.SENDING_CHAIN_ID, m);
 
         // no quorum yet
         assertEq(token.balanceOf(address(user_B)), 0);
@@ -1077,9 +1077,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
             assertEq(entries[0].topics[1], toWormholeFormat(address(nttManager)));
             assertEq(
                 entries[0].topics[2],
-                TransceiverStructs.nttManagerMessageDigest(
-                    TransceiverHelpersLib.SENDING_CHAIN_ID, m
-                )
+                TransceiverStructs.managerMessageDigest(TransceiverHelpersLib.SENDING_CHAIN_ID, m)
             );
         }
     }
