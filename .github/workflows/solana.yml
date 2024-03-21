@@ -131,6 +131,12 @@ jobs:
       - name: Check idl
         run: |
           git diff --exit-code ts/idl
+      - name: Set default Rust toolchain
+        run: rustup default stable
+        shell: bash
+      - name: Run anchor lint
+        run: make anchor-lint
+        shell: bash
       - name: Run tests
         run: anchor test --skip-build
         shell: bash
