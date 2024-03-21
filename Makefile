@@ -34,6 +34,11 @@ fix-format:
 test-evm:
 	cd evm && forge test -vvv
 
+.PHONY: anchor-lint
+anchor-lint:
+	cd solana && make anchor-lint
+
+
 # Verify that the contracts do not include PUSH0 opcodes
 test-push0:
 	forge build --extra-output evm.bytecode.opcodes
