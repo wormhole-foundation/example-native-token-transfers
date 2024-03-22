@@ -94,7 +94,7 @@ interface IWormholeTransceiverState {
     /// @dev This function is only callable by the `owner`.
     /// @param chainId The Wormhole chain ID of the peer to set.
     /// @param peerContract The address of the peer contract on the given chain.
-    function setWormholePeer(uint16 chainId, bytes32 peerContract) external;
+    function setWormholePeer(uint16 chainId, bytes32 peerContract) external payable;
 
     /// @notice Set whether the chain is EVM compatible.
     /// @dev This function is only callable by the `owner`.
