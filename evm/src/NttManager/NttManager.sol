@@ -58,6 +58,9 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         if (msg.sender != deployer) {
             revert UnexpectedDeployer(deployer, msg.sender);
         }
+        if (msg.value != 0) {
+            revert UnexpectedMsgValue();
+        }
         __PausedOwnable_init(msg.sender, msg.sender);
         __ReentrancyGuard_init();
         _setOutboundLimit(TrimmedAmountLib.max(tokenDecimals()));
