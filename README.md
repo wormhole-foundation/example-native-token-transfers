@@ -42,3 +42,7 @@ If users bridge frequently between a given source chain and destination chain, t
 
 ___
 ⚠️ **WARNING:** Ensure that if the `NttManager` on the source chain is configured to be in `LOCKING` mode, the corresponding `NttManager`s on the target chains are configured to be in `BURNING` mode. If not, transfers will NOT go through and user funds may be lost! Proceed with caution!
+
+
+# Deployments
+For a notional guide on how to deploy contracts, see `deployments.md`
