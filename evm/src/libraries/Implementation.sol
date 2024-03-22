@@ -58,7 +58,7 @@ abstract contract Implementation is Initializable, ERC1967Upgrade {
         }
     }
 
-    function initialize() external onlyDelegateCall initializer {
+    function initialize() external payable onlyDelegateCall initializer {
         _initialize();
     }
 

@@ -98,6 +98,10 @@ interface INttManager is IManagerBase {
     /// @notice Peer cannot have zero decimals.
     error InvalidPeerDecimals();
 
+    /// @notice An unexpected msg.value was passed with the call
+    /// @dev Selector 0xbd28e889.
+    error UnexpectedMsgValue();
+
     /// @notice Transfer a given amount to a recipient on a given chain. This function is called
     ///         by the user to send the token cross-chain. This function will either lock or burn the
     ///         sender's tokens. Finally, this function will call into registered `Endpoint` contracts
