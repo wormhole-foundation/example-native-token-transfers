@@ -17,7 +17,8 @@ import "../test/mocks/DummyTransceiver.sol";
 import "wormhole-solidity-sdk/Utils.sol";
 
 contract FuzzNttManager is FuzzingHelpers {
-    uint64[] queuedOutboundTransfers;
+    uint64[] queuedOutboundTransfersArray;
+    mapping(uint64 => bool) queuedOutboundTransfers;
     mapping(uint256 => bool) executedQueuedOutboundTransfers;
     
     // Keep track of transceiver state
@@ -72,7 +73,8 @@ contract FuzzNttManager is FuzzingHelpers {
 
             // This transfer has queued, so let's keep track of it
             if (amount > currentOutboundCapacity) {
-                queuedOutboundTransfers.push(nextMessageSequence);
+                queuedOutboundTransfersArray.push(nextMessageSequence);
+                queuedOutboundTransfers[nextMessageSequence] = true;
             }
         }
         catch (bytes memory revertData) {
@@ -214,7 +216,8 @@ contract FuzzNttManager is FuzzingHelpers {
             // If we queued, we should have an item in the queue
             if ((shouldQueue && amount > currentOutboundCapacity)) {
                 // This transfer has queued, so let's keep track of it
-                queuedOutboundTransfers.push(nextMessageSequence);
+                queuedOutboundTransfersArray.push(nextMessageSequence);
+                queuedOutboundTransfers[nextMessageSequence] = true;
 
                 IRateLimiter.OutboundQueuedTransfer memory queuedTransfer = nttManager.getOutboundQueuedTransfer(nextMessageSequence);
                 assertWithMsg(
@@ -400,7 +403,7 @@ contract FuzzNttManager is FuzzingHelpers {
 
     function canOnlyPlayQueuedOutboundTransferOnce(uint256 warpTime, uint64 messageSequence, bool pickQueuedSequence) public {
         if (pickQueuedSequence) {
-            messageSequence = queuedOutboundTransfers[clampBetween(uint256(messageSequence), 0, queuedOutboundTransfers.length)];
+            messageSequence = queuedOutboundTransfersArray[clampBetween(uint256(messageSequence), 0, queuedOutboundTransfersArray.length)];
         }
 
         IRateLimiter.OutboundQueuedTransfer memory queuedTransfer = nttManager.getOutboundQueuedTransfer(messageSequence);
@@ -446,13 +449,19 @@ contract FuzzNttManager is FuzzingHelpers {
                     "NttManager: completeOutboundQueuedTransfer expected to fail if not queued for long enough"
                 );
             }
-            // else if (numEnabledTransceivers == 0) {
-            //     // TODO: When any queued transfers failed, can we reverse the funds out if we really need to???
-            //     assertWithMsg(
-            //         errorSelector == selectorToUint(IManagerBase.NoEnabledTransceivers.selector),
-            //         "NttManager: transfer expected to fail if sending when no transceivers are enabled"
-            //     );
-            // }
+            else if (numEnabledTransceivers == 0) {
+                // In this case the sender should be able to cancel their outbound queued transfer
+                try nttManager.cancelOutboundQueuedTransfer(messageSequence) {
+                    // Set that this message sequence has been played
+                    executedQueuedOutboundTransfers[messageSequence] = true;
+                }
+                catch {
+                    assertWithMsg(
+                        false,
+                        "NttManager: cancelOutboundQueuedTransfer unexpected revert"
+                    );
+                }
+            }
             else {
                 assertWithMsg(
                     false,
@@ -460,6 +469,50 @@ contract FuzzNttManager is FuzzingHelpers {
                 );
             }
 
+        }
+    }
+
+    function cancelOutboundQueuedTransfer(bool pickQueuedSequence, uint64 messageSequence, address sender) public {
+        if (pickQueuedSequence) {
+            messageSequence = queuedOutboundTransfersArray[clampBetween(uint256(messageSequence), 0, queuedOutboundTransfersArray.length)];
+        }
+
+        IRateLimiter.OutboundQueuedTransfer memory queuedTransfer = nttManager.getOutboundQueuedTransfer(messageSequence);
+
+        uint256 nttManagerBalanceBefore = IERC20(dummyToken).balanceOf(address(nttManager));
+        uint256 senderBalanceBefore = IERC20(dummyToken).balanceOf(address(queuedTransfer.sender));
+        uint8 decimals = ERC20(dummyToken).decimals();
+        uint256 amount = TrimmedAmountLib.untrim(queuedTransfer.amount, decimals);
+
+        hevm.prank(sender);
+        try nttManager.cancelOutboundQueuedTransfer(messageSequence) {
+            assert(IERC20(dummyToken).balanceOf(address(queuedTransfer.sender)) == senderBalanceBefore + amount);
+            assert(IERC20(dummyToken).balanceOf(address(nttManager)) == nttManagerBalanceBefore - amount);
+
+            // Set that this message sequence has been played since this has the same effect as executing an outbound transfer
+            executedQueuedOutboundTransfers[messageSequence] = true;
+        }
+        catch (bytes memory revertData) {
+            uint256 errorSelector = extractErrorSelector(revertData);
+
+            if (executedQueuedOutboundTransfers[messageSequence] || !queuedOutboundTransfers[messageSequence]) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IRateLimiter.OutboundQueuedTransferNotFound.selector),
+                    "NttManager: cancelOutboundQueuedTransfer expected to fail if not found or already executed/cancelled"
+                );
+            }
+            else if (sender != queuedTransfer.sender) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(INttManager.CancellerNotSender.selector),
+                    "NttManager: cancelOutboundQueuedTransfer expected to fail if called by a different sender"
+                );
+            }
+            else {
+                assertWithMsg(
+                    false,
+                    "NttManager: cancelOutboundQueuedTransfer unexpected revert"
+                );
+            }
         }
     }
 
