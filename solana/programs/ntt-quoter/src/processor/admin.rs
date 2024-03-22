@@ -122,8 +122,6 @@ pub fn register_chain(ctx: Context<RegisterChain>, _args: RegisterChainArgs) -> 
     Ok(())
 }
 
-//TODO fix copypasta below
-
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct RegisterNttArgs {
     pub ntt_program_id: Pubkey,
