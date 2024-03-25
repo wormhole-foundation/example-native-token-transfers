@@ -47,6 +47,7 @@ jobs:
           toolchain: ${{ steps.toolchain.outputs.version }}
           components: "clippy,rustfmt"
 
+
       - name: Cache rust packages / build cache
         uses: actions/cache@v3
         env:

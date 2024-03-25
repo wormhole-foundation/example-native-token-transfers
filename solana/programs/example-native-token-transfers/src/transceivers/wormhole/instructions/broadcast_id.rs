@@ -24,6 +24,8 @@ pub struct BroadcastId<'info> {
         seeds = [b"emitter"],
         bump
     )]
+    /// CHECK: The only valid sender is the [`wormhole::PostMessage::emitter`]
+    /// enforced by the [`CpiContext`] call in [`post_message`].
     pub emitter: UncheckedAccount<'info>,
 
     pub wormhole: WormholeAccounts<'info>,

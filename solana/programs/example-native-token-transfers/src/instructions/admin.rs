@@ -33,6 +33,9 @@ pub struct TransferOwnership<'info> {
     pub owner: Signer<'info>,
 
     /// CHECK: This account will be the signer in the [claim_ownership] instruction.
+    // new_owner is not expected to interact with this instruction. Instead, they call [`claim_ownership`].
+    // The intention of new_owner is that it could be an arbitrary account so no constraints are
+    // required here.
     new_owner: AccountInfo<'info>,
 
     #[account(
@@ -204,6 +207,8 @@ pub struct RegisterTransceiver<'info> {
     pub payer: Signer<'info>,
 
     #[account(executable)]
+    // CHECK: Missing ownership check is OK here: Transceiver is intended to be an arbitrary
+    // program.
     pub transceiver: AccountInfo<'info>,
 
     #[account(
