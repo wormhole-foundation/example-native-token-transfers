@@ -20,12 +20,11 @@ describe('example-native-token-transfers', () => {
   const owner = anchor.web3.Keypair.generate()
   const connection = new anchor.web3.Connection('http://localhost:8899', 'confirmed');
   const ntt = new NTT(connection, {
-    nttId: 'nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS',
-    wormholeId: 'worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth'
-  })
+    nttId: 'nTTh3bZ5Aer6xboWZe39RDEft4MeVxSQ8D1EYAVLZw9',
+    wormholeId: '3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5'
+  });
   const user = anchor.web3.Keypair.generate()
   let tokenAccount: anchor.web3.PublicKey
-
 
   let mint: anchor.web3.PublicKey
 
@@ -39,6 +38,7 @@ describe('example-native-token-transfers', () => {
       9
     )
 
+    // sp
     tokenAccount = await spl.createAssociatedTokenAccount(connection, payer, mint, user.publicKey)
     await spl.mintTo(connection, payer, mint, tokenAccount, owner, BigInt(10000000))
   });

@@ -39,3 +39,6 @@ NTT supports rate-limiting both on the sending and destination chains. If a tran
 ## Cancel-Flows
 
 If users bridge frequently between a given source chain and destination chain, the capacity could be exhausted quickly. This can leave other users rate-limited, potentially delaying their transfers. To mitigate this issue, the outbound transfer cancels the inbound rate-limit on the source chain (refills the inbound rate-limit by an amount equal to that of the outbound transfer amount) and vice-versa, the inbound transfer cancels the outbound rate-limit on the destination chain (refills the outbound raste-limit by an amount equal to the inbound transfer amount).
+
+# Deployments
+For a notional guide on how to deploy contracts, see `deployments.md`

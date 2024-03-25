@@ -1,0 +1,63 @@
+[
+  {
+    "token": "0x1d30E78B7C7fbbcef87ae6e97B5389b2e470CA4a",
+    "mode": 1,
+    "chainId": 10002,
+    "rateLimitDuration": 3600,
+    "skipRateLimit": false,
+    "threshold": 1,
+    "outboundLimit": 100000000000000000000,
+    "inboundLimit": [
+      { "chainId": 1, "limit": 1000000000000000000000000 },
+      { "chainId": 10003, "limit": 1000000000000000000000000 },
+      { "chainId": 10004, "limit": 1000000000000000000000000 },
+      { "chainId": 10005, "limit": 1000000000000000000000000 }
+    ]
+  },
+  {
+    "token": "0x84A1Cb660B19eB0063EE5FD377eC14AAe3364d74",
+    "mode": 1,
+    "chainId": 10003,
+    "rateLimitDuration": 3600,
+    "skipRateLimit": false,
+
+    "threshold": 1,
+    "outboundLimit": 100000000000000000000,
+    "inboundLimit": [
+      { "chainId": 1, "limit": 25000000000000000000 },
+      { "chainId": 10002, "limit": 1000000000000000000000000 },
+      { "chainId": 10004, "limit": 1000000000000000000000000 },
+      { "chainId": 10005, "limit": 1000000000000000000000000 }
+    ]
+  },
+  {
+    "token": "0x7f430D4e7939D994C0955A01FC75D9DE33F12D11",
+    "mode": 1,
+    "chainId": 10004,
+    "rateLimitDuration": 3600,
+    "skipRateLimit": false,
+    "threshold": 1,
+    "outboundLimit": 100000000000000000000,
+    "inboundLimit": [
+      { "chainId": 1, "limit": 1000000000000000000000000 },
+      { "chainId": 10002, "limit": 1000000000000000000000000 },
+      { "chainId": 10003, "limit": 1000000000000000000000000 },
+      { "chainId": 10005, "limit": 1000000000000000000000000 }
+    ]
+  },
+  {
+    "token": "0x0e15979a7a1eFAEf20312CA45A59eb141bF7E340",
+    "mode": 1,
+    "chainId": 10005,
+    "rateLimitDuration": 3600,
+    "skipRateLimit": false,
+    "threshold": 1,
+    "outboundLimit": 100000000000000000000,
+    "inboundLimit": [
+      { "chainId": 1, "limit": 1000000000000000000000000 },
+      { "chainId": 10002, "limit": 100000000000000000000 },
+      { "chainId": 10003, "limit": 1000000000000000000000000 },
+      { "chainId": 10004, "limit": 1000000000000000000000000 }
+    ]
+  }
+]

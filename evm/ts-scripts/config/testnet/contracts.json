@@ -1,0 +1,164 @@
+{
+  "WormholeCoreContracts": [
+    {
+      "chainId": 10002,
+      "address": "0x4a8bc80Ed5a4067f1CCf107057b8270E0cC11A78"
+    },
+    {
+      "chainId": 10003,
+      "address": "0x6b9C8671cdDC8dEab9c719bB87cBd3e782bA6a35"
+    },
+    {
+      "chainId": 10004,
+      "address": "0x79A1027a6A159502049F10906D333EC57E95F083"
+    },
+    {
+      "chainId": 10005,
+      "address": "0x31377888146f3253211EFEf5c676D41ECe7D58Fe"
+    }
+  ],
+  "WormholeRelayers": [
+    {
+      "address": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",
+      "chainId": 10002
+    },
+    {
+      "address": "0x7B1bD7a6b4E61c2a123AC6BC2cbfC614437D0470",
+      "chainId": 10003
+    },
+    {
+      "address": "0x93BAD53DDfB6132b0aC8E37f6029163E63372cEE",
+      "chainId": 10004
+    },
+    {
+      "address": "0x93BAD53DDfB6132b0aC8E37f6029163E63372cEE",
+      "chainId": 10005
+    }
+  ],
+  "SpecializedRelayers": [
+    {
+      "address": "0x63BE47835c7D66c4aA5B2C688Dc6ed9771c94C74",
+      "chainId": 10002
+    },
+    {
+      "address": "0x63BE47835c7D66c4aA5B2C688Dc6ed9771c94C74",
+      "chainId": 10003
+    },
+    {
+      "address": "0x63BE47835c7D66c4aA5B2C688Dc6ed9771c94C74",
+      "chainId": 10004
+    },
+    {
+      "address": "0x63BE47835c7D66c4aA5B2C688Dc6ed9771c94C74",
+      "chainId": 10005
+    }
+  ],
+  "NttManagerImplementations": [
+    {
+      "address": "0x8b9E328bE1b1Bc7501B413d04EBF7479B110775c",
+      "chainId": 10002
+    },
+    {
+      "address": "0x46160c7f3aE1360c05E92AFd3cEF8E8C336022c8",
+      "chainId": 10003
+    },
+    {
+      "address": "0x7c3Fa78c9d57D5eC9EE945164CEF66E79C9257Fd",
+      "chainId": 10005
+    },
+    {
+      "address": "0x41265eb2863bf0238081F6AeefeF73549C82C3DD",
+      "chainId": 10004
+    }
+  ],
+  "NttManagerProxies": [
+    {
+      "address": "0xB231aD95f2301bc82eA44c515001F0F746D637e0",
+      "chainId": 10002
+    },
+    {
+      "address": "0xEec94CD3083e067398256a79CcA7e740C5c8ef81",
+      "chainId": 10003
+    },
+    {
+      "address": "0x7f430D4e7939D994C0955A01FC75D9DE33F12D11",
+      "chainId": 10005
+    },
+    {
+      "address": "0xB03b030b2f5B40819Df76467d67eD1C85Ff66fAD",
+      "chainId": 10004
+    }
+  ],
+  "TransceiverStructsLibs": [
+    {
+      "chainId": 10002,
+      "address": "0x9646530F12bD41113F834e61bEd99970f0716Abf"
+    },
+    {
+      "chainId": 10003,
+      "address": "0x6e39fFB6856965e2855bcA41E392634eCc5B5fed"
+    },
+    {
+      "chainId": 10005,
+      "address": "0x47ADE46C8B57dD852d65C40C543065010ab1F9f0"
+    },
+    {
+      "chainId": 10004,
+      "address": "0x398b3b4Cf57F7472eA9b30e9BC7f877CD3890c8B"
+    }
+  ],
+  "TrimmedAmountLibs": [
+    {
+      "chainId": 10002,
+      "address": "0xeCF0496DE01e9Aa4ADB50ae56dB550f52003bdB7"
+    },
+    {
+      "chainId": 10003,
+      "address": "0xe37046abc966dDF016C49E5fbd6dC8249559a00b"
+    },
+    {
+      "chainId": 10005,
+      "address": "0x5b494719693770932Da9cDc75a4db53f7404b0bD"
+    },
+    {
+      "chainId": 10004,
+      "address": "0x16e2d56E5Ea80e0b154D05E82c2Fe80602BA3852"
+    }
+  ],
+  "NttTransceiverImplementations": [
+    {
+      "address": "0x149987472333cD48ac6D28293A338a1EEa6Be7EE",
+      "chainId": 10002
+    },
+    {
+      "address": "0xd68F37C8Dff70586ddD443b98E372308da133bB0",
+      "chainId": 10003
+    },
+    {
+      "address": "0x16e2d56E5Ea80e0b154D05E82c2Fe80602BA3852",
+      "chainId": 10005
+    },
+    {
+      "address": "0x49dfbd3caDf47dFD63Bd378403722f8E55dB985E",
+      "chainId": 10004
+    }
+  ],
+  "NttTransceiverProxies": [
+    {
+      "address": "0x1fDC902e30b188FD2BA976B421Cb179943F57896",
+      "chainId": 10002
+    },
+    {
+      "address": "0x0E24D17D7467467b39Bf64A9DFf88776Bd6c74d7",
+      "chainId": 10003
+    },
+    {
+      "address": "0x1e072169541f1171e427Aa44B5fd8924BEE71b0e",
+      "chainId": 10004
+    },
+    {
+      "address": "0x41265eb2863bf0238081F6AeefeF73549C82C3DD",
+      "chainId": 10005
+    }
+  ]
+}

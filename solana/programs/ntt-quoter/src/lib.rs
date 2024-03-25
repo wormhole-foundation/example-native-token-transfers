@@ -9,7 +9,7 @@ mod state;
 //  the derive accounts macro is implemented (and I don't have the time to fix it, create a PR,
 //  and wait for a release):
 //  https://github.com/coral-xyz/anchor/blob/216b56e26f5080ec652b098849e177ec560d602f/lang/derive/space/src/lib.rs#L110-L143
-//nevertheless, I'll at least use these types to annotate variables
+// Nevertheless, I'll at least use these types to annotate variables:
 // type ChainId = u16;
 // type UsdPrice = u64; //with 6 decimals (just like usdc)
 // type GasPrice = u64; //in wei, i.e. 18 decimals
@@ -19,7 +19,7 @@ mod state;
 // !! update constant in TypeScript SDK when updating this value !!
 const EVM_GAS_COST: u64 = 250_000; //TODO determine true gas cost on EVM
 
-declare_id!("NttQuoter1111111111111111111111111111111111");
+declare_id!("NqTdGLLL6b6bFo7YESNEezocgF8onH5cst5EdH791en");
 const WORMHOLE_TRANSCEIVER_INDEX: u8 = 0;
 
 #[program]
