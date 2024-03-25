@@ -22,7 +22,7 @@ use spl_token::instruction::AuthorityType;
 use wormhole_anchor_sdk::wormhole::{BridgeData, FeeCollector};
 
 use crate::sdk::{
-    accounts::{Governance, Wormhole, NTT},
+    accounts::{good_ntt, Governance, NTTAccounts},
     instructions::{
         admin::{register_transceiver, set_peer, RegisterTransceiver, SetPeer},
         initialize::{initialize, Initialize},
@@ -42,19 +42,24 @@ pub const OUTBOUND_LIMIT: u64 = 10000;
 pub const INBOUND_LIMIT: u64 = 50000;
 
 pub const OTHER_TRANSCEIVER: [u8; 32] = [7u8; 32];
+pub const ANOTHER_TRANSCEIVER: [u8; 32] = [8u8; 32];
 pub const OTHER_MANAGER: [u8; 32] = [9u8; 32];
+pub const ANOTHER_MANAGER: [u8; 32] = [5u8; 32];
 
 pub const THIS_CHAIN: u16 = 1;
 pub const OTHER_CHAIN: u16 = 2;
+pub const ANOTHER_CHAIN: u16 = 3;
 
 pub struct TestData {
-    pub ntt: NTT,
     pub governance: Governance,
     pub program_owner: Keypair,
     pub mint_authority: Keypair,
     pub mint: Pubkey,
+    pub bad_mint_authority: Keypair,
+    pub bad_mint: Pubkey,
     pub user: Keypair,
     pub user_token_account: Pubkey,
+    pub bad_user_token_account: Pubkey,
 }
 
 pub async fn setup_with_extra_accounts(
@@ -137,7 +142,7 @@ pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
         spl_token::instruction::set_authority(
             &spl_token::ID,
             &test_data.mint,
-            Some(&test_data.ntt.token_authority()),
+            Some(&good_ntt.token_authority()),
             AuthorityType::MintTokens,
             &test_data.mint_authority.pubkey(),
             &[],
@@ -149,7 +154,7 @@ pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
     }
 
     initialize(
-        &test_data.ntt,
+        &good_ntt,
         Initialize {
             payer: ctx.payer.pubkey(),
             deployer: test_data.program_owner.pubkey(),
@@ -167,7 +172,7 @@ pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
     .unwrap();
 
     register_transceiver(
-        &test_data.ntt,
+        &good_ntt,
         RegisterTransceiver {
             payer: ctx.payer.pubkey(),
             owner: test_data.program_owner.pubkey(),
@@ -179,7 +184,7 @@ pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
     .unwrap();
 
     set_transceiver_peer(
-        &test_data.ntt,
+        &good_ntt,
         SetTransceiverPeer {
             payer: ctx.payer.pubkey(),
             owner: test_data.program_owner.pubkey(),
@@ -194,15 +199,31 @@ pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
     .unwrap();
 
     set_peer(
-        &test_data.ntt,
+        &good_ntt,
         SetPeer {
             payer: ctx.payer.pubkey(),
             owner: test_data.program_owner.pubkey(),
-            mint: test_data.mint,
         },
         SetPeerArgs {
             chain_id: ChainId { id: OTHER_CHAIN },
             address: OTHER_MANAGER,
+            limit: INBOUND_LIMIT,
+            token_decimals: 7,
+        },
+    )
+    .submit_with_signers(&[&test_data.program_owner], ctx)
+    .await
+    .unwrap();
+
+    set_peer(
+        &good_ntt,
+        SetPeer {
+            payer: ctx.payer.pubkey(),
+            owner: test_data.program_owner.pubkey(),
+        },
+        SetPeerArgs {
+            chain_id: ChainId { id: ANOTHER_CHAIN },
+            address: ANOTHER_MANAGER,
             limit: INBOUND_LIMIT,
             token_decimals: 7,
         },
@@ -217,10 +238,19 @@ pub async fn setup_accounts(ctx: &mut ProgramTestContext, program_owner: Keypair
     let mint = Keypair::new();
     let mint_authority = Keypair::new();
 
+    let bad_mint = Keypair::new();
+    let bad_mint_authority = Keypair::new();
+
     let user = Keypair::new();
     let payer = ctx.payer.pubkey();
 
     create_mint(ctx, &mint, &mint_authority.pubkey(), 9)
+        .await
+        .submit(ctx)
+        .await
+        .unwrap();
+
+    create_mint(ctx, &bad_mint, &bad_mint_authority.pubkey(), 9)
         .await
         .submit(ctx)
         .await
@@ -240,6 +270,22 @@ pub async fn setup_accounts(ctx: &mut ProgramTestContext, program_owner: Keypair
     .await
     .unwrap();
 
+    let bad_user_token_account = get_associated_token_address_with_program_id(
+        &user.pubkey(),
+        &bad_mint.pubkey(),
+        &Token::id(),
+    );
+
+    spl_associated_token_account::instruction::create_associated_token_account(
+        &payer,
+        &user.pubkey(),
+        &bad_mint.pubkey(),
+        &Token::id(),
+    )
+    .submit(ctx)
+    .await
+    .unwrap();
+
     spl_token::instruction::mint_to(
         &Token::id(),
         &mint.pubkey(),
@@ -253,21 +299,31 @@ pub async fn setup_accounts(ctx: &mut ProgramTestContext, program_owner: Keypair
     .await
     .unwrap();
 
+    spl_token::instruction::mint_to(
+        &Token::id(),
+        &bad_mint.pubkey(),
+        &bad_user_token_account,
+        &bad_mint_authority.pubkey(),
+        &[],
+        MINT_AMOUNT,
+    )
+    .unwrap()
+    .submit_with_signers(&[&bad_mint_authority], ctx)
+    .await
+    .unwrap();
+
     TestData {
-        ntt: NTT {
-            program: example_native_token_transfers::ID,
-            wormhole: Wormhole {
-                program: wormhole_anchor_sdk::wormhole::program::ID,
-            },
-        },
         governance: Governance {
             program: wormhole_governance::ID,
         },
         program_owner,
         mint_authority,
         mint: mint.pubkey(),
+        bad_mint_authority,
+        bad_mint: bad_mint.pubkey(),
         user,
         user_token_account,
+        bad_user_token_account,
     }
 }
 
@@ -401,6 +457,8 @@ pub fn add_program_upgradeable(
     };
 
     let program_file = find_file(&format!("{program_name}.so"));
+
+    #[allow(clippy::panic)]
     match (prefer_bpf(), program_file, process_instruction) {
         // If SBF is preferred (i.e., `test-sbf` is invoked) and a BPF shared object exists,
         // use that as the program data.

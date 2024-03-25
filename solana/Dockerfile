@@ -7,6 +7,7 @@ COPY Cargo.lock Cargo.lock
 COPY Cargo.toml Cargo.toml
 COPY modules modules
 COPY programs programs
+COPY rust-toolchain rust-toolchain
 
 ENV RUST_BACKTRACE=1
 
