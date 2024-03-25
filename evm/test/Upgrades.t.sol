@@ -70,7 +70,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
             MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         nttManagerChain1.initialize();
 
-        WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverContract(
+        WormholeTransceiver wormholeTransceiverChain1Implementation =
+        new MockWormholeTransceiverContract(
             address(nttManagerChain1),
             address(wormhole),
             address(relayer),
@@ -98,7 +99,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
             MockNttManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
         nttManagerChain2.initialize();
 
-        WormholeTransceiver wormholeTransceiverChain2Implementation = new MockWormholeTransceiverContract(
+        WormholeTransceiver wormholeTransceiverChain2Implementation =
+        new MockWormholeTransceiverContract(
             address(nttManagerChain2),
             address(wormhole),
             address(relayer),
@@ -154,7 +156,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
     //Upgradability stuff for transceivers is real borked because of some missing implementation. Test this later once fixed.
     function test_basicUpgradeTransceiver() public {
         // Basic call to upgrade with the same contact as well
-        WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverContract(
+        WormholeTransceiver wormholeTransceiverChain1Implementation =
+        new MockWormholeTransceiverContract(
             address(nttManagerChain1),
             address(wormhole),
             address(relayer),
@@ -187,7 +190,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
     //Upgradability stuff for transceivers is real borked because of some missing implementation. Test this later once fixed.
     function test_doubleUpgradeTransceiver() public {
         // Basic call to upgrade with the same contact as well
-        WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverContract(
+        WormholeTransceiver wormholeTransceiverChain1Implementation =
+        new MockWormholeTransceiverContract(
             address(nttManagerChain1),
             address(wormhole),
             address(relayer),
@@ -257,7 +261,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
     //Upgradability stuff for transceivers is real borked because of some missing implementation. Test this later once fixed.
     function test_callMigrateTransceiver() public {
         // Basic call to upgrade with the same contact as well
-        MockWormholeTransceiverMigrateBasic wormholeTransceiverChain1Implementation = new MockWormholeTransceiverMigrateBasic(
+        MockWormholeTransceiverMigrateBasic wormholeTransceiverChain1Implementation =
+        new MockWormholeTransceiverMigrateBasic(
             address(nttManagerChain1),
             address(wormhole),
             address(relayer),
@@ -292,7 +297,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
         // Don't allow upgrade to work with a change immutable
 
         address oldNttManager = wormholeTransceiverChain1.nttManager();
-        WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverMigrateBasic(
+        WormholeTransceiver wormholeTransceiverChain1Implementation =
+        new MockWormholeTransceiverMigrateBasic(
             address(nttManagerChain2),
             address(wormhole),
             address(relayer),
@@ -326,7 +332,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
     }
 
     function test_immutableBlockUpdateSuccessTransceiver() public {
-        WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverImmutableAllow(
+        WormholeTransceiver wormholeTransceiverChain1Implementation =
+        new MockWormholeTransceiverImmutableAllow(
             address(nttManagerChain1),
             address(wormhole),
             address(relayer),
@@ -393,7 +400,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
         wormholeTransceiverChain1.upgrade(address(0x01));
 
         // Basic call so that we can easily see what the new transceiver is.
-        WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverContract(
+        WormholeTransceiver wormholeTransceiverChain1Implementation =
+        new MockWormholeTransceiverContract(
             address(nttManagerChain1),
             address(wormhole),
             address(relayer),
