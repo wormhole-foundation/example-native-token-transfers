@@ -230,9 +230,22 @@ abstract contract TransceiverRegistry {
         return _getTransceiverBitmapStorage().bitmap;
     }
 
-    /// @notice Returns the Transceiver contracts that have been registered via governance.
+    /// @notice Returns the Transceiver contracts that have been enabled via governance.
     function getTransceivers() external pure returns (address[] memory result) {
         result = _getEnabledTransceiversStorage();
+    }
+
+    /// @notice Returns the info for all enabled transceivers
+    function getTransceiverInfo() external view returns (TransceiverInfo[] memory) {
+        address[] memory enabledTransceivers = _getEnabledTransceiversStorage();
+        uint256 numEnabledTransceivers = enabledTransceivers.length;
+        TransceiverInfo[] memory result = new TransceiverInfo[](numEnabledTransceivers);
+
+        for (uint256 i = 0; i < numEnabledTransceivers; ++i) {
+            result[i] = _getTransceiverInfosStorage()[enabledTransceivers[i]];
+        }
+
+        return result;
     }
 
     // ============== Invariants =============================================
