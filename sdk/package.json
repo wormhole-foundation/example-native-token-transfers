@@ -6,7 +6,9 @@
     "build": "npm run build --workspaces --if-present"
   },
   "devDependencies": {
-    "typescript": "^5.1.1"
+    "typescript": "^5.1.1",
+    "@types/jest": "^29.5.12",
+    "ts-jest": "^29.1.2"
   },
   "workspaces": [
     "definition",
