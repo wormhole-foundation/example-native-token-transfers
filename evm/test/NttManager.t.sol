@@ -70,22 +70,8 @@ contract TestNttManager is Test, IRateLimiterEvents {
         nttManager.setTransceiver(address(dummyTransceiver));
     }
 
-    // === pure unit tests
-
-    // naive implementation of countSetBits to test against
-    function simpleCount(uint64 n) public pure returns (uint8) {
-        uint8 count;
-
-        while (n > 0) {
-            count += uint8(n & 1);
-            n >>= 1;
-        }
-
-        return count;
-    }
-
     function testFuzz_countSetBits(uint64 n) public {
-        assertEq(simpleCount(n), countSetBits(n));
+        assertEq(NttManagerHelpersLib.simpleCount(n), countSetBits(n));
     }
 
     // === Deployments with rate limiter disabled
@@ -161,7 +147,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
         assertEq(nttManagerZeroRateLimiter.messageAttestations(hash), 1);
     }
 
-    // === ownership
+    // ================== TEST ADMIN FUNCTIONALITY ================ //
 
     function test_owner() public {
         // TODO: implement separate governance contract
@@ -229,132 +215,211 @@ contract TestNttManager is Test, IRateLimiterEvents {
         assertEq(nttManager.isPaused(), false);
     }
 
-    // === transceiver registration
+    // The testing strategy here is as follows:
+    // Step 1: Deploy the nttManager contract with two transceivers and
+    //         receive a message through it.
+    // Step 2: Upgrade it to a new nttManager contract an use the same transceivers to receive
+    //         a new message through it.
+    // Step 3: Upgrade back to the standalone contract (with two
+    //           transceivers) and receive a message through it.
+    // This ensures that the storage slots don't get clobbered through the upgrades.
+    function test_upgradeNttManager() public {
+        address user_B = address(0x456);
+        DummyToken token = DummyToken(nttManager.token());
+        TrimmedAmount transferAmount = packTrimmedAmount(50, 8);
+        (ITransceiverReceiver e1, ITransceiverReceiver e2) =
+            TransceiverHelpersLib.setup_transceivers(nttManagerOther);
 
-    function test_registerTransceiver() public {
-        DummyTransceiver e = new DummyTransceiver(address(nttManager));
-        nttManager.setTransceiver(address(e));
-    }
+        // Step 1 (contract is deployed by setUp())
+        ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](2);
+        transceivers[0] = e1;
+        transceivers[1] = e2;
 
-    function test_onlyOwnerCanModifyTransceivers() public {
-        DummyTransceiver e = new DummyTransceiver(address(nttManager));
-        nttManager.setTransceiver(address(e));
+        TransceiverStructs.NttManagerMessage memory m;
+        bytes memory encodedEm;
+        {
+            TransceiverStructs.TransceiverMessage memory em;
+            (m, em) = TransceiverHelpersLib.attestTransceiversHelper(
+                user_B,
+                0,
+                chainId,
+                nttManager,
+                nttManagerOther,
+                transferAmount,
+                packTrimmedAmount(type(uint64).max, 8),
+                transceivers
+            );
+            encodedEm = TransceiverStructs.encodeTransceiverMessage(
+                TransceiverHelpersLib.TEST_TRANSCEIVER_PAYLOAD_PREFIX, em
+            );
+        }
 
-        address notOwner = address(0x123);
-        vm.startPrank(notOwner);
+        assertEq(token.balanceOf(address(user_B)), transferAmount.untrim(token.decimals()));
 
-        vm.expectRevert(
-            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, notOwner)
+        // Step 2 (upgrade to a new nttManager)
+        MockNttManagerContract newNttManager = new MockNttManagerContract(
+            nttManager.token(), IManagerBase.Mode.LOCKING, chainId, 1 days, false
         );
-        nttManager.setTransceiver(address(e));
+        nttManagerOther.upgrade(address(newNttManager));
 
-        vm.expectRevert(
-            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, notOwner)
+        TransceiverHelpersLib.attestTransceiversHelper(
+            user_B,
+            bytes32(uint256(1)),
+            chainId,
+            nttManager, // this is the proxy
+            nttManagerOther, // this is the proxy
+            transferAmount,
+            packTrimmedAmount(type(uint64).max, 8),
+            transceivers
         );
-        nttManager.removeTransceiver(address(e));
+
+        assertEq(token.balanceOf(address(user_B)), transferAmount.untrim(token.decimals()) * 2);
     }
 
-    function test_cantEnableTransceiverTwice() public {
-        DummyTransceiver e = new DummyTransceiver(address(nttManager));
-        nttManager.setTransceiver(address(e));
+    function test_tokenUpgradedAndDecimalsChanged() public {
+        DummyToken dummy1 = new DummyTokenMintAndBurn();
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                TransceiverRegistry.TransceiverAlreadyEnabled.selector, address(e)
-            )
-        );
-        nttManager.setTransceiver(address(e));
-    }
+        // Make the token an upgradeable token
+        DummyTokenMintAndBurn t =
+            DummyTokenMintAndBurn(address(new ERC1967Proxy(address(dummy1), "")));
 
-    function test_disableReenableTransceiver() public {
-        DummyTransceiver e = new DummyTransceiver(address(nttManager));
-        nttManager.setTransceiver(address(e));
-        nttManager.removeTransceiver(address(e));
-        nttManager.setTransceiver(address(e));
-    }
-
-    function test_multipleTransceivers() public {
-        DummyTransceiver e1 = new DummyTransceiver(address(nttManager));
-        DummyTransceiver e2 = new DummyTransceiver(address(nttManager));
-
-        nttManager.setTransceiver(address(e1));
-        nttManager.setTransceiver(address(e2));
-    }
-
-    function test_transceiverIncompatibleNttManager() public {
-        // Transceiver instantiation reverts if the nttManager doesn't have the proper token method
-        vm.expectRevert(bytes(""));
-        new DummyTransceiver(address(0xBEEF));
-    }
-
-    function test_transceiverWrongNttManager() public {
-        // TODO: this is accepted currently. should we include a check to ensure
-        // only transceivers whose nttManager is us can be registered? (this would be
-        // a convenience check, not a security one)
-        DummyToken t = new DummyToken();
-        NttManager altNttManager = new MockNttManagerContract(
+        NttManager implementation = new MockNttManagerContract(
             address(t), IManagerBase.Mode.LOCKING, chainId, 1 days, false
         );
-        DummyTransceiver e = new DummyTransceiver(address(altNttManager));
-        nttManager.setTransceiver(address(e));
-    }
 
-    function test_noEnabledTransceivers() public {
-        nttManager.removeTransceiver(address(dummyTransceiver));
+        MockNttManagerContract newNttManager =
+            MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
+        newNttManager.initialize();
+
+        // register nttManager peer and transceiver
+        bytes32 peer = toWormholeFormat(address(nttManager));
+        newNttManager.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9, type(uint64).max);
+        {
+            DummyTransceiver e = new DummyTransceiver(address(newNttManager));
+            newNttManager.setTransceiver(address(e));
+        }
 
         address user_A = address(0x123);
         address user_B = address(0x456);
+        t.mintDummy(address(user_A), 5 * 10 ** t.decimals());
 
-        DummyToken token = DummyToken(nttManager.token());
-
-        uint8 decimals = token.decimals();
-
-        nttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 9, type(uint64).max);
-        nttManager.setOutboundLimit(packTrimmedAmount(type(uint64).max, 8).untrim(decimals));
-
-        token.mintDummy(address(user_A), 5 * 10 ** decimals);
-
+        // Check that we can initiate a transfer
         vm.startPrank(user_A);
-
-        token.approve(address(nttManager), 3 * 10 ** decimals);
-
-        vm.expectRevert(abi.encodeWithSelector(IManagerBase.NoEnabledTransceivers.selector));
-        nttManager.transfer(
-            1 * 10 ** decimals,
-            chainId,
+        t.approve(address(newNttManager), 3 * 10 ** t.decimals());
+        newNttManager.transfer(
+            1 * 10 ** t.decimals(),
+            TransceiverHelpersLib.SENDING_CHAIN_ID,
             toWormholeFormat(user_B),
             toWormholeFormat(user_A),
             false,
             new bytes(1)
         );
+        vm.stopPrank();
+
+        // Check that we can receive a transfer
+        (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(newNttManager);
+        newNttManager.setThreshold(1);
+
+        bytes memory transceiverMessage;
+        bytes memory tokenTransferMessage;
+
+        TrimmedAmount transferAmount = packTrimmedAmount(100, 8);
+
+        tokenTransferMessage = TransceiverStructs.encodeNativeTokenTransfer(
+            TransceiverStructs.NativeTokenTransfer({
+                amount: transferAmount,
+                sourceToken: toWormholeFormat(address(t)),
+                to: toWormholeFormat(user_B),
+                toChain: chainId
+            })
+        );
+
+        (, transceiverMessage) = TransceiverHelpersLib.buildTransceiverMessageWithNttManagerPayload(
+            0, bytes32(0), peer, toWormholeFormat(address(newNttManager)), tokenTransferMessage
+        );
+
+        e1.receiveMessage(transceiverMessage);
+        uint256 userBBalanceBefore = t.balanceOf(address(user_B));
+        assertEq(userBBalanceBefore, transferAmount.untrim(t.decimals()));
+
+        // If the token decimals change to the same trimmed amount, we should safely receive the correct number of tokens
+        DummyTokenDifferentDecimals dummy2 = new DummyTokenDifferentDecimals(10); // 10 gets trimmed to 8
+        t.upgrade(address(dummy2));
+
+        vm.startPrank(user_A);
+        newNttManager.transfer(
+            1 * 10 ** 10,
+            TransceiverHelpersLib.SENDING_CHAIN_ID,
+            toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
+            false,
+            new bytes(1)
+        );
+        vm.stopPrank();
+
+        (, transceiverMessage) = TransceiverHelpersLib.buildTransceiverMessageWithNttManagerPayload(
+            bytes32("1"),
+            bytes32(0),
+            peer,
+            toWormholeFormat(address(newNttManager)),
+            tokenTransferMessage
+        );
+        e1.receiveMessage(transceiverMessage);
+        assertEq(
+            t.balanceOf(address(user_B)), userBBalanceBefore + transferAmount.untrim(t.decimals())
+        );
+
+        // Now if the token decimals change to a different trimmed amount, we shouldn't be able to send or receive
+        DummyTokenDifferentDecimals dummy3 = new DummyTokenDifferentDecimals(7); // 7 is 7 trimmed
+        t.upgrade(address(dummy3));
+
+        vm.startPrank(user_A);
+        vm.expectRevert(abi.encodeWithSelector(NumberOfDecimalsNotEqual.selector, 8, 7));
+        newNttManager.transfer(
+            1 * 10 ** 7,
+            TransceiverHelpersLib.SENDING_CHAIN_ID,
+            toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
+            false,
+            new bytes(1)
+        );
+        vm.stopPrank();
+
+        (, transceiverMessage) = TransceiverHelpersLib.buildTransceiverMessageWithNttManagerPayload(
+            bytes32("2"),
+            bytes32(0),
+            peer,
+            toWormholeFormat(address(newNttManager)),
+            tokenTransferMessage
+        );
+        vm.expectRevert(abi.encodeWithSelector(NumberOfDecimalsNotEqual.selector, 8, 7));
+        e1.receiveMessage(transceiverMessage);
     }
 
-    function test_notTransceiver() public {
-        // TODO: this is accepted currently. should we include a check to ensure
-        // only transceivers can be registered? (this would be a convenience check, not a security one)
-        nttManager.setTransceiver(address(0x123));
+    // ================== TEST STORAGE SLOTS ================ //
+
+    // TODO:
+    // currently there is no way to test the threshold logic and the duplicate
+    // protection logic without setting up the business logic as well.
+    //
+    // we should separate the business logic out from the transceiver handling.
+    // that way the functionality could be tested separately (and the contracts
+    // would also be more reusable)
+    function test_noAutomaticSlot() public {
+        DummyToken t = new DummyToken();
+        MockNttManagerContract c =
+            new MockNttManagerContract(address(t), IManagerBase.Mode.LOCKING, 1, 1 days, false);
+        assertEq(c.lastSlot(), 0x0);
     }
 
-    function test_maxOutTransceivers() public {
-        // Let's register a transceiver and then disable it. We now have 2 registered managers
-        // since we register 1 in the setup
-        DummyTransceiver e = new DummyTransceiver(address(nttManager));
-        nttManager.setTransceiver(address(e));
-        nttManager.removeTransceiver(address(e));
+    function test_constructor() public {
+        DummyToken t = new DummyToken();
 
-        // We should be able to register 64 transceivers total
-        for (uint256 i = 0; i < 62; ++i) {
-            DummyTransceiver d = new DummyTransceiver(address(nttManager));
-            nttManager.setTransceiver(address(d));
-        }
+        vm.startStateDiffRecording();
 
-        // Registering a new transceiver should fail as we've hit the cap
-        DummyTransceiver c = new DummyTransceiver(address(nttManager));
-        vm.expectRevert(TransceiverRegistry.TooManyTransceivers.selector);
-        nttManager.setTransceiver(address(c));
+        new MockNttManagerContract(address(t), IManagerBase.Mode.LOCKING, 1, 1 days, false);
 
-        // We should be able to renable an already registered transceiver at the cap
-        nttManager.setTransceiver(address(e));
+        Utils.assertSafeUpgradeableConstructor(vm.stopAndReturnStateDiff());
     }
 
     // == threshold
@@ -393,8 +458,6 @@ contract TestNttManager is Test, IRateLimiterEvents {
         );
         nttManager.setThreshold(1);
     }
-
-    // == threshold
 
     function test_peerRegistrationLimitsCanBeUpdated() public {
         bytes32 peer = toWormholeFormat(address(nttManager));
@@ -666,33 +729,6 @@ contract TestNttManager is Test, IRateLimiterEvents {
         e2.receiveMessage(encodedEm);
     }
 
-    // TODO:
-    // currently there is no way to test the threshold logic and the duplicate
-    // protection logic without setting up the business logic as well.
-    //
-    // we should separate the business logic out from the transceiver handling.
-    // that way the functionality could be tested separately (and the contracts
-    // would also be more reusable)
-
-    // === storage
-
-    function test_noAutomaticSlot() public {
-        DummyToken t = new DummyToken();
-        MockNttManagerContract c =
-            new MockNttManagerContract(address(t), IManagerBase.Mode.LOCKING, 1, 1 days, false);
-        assertEq(c.lastSlot(), 0x0);
-    }
-
-    function test_constructor() public {
-        DummyToken t = new DummyToken();
-
-        vm.startStateDiffRecording();
-
-        new MockNttManagerContract(address(t), IManagerBase.Mode.LOCKING, 1, 1 days, false);
-
-        Utils.assertSafeUpgradeableConstructor(vm.stopAndReturnStateDiff());
-    }
-
     // === token transfer logic
 
     function test_dustReverts() public {
@@ -739,199 +775,5 @@ contract TestNttManager is Test, IRateLimiterEvents {
         );
 
         vm.stopPrank();
-    }
-
-    // === upgradeability
-    function expectRevert(
-        address contractAddress,
-        bytes memory encodedSignature,
-        bytes memory expectedRevert
-    ) internal {
-        (bool success, bytes memory result) = contractAddress.call(encodedSignature);
-        require(!success, "call did not revert");
-
-        require(keccak256(result) == keccak256(expectedRevert), "call did not revert as expected");
-    }
-
-    function test_upgradeNttManager() public {
-        // The testing strategy here is as follows:
-        // Step 1: Deploy the nttManager contract with two transceivers and
-        //         receive a message through it.
-        // Step 2: Upgrade it to a new nttManager contract an use the same transceivers to receive
-        //         a new message through it.
-        // Step 3: Upgrade back to the standalone contract (with two
-        //           transceivers) and receive a message through it.
-        // This ensures that the storage slots don't get clobbered through the upgrades.
-
-        address user_B = address(0x456);
-        DummyToken token = DummyToken(nttManager.token());
-        TrimmedAmount transferAmount = packTrimmedAmount(50, 8);
-        (ITransceiverReceiver e1, ITransceiverReceiver e2) =
-            TransceiverHelpersLib.setup_transceivers(nttManagerOther);
-
-        // Step 1 (contract is deployed by setUp())
-        ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](2);
-        transceivers[0] = e1;
-        transceivers[1] = e2;
-
-        TransceiverStructs.NttManagerMessage memory m;
-        bytes memory encodedEm;
-        {
-            TransceiverStructs.TransceiverMessage memory em;
-            (m, em) = TransceiverHelpersLib.attestTransceiversHelper(
-                user_B,
-                0,
-                chainId,
-                nttManager,
-                nttManagerOther,
-                transferAmount,
-                packTrimmedAmount(type(uint64).max, 8),
-                transceivers
-            );
-            encodedEm = TransceiverStructs.encodeTransceiverMessage(
-                TransceiverHelpersLib.TEST_TRANSCEIVER_PAYLOAD_PREFIX, em
-            );
-        }
-
-        assertEq(token.balanceOf(address(user_B)), transferAmount.untrim(token.decimals()));
-
-        // Step 2 (upgrade to a new nttManager)
-        MockNttManagerContract newNttManager = new MockNttManagerContract(
-            nttManager.token(), IManagerBase.Mode.LOCKING, chainId, 1 days, false
-        );
-        nttManagerOther.upgrade(address(newNttManager));
-
-        TransceiverHelpersLib.attestTransceiversHelper(
-            user_B,
-            bytes32(uint256(1)),
-            chainId,
-            nttManager, // this is the proxy
-            nttManagerOther, // this is the proxy
-            transferAmount,
-            packTrimmedAmount(type(uint64).max, 8),
-            transceivers
-        );
-
-        assertEq(token.balanceOf(address(user_B)), transferAmount.untrim(token.decimals()) * 2);
-    }
-
-    function test_tokenUpgradedAndDecimalsChanged() public {
-        DummyToken dummy1 = new DummyTokenMintAndBurn();
-
-        // Make the token an upgradeable token
-        DummyTokenMintAndBurn t =
-            DummyTokenMintAndBurn(address(new ERC1967Proxy(address(dummy1), "")));
-
-        NttManager implementation = new MockNttManagerContract(
-            address(t), IManagerBase.Mode.LOCKING, chainId, 1 days, false
-        );
-
-        MockNttManagerContract newNttManager =
-            MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
-        newNttManager.initialize();
-
-        // register nttManager peer and transceiver
-        bytes32 peer = toWormholeFormat(address(nttManager));
-        newNttManager.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9, type(uint64).max);
-        {
-            DummyTransceiver e = new DummyTransceiver(address(newNttManager));
-            newNttManager.setTransceiver(address(e));
-        }
-
-        address user_A = address(0x123);
-        address user_B = address(0x456);
-        t.mintDummy(address(user_A), 5 * 10 ** t.decimals());
-
-        // Check that we can initiate a transfer
-        vm.startPrank(user_A);
-        t.approve(address(newNttManager), 3 * 10 ** t.decimals());
-        newNttManager.transfer(
-            1 * 10 ** t.decimals(),
-            TransceiverHelpersLib.SENDING_CHAIN_ID,
-            toWormholeFormat(user_B),
-            toWormholeFormat(user_A),
-            false,
-            new bytes(1)
-        );
-        vm.stopPrank();
-
-        // Check that we can receive a transfer
-        (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(newNttManager);
-        newNttManager.setThreshold(1);
-
-        bytes memory transceiverMessage;
-        bytes memory tokenTransferMessage;
-
-        TrimmedAmount transferAmount = packTrimmedAmount(100, 8);
-
-        tokenTransferMessage = TransceiverStructs.encodeNativeTokenTransfer(
-            TransceiverStructs.NativeTokenTransfer({
-                amount: transferAmount,
-                sourceToken: toWormholeFormat(address(t)),
-                to: toWormholeFormat(user_B),
-                toChain: chainId
-            })
-        );
-
-        (, transceiverMessage) = TransceiverHelpersLib.buildTransceiverMessageWithNttManagerPayload(
-            0, bytes32(0), peer, toWormholeFormat(address(newNttManager)), tokenTransferMessage
-        );
-
-        e1.receiveMessage(transceiverMessage);
-        uint256 userBBalanceBefore = t.balanceOf(address(user_B));
-        assertEq(userBBalanceBefore, transferAmount.untrim(t.decimals()));
-
-        // If the token decimals change to the same trimmed amount, we should safely receive the correct number of tokens
-        DummyTokenDifferentDecimals dummy2 = new DummyTokenDifferentDecimals(10); // 10 gets trimmed to 8
-        t.upgrade(address(dummy2));
-
-        vm.startPrank(user_A);
-        newNttManager.transfer(
-            1 * 10 ** 10,
-            TransceiverHelpersLib.SENDING_CHAIN_ID,
-            toWormholeFormat(user_B),
-            toWormholeFormat(user_A),
-            false,
-            new bytes(1)
-        );
-        vm.stopPrank();
-
-        (, transceiverMessage) = TransceiverHelpersLib.buildTransceiverMessageWithNttManagerPayload(
-            bytes32("1"),
-            bytes32(0),
-            peer,
-            toWormholeFormat(address(newNttManager)),
-            tokenTransferMessage
-        );
-        e1.receiveMessage(transceiverMessage);
-        assertEq(
-            t.balanceOf(address(user_B)), userBBalanceBefore + transferAmount.untrim(t.decimals())
-        );
-
-        // Now if the token decimals change to a different trimmed amount, we shouldn't be able to send or receive
-        DummyTokenDifferentDecimals dummy3 = new DummyTokenDifferentDecimals(7); // 7 is 7 trimmed
-        t.upgrade(address(dummy3));
-
-        vm.startPrank(user_A);
-        vm.expectRevert(abi.encodeWithSelector(NumberOfDecimalsNotEqual.selector, 8, 7));
-        newNttManager.transfer(
-            1 * 10 ** 7,
-            TransceiverHelpersLib.SENDING_CHAIN_ID,
-            toWormholeFormat(user_B),
-            toWormholeFormat(user_A),
-            false,
-            new bytes(1)
-        );
-        vm.stopPrank();
-
-        (, transceiverMessage) = TransceiverHelpersLib.buildTransceiverMessageWithNttManagerPayload(
-            bytes32("2"),
-            bytes32(0),
-            peer,
-            toWormholeFormat(address(newNttManager)),
-            tokenTransferMessage
-        );
-        vm.expectRevert(abi.encodeWithSelector(NumberOfDecimalsNotEqual.selector, 8, 7));
-        e1.receiveMessage(transceiverMessage);
     }
 }

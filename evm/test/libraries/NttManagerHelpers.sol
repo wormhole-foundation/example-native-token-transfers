@@ -24,4 +24,16 @@ library NttManagerHelpersLib {
         );
         recipientNttManager.setInboundLimit(inboundLimit.untrim(decimals), SENDING_CHAIN_ID);
     }
+
+    // naive implementation of countSetBits to test against
+    function simpleCount(uint64 n) public pure returns (uint8) {
+        uint8 count;
+
+        while (n > 0) {
+            count += uint8(n & 1);
+            n >>= 1;
+        }
+
+        return count;
+    }
 }
