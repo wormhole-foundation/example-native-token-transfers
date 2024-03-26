@@ -179,13 +179,7 @@ contract TestRelayerEndToEndManual is IntegrationHelpers, IRateLimiterEvents {
                 address(wormholeTransceiverChain1)
             )
         );
-        wormholeTransceiverChain2.receiveWormholeMessages(
-            vaa.payload,
-            a,
-            bytes32(uint256(uint160(address(wormholeTransceiverChain1)))),
-            0xFF,
-            vaa.hash
-        );
+        _receiveWormholeMessage(vaa, wormholeTransceiverChain1, wormholeTransceiverChain2, 0xFF, a);
 
         /*
         This information is assumed to be trusted since ONLY the relayer on a given chain can call it.
@@ -193,32 +187,25 @@ contract TestRelayerEndToEndManual is IntegrationHelpers, IRateLimiterEvents {
 
         This attempt should actually work this time.
         */
-        wormholeTransceiverChain2.receiveWormholeMessages(
-            vaa.payload, // Verified
-            a, // Should be zero
-            bytes32(uint256(uint160(address(wormholeTransceiverChain1)))), // Must be a wormhole peers
-            vaa.emitterChainId, // ChainID from the call
-            vaa.hash // Hash of the VAA being used
+        _receiveWormholeMessage(
+            vaa, wormholeTransceiverChain1, wormholeTransceiverChain2, vaa.emitterChainId, a
         );
 
         // Should from sending a *duplicate* message
         vm.expectRevert(
             abi.encodeWithSelector(IWormholeTransceiver.TransferAlreadyCompleted.selector, vaa.hash)
         );
-        wormholeTransceiverChain2.receiveWormholeMessages(
-            vaa.payload,
-            a, // Should be zero
-            bytes32(uint256(uint160(address(wormholeTransceiverChain1)))), // Must be a wormhole peers
-            vaa.emitterChainId, // ChainID from the call
-            vaa.hash // Hash of the VAA being used
+        _receiveWormholeMessage(
+            vaa, wormholeTransceiverChain1, wormholeTransceiverChain2, vaa.emitterChainId, a
         );
     }
 
     function test_relayerWithInvalidWHTransceiver() public {
         // Set up dodgy wormhole transceiver peers
-        wormholeTransceiverChain2.setWormholePeer(chainId1, bytes32(uint256(uint160(address(0x1)))));
-        wormholeTransceiverChain1.setWormholePeer(
-            chainId2, bytes32(uint256(uint160(address(wormholeTransceiverChain2))))
+        _setTransceiverPeers(
+            [wormholeTransceiverChain2, wormholeTransceiverChain1],
+            [WormholeTransceiver(address(0x1)), wormholeTransceiverChain2],
+            [chainId1, chainId2]
         );
 
         vm.recordLogs();
@@ -227,37 +214,18 @@ contract TestRelayerEndToEndManual is IntegrationHelpers, IRateLimiterEvents {
         // Setting up the transfer
         DummyToken token1 = DummyToken(nttManagerChain1.token());
 
-        uint8 decimals = token1.decimals();
-        uint256 sendingAmount = 5 * 10 ** decimals;
-        token1.mintDummy(address(userA), 5 * 10 ** decimals);
-        vm.startPrank(userA);
-        token1.approve(address(nttManagerChain1), sendingAmount);
+        uint256 sendingAmount = 5 * 10 ** token1.decimals();
+        _prepareTransfer(token1, userA, address(nttManagerChain1), sendingAmount);
+
+        WormholeTransceiver[] memory transceivers = new WormholeTransceiver[](1);
+        transceivers[0] = wormholeTransceiverChain1;
 
         // Send token through the relayer
-        {
-            vm.deal(userA, 1 ether);
-            nttManagerChain1.transfer{
-                value: wormholeTransceiverChain1.quoteDeliveryPrice(
-                    chainId2, buildTransceiverInstruction(false)
-                    )
-            }(
-                sendingAmount,
-                chainId2,
-                bytes32(uint256(uint160(userB))),
-                bytes32(uint256(uint160(userA))),
-                false,
-                encodeTransceiverInstruction(false)
-            );
-        }
+        transferToken(userB, userA, nttManagerChain1, sendingAmount, chainId2, transceivers, false);
 
         // Get the messages from the logs for the sender
         vm.chainId(chainId2);
-        Vm.Log[] memory entries = guardian.fetchWormholeMessageFromLog(vm.getRecordedLogs());
-        bytes[] memory encodedVMs = new bytes[](entries.length);
-        for (uint256 i = 0; i < encodedVMs.length; i++) {
-            encodedVMs[i] = guardian.fetchSignedMessageFromLogs(entries[i], chainId1);
-        }
-
+        bytes[] memory encodedVMs = _getWormholeMessage(guardian, vm.getRecordedLogs(), chainId1);
         IWormhole.VM memory vaa = wormhole.parseVM(encodedVMs[0]);
 
         vm.stopPrank();
@@ -273,12 +241,8 @@ contract TestRelayerEndToEndManual is IntegrationHelpers, IRateLimiterEvents {
                 address(wormholeTransceiverChain1)
             )
         );
-        wormholeTransceiverChain2.receiveWormholeMessages(
-            vaa.payload,
-            a,
-            bytes32(uint256(uint160(address(wormholeTransceiverChain1)))),
-            vaa.emitterChainId,
-            vaa.hash
+        _receiveWormholeMessage(
+            vaa, wormholeTransceiverChain1, wormholeTransceiverChain2, vaa.emitterChainId, a
         );
         vm.stopPrank();
     }
