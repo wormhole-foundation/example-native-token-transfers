@@ -72,6 +72,13 @@ pub struct Redeem<'info> {
     /// transceivers "vote" on messages (by delivering them). By making the inbox
     /// items content-addressed, we can ensure that disagreeing votes don't
     /// interfere with each other.
+    /// CHECK: init_if_needed is used here to allow for allocation and for voiting.
+    /// On the first call to [`redeem()`], [`InboxItem`] will be allocated and initialized with
+    /// default values.
+    /// On subsequent calls, we want to modify the `InboxItem` by "voting" on it. Therefore the
+    /// program should not fail which would occur when using the `init` constraint.
+    /// The [`InboxItem::init`] field is used to guard against malicious or accidental modification
+    /// InboxItem fields that should remain constant.
     pub inbox_item: Account<'info, InboxItem>,
 
     #[account(
