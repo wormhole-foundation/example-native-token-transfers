@@ -475,7 +475,7 @@ contract TestRelayerEndToEndManual is TestEndToEndRelayerBase, IRateLimiterEvent
     IWormhole wormhole = IWormhole(0x68605AD7b15c732a30b1BbC62BE8F2A509D74b4D);
 
     function setUp() public {
-        string memory url = "https://bsc-testnet.public.blastapi.io";
+        string memory url = "https://bsc-testnet-rpc.publicnode.com";
         vm.createSelectFork(url);
         initialBlockTimestamp = vm.getBlockTimestamp();
 
