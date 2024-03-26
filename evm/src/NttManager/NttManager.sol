@@ -30,6 +30,7 @@ import {ManagerBase} from "./ManagerBase.sol";
 ///  - the amount
 ///  - the recipient chain
 ///  - the recipient address
+///  - the refund address: the address to refund the user for "dummy" attestations
 ///  - (optional) a flag to indicate whether the transfer should be queued
 ///    if the rate limit is exceeded
 contract NttManager is INttManager, RateLimiter, ManagerBase {
