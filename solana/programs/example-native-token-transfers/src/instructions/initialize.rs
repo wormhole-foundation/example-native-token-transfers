@@ -61,7 +61,7 @@ pub struct Initialize<'info> {
     pub token_authority: AccountInfo<'info>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = payer,
         associated_token::mint = mint,
         associated_token::authority = token_authority,
@@ -69,6 +69,8 @@ pub struct Initialize<'info> {
     /// The custody account that holds tokens in locking mode.
     /// NOTE: the account is unconditionally initialized, but not used in
     /// burning mode.
+    /// CHECK: Use init_if_needed here to prevent a denial-of-service of the [`initialize`]
+    /// function if  the token account has already been created.
     pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
 
     /// CHECK: checked to be the appropriate token progrem when initialising the

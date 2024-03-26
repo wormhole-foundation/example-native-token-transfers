@@ -10,6 +10,8 @@ use super::rate_limit::RateLimitState;
 #[derive(InitSpace)]
 // TODO: generalise this to arbitrary inbound messages (via a generic parameter in place of amount and recipient info)
 pub struct InboxItem {
+    // Whether the InboxItem has already been initialized. This is used during the redeem process
+    // to guard against modifications to the `bump` and `amounts` fields.
     pub init: bool,
     pub bump: u8,
     pub amount: u64,
@@ -18,6 +20,10 @@ pub struct InboxItem {
     pub release_status: ReleaseStatus,
 }
 
+/// The status of an InboxItem. This determines whether the tokens are minted/unlocked to the recipient. As
+/// such, this must be used as a state machine that moves forward in a linear manner. A state
+/// should never "move backward" to a previous state (e.g. should never move from `Released` to
+/// `ReleaseAfter`).
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq, InitSpace)]
 pub enum ReleaseStatus {
     NotApproved,
