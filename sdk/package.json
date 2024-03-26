@@ -1,0 +1,16 @@
+{
+    "name": "ntt-sdk",
+    "version": "0.0.1",
+    "license": "Apache-2.0",
+    "scripts": {
+        "build": "npm run build --workspaces --if-present"
+    },
+    "devDependencies": {
+        "typescript": "^5.1.1"
+    },
+    "workspaces": [
+        "definition",
+        "solana",
+        "evm"
+    ]
+}
