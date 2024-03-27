@@ -98,6 +98,10 @@ interface INttManager is IManagerBase {
     /// @notice Peer cannot have zero decimals.
     error InvalidPeerDecimals();
 
+    /// @notice Peer cannot be on the same chain
+    /// @dev Selector 0x20371f2a.
+    error InvalidPeerSameChainId();
+
     /// @notice Transfer a given amount to a recipient on a given chain. This function is called
     ///         by the user to send the token cross-chain. This function will either lock or burn the
     ///         sender's tokens. Finally, this function will call into registered `Endpoint` contracts

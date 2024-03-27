@@ -106,6 +106,9 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         if (decimals == 0) {
             revert InvalidPeerDecimals();
         }
+        if (peerChainId == chainId) {
+            revert InvalidPeerSameChainId();
+        }
 
         NttManagerPeer memory oldPeer = _getPeersStorage()[peerChainId];
 
