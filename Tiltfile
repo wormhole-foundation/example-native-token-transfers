@@ -24,7 +24,7 @@ docker_build(
 # Solana deploy
 docker_build(
     ref = "ntt-solana-contract",
-    context = "./solana/",
+    context = "./",
     dockerfile = "./solana/Dockerfile",
 )
 k8s_yaml_with_ns("./solana/solana-devnet.yaml")

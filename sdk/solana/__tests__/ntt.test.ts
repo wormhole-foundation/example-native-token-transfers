@@ -6,6 +6,7 @@ import {
   UniversalAddress,
   VAA,
   Wormhole,
+  deserialize,
   deserializePayload,
   encoding,
   serialize,
@@ -19,8 +20,8 @@ import {
 } from "@wormhole-foundation/sdk-solana";
 import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 import * as fs from "fs";
+
 import { SolanaNtt } from "../src/index.js";
-import { deserialize } from "@wormhole-foundation/sdk-connect";
 
 const solanaRootDir = `${__dirname}/../../../solana`;
 

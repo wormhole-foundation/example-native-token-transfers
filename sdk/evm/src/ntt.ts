@@ -135,8 +135,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
   async quoteDeliveryPrice(dstChain: Chain): Promise<[bigint[], bigint]> {
     return this.manager.quoteDeliveryPrice.staticCall(
       toChainId(dstChain),
-      this.encodeFlags(),
-      this.xcvrs.map((x) => x.address)
+      Ntt.encodeTransceiverInstructions(this.encodeFlags())
     );
   }
 
