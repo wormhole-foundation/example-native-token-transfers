@@ -9,7 +9,6 @@ import {
   deserialize,
   deserializePayload,
   encoding,
-  registerPayloadTypes,
   serialize,
   serializePayload,
   signSendWait,
@@ -22,13 +21,10 @@ import {
 import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 import * as fs from "fs";
 
-import {
-  Ntt,
-  nttNamedPayloads,
-} from "@wormhole-foundation/sdk-definitions-ntt";
+import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
 import { SolanaNtt } from "../src/index.js";
 
-registerPayloadTypes("Ntt", nttNamedPayloads);
+//registerPayloadTypes("Ntt", nttNamedPayloads);
 
 const solanaRootDir = `${__dirname}/../../../solana`;
 
