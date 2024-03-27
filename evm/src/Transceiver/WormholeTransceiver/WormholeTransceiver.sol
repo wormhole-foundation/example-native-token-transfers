@@ -176,6 +176,7 @@ contract WormholeTransceiver is
         uint256 deliveryPayment,
         address caller,
         bytes32 recipientNttManagerAddress,
+        bytes32 refundAddress,
         TransceiverStructs.TransceiverInstruction memory instruction,
         bytes memory nttManagerMessage
     ) internal override {
@@ -194,14 +195,24 @@ contract WormholeTransceiver is
             parseWormholeTransceiverInstruction(instruction.payload);
 
         if (!weIns.shouldSkipRelayerSend && _shouldRelayViaStandardRelaying(recipientChain)) {
+            // NOTE: standard relaying supports refunds. The amount to be refunded will be sent
+            // to a refundAddress specified by the client.
+
+            // push onto the stack again to avoid stack too deep error
+            bytes32 refundRecipient = refundAddress;
+            uint16 destinationChain = recipientChain;
+
             wormholeRelayer.sendPayloadToEvm{value: deliveryPayment}(
-                recipientChain,
-                fromWormholeFormat(getWormholePeer(recipientChain)),
+                destinationChain,
+                fromWormholeFormat(getWormholePeer(destinationChain)),
                 encodedTransceiverPayload,
                 0,
-                gasLimit
+                gasLimit,
+                destinationChain,
+                fromWormholeFormat(refundRecipient)
             );
 
+            // TODO: emit the refund address
             emit RelayingInfo(uint8(RelayingType.Standard), deliveryPayment);
         } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
             uint256 wormholeFee = wormhole.messageFee();
