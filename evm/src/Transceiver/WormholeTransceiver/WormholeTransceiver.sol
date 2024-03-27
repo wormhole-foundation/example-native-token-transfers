@@ -179,9 +179,6 @@ contract WormholeTransceiver is
         TransceiverStructs.TransceiverInstruction memory instruction,
         bytes memory nttManagerMessage
     ) internal override {
-        WormholeTransceiverInstruction memory weIns =
-            parseWormholeTransceiverInstruction(instruction.payload);
-
         (
             TransceiverStructs.TransceiverMessage memory transceiverMessage,
             bytes memory encodedTransceiverPayload
@@ -192,6 +189,9 @@ contract WormholeTransceiver is
             nttManagerMessage,
             new bytes(0)
         );
+
+        WormholeTransceiverInstruction memory weIns =
+            parseWormholeTransceiverInstruction(instruction.payload);
 
         if (!weIns.shouldSkipRelayerSend && _shouldRelayViaStandardRelaying(recipientChain)) {
             wormholeRelayer.sendPayloadToEvm{value: deliveryPayment}(
