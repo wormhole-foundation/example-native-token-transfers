@@ -229,7 +229,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         // by the same amount (we call this "backflow")
         _backfillOutboundAmount(nativeTransferAmount);
 
-        _mintOrUnlockToRecipient(digest, transferRecipient, nativeTransferAmount);
+        _mintOrUnlockToRecipient(digest, transferRecipient, nativeTransferAmount, false);
     }
 
     /// @inheritdoc INttManager
@@ -249,7 +249,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         delete _getInboundQueueStorage()[digest];
 
         // run it through the mint/unlock logic
-        _mintOrUnlockToRecipient(digest, queuedTransfer.recipient, queuedTransfer.amount);
+        _mintOrUnlockToRecipient(digest, queuedTransfer.recipient, queuedTransfer.amount, false);
     }
 
     /// @inheritdoc INttManager
@@ -282,6 +282,32 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
             queuedTransfer.recipient,
             queuedTransfer.sender,
             queuedTransfer.transceiverInstructions
+        );
+    }
+
+    /// @inheritdoc INttManager
+    function cancelOutboundQueuedTransfer(uint64 messageSequence)
+        external
+        nonReentrant
+        whenNotPaused
+    {
+        // find the message in the queue
+        OutboundQueuedTransfer memory queuedTransfer = _getOutboundQueueStorage()[messageSequence];
+        if (queuedTransfer.txTimestamp == 0) {
+            revert OutboundQueuedTransferNotFound(messageSequence);
+        }
+
+        // check msg.sender initiated the transfer
+        if (queuedTransfer.sender != msg.sender) {
+            revert CancellerNotSender(msg.sender, queuedTransfer.sender);
+        }
+
+        // remove transfer from the queue
+        delete _getOutboundQueueStorage()[messageSequence];
+
+        // return the queued funds to the sender
+        _mintOrUnlockToRecipient(
+            bytes32(uint256(messageSequence)), msg.sender, queuedTransfer.amount, true
         );
     }
 
@@ -444,13 +470,18 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     function _mintOrUnlockToRecipient(
         bytes32 digest,
         address recipient,
-        TrimmedAmount amount
+        TrimmedAmount amount,
+        bool cancelled
     ) internal {
         // calculate proper amount of tokens to unlock/mint to recipient
         // untrim the amount
         uint256 untrimmedAmount = amount.untrim(tokenDecimals());
 
-        emit TransferRedeemed(digest);
+        if (cancelled) {
+            emit OutboundTransferCancelled(uint256(digest), recipient, untrimmedAmount);
+        } else {
+            emit TransferRedeemed(digest);
+        }
 
         if (mode == Mode.LOCKING) {
             // unlock tokens to the specified recipient
