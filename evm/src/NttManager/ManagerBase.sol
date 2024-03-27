@@ -215,6 +215,7 @@ abstract contract ManagerBase is
         TransceiverStructs.TransceiverInstruction[] memory instructions;
 
         {
+            uint256 numRegisteredTransceivers = _getRegisteredTransceiversStorage().length;
             uint256 numEnabledTransceivers = enabledTransceivers.length;
 
             if (numEnabledTransceivers == 0) {
@@ -222,7 +223,7 @@ abstract contract ManagerBase is
             }
 
             instructions = TransceiverStructs.parseTransceiverInstructions(
-                transceiverInstructions, numEnabledTransceivers
+                transceiverInstructions, numRegisteredTransceivers
             );
         }
 
