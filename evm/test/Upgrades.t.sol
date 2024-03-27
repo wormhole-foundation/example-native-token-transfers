@@ -292,7 +292,7 @@ contract TestUpgrades is Test, IRateLimiterEvents {
         // Don't allow upgrade to work with a change immutable
 
         address oldNttManager = wormholeTransceiverChain1.nttManager();
-        WormholeTransceiver wormholeTransceiverChain1Implementation =new MockWormholeTransceiverMigrateBasic(
+        WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverMigrateBasic(
             address(nttManagerChain2),
             address(wormhole),
             address(relayer),
