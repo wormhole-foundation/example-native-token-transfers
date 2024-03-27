@@ -3,21 +3,20 @@ import { BN } from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
 import * as fs from "fs";
 
-import { encoding } from "@wormhole-foundation/sdk-base";
 import {
   ChainContext,
   Signer,
-  Wormhole,
   signSendWait,
 } from "@wormhole-foundation/sdk-connect";
-import {
-  SolanaPlatform,
-  getSolanaSignAndSendSigner,
-} from "@wormhole-foundation/sdk-solana";
-import { SolanaNtt, solanaNttProtocolFactory } from "../src/index.js";
+import { SolanaSendSigner } from "@wormhole-foundation/sdk-solana";
+import { SolanaNtt } from "../src/index.js";
 
 export const GUARDIAN_KEY =
   "cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0";
+
+// TODO: is this in conf?
+export const CORE_BRIDGE_ADDRESS =
+  "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth";
 
 describe("example-native-token-transfers", () => {
   console.log(__dirname);
@@ -48,34 +47,34 @@ describe("example-native-token-transfers", () => {
   beforeEach(async () => {
     // airdrop some tokens to payer
     mint = await spl.createMint(connection, payer, owner.publicKey, null, 9);
+    //{
+    //      chains: {
+    //        Solana: {
+    //          contracts: {
+    //            coreBridge: ,
+    //          },
+    //          tokenMap: {
+    //            TestNTT: {
+    //              key: "TestNTT",
+    //              decimals: 9,
+    //              address: mint.toBase58(),
+    //              chain: "Solana",
+    //              symbol: "NTT",
+    //            },
+    //          },
+    //        },
+    //      },
+    //    }
 
-    const wh = new Wormhole("Devnet", [SolanaPlatform], {
-      chains: {
-        Solana: {
-          contracts: {
-            coreBridge: "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth",
-          },
-          tokenMap: {
-            TestNTT: {
-              key: "TestNTT",
-              decimals: 9,
-              address: mint.toBase58(),
-              chain: "Solana",
-              symbol: "NTT",
-            },
-          },
-        },
+    signer = new SolanaSendSigner(connection, "Solana", payer);
+
+    ntt = new SolanaNtt("Devnet", "Solana", connection, CORE_BRIDGE_ADDRESS, {
+      token: mint.toBase58(),
+      manager: "",
+      transceiver: {
+        wormhole: "",
       },
     });
-
-    signer = await getSolanaSignAndSendSigner(
-      connection,
-      encoding.b58.encode(payer.secretKey),
-      { debug: true }
-    );
-
-    const nttBulder = solanaNttProtocolFactory(mint.toBase58());
-    ntt = await nttBulder.fromRpc(connection, wh.config.chains);
 
     tokenAccount = await spl.createAssociatedTokenAccount(
       connection,
