@@ -182,37 +182,43 @@ contract WormholeTransceiver is
         WormholeTransceiverInstruction memory weIns =
             parseWormholeTransceiverInstruction(instruction.payload);
 
-        bytes memory encodedPayload;
-        TransceiverStructs.TransceiverMessage memory transceiverMessage;
+        (
+            TransceiverStructs.TransceiverMessage memory transceiverMessage,
+            bytes memory encodedTransceiverPayload
+        ) = TransceiverStructs.buildAndEncodeTransceiverMessage(
+            WH_TRANSCEIVER_PAYLOAD_PREFIX,
+            toWormholeFormat(caller),
+            recipientNttManagerAddress,
+            nttManagerMessage,
+            new bytes(0)
+        );
 
         if (!weIns.shouldSkipRelayerSend && _shouldRelayViaStandardRelaying(recipientChain)) {
-            (transceiverMessage, encodedPayload) =
-                _encodePayload(caller, recipientNttManagerAddress, nttManagerMessage, false);
-
             wormholeRelayer.sendPayloadToEvm{value: deliveryPayment}(
                 recipientChain,
                 fromWormholeFormat(getWormholePeer(recipientChain)),
-                encodedPayload,
+                encodedTransceiverPayload,
                 0,
                 gasLimit
             );
 
             emit RelayingInfo(uint8(RelayingType.Standard), deliveryPayment);
         } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
-            (transceiverMessage, encodedPayload) =
+            (transceiverMessage, encodedTransceiverPayload) =
                 _encodePayload(caller, recipientNttManagerAddress, nttManagerMessage, true);
             uint256 wormholeFee = wormhole.messageFee();
-            uint64 sequence =
-                wormhole.publishMessage{value: wormholeFee}(0, encodedPayload, consistencyLevel);
+            uint64 sequence = wormhole.publishMessage{value: wormholeFee}(
+                0, encodedTransceiverPayload, consistencyLevel
+            );
             specialRelayer.requestDelivery{value: deliveryPayment - wormholeFee}(
                 getNttManagerToken(), recipientChain, 0, sequence
             );
 
             emit RelayingInfo(uint8(RelayingType.Special), deliveryPayment);
         } else {
-            (transceiverMessage, encodedPayload) =
-                _encodePayload(caller, recipientNttManagerAddress, nttManagerMessage, false);
-            wormhole.publishMessage{value: deliveryPayment}(0, encodedPayload, consistencyLevel);
+            wormhole.publishMessage{value: deliveryPayment}(
+                0, encodedTransceiverPayload, consistencyLevel
+            );
 
             emit RelayingInfo(uint8(RelayingType.Manual), deliveryPayment);
         }
