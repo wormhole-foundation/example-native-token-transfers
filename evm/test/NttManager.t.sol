@@ -352,6 +352,43 @@ contract TestNttManager is Test, IRateLimiterEvents {
         nttManager.setTransceiver(address(e));
     }
 
+    function test_passingInstructionsToTransceivers() public {
+        // Let's register a transceiver and then disable the original transceiver. We now have 2 registered transceivers
+        // since we register 1 in the setup
+        DummyTransceiver e = new DummyTransceiver(address(nttManager));
+        nttManager.setTransceiver(address(e));
+        nttManager.removeTransceiver(address(dummyTransceiver));
+
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(nttManager.token());
+
+        uint8 decimals = token.decimals();
+
+        nttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 9, type(uint64).max);
+        nttManager.setOutboundLimit(packTrimmedAmount(type(uint64).max, 8).untrim(decimals));
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+
+        vm.startPrank(user_A);
+
+        token.approve(address(nttManager), 3 * 10 ** decimals);
+
+        // Pass some instructions for the enabled transceiver
+        TransceiverStructs.TransceiverInstruction memory transceiverInstruction =
+            TransceiverStructs.TransceiverInstruction({index: 1, payload: new bytes(1)});
+        TransceiverStructs.TransceiverInstruction[] memory transceiverInstructions =
+            new TransceiverStructs.TransceiverInstruction[](1);
+        transceiverInstructions[0] = transceiverInstruction;
+        bytes memory instructions =
+            TransceiverStructs.encodeTransceiverInstructions(transceiverInstructions);
+
+        nttManager.transfer(
+            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false, instructions
+        );
+    }
+
     // == threshold
 
     function test_cantSetThresholdTooHigh() public {
