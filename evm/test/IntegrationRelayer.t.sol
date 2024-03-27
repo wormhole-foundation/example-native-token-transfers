@@ -97,8 +97,17 @@ contract TestEndToEndRelayer is
         vm.deal(userA, 1 ether);
         DummyToken t1 = new DummyToken();
 
+        vm.mockCall(
+            address(chainInfosTestnet[chainId1].wormhole),
+            abi.encodeWithSelector(bytes4(keccak256("chainId()"))),
+            abi.encode(chainId1)
+        );
         NttManager implementation = new MockNttManagerContract(
-            address(t1), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
+            address(t1),
+            IManagerBase.Mode.LOCKING,
+            address(chainInfosTestnet[chainId1].wormhole),
+            1 days,
+            false
         );
 
         nttManagerChain1 =
@@ -131,8 +140,17 @@ contract TestEndToEndRelayer is
 
         // Chain 2 setup
         DummyToken t2 = new DummyTokenMintAndBurn();
+        vm.mockCall(
+            address(chainInfosTestnet[chainId2].wormhole),
+            abi.encodeWithSelector(bytes4(keccak256("chainId()"))),
+            abi.encode(chainId2)
+        );
         NttManager implementationChain2 = new MockNttManagerContract(
-            address(t2), IManagerBase.Mode.BURNING, chainId2, 1 days, false
+            address(t2),
+            IManagerBase.Mode.BURNING,
+            address(chainInfosTestnet[chainId2].wormhole),
+            1 days,
+            false
         );
 
         nttManagerChain2 =
@@ -483,8 +501,13 @@ contract TestRelayerEndToEndManual is TestEndToEndRelayerBase, IRateLimiterEvent
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
+        vm.mockCall(
+            address(wormhole),
+            abi.encodeWithSelector(bytes4(keccak256("chainId()"))),
+            abi.encode(chainId1)
+        );
         NttManager implementation = new MockNttManagerContract(
-            address(t1), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
+            address(t1), IManagerBase.Mode.LOCKING, address(wormhole), 1 days, false
         );
 
         nttManagerChain1 =
@@ -511,8 +534,13 @@ contract TestRelayerEndToEndManual is TestEndToEndRelayerBase, IRateLimiterEvent
         // Chain 2 setup
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
+        vm.mockCall(
+            address(wormhole),
+            abi.encodeWithSelector(bytes4(keccak256("chainId()"))),
+            abi.encode(chainId2)
+        );
         NttManager implementationChain2 = new MockNttManagerContract(
-            address(t2), IManagerBase.Mode.BURNING, chainId2, 1 days, false
+            address(t2), IManagerBase.Mode.BURNING, address(wormhole), 1 days, false
         );
 
         nttManagerChain2 =

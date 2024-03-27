@@ -8,10 +8,10 @@ contract MockNttManagerContract is NttManager {
     constructor(
         address token,
         Mode mode,
-        uint16 chainId,
+        address wormhole,
         uint64 rateLimitDuration,
         bool skipRateLimiting
-    ) NttManager(token, mode, chainId, rateLimitDuration, skipRateLimiting) {}
+    ) NttManager(token, mode, wormhole, rateLimitDuration, skipRateLimiting) {}
 
     /// We create a dummy storage variable here with standard solidity slot assignment.
     /// Then we check that its assigned slot is 0, i.e. that the super contract doesn't
@@ -31,10 +31,10 @@ contract MockNttManagerMigrateBasic is NttManager {
     constructor(
         address token,
         Mode mode,
-        uint16 chainId,
+        address wormhole,
         uint64 rateLimitDuration,
         bool skipRateLimiting
-    ) NttManager(token, mode, chainId, rateLimitDuration, skipRateLimiting) {}
+    ) NttManager(token, mode, wormhole, rateLimitDuration, skipRateLimiting) {}
 
     function _migrate() internal view override {
         _checkThresholdInvariants();
@@ -48,10 +48,10 @@ contract MockNttManagerImmutableCheck is NttManager {
     constructor(
         address token,
         Mode mode,
-        uint16 chainId,
+        address wormhole,
         uint64 rateLimitDuration,
         bool skipRateLimiting
-    ) NttManager(token, mode, chainId, rateLimitDuration, skipRateLimiting) {}
+    ) NttManager(token, mode, wormhole, rateLimitDuration, skipRateLimiting) {}
 }
 
 contract MockNttManagerImmutableRemoveCheck is NttManager {
@@ -59,10 +59,10 @@ contract MockNttManagerImmutableRemoveCheck is NttManager {
     constructor(
         address token,
         Mode mode,
-        uint16 chainId,
+        address wormhole,
         uint64 rateLimitDuration,
         bool skipRateLimiting
-    ) NttManager(token, mode, chainId, rateLimitDuration, skipRateLimiting) {}
+    ) NttManager(token, mode, wormhole, rateLimitDuration, skipRateLimiting) {}
 
     // Turns on the capability to EDIT the immutables
     function _migrate() internal override {
@@ -79,10 +79,10 @@ contract MockNttManagerStorageLayoutChange is NttManager {
     constructor(
         address token,
         Mode mode,
-        uint16 chainId,
+        address wormhole,
         uint64 rateLimitDuration,
         bool skipRateLimiting
-    ) NttManager(token, mode, chainId, rateLimitDuration, skipRateLimiting) {}
+    ) NttManager(token, mode, wormhole, rateLimitDuration, skipRateLimiting) {}
 
     function setData() public {
         a = address(0x1);

@@ -38,8 +38,13 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         guardian = new WormholeSimulator(address(wormhole), DEVNET_GUARDIAN_PK);
 
         DummyToken t = new DummyToken();
+        vm.mockCall(
+            address(wormhole),
+            abi.encodeWithSelector(bytes4(keccak256("chainId()"))),
+            abi.encode(chainId)
+        );
         NttManager implementation = new MockNttManagerContract(
-            address(t), IManagerBase.Mode.LOCKING, chainId, 1 days, false
+            address(t), IManagerBase.Mode.LOCKING, address(wormhole), 1 days, false
         );
 
         nttManager = MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));

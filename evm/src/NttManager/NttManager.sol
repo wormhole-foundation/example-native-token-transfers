@@ -43,10 +43,10 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     constructor(
         address _token,
         Mode _mode,
-        uint16 _chainId,
+        address _wormhole,
         uint64 _rateLimitDuration,
         bool _skipRateLimiting
-    ) RateLimiter(_rateLimitDuration, _skipRateLimiting) ManagerBase(_token, _mode, _chainId) {}
+    ) RateLimiter(_rateLimitDuration, _skipRateLimiting) ManagerBase(_token, _mode, _wormhole) {}
 
     function __NttManager_init() internal onlyInitializing {
         // check if the owner is the deployer of this contract
