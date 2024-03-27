@@ -37,7 +37,10 @@
     "build:esm": "tsc -p ./tsconfig.esm.json",
     "build": "npm run build:esm && npm run build:cjs",
     "rebuild": "npm run clean && npm run build",
-    "clean": "rm -rf ./dist && rm -rf ./.turbo"
+    "clean": "rm -rf ./dist && rm -rf ./.turbo",
+    "generate:manager":"typechain --target ethers-v6 --out-dir src/ethers-contracts/ '../../evm/out/NttManager.sol/*.json'",
+    "generate:transceiver":"typechain --target ethers-v6 --out-dir src/ethers-contracts/ '../../evm/out/WormholeTransceiver.sol/*.json'",
+    "generate":"npm run generate:manager && npm run generate:transceiver"
   },
   "dependencies": {
     "@wormhole-foundation/sdk-connect": "0.5.2-beta.3",

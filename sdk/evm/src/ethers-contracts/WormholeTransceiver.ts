@@ -13,7 +13,7 @@ import type {
   ContractRunner,
   ContractMethod,
   Listener,
-} from 'ethers';
+} from "ethers";
 import type {
   TypedContractEvent,
   TypedDeferredTopicFilter,
@@ -21,7 +21,7 @@ import type {
   TypedLogDescription,
   TypedListener,
   TypedContractMethod,
-} from './common.js';
+} from "./common";
 
 export declare namespace TransceiverStructs {
   export type TransceiverMessageStruct = {
@@ -35,7 +35,7 @@ export declare namespace TransceiverStructs {
     sourceNttManagerAddress: string,
     recipientNttManagerAddress: string,
     nttManagerPayload: string,
-    transceiverPayload: string,
+    transceiverPayload: string
   ] & {
     sourceNttManagerAddress: string;
     recipientNttManagerAddress: string;
@@ -50,7 +50,7 @@ export declare namespace TransceiverStructs {
 
   export type TransceiverInstructionStructOutput = [
     index: bigint,
-    payload: string,
+    payload: string
   ] & { index: bigint; payload: string };
 }
 
@@ -60,301 +60,301 @@ export declare namespace IWormholeTransceiver {
   };
 
   export type WormholeTransceiverInstructionStructOutput = [
-    shouldSkipRelayerSend: boolean,
+    shouldSkipRelayerSend: boolean
   ] & { shouldSkipRelayerSend: boolean };
 }
 
 export interface WormholeTransceiverInterface extends Interface {
   getFunction(
     nameOrSignature:
-      | 'consistencyLevel'
-      | 'encodeWormholeTransceiverInstruction'
-      | 'gasLimit'
-      | 'getMigratesImmutables'
-      | 'getNttManagerOwner'
-      | 'getNttManagerToken'
-      | 'getWormholePeer'
-      | 'initialize'
-      | 'isPaused'
-      | 'isSpecialRelayingEnabled'
-      | 'isVAAConsumed'
-      | 'isWormholeEvmChain'
-      | 'isWormholeRelayingEnabled'
-      | 'migrate'
-      | 'nttManager'
-      | 'nttManagerToken'
-      | 'owner'
-      | 'parseWormholeTransceiverInstruction'
-      | 'pauser'
-      | 'quoteDeliveryPrice'
-      | 'receiveMessage'
-      | 'receiveWormholeMessages'
-      | 'sendMessage'
-      | 'setIsSpecialRelayingEnabled'
-      | 'setIsWormholeEvmChain'
-      | 'setIsWormholeRelayingEnabled'
-      | 'setWormholePeer'
-      | 'specialRelayer'
-      | 'transferOwnership'
-      | 'transferPauserCapability'
-      | 'transferTransceiverOwnership'
-      | 'upgrade'
-      | 'wormhole'
-      | 'wormholeRelayer',
+      | "consistencyLevel"
+      | "encodeWormholeTransceiverInstruction"
+      | "gasLimit"
+      | "getMigratesImmutables"
+      | "getNttManagerOwner"
+      | "getNttManagerToken"
+      | "getWormholePeer"
+      | "initialize"
+      | "isPaused"
+      | "isSpecialRelayingEnabled"
+      | "isVAAConsumed"
+      | "isWormholeEvmChain"
+      | "isWormholeRelayingEnabled"
+      | "migrate"
+      | "nttManager"
+      | "nttManagerToken"
+      | "owner"
+      | "parseWormholeTransceiverInstruction"
+      | "pauser"
+      | "quoteDeliveryPrice"
+      | "receiveMessage"
+      | "receiveWormholeMessages"
+      | "sendMessage"
+      | "setIsSpecialRelayingEnabled"
+      | "setIsWormholeEvmChain"
+      | "setIsWormholeRelayingEnabled"
+      | "setWormholePeer"
+      | "specialRelayer"
+      | "transferOwnership"
+      | "transferPauserCapability"
+      | "transferTransceiverOwnership"
+      | "upgrade"
+      | "wormhole"
+      | "wormholeRelayer"
   ): FunctionFragment;
 
   getEvent(
     nameOrSignatureOrTopic:
-      | 'AdminChanged'
-      | 'BeaconUpgraded'
-      | 'Initialized'
-      | 'NotPaused'
-      | 'OwnershipTransferred'
-      | 'Paused'
-      | 'PauserTransferred'
-      | 'ReceivedMessage'
-      | 'ReceivedRelayedMessage'
-      | 'RelayingInfo'
-      | 'SendTransceiverMessage'
-      | 'SetIsSpecialRelayingEnabled'
-      | 'SetIsWormholeEvmChain'
-      | 'SetIsWormholeRelayingEnabled'
-      | 'SetWormholePeer'
-      | 'Upgraded',
+      | "AdminChanged"
+      | "BeaconUpgraded"
+      | "Initialized"
+      | "NotPaused"
+      | "OwnershipTransferred"
+      | "Paused"
+      | "PauserTransferred"
+      | "ReceivedMessage"
+      | "ReceivedRelayedMessage"
+      | "RelayingInfo"
+      | "SendTransceiverMessage"
+      | "SetIsSpecialRelayingEnabled"
+      | "SetIsWormholeEvmChain"
+      | "SetIsWormholeRelayingEnabled"
+      | "SetWormholePeer"
+      | "Upgraded"
   ): EventFragment;
 
   encodeFunctionData(
-    functionFragment: 'consistencyLevel',
-    values?: undefined,
+    functionFragment: "consistencyLevel",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'encodeWormholeTransceiverInstruction',
-    values: [IWormholeTransceiver.WormholeTransceiverInstructionStruct],
+    functionFragment: "encodeWormholeTransceiverInstruction",
+    values: [IWormholeTransceiver.WormholeTransceiverInstructionStruct]
   ): string;
-  encodeFunctionData(functionFragment: 'gasLimit', values?: undefined): string;
+  encodeFunctionData(functionFragment: "gasLimit", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: 'getMigratesImmutables',
-    values?: undefined,
-  ): string;
-  encodeFunctionData(
-    functionFragment: 'getNttManagerOwner',
-    values?: undefined,
+    functionFragment: "getMigratesImmutables",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'getNttManagerToken',
-    values?: undefined,
+    functionFragment: "getNttManagerOwner",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'getWormholePeer',
-    values: [BigNumberish],
+    functionFragment: "getNttManagerToken",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'initialize',
-    values?: undefined,
-  ): string;
-  encodeFunctionData(functionFragment: 'isPaused', values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: 'isSpecialRelayingEnabled',
-    values: [BigNumberish],
+    functionFragment: "getWormholePeer",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'isVAAConsumed',
-    values: [BytesLike],
+    functionFragment: "initialize",
+    values?: undefined
+  ): string;
+  encodeFunctionData(functionFragment: "isPaused", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "isSpecialRelayingEnabled",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'isWormholeEvmChain',
-    values: [BigNumberish],
+    functionFragment: "isVAAConsumed",
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'isWormholeRelayingEnabled',
-    values: [BigNumberish],
-  ): string;
-  encodeFunctionData(functionFragment: 'migrate', values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: 'nttManager',
-    values?: undefined,
+    functionFragment: "isWormholeEvmChain",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'nttManagerToken',
-    values?: undefined,
+    functionFragment: "isWormholeRelayingEnabled",
+    values: [BigNumberish]
   ): string;
-  encodeFunctionData(functionFragment: 'owner', values?: undefined): string;
+  encodeFunctionData(functionFragment: "migrate", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: 'parseWormholeTransceiverInstruction',
-    values: [BytesLike],
-  ): string;
-  encodeFunctionData(functionFragment: 'pauser', values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: 'quoteDeliveryPrice',
-    values: [BigNumberish, TransceiverStructs.TransceiverInstructionStruct],
+    functionFragment: "nttManager",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'receiveMessage',
-    values: [BytesLike],
+    functionFragment: "nttManagerToken",
+    values?: undefined
+  ): string;
+  encodeFunctionData(functionFragment: "owner", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "parseWormholeTransceiverInstruction",
+    values: [BytesLike]
+  ): string;
+  encodeFunctionData(functionFragment: "pauser", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "quoteDeliveryPrice",
+    values: [BigNumberish, TransceiverStructs.TransceiverInstructionStruct]
   ): string;
   encodeFunctionData(
-    functionFragment: 'receiveWormholeMessages',
-    values: [BytesLike, BytesLike[], BytesLike, BigNumberish, BytesLike],
+    functionFragment: "receiveMessage",
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'sendMessage',
+    functionFragment: "receiveWormholeMessages",
+    values: [BytesLike, BytesLike[], BytesLike, BigNumberish, BytesLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "sendMessage",
     values: [
       BigNumberish,
       TransceiverStructs.TransceiverInstructionStruct,
       BytesLike,
-      BytesLike,
-    ],
+      BytesLike
+    ]
   ): string;
   encodeFunctionData(
-    functionFragment: 'setIsSpecialRelayingEnabled',
-    values: [BigNumberish, boolean],
+    functionFragment: "setIsSpecialRelayingEnabled",
+    values: [BigNumberish, boolean]
   ): string;
   encodeFunctionData(
-    functionFragment: 'setIsWormholeEvmChain',
-    values: [BigNumberish, boolean],
+    functionFragment: "setIsWormholeEvmChain",
+    values: [BigNumberish, boolean]
   ): string;
   encodeFunctionData(
-    functionFragment: 'setIsWormholeRelayingEnabled',
-    values: [BigNumberish, boolean],
+    functionFragment: "setIsWormholeRelayingEnabled",
+    values: [BigNumberish, boolean]
   ): string;
   encodeFunctionData(
-    functionFragment: 'setWormholePeer',
-    values: [BigNumberish, BytesLike],
+    functionFragment: "setWormholePeer",
+    values: [BigNumberish, BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'specialRelayer',
-    values?: undefined,
+    functionFragment: "specialRelayer",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'transferOwnership',
-    values: [AddressLike],
+    functionFragment: "transferOwnership",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'transferPauserCapability',
-    values: [AddressLike],
+    functionFragment: "transferPauserCapability",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'transferTransceiverOwnership',
-    values: [AddressLike],
+    functionFragment: "transferTransceiverOwnership",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'upgrade',
-    values: [AddressLike],
+    functionFragment: "upgrade",
+    values: [AddressLike]
   ): string;
-  encodeFunctionData(functionFragment: 'wormhole', values?: undefined): string;
+  encodeFunctionData(functionFragment: "wormhole", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: 'wormholeRelayer',
-    values?: undefined,
+    functionFragment: "wormholeRelayer",
+    values?: undefined
   ): string;
 
   decodeFunctionResult(
-    functionFragment: 'consistencyLevel',
-    data: BytesLike,
+    functionFragment: "consistencyLevel",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'encodeWormholeTransceiverInstruction',
-    data: BytesLike,
+    functionFragment: "encodeWormholeTransceiverInstruction",
+    data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: 'gasLimit', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "gasLimit", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: 'getMigratesImmutables',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: 'getNttManagerOwner',
-    data: BytesLike,
+    functionFragment: "getMigratesImmutables",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'getNttManagerToken',
-    data: BytesLike,
+    functionFragment: "getNttManagerOwner",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'getWormholePeer',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(functionFragment: 'initialize', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'isPaused', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'isSpecialRelayingEnabled',
-    data: BytesLike,
+    functionFragment: "getNttManagerToken",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'isVAAConsumed',
-    data: BytesLike,
+    functionFragment: "getWormholePeer",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "initialize", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "isPaused", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "isSpecialRelayingEnabled",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'isWormholeEvmChain',
-    data: BytesLike,
+    functionFragment: "isVAAConsumed",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'isWormholeRelayingEnabled',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(functionFragment: 'migrate', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'nttManager', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'nttManagerToken',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(functionFragment: 'owner', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'parseWormholeTransceiverInstruction',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(functionFragment: 'pauser', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'quoteDeliveryPrice',
-    data: BytesLike,
+    functionFragment: "isWormholeEvmChain",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'receiveMessage',
-    data: BytesLike,
+    functionFragment: "isWormholeRelayingEnabled",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "migrate", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "nttManager", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "nttManagerToken",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "parseWormholeTransceiverInstruction",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "pauser", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "quoteDeliveryPrice",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'receiveWormholeMessages',
-    data: BytesLike,
+    functionFragment: "receiveMessage",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'sendMessage',
-    data: BytesLike,
+    functionFragment: "receiveWormholeMessages",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'setIsSpecialRelayingEnabled',
-    data: BytesLike,
+    functionFragment: "sendMessage",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'setIsWormholeEvmChain',
-    data: BytesLike,
+    functionFragment: "setIsSpecialRelayingEnabled",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'setIsWormholeRelayingEnabled',
-    data: BytesLike,
+    functionFragment: "setIsWormholeEvmChain",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'setWormholePeer',
-    data: BytesLike,
+    functionFragment: "setIsWormholeRelayingEnabled",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'specialRelayer',
-    data: BytesLike,
+    functionFragment: "setWormholePeer",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'transferOwnership',
-    data: BytesLike,
+    functionFragment: "specialRelayer",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'transferPauserCapability',
-    data: BytesLike,
+    functionFragment: "transferOwnership",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'transferTransceiverOwnership',
-    data: BytesLike,
+    functionFragment: "transferPauserCapability",
+    data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: 'upgrade', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'wormhole', data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: 'wormholeRelayer',
-    data: BytesLike,
+    functionFragment: "transferTransceiverOwnership",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "upgrade", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "wormhole", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "wormholeRelayer",
+    data: BytesLike
   ): Result;
 }
 
@@ -450,13 +450,13 @@ export namespace ReceivedMessageEvent {
     digest: BytesLike,
     emitterChainId: BigNumberish,
     emitterAddress: BytesLike,
-    sequence: BigNumberish,
+    sequence: BigNumberish
   ];
   export type OutputTuple = [
     digest: string,
     emitterChainId: bigint,
     emitterAddress: string,
-    sequence: bigint,
+    sequence: bigint
   ];
   export interface OutputObject {
     digest: string;
@@ -474,12 +474,12 @@ export namespace ReceivedRelayedMessageEvent {
   export type InputTuple = [
     digest: BytesLike,
     emitterChainId: BigNumberish,
-    emitterAddress: BytesLike,
+    emitterAddress: BytesLike
   ];
   export type OutputTuple = [
     digest: string,
     emitterChainId: bigint,
-    emitterAddress: string,
+    emitterAddress: string
   ];
   export interface OutputObject {
     digest: string;
@@ -495,7 +495,7 @@ export namespace ReceivedRelayedMessageEvent {
 export namespace RelayingInfoEvent {
   export type InputTuple = [
     relayingType: BigNumberish,
-    deliveryPayment: BigNumberish,
+    deliveryPayment: BigNumberish
   ];
   export type OutputTuple = [relayingType: bigint, deliveryPayment: bigint];
   export interface OutputObject {
@@ -511,11 +511,11 @@ export namespace RelayingInfoEvent {
 export namespace SendTransceiverMessageEvent {
   export type InputTuple = [
     recipientChain: BigNumberish,
-    message: TransceiverStructs.TransceiverMessageStruct,
+    message: TransceiverStructs.TransceiverMessageStruct
   ];
   export type OutputTuple = [
     recipientChain: bigint,
-    message: TransceiverStructs.TransceiverMessageStructOutput,
+    message: TransceiverStructs.TransceiverMessageStructOutput
   ];
   export interface OutputObject {
     recipientChain: bigint;
@@ -600,115 +600,115 @@ export interface WormholeTransceiver extends BaseContract {
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TypedEventLog<TCEvent>>>;
   queryFilter<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TypedEventLog<TCEvent>>>;
 
   on<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
   on<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
 
   once<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
   once<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
 
   listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+    event: TCEvent
   ): Promise<Array<TypedListener<TCEvent>>>;
   listeners(eventName?: string): Promise<Array<Listener>>;
   removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent,
+    event?: TCEvent
   ): Promise<this>;
 
-  consistencyLevel: TypedContractMethod<[], [bigint], 'view'>;
+  consistencyLevel: TypedContractMethod<[], [bigint], "view">;
 
   encodeWormholeTransceiverInstruction: TypedContractMethod<
     [instruction: IWormholeTransceiver.WormholeTransceiverInstructionStruct],
     [string],
-    'view'
+    "view"
   >;
 
-  gasLimit: TypedContractMethod<[], [bigint], 'view'>;
+  gasLimit: TypedContractMethod<[], [bigint], "view">;
 
-  getMigratesImmutables: TypedContractMethod<[], [boolean], 'view'>;
+  getMigratesImmutables: TypedContractMethod<[], [boolean], "view">;
 
-  getNttManagerOwner: TypedContractMethod<[], [string], 'view'>;
+  getNttManagerOwner: TypedContractMethod<[], [string], "view">;
 
-  getNttManagerToken: TypedContractMethod<[], [string], 'view'>;
+  getNttManagerToken: TypedContractMethod<[], [string], "view">;
 
   getWormholePeer: TypedContractMethod<
     [chainId: BigNumberish],
     [string],
-    'view'
+    "view"
   >;
 
-  initialize: TypedContractMethod<[], [void], 'nonpayable'>;
+  initialize: TypedContractMethod<[], [void], "nonpayable">;
 
-  isPaused: TypedContractMethod<[], [boolean], 'view'>;
+  isPaused: TypedContractMethod<[], [boolean], "view">;
 
   isSpecialRelayingEnabled: TypedContractMethod<
     [chainId: BigNumberish],
     [boolean],
-    'view'
+    "view"
   >;
 
-  isVAAConsumed: TypedContractMethod<[hash: BytesLike], [boolean], 'view'>;
+  isVAAConsumed: TypedContractMethod<[hash: BytesLike], [boolean], "view">;
 
   isWormholeEvmChain: TypedContractMethod<
     [chainId: BigNumberish],
     [boolean],
-    'view'
+    "view"
   >;
 
   isWormholeRelayingEnabled: TypedContractMethod<
     [chainId: BigNumberish],
     [boolean],
-    'view'
+    "view"
   >;
 
-  migrate: TypedContractMethod<[], [void], 'nonpayable'>;
+  migrate: TypedContractMethod<[], [void], "nonpayable">;
 
-  nttManager: TypedContractMethod<[], [string], 'view'>;
+  nttManager: TypedContractMethod<[], [string], "view">;
 
-  nttManagerToken: TypedContractMethod<[], [string], 'view'>;
+  nttManagerToken: TypedContractMethod<[], [string], "view">;
 
-  owner: TypedContractMethod<[], [string], 'view'>;
+  owner: TypedContractMethod<[], [string], "view">;
 
   parseWormholeTransceiverInstruction: TypedContractMethod<
     [encoded: BytesLike],
     [IWormholeTransceiver.WormholeTransceiverInstructionStructOutput],
-    'view'
+    "view"
   >;
 
-  pauser: TypedContractMethod<[], [string], 'view'>;
+  pauser: TypedContractMethod<[], [string], "view">;
 
   quoteDeliveryPrice: TypedContractMethod<
     [
       targetChain: BigNumberish,
-      instruction: TransceiverStructs.TransceiverInstructionStruct,
+      instruction: TransceiverStructs.TransceiverInstructionStruct
     ],
     [bigint],
-    'view'
+    "view"
   >;
 
   receiveMessage: TypedContractMethod<
     [encodedMessage: BytesLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   receiveWormholeMessages: TypedContractMethod<
@@ -717,10 +717,10 @@ export interface WormholeTransceiver extends BaseContract {
       additionalMessages: BytesLike[],
       sourceAddress: BytesLike,
       sourceChain: BigNumberish,
-      deliveryHash: BytesLike,
+      deliveryHash: BytesLike
     ],
     [void],
-    'payable'
+    "payable"
   >;
 
   sendMessage: TypedContractMethod<
@@ -728,334 +728,334 @@ export interface WormholeTransceiver extends BaseContract {
       recipientChain: BigNumberish,
       instruction: TransceiverStructs.TransceiverInstructionStruct,
       nttManagerMessage: BytesLike,
-      recipientNttManagerAddress: BytesLike,
+      recipientNttManagerAddress: BytesLike
     ],
     [void],
-    'payable'
+    "payable"
   >;
 
   setIsSpecialRelayingEnabled: TypedContractMethod<
     [chainId: BigNumberish, isEnabled: boolean],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   setIsWormholeEvmChain: TypedContractMethod<
     [chainId: BigNumberish, isEvm: boolean],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   setIsWormholeRelayingEnabled: TypedContractMethod<
     [chainId: BigNumberish, isEnabled: boolean],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   setWormholePeer: TypedContractMethod<
     [peerChainId: BigNumberish, peerContract: BytesLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
-  specialRelayer: TypedContractMethod<[], [string], 'view'>;
+  specialRelayer: TypedContractMethod<[], [string], "view">;
 
   transferOwnership: TypedContractMethod<
     [newOwner: AddressLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   transferPauserCapability: TypedContractMethod<
     [newPauser: AddressLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   transferTransceiverOwnership: TypedContractMethod<
     [newOwner: AddressLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   upgrade: TypedContractMethod<
     [newImplementation: AddressLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
-  wormhole: TypedContractMethod<[], [string], 'view'>;
+  wormhole: TypedContractMethod<[], [string], "view">;
 
-  wormholeRelayer: TypedContractMethod<[], [string], 'view'>;
+  wormholeRelayer: TypedContractMethod<[], [string], "view">;
 
   getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment,
+    key: string | FunctionFragment
   ): T;
 
   getFunction(
-    nameOrSignature: 'consistencyLevel',
-  ): TypedContractMethod<[], [bigint], 'view'>;
+    nameOrSignature: "consistencyLevel"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: 'encodeWormholeTransceiverInstruction',
+    nameOrSignature: "encodeWormholeTransceiverInstruction"
   ): TypedContractMethod<
     [instruction: IWormholeTransceiver.WormholeTransceiverInstructionStruct],
     [string],
-    'view'
+    "view"
   >;
   getFunction(
-    nameOrSignature: 'gasLimit',
-  ): TypedContractMethod<[], [bigint], 'view'>;
+    nameOrSignature: "gasLimit"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: 'getMigratesImmutables',
-  ): TypedContractMethod<[], [boolean], 'view'>;
+    nameOrSignature: "getMigratesImmutables"
+  ): TypedContractMethod<[], [boolean], "view">;
   getFunction(
-    nameOrSignature: 'getNttManagerOwner',
-  ): TypedContractMethod<[], [string], 'view'>;
+    nameOrSignature: "getNttManagerOwner"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: 'getNttManagerToken',
-  ): TypedContractMethod<[], [string], 'view'>;
+    nameOrSignature: "getNttManagerToken"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: 'getWormholePeer',
-  ): TypedContractMethod<[chainId: BigNumberish], [string], 'view'>;
+    nameOrSignature: "getWormholePeer"
+  ): TypedContractMethod<[chainId: BigNumberish], [string], "view">;
   getFunction(
-    nameOrSignature: 'initialize',
-  ): TypedContractMethod<[], [void], 'nonpayable'>;
+    nameOrSignature: "initialize"
+  ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'isPaused',
-  ): TypedContractMethod<[], [boolean], 'view'>;
+    nameOrSignature: "isPaused"
+  ): TypedContractMethod<[], [boolean], "view">;
   getFunction(
-    nameOrSignature: 'isSpecialRelayingEnabled',
-  ): TypedContractMethod<[chainId: BigNumberish], [boolean], 'view'>;
+    nameOrSignature: "isSpecialRelayingEnabled"
+  ): TypedContractMethod<[chainId: BigNumberish], [boolean], "view">;
   getFunction(
-    nameOrSignature: 'isVAAConsumed',
-  ): TypedContractMethod<[hash: BytesLike], [boolean], 'view'>;
+    nameOrSignature: "isVAAConsumed"
+  ): TypedContractMethod<[hash: BytesLike], [boolean], "view">;
   getFunction(
-    nameOrSignature: 'isWormholeEvmChain',
-  ): TypedContractMethod<[chainId: BigNumberish], [boolean], 'view'>;
+    nameOrSignature: "isWormholeEvmChain"
+  ): TypedContractMethod<[chainId: BigNumberish], [boolean], "view">;
   getFunction(
-    nameOrSignature: 'isWormholeRelayingEnabled',
-  ): TypedContractMethod<[chainId: BigNumberish], [boolean], 'view'>;
+    nameOrSignature: "isWormholeRelayingEnabled"
+  ): TypedContractMethod<[chainId: BigNumberish], [boolean], "view">;
   getFunction(
-    nameOrSignature: 'migrate',
-  ): TypedContractMethod<[], [void], 'nonpayable'>;
+    nameOrSignature: "migrate"
+  ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'nttManager',
-  ): TypedContractMethod<[], [string], 'view'>;
+    nameOrSignature: "nttManager"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: 'nttManagerToken',
-  ): TypedContractMethod<[], [string], 'view'>;
+    nameOrSignature: "nttManagerToken"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: 'owner',
-  ): TypedContractMethod<[], [string], 'view'>;
+    nameOrSignature: "owner"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: 'parseWormholeTransceiverInstruction',
+    nameOrSignature: "parseWormholeTransceiverInstruction"
   ): TypedContractMethod<
     [encoded: BytesLike],
     [IWormholeTransceiver.WormholeTransceiverInstructionStructOutput],
-    'view'
+    "view"
   >;
   getFunction(
-    nameOrSignature: 'pauser',
-  ): TypedContractMethod<[], [string], 'view'>;
+    nameOrSignature: "pauser"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: 'quoteDeliveryPrice',
+    nameOrSignature: "quoteDeliveryPrice"
   ): TypedContractMethod<
     [
       targetChain: BigNumberish,
-      instruction: TransceiverStructs.TransceiverInstructionStruct,
+      instruction: TransceiverStructs.TransceiverInstructionStruct
     ],
     [bigint],
-    'view'
+    "view"
   >;
   getFunction(
-    nameOrSignature: 'receiveMessage',
-  ): TypedContractMethod<[encodedMessage: BytesLike], [void], 'nonpayable'>;
+    nameOrSignature: "receiveMessage"
+  ): TypedContractMethod<[encodedMessage: BytesLike], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'receiveWormholeMessages',
+    nameOrSignature: "receiveWormholeMessages"
   ): TypedContractMethod<
     [
       payload: BytesLike,
       additionalMessages: BytesLike[],
       sourceAddress: BytesLike,
       sourceChain: BigNumberish,
-      deliveryHash: BytesLike,
+      deliveryHash: BytesLike
     ],
     [void],
-    'payable'
+    "payable"
   >;
   getFunction(
-    nameOrSignature: 'sendMessage',
+    nameOrSignature: "sendMessage"
   ): TypedContractMethod<
     [
       recipientChain: BigNumberish,
       instruction: TransceiverStructs.TransceiverInstructionStruct,
       nttManagerMessage: BytesLike,
-      recipientNttManagerAddress: BytesLike,
+      recipientNttManagerAddress: BytesLike
     ],
     [void],
-    'payable'
+    "payable"
   >;
   getFunction(
-    nameOrSignature: 'setIsSpecialRelayingEnabled',
+    nameOrSignature: "setIsSpecialRelayingEnabled"
   ): TypedContractMethod<
     [chainId: BigNumberish, isEnabled: boolean],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
   getFunction(
-    nameOrSignature: 'setIsWormholeEvmChain',
+    nameOrSignature: "setIsWormholeEvmChain"
   ): TypedContractMethod<
     [chainId: BigNumberish, isEvm: boolean],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
   getFunction(
-    nameOrSignature: 'setIsWormholeRelayingEnabled',
+    nameOrSignature: "setIsWormholeRelayingEnabled"
   ): TypedContractMethod<
     [chainId: BigNumberish, isEnabled: boolean],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
   getFunction(
-    nameOrSignature: 'setWormholePeer',
+    nameOrSignature: "setWormholePeer"
   ): TypedContractMethod<
     [peerChainId: BigNumberish, peerContract: BytesLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
   getFunction(
-    nameOrSignature: 'specialRelayer',
-  ): TypedContractMethod<[], [string], 'view'>;
+    nameOrSignature: "specialRelayer"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: 'transferOwnership',
-  ): TypedContractMethod<[newOwner: AddressLike], [void], 'nonpayable'>;
+    nameOrSignature: "transferOwnership"
+  ): TypedContractMethod<[newOwner: AddressLike], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'transferPauserCapability',
-  ): TypedContractMethod<[newPauser: AddressLike], [void], 'nonpayable'>;
+    nameOrSignature: "transferPauserCapability"
+  ): TypedContractMethod<[newPauser: AddressLike], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'transferTransceiverOwnership',
-  ): TypedContractMethod<[newOwner: AddressLike], [void], 'nonpayable'>;
+    nameOrSignature: "transferTransceiverOwnership"
+  ): TypedContractMethod<[newOwner: AddressLike], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'upgrade',
+    nameOrSignature: "upgrade"
   ): TypedContractMethod<
     [newImplementation: AddressLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
   getFunction(
-    nameOrSignature: 'wormhole',
-  ): TypedContractMethod<[], [string], 'view'>;
+    nameOrSignature: "wormhole"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: 'wormholeRelayer',
-  ): TypedContractMethod<[], [string], 'view'>;
+    nameOrSignature: "wormholeRelayer"
+  ): TypedContractMethod<[], [string], "view">;
 
   getEvent(
-    key: 'AdminChanged',
+    key: "AdminChanged"
   ): TypedContractEvent<
     AdminChangedEvent.InputTuple,
     AdminChangedEvent.OutputTuple,
     AdminChangedEvent.OutputObject
   >;
   getEvent(
-    key: 'BeaconUpgraded',
+    key: "BeaconUpgraded"
   ): TypedContractEvent<
     BeaconUpgradedEvent.InputTuple,
     BeaconUpgradedEvent.OutputTuple,
     BeaconUpgradedEvent.OutputObject
   >;
   getEvent(
-    key: 'Initialized',
+    key: "Initialized"
   ): TypedContractEvent<
     InitializedEvent.InputTuple,
     InitializedEvent.OutputTuple,
     InitializedEvent.OutputObject
   >;
   getEvent(
-    key: 'NotPaused',
+    key: "NotPaused"
   ): TypedContractEvent<
     NotPausedEvent.InputTuple,
     NotPausedEvent.OutputTuple,
     NotPausedEvent.OutputObject
   >;
   getEvent(
-    key: 'OwnershipTransferred',
+    key: "OwnershipTransferred"
   ): TypedContractEvent<
     OwnershipTransferredEvent.InputTuple,
     OwnershipTransferredEvent.OutputTuple,
     OwnershipTransferredEvent.OutputObject
   >;
   getEvent(
-    key: 'Paused',
+    key: "Paused"
   ): TypedContractEvent<
     PausedEvent.InputTuple,
     PausedEvent.OutputTuple,
     PausedEvent.OutputObject
   >;
   getEvent(
-    key: 'PauserTransferred',
+    key: "PauserTransferred"
   ): TypedContractEvent<
     PauserTransferredEvent.InputTuple,
     PauserTransferredEvent.OutputTuple,
     PauserTransferredEvent.OutputObject
   >;
   getEvent(
-    key: 'ReceivedMessage',
+    key: "ReceivedMessage"
   ): TypedContractEvent<
     ReceivedMessageEvent.InputTuple,
     ReceivedMessageEvent.OutputTuple,
     ReceivedMessageEvent.OutputObject
   >;
   getEvent(
-    key: 'ReceivedRelayedMessage',
+    key: "ReceivedRelayedMessage"
   ): TypedContractEvent<
     ReceivedRelayedMessageEvent.InputTuple,
     ReceivedRelayedMessageEvent.OutputTuple,
     ReceivedRelayedMessageEvent.OutputObject
   >;
   getEvent(
-    key: 'RelayingInfo',
+    key: "RelayingInfo"
   ): TypedContractEvent<
     RelayingInfoEvent.InputTuple,
     RelayingInfoEvent.OutputTuple,
     RelayingInfoEvent.OutputObject
   >;
   getEvent(
-    key: 'SendTransceiverMessage',
+    key: "SendTransceiverMessage"
   ): TypedContractEvent<
     SendTransceiverMessageEvent.InputTuple,
     SendTransceiverMessageEvent.OutputTuple,
     SendTransceiverMessageEvent.OutputObject
   >;
   getEvent(
-    key: 'SetIsSpecialRelayingEnabled',
+    key: "SetIsSpecialRelayingEnabled"
   ): TypedContractEvent<
     SetIsSpecialRelayingEnabledEvent.InputTuple,
     SetIsSpecialRelayingEnabledEvent.OutputTuple,
     SetIsSpecialRelayingEnabledEvent.OutputObject
   >;
   getEvent(
-    key: 'SetIsWormholeEvmChain',
+    key: "SetIsWormholeEvmChain"
   ): TypedContractEvent<
     SetIsWormholeEvmChainEvent.InputTuple,
     SetIsWormholeEvmChainEvent.OutputTuple,
     SetIsWormholeEvmChainEvent.OutputObject
   >;
   getEvent(
-    key: 'SetIsWormholeRelayingEnabled',
+    key: "SetIsWormholeRelayingEnabled"
   ): TypedContractEvent<
     SetIsWormholeRelayingEnabledEvent.InputTuple,
     SetIsWormholeRelayingEnabledEvent.OutputTuple,
     SetIsWormholeRelayingEnabledEvent.OutputObject
   >;
   getEvent(
-    key: 'SetWormholePeer',
+    key: "SetWormholePeer"
   ): TypedContractEvent<
     SetWormholePeerEvent.InputTuple,
     SetWormholePeerEvent.OutputTuple,
     SetWormholePeerEvent.OutputObject
   >;
   getEvent(
-    key: 'Upgraded',
+    key: "Upgraded"
   ): TypedContractEvent<
     UpgradedEvent.InputTuple,
     UpgradedEvent.OutputTuple,
@@ -1063,7 +1063,7 @@ export interface WormholeTransceiver extends BaseContract {
   >;
 
   filters: {
-    'AdminChanged(address,address)': TypedContractEvent<
+    "AdminChanged(address,address)": TypedContractEvent<
       AdminChangedEvent.InputTuple,
       AdminChangedEvent.OutputTuple,
       AdminChangedEvent.OutputObject
@@ -1074,7 +1074,7 @@ export interface WormholeTransceiver extends BaseContract {
       AdminChangedEvent.OutputObject
     >;
 
-    'BeaconUpgraded(address)': TypedContractEvent<
+    "BeaconUpgraded(address)": TypedContractEvent<
       BeaconUpgradedEvent.InputTuple,
       BeaconUpgradedEvent.OutputTuple,
       BeaconUpgradedEvent.OutputObject
@@ -1085,7 +1085,7 @@ export interface WormholeTransceiver extends BaseContract {
       BeaconUpgradedEvent.OutputObject
     >;
 
-    'Initialized(uint64)': TypedContractEvent<
+    "Initialized(uint64)": TypedContractEvent<
       InitializedEvent.InputTuple,
       InitializedEvent.OutputTuple,
       InitializedEvent.OutputObject
@@ -1096,7 +1096,7 @@ export interface WormholeTransceiver extends BaseContract {
       InitializedEvent.OutputObject
     >;
 
-    'NotPaused(bool)': TypedContractEvent<
+    "NotPaused(bool)": TypedContractEvent<
       NotPausedEvent.InputTuple,
       NotPausedEvent.OutputTuple,
       NotPausedEvent.OutputObject
@@ -1107,7 +1107,7 @@ export interface WormholeTransceiver extends BaseContract {
       NotPausedEvent.OutputObject
     >;
 
-    'OwnershipTransferred(address,address)': TypedContractEvent<
+    "OwnershipTransferred(address,address)": TypedContractEvent<
       OwnershipTransferredEvent.InputTuple,
       OwnershipTransferredEvent.OutputTuple,
       OwnershipTransferredEvent.OutputObject
@@ -1118,7 +1118,7 @@ export interface WormholeTransceiver extends BaseContract {
       OwnershipTransferredEvent.OutputObject
     >;
 
-    'Paused(bool)': TypedContractEvent<
+    "Paused(bool)": TypedContractEvent<
       PausedEvent.InputTuple,
       PausedEvent.OutputTuple,
       PausedEvent.OutputObject
@@ -1129,7 +1129,7 @@ export interface WormholeTransceiver extends BaseContract {
       PausedEvent.OutputObject
     >;
 
-    'PauserTransferred(address,address)': TypedContractEvent<
+    "PauserTransferred(address,address)": TypedContractEvent<
       PauserTransferredEvent.InputTuple,
       PauserTransferredEvent.OutputTuple,
       PauserTransferredEvent.OutputObject
@@ -1140,7 +1140,7 @@ export interface WormholeTransceiver extends BaseContract {
       PauserTransferredEvent.OutputObject
     >;
 
-    'ReceivedMessage(bytes32,uint16,bytes32,uint64)': TypedContractEvent<
+    "ReceivedMessage(bytes32,uint16,bytes32,uint64)": TypedContractEvent<
       ReceivedMessageEvent.InputTuple,
       ReceivedMessageEvent.OutputTuple,
       ReceivedMessageEvent.OutputObject
@@ -1151,7 +1151,7 @@ export interface WormholeTransceiver extends BaseContract {
       ReceivedMessageEvent.OutputObject
     >;
 
-    'ReceivedRelayedMessage(bytes32,uint16,bytes32)': TypedContractEvent<
+    "ReceivedRelayedMessage(bytes32,uint16,bytes32)": TypedContractEvent<
       ReceivedRelayedMessageEvent.InputTuple,
       ReceivedRelayedMessageEvent.OutputTuple,
       ReceivedRelayedMessageEvent.OutputObject
@@ -1162,7 +1162,7 @@ export interface WormholeTransceiver extends BaseContract {
       ReceivedRelayedMessageEvent.OutputObject
     >;
 
-    'RelayingInfo(uint8,uint256)': TypedContractEvent<
+    "RelayingInfo(uint8,uint256)": TypedContractEvent<
       RelayingInfoEvent.InputTuple,
       RelayingInfoEvent.OutputTuple,
       RelayingInfoEvent.OutputObject
@@ -1173,7 +1173,7 @@ export interface WormholeTransceiver extends BaseContract {
       RelayingInfoEvent.OutputObject
     >;
 
-    'SendTransceiverMessage(uint16,tuple)': TypedContractEvent<
+    "SendTransceiverMessage(uint16,tuple)": TypedContractEvent<
       SendTransceiverMessageEvent.InputTuple,
       SendTransceiverMessageEvent.OutputTuple,
       SendTransceiverMessageEvent.OutputObject
@@ -1184,7 +1184,7 @@ export interface WormholeTransceiver extends BaseContract {
       SendTransceiverMessageEvent.OutputObject
     >;
 
-    'SetIsSpecialRelayingEnabled(uint16,bool)': TypedContractEvent<
+    "SetIsSpecialRelayingEnabled(uint16,bool)": TypedContractEvent<
       SetIsSpecialRelayingEnabledEvent.InputTuple,
       SetIsSpecialRelayingEnabledEvent.OutputTuple,
       SetIsSpecialRelayingEnabledEvent.OutputObject
@@ -1195,7 +1195,7 @@ export interface WormholeTransceiver extends BaseContract {
       SetIsSpecialRelayingEnabledEvent.OutputObject
     >;
 
-    'SetIsWormholeEvmChain(uint16,bool)': TypedContractEvent<
+    "SetIsWormholeEvmChain(uint16,bool)": TypedContractEvent<
       SetIsWormholeEvmChainEvent.InputTuple,
       SetIsWormholeEvmChainEvent.OutputTuple,
       SetIsWormholeEvmChainEvent.OutputObject
@@ -1206,7 +1206,7 @@ export interface WormholeTransceiver extends BaseContract {
       SetIsWormholeEvmChainEvent.OutputObject
     >;
 
-    'SetIsWormholeRelayingEnabled(uint16,bool)': TypedContractEvent<
+    "SetIsWormholeRelayingEnabled(uint16,bool)": TypedContractEvent<
       SetIsWormholeRelayingEnabledEvent.InputTuple,
       SetIsWormholeRelayingEnabledEvent.OutputTuple,
       SetIsWormholeRelayingEnabledEvent.OutputObject
@@ -1217,7 +1217,7 @@ export interface WormholeTransceiver extends BaseContract {
       SetIsWormholeRelayingEnabledEvent.OutputObject
     >;
 
-    'SetWormholePeer(uint16,bytes32)': TypedContractEvent<
+    "SetWormholePeer(uint16,bytes32)": TypedContractEvent<
       SetWormholePeerEvent.InputTuple,
       SetWormholePeerEvent.OutputTuple,
       SetWormholePeerEvent.OutputObject
@@ -1228,7 +1228,7 @@ export interface WormholeTransceiver extends BaseContract {
       SetWormholePeerEvent.OutputObject
     >;
 
-    'Upgraded(address)': TypedContractEvent<
+    "Upgraded(address)": TypedContractEvent<
       UpgradedEvent.InputTuple,
       UpgradedEvent.OutputTuple,
       UpgradedEvent.OutputObject
