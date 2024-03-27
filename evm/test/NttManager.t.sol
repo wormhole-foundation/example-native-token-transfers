@@ -389,6 +389,65 @@ contract TestNttManager is Test, IRateLimiterEvents {
         );
     }
 
+    function test_cancellingOutboundQueuedTransfers() public {
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(nttManager.token());
+
+        uint8 decimals = token.decimals();
+
+        nttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 9, type(uint64).max);
+        nttManager.setOutboundLimit(0);
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+
+        vm.startPrank(user_A);
+
+        token.approve(address(nttManager), 3 * 10 ** decimals);
+
+        uint256 userBalanceBefore = token.balanceOf(user_A);
+        uint256 nttManagerBalanceBefore = token.balanceOf(address(nttManager));
+
+        uint64 s1 = nttManager.transfer(
+            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), true, new bytes(1)
+        );
+        vm.stopPrank();
+
+        // Another user should not be able to cancel the transfer
+        vm.prank(user_B);
+        vm.expectRevert(
+            abi.encodeWithSelector(INttManager.CancellerNotSender.selector, user_B, user_A)
+        );
+        nttManager.cancelOutboundQueuedTransfer(s1);
+
+        vm.startPrank(user_A);
+        nttManager.cancelOutboundQueuedTransfer(s1);
+
+        // The balance before and after the cancel should be identical
+        assertEq(userBalanceBefore, token.balanceOf(user_A));
+        assertEq(nttManagerBalanceBefore, token.balanceOf(address(nttManager)));
+
+        // We cannot cancel a queued transfer more than once
+        vm.expectRevert(
+            abi.encodeWithSelector(IRateLimiter.OutboundQueuedTransferNotFound.selector, s1)
+        );
+        nttManager.cancelOutboundQueuedTransfer(s1);
+
+        // We cannot complete an outbound transfer that has already been cancelled
+        vm.expectRevert(
+            abi.encodeWithSelector(IRateLimiter.OutboundQueuedTransferNotFound.selector, s1)
+        );
+        nttManager.completeOutboundQueuedTransfer(s1);
+
+        // The next transfer has previous sequence number + 1
+        uint64 s2 = nttManager.transfer(
+            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), true, new bytes(1)
+        );
+
+        assertEq(s2, s1 + 1);
+    }
+
     // == threshold
 
     function test_cantSetThresholdTooHigh() public {

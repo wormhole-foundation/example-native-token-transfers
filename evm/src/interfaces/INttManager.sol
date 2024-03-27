@@ -48,6 +48,14 @@ interface INttManager is IManagerBase {
     /// @param digest The digest of the message.
     event TransferRedeemed(bytes32 indexed digest);
 
+    /// @notice Emitted when an outbound transfer has been cancelled
+    /// @dev Topic0
+    ///      0xf80e572ae1b63e2449629b6c7d783add85c36473926f216077f17ee002bcfd07.
+    /// @param sequence The sequence number being cancelled
+    /// @param recipient The canceller and recipient of the funds
+    /// @param amount The amount of the transfer being cancelled
+    event OutboundTransferCancelled(uint256 sequence, address recipient, uint256 amount);
+
     /// @notice The transfer has some dust.
     /// @dev Selector 0x71f0634a
     /// @dev This is a security measure to prevent users from losing funds.
@@ -98,6 +106,12 @@ interface INttManager is IManagerBase {
     /// @notice Peer cannot have zero decimals.
     error InvalidPeerDecimals();
 
+    /// @notice Error when someone other than the original sender tries to cancel a queued outbound transfer.
+    /// @dev Selector 0xceb40a85.
+    /// @param canceller The address trying to cancel the transfer.
+    /// @param sender The original sender that initiated the transfer that was queued.
+    error CancellerNotSender(address canceller, address sender);
+
     /// @notice Transfer a given amount to a recipient on a given chain. This function is called
     ///         by the user to send the token cross-chain. This function will either lock or burn the
     ///         sender's tokens. Finally, this function will call into registered `Endpoint` contracts
@@ -137,6 +151,11 @@ interface INttManager is IManagerBase {
         external
         payable
         returns (uint64 msgSequence);
+
+    /// @notice Cancels an outbound transfer that's been queued.
+    /// @dev This method is called by the client to cancel an outbound transfer that's been queued.
+    /// @param queueSequence The sequence of the message in the queue.
+    function cancelOutboundQueuedTransfer(uint64 queueSequence) external;
 
     /// @notice Complete an inbound queued transfer.
     /// @param digest The digest of the message to complete.
