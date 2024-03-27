@@ -4,82 +4,47 @@ import {
   ChainAddress,
   ChainsConfig,
   Network,
-  ProtocolInitializer,
   TokenAddress,
   nativeChainIds,
   serialize,
   toChainId,
-  tokens,
   universalAddress,
-} from '@wormhole-foundation/sdk-connect';
-import type { EvmChains, EvmPlatformType } from '@wormhole-foundation/sdk-evm';
+} from "@wormhole-foundation/sdk-connect";
+import type { EvmChains, EvmPlatformType } from "@wormhole-foundation/sdk-evm";
 import {
   EvmAddress,
   EvmPlatform,
   EvmUnsignedTransaction,
   addChainId,
   addFrom,
-} from '@wormhole-foundation/sdk-evm';
-import '@wormhole-foundation/sdk-evm-core';
+} from "@wormhole-foundation/sdk-evm";
+import "@wormhole-foundation/sdk-evm-core";
 
-import type { Provider, TransactionRequest } from 'ethers';
-import { ethers_contracts } from './index.js';
 import {
   Ntt,
   NttTransceiver,
   WormholeNttTransceiver,
-} from '@wormhole-foundation/sdk-definitions-ntt';
+} from "@wormhole-foundation/sdk-definitions-ntt";
+import type { Provider, TransactionRequest } from "ethers";
+import { ethers_contracts } from "./index.js";
 
 interface NttContracts {
   manager: string;
+  token: string;
   transceiver: {
     wormhole?: string;
   };
-}
-
-export function evmNttProtocolFactory(
-  token: string,
-): ProtocolInitializer<'Evm', 'Ntt'> {
-  class _EvmNtt<N extends Network, C extends EvmChains> extends EvmNtt<N, C> {
-    tokenAddress: string = token;
-
-    static async fromRpc<N extends Network>(
-      provider: Provider,
-      config: ChainsConfig<N, EvmPlatformType>,
-    ): Promise<_EvmNtt<N, EvmChains>> {
-      const [network, chain] = await EvmPlatform.chainFromRpc(provider);
-      const conf = config[chain]!;
-
-      if (conf.network !== network)
-        throw new Error(`Network mismatch: ${conf.network} != ${network}`);
-      if (!conf.tokenMap) throw new Error('Token map not found');
-
-      const maybeToken = tokens.filters.byAddress(conf.tokenMap, token);
-      if (maybeToken === undefined) throw new Error('Token not found');
-      if (!maybeToken.ntt) throw new Error('Token not configured with NTT');
-
-      const { manager, transceiver } = maybeToken.ntt;
-      return new _EvmNtt(network as N, chain, provider, {
-        manager,
-        transceiver: { wormhole: transceiver },
-      });
-    }
-  }
-  return _EvmNtt;
 }
 
 export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
   implements NttTransceiver<N, C, WormholeNttTransceiver.VAA>
 {
   transceiver: ethers_contracts.WormholeTransceiver;
-  constructor(
-    readonly manager: EvmNtt<N, C>,
-    readonly address: string,
-  ) {
+  constructor(readonly manager: EvmNtt<N, C>, readonly address: string) {
     this.transceiver =
       ethers_contracts.factories.WormholeTransceiver__factory.connect(
         address,
-        manager.provider,
+        manager.provider
       );
   }
 
@@ -89,32 +54,32 @@ export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
 
   async *receive(attestation: WormholeNttTransceiver.VAA) {
     const tx = await this.transceiver.receiveMessage.populateTransaction(
-      serialize(attestation),
+      serialize(attestation)
     );
 
     yield this.manager.createUnsignedTx(
       tx,
-      'WormholeTransceiver.receiveMessage',
+      "WormholeTransceiver.receiveMessage"
     );
   }
 
   async isWormholeRelayingEnabled(destChain: Chain): Promise<boolean> {
     return await this.transceiver.isWormholeRelayingEnabled(
-      toChainId(destChain),
+      toChainId(destChain)
     );
   }
 
   async isSpecialRelayingEnabled(destChain: Chain): Promise<boolean> {
     return await this.transceiver.isSpecialRelayingEnabled(
-      toChainId(destChain),
+      toChainId(destChain)
     );
   }
 }
 
-export abstract class EvmNtt<N extends Network, C extends EvmChains>
+export class EvmNtt<N extends Network, C extends EvmChains>
   implements Ntt<N, C>
 {
-  abstract tokenAddress: string;
+  tokenAddress: string;
   readonly chainId: bigint;
   manager: ethers_contracts.NttManager;
   xcvrs: EvmNttWormholeTranceiver<N, C>[];
@@ -124,23 +89,37 @@ export abstract class EvmNtt<N extends Network, C extends EvmChains>
     readonly network: N,
     readonly chain: C,
     readonly provider: Provider,
-    readonly contracts: NttContracts,
+    readonly contracts: NttContracts
   ) {
     this.chainId = nativeChainIds.networkChainToNativeChainId.get(
       network,
-      chain,
+      chain
     ) as bigint;
 
+    this.tokenAddress = contracts.token;
     this.managerAddress = contracts.manager;
     this.manager = ethers_contracts.factories.NttManager__factory.connect(
       contracts.manager,
-      this.provider,
+      this.provider
     );
 
     this.xcvrs = [
       // Enable more Transceivers here
       new EvmNttWormholeTranceiver(this, contracts.transceiver.wormhole!),
     ];
+  }
+
+  static async fromRpc<N extends Network>(
+    provider: Provider,
+    config: ChainsConfig<N, EvmPlatformType>
+  ): Promise<EvmNtt<N, EvmChains>> {
+    const [network, chain] = await EvmPlatform.chainFromRpc(provider);
+    //const conf = config[chain]!;
+    // add ntt stuff?
+    return new EvmNtt(network, chain, provider, {} as NttContracts) as EvmNtt<
+      N,
+      EvmChains
+    >;
   }
 
   private encodeFlags(enabledIdxs?: number[]): Ntt.TransceiverInstruction[] {
@@ -157,7 +136,7 @@ export abstract class EvmNtt<N extends Network, C extends EvmChains>
     return this.manager.quoteDeliveryPrice.staticCall(
       toChainId(dstChain),
       this.encodeFlags(),
-      this.xcvrs.map((x) => x.address),
+      this.xcvrs.map((x) => x.address)
     );
   }
 
@@ -165,52 +144,52 @@ export abstract class EvmNtt<N extends Network, C extends EvmChains>
     sender: AccountAddress<C>,
     amount: bigint,
     destination: ChainAddress,
-    queue: boolean,
+    queue: boolean
   ): AsyncGenerator<EvmUnsignedTransaction<N, C>> {
     const [_, totalPrice] = await this.quoteDeliveryPrice(destination.chain);
     const transceiverIxs = Ntt.encodeTransceiverInstructions(
-      this.encodeFlags(),
+      this.encodeFlags()
     );
     const senderAddress = new EvmAddress(sender).toString();
 
     //TODO check for ERC-2612 (permit) support on token?
     const tokenContract = EvmPlatform.getTokenImplementation(
       this.provider,
-      this.tokenAddress,
+      this.tokenAddress
     );
 
     const allowance = await tokenContract.allowance(
       senderAddress,
-      this.managerAddress,
+      this.managerAddress
     );
     if (allowance < amount) {
       const txReq = await tokenContract.approve.populateTransaction(
         this.managerAddress,
-        amount,
+        amount
       );
       yield this.createUnsignedTx(
         addFrom(txReq, senderAddress),
-        'TokenBridge.Approve',
+        "TokenBridge.Approve"
       );
     }
 
     const txReq = await this.manager
-      .getFunction('transfer(uint256,uint16,bytes32,bool,bytes)')
+      .getFunction("transfer(uint256,uint16,bytes32,bool,bytes)")
       .populateTransaction(
         amount,
         toChainId(destination.chain),
         universalAddress(destination),
         queue,
         transceiverIxs,
-        { value: totalPrice },
+        { value: totalPrice }
       );
 
-    yield this.createUnsignedTx(addFrom(txReq, senderAddress), 'Ntt.transfer');
+    yield this.createUnsignedTx(addFrom(txReq, senderAddress), "Ntt.transfer");
   }
 
   // TODO: should this be some map of idx to transceiver?
   async *redeem(attestations: Ntt.Attestation[]) {
-    if (attestations.length !== this.xcvrs.length) throw 'no';
+    if (attestations.length !== this.xcvrs.length) throw "no";
 
     for (const idx in this.xcvrs) {
       const xcvr = this.xcvrs[idx]!;
@@ -232,10 +211,10 @@ export abstract class EvmNtt<N extends Network, C extends EvmChains>
 
   async getInboundQueuedTransfer(
     fromChain: Chain,
-    transceiverMessage: Ntt.Message,
+    transceiverMessage: Ntt.Message
   ): Promise<Ntt.InboundQueuedTransfer<C> | null> {
     const queuedTransfer = await this.manager.getInboundQueuedTransfer(
-      Ntt.messageDigest(fromChain, transceiverMessage),
+      Ntt.messageDigest(fromChain, transceiverMessage)
     );
     if (queuedTransfer.txTimestamp > 0n) {
       const { recipient, amount, txTimestamp } = queuedTransfer;
@@ -253,25 +232,25 @@ export abstract class EvmNtt<N extends Network, C extends EvmChains>
     fromChain: Chain,
     transceiverMessage: Ntt.Message,
     token: TokenAddress<C>,
-    payer?: AccountAddress<C>,
+    payer?: AccountAddress<C>
   ) {
     const tx = await this.manager.completeInboundQueuedTransfer(
-      Ntt.messageDigest(fromChain, transceiverMessage),
+      Ntt.messageDigest(fromChain, transceiverMessage)
     );
-    yield this.createUnsignedTx(tx, 'Ntt.completeInboundQueuedTransfer');
+    yield this.createUnsignedTx(tx, "Ntt.completeInboundQueuedTransfer");
   }
 
   createUnsignedTx(
     txReq: TransactionRequest,
     description: string,
-    parallelizable: boolean = false,
+    parallelizable: boolean = false
   ): EvmUnsignedTransaction<N, C> {
     return new EvmUnsignedTransaction(
       addChainId(txReq, this.chainId),
       this.network,
       this.chain,
       description,
-      parallelizable,
+      parallelizable
     );
   }
 }

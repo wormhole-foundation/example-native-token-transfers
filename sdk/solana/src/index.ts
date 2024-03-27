@@ -1,9 +1,9 @@
-import { registerProtocol } from '@wormhole-foundation/sdk-connect';
-import { _platform } from '@wormhole-foundation/sdk-solana';
-import { solanaNttProtocolFactory } from './ntt.js';
-import '@wormhole-foundation/sdk-definitions-ntt';
+import { registerProtocol } from "@wormhole-foundation/sdk-connect";
+import { _platform } from "@wormhole-foundation/sdk-solana";
+import { SolanaNtt } from "./ntt.js";
+import "@wormhole-foundation/sdk-definitions-ntt";
 
-registerProtocol(_platform, 'Ntt', solanaNttProtocolFactory);
+registerProtocol(_platform, "Ntt", SolanaNtt);
 
-export * as idl from './anchor-idl/index.js';
-export * from './ntt.js';
+export * as idl from "./anchor-idl/index.js";
+export * from "./ntt.js";

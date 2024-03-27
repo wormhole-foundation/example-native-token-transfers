@@ -1,4 +1,5 @@
 import { IdlAccounts, Program } from "@coral-xyz/anchor";
+import { associatedAddress } from "@coral-xyz/anchor/dist/cjs/utils/token.js";
 import * as splToken from "@solana/spl-token";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import {
@@ -20,7 +21,6 @@ import {
   UnsignedTransaction,
   toChain,
   toChainId,
-  tokens,
 } from "@wormhole-foundation/sdk-connect";
 import {
   Ntt,
@@ -48,9 +48,9 @@ import {
   nttAddresses,
   programDataAddress,
 } from "./utils.js";
-import { associatedAddress } from "@coral-xyz/anchor/dist/cjs/utils/token.js";
 
 interface NttContracts {
+  token: string;
   manager: string;
   transceiver: {
     wormhole?: string;
@@ -68,34 +68,6 @@ export function solanaNttProtocolFactory(
     C
   > {
     tokenAddress: string = token;
-
-    static async fromRpc<N extends Network>(
-      provider: Connection,
-      config: ChainsConfig<N, SolanaPlatformType>
-    ): Promise<_SolanaNtt<N, SolanaChains>> {
-      const [network, chain] = await SolanaPlatform.chainFromRpc(provider);
-      const conf = config[chain]!;
-
-      if (conf.network !== network)
-        throw new Error(`Network mismatch: ${conf.network} != ${network}`);
-      if (!conf.tokenMap) throw new Error("Token map not found");
-
-      const maybeToken = tokens.filters.byAddress(conf.tokenMap, token);
-      if (maybeToken === undefined) throw new Error("Token not found");
-      if (!maybeToken.ntt) throw new Error("Token not configured with NTT");
-
-      const { manager, transceiver } = maybeToken.ntt;
-      return new _SolanaNtt(
-        network as N,
-        chain,
-        provider,
-        conf.contracts.coreBridge!,
-        {
-          manager,
-          transceiver: { wormhole: transceiver },
-        }
-      );
-    }
   }
   return _SolanaNtt;
 }
@@ -147,6 +119,30 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     this.pdas = nttAddresses(this.program.programId);
     this.xcvrs = [new SolanaNttWormholeTransceiver<N, C>(this, "")];
+  }
+
+  static async fromRpc<N extends Network>(
+    provider: Connection,
+    config: ChainsConfig<N, SolanaPlatformType>
+  ): Promise<SolanaNtt<N, SolanaChains>> {
+    const [network, chain] = await SolanaPlatform.chainFromRpc(provider);
+    const conf = config[chain]!;
+
+    if (conf.network !== network)
+      throw new Error(`Network mismatch: ${conf.network} != ${network}`);
+    if (!conf.tokenMap) throw new Error("Token map not found");
+
+    return new SolanaNtt(
+      network as N,
+      chain,
+      provider,
+      conf.contracts.coreBridge!,
+      {
+        token: "",
+        manager: "",
+        transceiver: { wormhole: "" },
+      }
+    );
   }
 
   async getConfig(): Promise<Config> {
