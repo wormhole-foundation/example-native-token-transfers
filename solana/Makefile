@@ -7,6 +7,8 @@ build: _anchor-build target/idl/example_native_token_transfers.json
 target/idl/example_native_token_transfers.json:
 	@echo "Removing generics from $@"
 	@ cat $@ | jq '(.accounts, .types) |= map(select(has("generics") | not))' > temp.json && mv temp.json $@
+	@ cp $@ ../sdk/solana/src/anchor-idl/
+	@ cp target/types/*.ts ../sdk/solana/src/anchor-idl/
 
 .PHONY: anchor-build
 _anchor-build:

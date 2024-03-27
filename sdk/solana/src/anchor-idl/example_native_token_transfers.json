@@ -778,7 +778,7 @@
         },
         {
           "name": "emitter",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -856,7 +856,7 @@
         },
         {
           "name": "emitter",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -927,7 +927,7 @@
         },
         {
           "name": "emitter",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -1725,9 +1725,11 @@
       "code": 6018,
       "name": "BadAmountAfterBurn",
       "msg": "BadAmountAfterBurn"
+    },
+    {
+      "code": 6019,
+      "name": "ZeroThreshold",
+      "msg": "ZeroThreshold"
     }
-  ],
-  "metadata": {
-    "address": "nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS"
-  }
+  ]
 }

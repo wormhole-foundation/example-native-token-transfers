@@ -10,6 +10,7 @@ import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
 import BN from "bn.js";
 
 import { CustomConversion, Layout } from "@wormhole-foundation/sdk-base";
+import { ChainAddress } from "@wormhole-foundation/sdk-connect";
 
 export const BPF_LOADER_UPGRADEABLE_PROGRAM_ID = new PublicKey(
   "BPFLoaderUpgradeab1e11111111111111111111111"
@@ -67,9 +68,8 @@ export const U64 = {
 };
 
 export interface TransferArgs {
-  amount: BN;
-  recipientChain: { id: ChainId };
-  recipientAddress: number[];
+  amount: bigint;
+  recipient: ChainAddress;
   shouldQueue: boolean;
 }
 
@@ -118,9 +118,9 @@ export const nttAddresses = (programId: PublicKeyInitData) => {
         sender.toBytes(),
         keccak256(
           encoding.bytes.concat(
-            new Uint8Array(args.amount.toArrayLike(Buffer, "be", 8)),
-            chainToBytes(args.recipientChain.id),
-            new Uint8Array(args.recipientAddress),
+            encoding.bignum.toBytes(args.amount, 8),
+            chainToBytes(args.recipient.chain),
+            args.recipient.address.toUniversalAddress().toUint8Array(),
             new Uint8Array([args.shouldQueue ? 1 : 0])
           )
         ),

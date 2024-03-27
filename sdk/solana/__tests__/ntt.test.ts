@@ -1,78 +1,86 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
-import * as fs from "fs";
-
 import {
   ChainContext,
-  Signer,
+  UniversalAddress,
+  VAA,
+  Wormhole,
+  deserializePayload,
+  encoding,
+  serialize,
+  serializePayload,
   signSendWait,
+  testing,
 } from "@wormhole-foundation/sdk-connect";
-import { SolanaSendSigner } from "@wormhole-foundation/sdk-solana";
+import {
+  SolanaPlatform,
+  SolanaSendSigner,
+} from "@wormhole-foundation/sdk-solana";
+import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
+import * as fs from "fs";
 import { SolanaNtt } from "../src/index.js";
+import { deserialize } from "@wormhole-foundation/sdk-connect";
 
-export const GUARDIAN_KEY =
+const solanaRootDir = `${__dirname}/../../../solana`;
+
+const GUARDIAN_KEY =
   "cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0";
 
-// TODO: is this in conf?
-export const CORE_BRIDGE_ADDRESS =
-  "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth";
+// TODO: are these in either the SDK or anchor.toml?
+const CORE_BRIDGE_ADDRESS = "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth";
+const NTT_ADDRESS = "nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS";
+
+const w = new Wormhole("Devnet", [SolanaPlatform]);
+
+const remoteXcvrAddress = new UniversalAddress(
+  encoding.bytes.encode("transceiver".padStart(32, "\0"))
+);
+const remoteMgrAddress = new UniversalAddress(
+  encoding.bytes.encode("nttManager".padStart(32, "\0"))
+);
 
 describe("example-native-token-transfers", () => {
-  console.log(__dirname);
   const payerSecretKey = Uint8Array.from(
     JSON.parse(
-      fs.readFileSync(`${__dirname}/../../../solana/keys/test.json`, {
+      fs.readFileSync(`${solanaRootDir}/keys/test.json`, {
         encoding: "utf-8",
       })
     )
   );
   const payer = anchor.web3.Keypair.fromSecretKey(payerSecretKey);
-
   const owner = anchor.web3.Keypair.generate();
+
   const connection = new anchor.web3.Connection(
     "http://localhost:8899",
     "confirmed"
   );
 
-  const user = anchor.web3.Keypair.generate();
+  // Make sure we're using the exact same Connection obj for rpc
+  const ctx: ChainContext<"Devnet", "Solana"> = w
+    .getPlatform("Solana")
+    .getChain("Solana", connection);
 
-  let signer: Signer;
-  let ntt: SolanaNtt<"Devnet", "Solana">;
-  let ctx: ChainContext<"Devnet", "Solana">;
+  const signer = new SolanaSendSigner(connection, "Solana", payer);
+
+  const coreBridge = new SolanaWormholeCore("Devnet", "Solana", connection, {
+    coreBridge: CORE_BRIDGE_ADDRESS,
+  });
 
   let tokenAccount: anchor.web3.PublicKey;
   let mint: anchor.web3.PublicKey;
+  let ntt: SolanaNtt<"Devnet", "Solana">;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     // airdrop some tokens to payer
     mint = await spl.createMint(connection, payer, owner.publicKey, null, 9);
-    //{
-    //      chains: {
-    //        Solana: {
-    //          contracts: {
-    //            coreBridge: ,
-    //          },
-    //          tokenMap: {
-    //            TestNTT: {
-    //              key: "TestNTT",
-    //              decimals: 9,
-    //              address: mint.toBase58(),
-    //              chain: "Solana",
-    //              symbol: "NTT",
-    //            },
-    //          },
-    //        },
-    //      },
-    //    }
 
-    signer = new SolanaSendSigner(connection, "Solana", payer);
-
+    // Create our contract client
     ntt = new SolanaNtt("Devnet", "Solana", connection, CORE_BRIDGE_ADDRESS, {
       token: mint.toBase58(),
-      manager: "",
+      manager: NTT_ADDRESS,
       transceiver: {
-        wormhole: "",
+        wormhole: NTT_ADDRESS,
       },
     });
 
@@ -80,7 +88,7 @@ describe("example-native-token-transfers", () => {
       connection,
       payer,
       mint,
-      user.publicKey
+      payer.publicKey
     );
 
     await spl.mintTo(
@@ -94,7 +102,7 @@ describe("example-native-token-transfers", () => {
   });
 
   describe("Locking", () => {
-    beforeEach(async () => {
+    beforeAll(async () => {
       await spl.setAuthority(
         connection,
         payer,
@@ -103,6 +111,8 @@ describe("example-native-token-transfers", () => {
         0, // mint
         ntt.pdas.tokenAuthority()
       );
+
+      // init
       const initTxs = ntt.initialize({
         payer,
         owner: payer,
@@ -112,66 +122,80 @@ describe("example-native-token-transfers", () => {
         mode: "locking",
       });
       await signSendWait(ctx, initTxs, signer);
-      //await ntt.registerTransceiver({
-      //  payer,
-      //  owner: payer,
-      //  transceiver: ntt.program.programId,
-      //});
-      //await ntt.setWormholeTransceiverPeer({
-      //  payer,
-      //  owner: payer,
-      //  chain: "ethereum",
-      //  address: Buffer.from("transceiver".padStart(32, "\0")),
-      //});
-      //await ntt.setPeer({
-      //  payer,
-      //  owner: payer,
-      //  chain: "ethereum",
-      //  address: Buffer.from("nttManager".padStart(32, "\0")),
-      //  limit: new BN(1000000),
-      //  tokenDecimals: 18,
-      //});
+
+      // register
+      const registerTxs = ntt.registerTransceiver({
+        payer,
+        owner: payer,
+        transceiver: ntt.program.programId,
+      });
+      await signSendWait(ctx, registerTxs, signer);
+
+      // Set Wormhole xcvr peer
+      const setXcvrPeerTxs = ntt.setWormholeTransceiverPeer({
+        payer,
+        owner: payer,
+        chain: "Ethereum",
+        address: remoteXcvrAddress.toUint8Array(),
+      });
+      await signSendWait(ctx, setXcvrPeerTxs, signer);
+
+      // Set manager peer
+      const setPeerTxs = ntt.setPeer({
+        payer,
+        owner: payer,
+        chain: "Ethereum",
+        address: remoteMgrAddress.toUint8Array(),
+        limit: new BN(1000000),
+        tokenDecimals: 18,
+      });
+      await signSendWait(ctx, setPeerTxs, signer);
     });
+
     test("Can send tokens", async () => {
       // TODO: factor out this test so it can be reused for burn&mint
       // transfer some tokens
-      const amount = new BN(100000);
-      console.log(amount);
-      // const outboxItem = await ntt.transfer({
-      //   payer,
-      //   from: tokenAccount,
-      //   fromAuthority: user,
-      //   amount,
-      //   recipientChain: "ethereum",
-      //   recipientAddress: Array.from(user.publicKey.toBuffer()), // TODO: dummy
-      //   shouldQueue: false,
-      // });
-      // const wormholeMessage = ntt.wormholeMessageAccountAddress(outboxItem);
-      // const wormholeMessageAccount = await connection.getAccountInfo(
-      //   wormholeMessage
-      // );
-      // if (wormholeMessageAccount === null) {
-      //   throw new Error("wormhole message account not found");
-      // }
-      // const messageData = PostedMessageData.deserialize(
-      //   wormholeMessageAccount.data
-      // );
-      // const transceiverMessage = deserializePayload(
-      //   "NTT:WormholeTransfer",
-      //   messageData.message.payload
-      // );
-      // // assert theat amount is what we expect
-      // expect(
-      //   transceiverMessage.nttManagerPayload.payload.trimmedAmount
-      // ).to.deep.equal({ amount: 10000n, decimals: 8 });
-      // // get from balance
-      // const balance = await connection.getTokenAccountBalance(tokenAccount);
-      // expect(balance.value.amount).to.equal("9900000");
+      const amount = 100000n;
+      const sender = Wormhole.parseAddress("Solana", signer.address());
+
+      // made up receiver
+      const receiver = testing.utils.makeUniversalChainAddress("Ethereum");
+
+      // TODO: keep or remove the `outboxItem` param?
+      // added as a way to keep tests the same but it technically breaks the Ntt interface
+      const outboxItem = anchor.web3.Keypair.generate();
+      const xferTxs = ntt.transfer(sender, amount, receiver, false, outboxItem);
+      await signSendWait(ctx, xferTxs, signer);
+
+      const wormholeMessage = ntt.pdas.wormholeMessageAccount(
+        outboxItem.publicKey
+      );
+
+      const unsignedVaa = (await coreBridge.parsePostMessageAccount(
+        wormholeMessage
+      )) as VAA<"Uint8Array">; // TODO: remove `as` when next version sdk is out
+
+      const transceiverMessage = deserializePayload(
+        "Ntt:WormholeTransfer",
+        unsignedVaa.payload
+      );
+
+      // assert theat amount is what we expect
+      expect(
+        transceiverMessage.nttManagerPayload.payload.trimmedAmount
+      ).toMatchObject({ amount: 10000n, decimals: 8 });
+
+      // get from balance
+      const balance = await connection.getTokenAccountBalance(tokenAccount);
+      expect(balance.value.amount).toBe("9900000");
+
       // grab logs
-      // await connection.confirmTransaction(redeemTx, 'confirmed');
-      // const tx = await anchor.getProvider().connection.getParsedTransaction(redeemTx, {
-      //   commitment: "confirmed",
-      // });
+      //await connection.confirmTransaction(redeemTx, "confirmed");
+      //const tx = await anchor
+      //  .getProvider()
+      //  .connection.getParsedTransaction(redeemTx, {
+      //    commitment: "confirmed",
+      //  });
       // console.log(tx);
       // const log = tx.meta.logMessages[1];
       // const message = log.substring(log.indexOf(':') + 1);
@@ -179,52 +203,56 @@ describe("example-native-token-transfers", () => {
       // TODO: assert other stuff in the message
       // console.log(nttManagerMessage);
     });
-    // it("Can receive tokens", async () => {
-    //   const emitter = new MockEmitter(
-    //     Buffer.from("transceiver".padStart(32, "\0")).toString("hex"),
-    //     toChainId("ethereum"),
-    //     Number(0) // sequence
-    //   );
-    //   const guardians = new MockGuardians(0, [GUARDIAN_KEY]);
-    //   const sendingTransceiverMessage = {
-    //     sourceNttManager: new UniversalAddress(
-    //       encoding.bytes.encode("nttManager".padStart(32, "\0"))
-    //     ),
-    //     recipientNttManager: new UniversalAddress(
-    //       ntt.program.programId.toBytes()
-    //     ),
-    //     nttManagerPayload: {
-    //       id: encoding.bytes.encode("sequence1".padEnd(32, "0")),
-    //       sender: new UniversalAddress("FACE".padStart(64, "0")),
-    //       payload: {
-    //         trimmedAmount: {
-    //           amount: 10000n,
-    //           decimals: 8,
-    //         },
-    //         sourceToken: new UniversalAddress("FAFA".padStart(64, "0")),
-    //         recipientAddress: new UniversalAddress(user.publicKey.toBytes()),
-    //         recipientChain: "Solana",
-    //       },
-    //     },
-    //     transceiverPayload: new Uint8Array(0),
-    //   } as const;
-    //   const serialized = serializePayload(
-    //     "NTT:WormholeTransfer",
-    //     sendingTransceiverMessage
-    //   );
-    //   const published = emitter.publishMessage(
-    //     0, // nonce
-    //     Buffer.from(serialized),
-    //     0 // consistency level
-    //   );
-    //   const vaaBuf = guardians.addSignatures(published, [0]);
-    //   await postVaa(connection, payer, vaaBuf, ntt.wormholeId);
-    //   const released = await ntt.redeem({
-    //     payer,
-    //     vaa: vaaBuf,
-    //   });
-    //   expect(released).to.equal(true);
-    // });
+
+    it("Can receive tokens", async () => {
+      const emitter = new testing.mocks.MockEmitter(
+        remoteXcvrAddress,
+        "Ethereum",
+        0n
+      );
+
+      const guardians = new testing.mocks.MockGuardians(0, [GUARDIAN_KEY]);
+      const sender = Wormhole.parseAddress("Solana", signer.address());
+
+      const sendingTransceiverMessage = {
+        sourceNttManager: remoteMgrAddress,
+        recipientNttManager: new UniversalAddress(
+          ntt.program.programId.toBytes()
+        ),
+        nttManagerPayload: {
+          id: encoding.bytes.encode("sequence1".padEnd(32, "0")),
+          sender: new UniversalAddress("FACE".padStart(64, "0")),
+          payload: {
+            trimmedAmount: {
+              amount: 10000n,
+              decimals: 8,
+            },
+            sourceToken: new UniversalAddress("FAFA".padStart(64, "0")),
+            recipientAddress: new UniversalAddress(payer.publicKey.toBytes()),
+            recipientChain: "Solana",
+          },
+        },
+        transceiverPayload: new Uint8Array(0),
+      } as const;
+
+      const serialized = serializePayload(
+        "Ntt:WormholeTransfer",
+        sendingTransceiverMessage
+      );
+      const published = emitter.publishMessage(0, serialized, 200);
+      const rawVaa = guardians.addSignatures(published, [0]);
+      const vaa = deserialize("Ntt:WormholeTransfer", serialize(rawVaa));
+
+      const redeemTxs = ntt.redeem([vaa], sender);
+      try {
+        await signSendWait(ctx, redeemTxs, signer);
+      } catch (e) {
+        console.error(e);
+        return;
+      }
+
+      // expect(released).to.equal(true);
+    });
   });
 
   // describe('Burning', () => {
