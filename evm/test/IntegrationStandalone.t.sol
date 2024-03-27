@@ -71,8 +71,7 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         nttManagerChain1.initialize();
 
-        WormholeTransceiver wormholeTransceiverChain1Implementation =
-        new MockWormholeTransceiverContract(
+        WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverContract(
             address(nttManagerChain1),
             address(wormhole),
             address(relayer),
@@ -109,8 +108,7 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             MockNttManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
         nttManagerChain2.initialize();
 
-        WormholeTransceiver wormholeTransceiverChain2Implementation =
-        new MockWormholeTransceiverContract(
+        WormholeTransceiver wormholeTransceiverChain2Implementation = new MockWormholeTransceiverContract(
             address(nttManagerChain2),
             address(wormhole),
             address(relayer),
