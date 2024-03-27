@@ -140,6 +140,7 @@ interface INttManager is IManagerBase {
     /// @param amount The amount to transfer.
     /// @param recipientChain The chain ID for the destination.
     /// @param recipient The recipient address.
+    /// @param refundAddress The address to which a refund for unussed gas is issued on the recipient chain.
     /// @param shouldQueue Whether the transfer should be queued if the outbound limit is hit.
     /// @param encodedInstructions Additional instructions to be forwarded to the recipient chain.
     function transfer(
