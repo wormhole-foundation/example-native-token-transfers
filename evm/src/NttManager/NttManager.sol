@@ -300,6 +300,11 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
             revert InvalidRecipient();
         }
 
+        // Validate the transfer early to reduce the likelihood of a queued transfer having to be cancelled.
+        // It is still possible a user might need to cancel a queued transfer. e.g. all transceivers
+        // are disabled some time after queueing.
+        _validateTransfer(recipientChain, transceiverInstructions);
+
         {
             // Lock/burn tokens before checking rate limits
             // use transferFrom to pull tokens from the user and lock them
@@ -383,6 +388,28 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
 
         return _transfer(
             sequence, trimmedAmount, recipientChain, recipient, msg.sender, transceiverInstructions
+        );
+    }
+
+    function _validateTransfer(
+        uint16 recipientChain,
+        bytes memory transceiverInstructions
+    ) internal view {
+        if (_getPeersStorage()[recipientChain].peerAddress == bytes32(0)) {
+            revert PeerNotRegistered(recipientChain);
+        }
+
+        uint256 numEnabledTransceivers = _getEnabledTransceiversStorage().length;
+
+        if (numEnabledTransceivers == 0) {
+            revert NoEnabledTransceivers();
+        }
+
+        uint256 numRegisteredTransceivers = _getRegisteredTransceiversStorage().length;
+
+        // We don't actually care about the output, we just want to validate the instructions
+        TransceiverStructs.parseTransceiverInstructions(
+            transceiverInstructions, numRegisteredTransceivers
         );
     }
 
