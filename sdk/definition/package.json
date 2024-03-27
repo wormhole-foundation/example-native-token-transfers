@@ -19,6 +19,7 @@
     "dist/esm",
     "dist/cjs"
   ],
+  "sideEffects": true,
   "exports": {
     ".": {
       "require": {

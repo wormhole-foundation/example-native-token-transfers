@@ -14,8 +14,8 @@ import type {
   ContractDeployTransaction,
   ContractRunner,
 } from "ethers";
-import type { NonPayableOverrides } from "../common";
-import type { NttManager, NttManagerInterface } from "../NttManager";
+import type { NonPayableOverrides } from "../common.js";
+import type { NttManager, NttManagerInterface } from "../NttManager.js";
 
 const _abi = [
   {

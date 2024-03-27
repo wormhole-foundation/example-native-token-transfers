@@ -14,11 +14,11 @@ import type {
   ContractDeployTransaction,
   ContractRunner,
 } from "ethers";
-import type { NonPayableOverrides } from "../common";
+import type { NonPayableOverrides } from "../common.js";
 import type {
   WormholeTransceiver,
   WormholeTransceiverInterface,
-} from "../WormholeTransceiver";
+} from "../WormholeTransceiver.js";
 
 const _abi = [
   {

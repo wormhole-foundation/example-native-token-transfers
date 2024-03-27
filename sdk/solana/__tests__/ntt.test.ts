@@ -6,8 +6,10 @@ import {
   UniversalAddress,
   VAA,
   Wormhole,
+  deserialize,
   deserializePayload,
   encoding,
+  registerPayloadTypes,
   serialize,
   serializePayload,
   signSendWait,
@@ -19,8 +21,14 @@ import {
 } from "@wormhole-foundation/sdk-solana";
 import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 import * as fs from "fs";
+
+import {
+  Ntt,
+  nttNamedPayloads,
+} from "@wormhole-foundation/sdk-definitions-ntt";
 import { SolanaNtt } from "../src/index.js";
-import { deserialize } from "@wormhole-foundation/sdk-connect";
+
+registerPayloadTypes("Ntt", nttNamedPayloads);
 
 const solanaRootDir = `${__dirname}/../../../solana`;
 
@@ -82,7 +90,7 @@ describe("example-native-token-transfers", () => {
       transceiver: {
         wormhole: NTT_ADDRESS,
       },
-    });
+    }) satisfies Ntt<"Devnet", "Solana">;
 
     tokenAccount = await spl.createAssociatedTokenAccount(
       connection,
