@@ -62,8 +62,13 @@ contract TestUpgrades is Test, IRateLimiterEvents {
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
+        vm.mockCall(
+            address(wormhole),
+            abi.encodeWithSelector(bytes4(keccak256("chainId()"))),
+            abi.encode(chainId1)
+        );
         NttManager implementation = new MockNttManagerContract(
-            address(t1), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
+            address(t1), IManagerBase.Mode.LOCKING, address(wormhole), 1 days, false
         );
 
         nttManagerChain1 =
@@ -90,8 +95,13 @@ contract TestUpgrades is Test, IRateLimiterEvents {
         // Chain 2 setup
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
+        vm.mockCall(
+            address(wormhole),
+            abi.encodeWithSelector(bytes4(keccak256("chainId()"))),
+            abi.encode(chainId2)
+        );
         NttManager implementationChain2 = new MockNttManagerContract(
-            address(t2), IManagerBase.Mode.BURNING, chainId2, 1 days, false
+            address(t2), IManagerBase.Mode.BURNING, address(wormhole), 1 days, false
         );
 
         nttManagerChain2 =
@@ -143,8 +153,17 @@ contract TestUpgrades is Test, IRateLimiterEvents {
 
     function test_basicUpgradeNttManager() public {
         // Basic call to upgrade with the same contact as ewll
+        vm.mockCall(
+            address(wormhole),
+            abi.encodeWithSelector(bytes4(keccak256("chainId()"))),
+            abi.encode(chainId1)
+        );
         NttManager newImplementation = new MockNttManagerContract(
-            address(nttManagerChain1.token()), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
+            address(nttManagerChain1.token()),
+            IManagerBase.Mode.LOCKING,
+            address(wormhole),
+            1 days,
+            false
         );
         nttManagerChain1.upgrade(address(newImplementation));
 
@@ -170,14 +189,27 @@ contract TestUpgrades is Test, IRateLimiterEvents {
     // Confirm that we can handle multiple upgrades as a nttManager
     function test_doubleUpgradeNttManager() public {
         // Basic call to upgrade with the same contact as ewll
+        vm.mockCall(
+            address(wormhole),
+            abi.encodeWithSelector(bytes4(keccak256("chainId()"))),
+            abi.encode(chainId1)
+        );
         NttManager newImplementation = new MockNttManagerContract(
-            address(nttManagerChain1.token()), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
+            address(nttManagerChain1.token()),
+            IManagerBase.Mode.LOCKING,
+            address(wormhole),
+            1 days,
+            false
         );
         nttManagerChain1.upgrade(address(newImplementation));
         basicFunctionality();
 
         newImplementation = new MockNttManagerContract(
-            address(nttManagerChain1.token()), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
+            address(nttManagerChain1.token()),
+            IManagerBase.Mode.LOCKING,
+            address(wormhole),
+            1 days,
+            false
         );
         nttManagerChain1.upgrade(address(newImplementation));
 
@@ -207,8 +239,17 @@ contract TestUpgrades is Test, IRateLimiterEvents {
 
     function test_storageSlotNttManager() public {
         // Basic call to upgrade with the same contact as ewll
+        vm.mockCall(
+            address(wormhole),
+            abi.encodeWithSelector(bytes4(keccak256("chainId()"))),
+            abi.encode(chainId1)
+        );
         NttManager newImplementation = new MockNttManagerStorageLayoutChange(
-            address(nttManagerChain1.token()), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
+            address(nttManagerChain1.token()),
+            IManagerBase.Mode.LOCKING,
+            address(wormhole),
+            1 days,
+            false
         );
         nttManagerChain1.upgrade(address(newImplementation));
 
@@ -244,8 +285,17 @@ contract TestUpgrades is Test, IRateLimiterEvents {
 
     function test_callMigrateNttManager() public {
         // Basic call to upgrade with the same contact as ewll
+        vm.mockCall(
+            address(wormhole),
+            abi.encodeWithSelector(bytes4(keccak256("chainId()"))),
+            abi.encode(chainId1)
+        );
         NttManager newImplementation = new MockNttManagerMigrateBasic(
-            address(nttManagerChain1.token()), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
+            address(nttManagerChain1.token()),
+            IManagerBase.Mode.LOCKING,
+            address(wormhole),
+            1 days,
+            false
         );
 
         vm.expectRevert("Proper migrate called");
@@ -277,7 +327,7 @@ contract TestUpgrades is Test, IRateLimiterEvents {
 
         // Basic call to upgrade with the same contact as ewll
         NttManager newImplementation = new MockNttManagerImmutableCheck(
-            address(tnew), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
+            address(tnew), IManagerBase.Mode.LOCKING, address(wormhole), 1 days, false
         );
 
         vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
@@ -314,8 +364,13 @@ contract TestUpgrades is Test, IRateLimiterEvents {
         DummyToken tnew = new DummyToken();
 
         // Basic call to upgrade with the same contact as ewll
+        vm.mockCall(
+            address(wormhole),
+            abi.encodeWithSelector(bytes4(keccak256("chainId()"))),
+            abi.encode(chainId1)
+        );
         NttManager newImplementation = new MockNttManagerImmutableRemoveCheck(
-            address(tnew), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
+            address(tnew), IManagerBase.Mode.LOCKING, address(wormhole), 1 days, false
         );
 
         // Allow an upgrade, since we enabled the ability to edit the immutables within the code
@@ -353,8 +408,17 @@ contract TestUpgrades is Test, IRateLimiterEvents {
         nttManagerChain1.upgrade(address(0x1));
 
         // Basic call to upgrade so that we can get the real implementation.
+        vm.mockCall(
+            address(wormhole),
+            abi.encodeWithSelector(bytes4(keccak256("chainId()"))),
+            abi.encode(chainId1)
+        );
         NttManager newImplementation = new MockNttManagerContract(
-            address(nttManagerChain1.token()), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
+            address(nttManagerChain1.token()),
+            IManagerBase.Mode.LOCKING,
+            address(wormhole),
+            1 days,
+            false
         );
         nttManagerChain1.upgrade(address(newImplementation));
 
@@ -624,7 +688,7 @@ contract TestInitialize is Test {
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
         NttManager implementation = new MockNttManagerContract(
-            address(t1), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
+            address(t1), IManagerBase.Mode.LOCKING, address(wormhole), 1 days, false
         );
 
         nttManagerChain1 =
@@ -645,7 +709,7 @@ contract TestInitialize is Test {
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
         NttManager implementation = new MockNttManagerContract(
-            address(t1), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
+            address(t1), IManagerBase.Mode.LOCKING, address(wormhole), 1 days, false
         );
 
         nttManagerChain1 =

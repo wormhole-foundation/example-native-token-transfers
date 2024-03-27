@@ -3,6 +3,7 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import "wormhole-solidity-sdk/Utils.sol";
 import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
+import "wormhole-solidity-sdk/interfaces/IWormhole.sol";
 
 import "../libraries/external/OwnableUpgradeable.sol";
 import "../libraries/external/ReentrancyGuardUpgradeable.sol";
@@ -33,10 +34,10 @@ abstract contract ManagerBase is
 
     // =============== Setup =================================================================
 
-    constructor(address _token, Mode _mode, uint16 _chainId) {
+    constructor(address _token, Mode _mode, address _wormhole) {
         token = _token;
         mode = _mode;
-        chainId = _chainId;
+        chainId = IWormhole(_wormhole).chainId();
         evmChainId = block.chainid;
         // save the deployer (check this on initialization)
         deployer = msg.sender;
