@@ -43,10 +43,10 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
     WormholeSimulator guardian;
     uint256 initialBlockTimestamp;
 
-    address userA = address(0x123);
-    address userB = address(0x456);
-    address userC = address(0x789);
-    address userD = address(0xABC);
+    address sender = makeAddr("sender");
+    address recipient = makeAddr("recipient");
+    address userC = makeAddr("userC");
+    address userD = makeAddr("userD");
 
     constructor() {
         setTestnetForkChains(chainId1, chainId2);
@@ -55,7 +55,7 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
     // https://github.com/wormhole-foundation/hello-wormhole/blob/main/test/HelloWormhole.t.sol#L14C1-L20C6
     // Setup the starting point of the network
     function setUpSource() public override {
-        vm.deal(userA, 1 ether);
+        vm.deal(sender, 1 ether);
         DummyToken t1 = new DummyToken();
 
         NttManager implementation = new MockNttManagerContract(
@@ -182,14 +182,14 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
         // Setting up the transfer
         uint8 decimals = token1.decimals();
         uint256 sendingAmount = 5 * 10 ** decimals;
-        token1.mintDummy(address(userA), sendingAmount);
-        vm.startPrank(userA);
+        token1.mintDummy(address(sender), sendingAmount);
+        vm.startPrank(sender);
         token1.approve(address(nttManagerChain1), sendingAmount);
 
         // Send token through standard means (not relayer)
         {
             uint256 nttManagerBalanceBefore = token1.balanceOf(address(nttManagerChain1));
-            uint256 userBalanceBefore = token1.balanceOf(address(userA));
+            uint256 recipientalanceBefore = token1.balanceOf(address(sender));
 
             uint256 priceQuote1 = wormholeTransceiverChain1.quoteDeliveryPrice(
                 chainId2, buildTransceiverInstruction(false)
@@ -201,7 +201,7 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             wormholeTransceiverChain1.setIsWormholeEvmChain(chainId2, false);
 
             // config not set correctly
-            vm.startPrank(userA);
+            vm.startPrank(sender);
             vm.expectRevert(
                 abi.encodeWithSelector(
                     IWormholeTransceiver.InvalidRelayingConfig.selector, chainId2
@@ -210,8 +210,8 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             nttManagerChain1.transfer{value: priceQuote1}(
                 sendingAmount,
                 chainId2,
-                bytes32(uint256(uint160(userB))),
-                bytes32(uint256(uint160(userB))),
+                bytes32(uint256(uint160(recipient))),
+                bytes32(uint256(uint160(recipient))),
                 false,
                 instructions
             );
@@ -219,7 +219,7 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             // set valid config
             vm.stopPrank();
             wormholeTransceiverChain1.setIsWormholeEvmChain(chainId2, true);
-            vm.startPrank(userA);
+            vm.startPrank(sender);
 
             // revert if transfer amount has dust
             uint256 amount = sendingAmount - 1;
@@ -233,8 +233,8 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             nttManagerChain1.transfer{value: priceQuote1}(
                 sendingAmount - 1,
                 chainId2,
-                bytes32(uint256(uint160(userB))),
-                bytes32(uint256(uint160(userB))),
+                bytes32(uint256(uint160(recipient))),
+                bytes32(uint256(uint160(recipient))),
                 false,
                 instructions
             );
@@ -244,8 +244,8 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             nttManagerChain1.transfer{value: priceQuote1}(
                 0,
                 chainId2,
-                bytes32(uint256(uint160(userB))),
-                bytes32(uint256(uint160(userB))),
+                bytes32(uint256(uint160(recipient))),
+                bytes32(uint256(uint160(recipient))),
                 false,
                 instructions
             );
@@ -259,8 +259,8 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             nttManagerChain1.transfer{value: priceQuote1 - 1}(
                 sendingAmount,
                 chainId2,
-                bytes32(uint256(uint160(userB))),
-                bytes32(uint256(uint160(userB))),
+                bytes32(uint256(uint160(recipient))),
+                bytes32(uint256(uint160(recipient))),
                 false,
                 instructions
             );
@@ -269,21 +269,21 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             nttManagerChain1.transfer{value: priceQuote1 + 1}(
                 sendingAmount,
                 chainId2,
-                bytes32(uint256(uint160(userB))),
-                bytes32(uint256(uint160(userB))),
+                bytes32(uint256(uint160(recipient))),
+                bytes32(uint256(uint160(recipient))),
                 false,
                 instructions
             );
 
             // Balance check on funds going in and out working as expected
             uint256 nttManagerBalanceAfter = token1.balanceOf(address(nttManagerChain1));
-            uint256 userBalanceAfter = token1.balanceOf(address(userB));
+            uint256 recipientalanceAfter = token1.balanceOf(address(recipient));
             require(
                 nttManagerBalanceBefore + sendingAmount == nttManagerBalanceAfter,
                 "Should be locking the tokens"
             );
             require(
-                userBalanceBefore - sendingAmount == userBalanceAfter,
+                recipientalanceBefore - sendingAmount == recipientalanceAfter,
                 "User should have sent tokens"
             );
         }
@@ -306,7 +306,7 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
         uint256 supplyAfter = token2.totalSupply();
 
         require(sendingAmount + supplyBefore == supplyAfter, "Supplies dont match");
-        require(token2.balanceOf(userB) == sendingAmount, "User didn't receive tokens");
+        require(token2.balanceOf(recipient) == sendingAmount, "User didn't receive tokens");
         require(token2.balanceOf(address(nttManagerChain2)) == 0, "NttManager has unintended funds");
     }
 
@@ -343,14 +343,14 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
         // Setting up the transfer
         uint8 decimals = token1.decimals();
         uint256 sendingAmount = 5 * 10 ** decimals;
-        token1.mintDummy(address(userA), 5 * 10 ** decimals);
-        vm.startPrank(userA);
+        token1.mintDummy(address(sender), 5 * 10 ** decimals);
+        vm.startPrank(sender);
         token1.approve(address(nttManagerChain1), sendingAmount);
 
         // Send token through standard means (not relayer)
         {
             uint256 nttManagerBalanceBefore = token1.balanceOf(address(nttManagerChain1));
-            uint256 userBalanceBefore = token1.balanceOf(address(userA));
+            uint256 userBalanceBefore = token1.balanceOf(address(sender));
 
             nttManagerChain1.transfer{
                 value: wormholeTransceiverChain1.quoteDeliveryPrice(
@@ -359,16 +359,16 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             }(
                 sendingAmount,
                 chainId2,
-                bytes32(uint256(uint160(userB))),
+                bytes32(uint256(uint160(recipient))),
                 // refund the amount back to the user that sent the transfer
-                bytes32(uint256(uint160(userA))),
+                bytes32(uint256(uint160(sender))),
                 false,
                 encodeTransceiverInstruction(false)
             );
 
             // Balance check on funds going in and out working as expected
             uint256 nttManagerBalanceAfter = token1.balanceOf(address(nttManagerChain1));
-            uint256 userBalanceAfter = token1.balanceOf(address(userB));
+            uint256 userBalanceAfter = token1.balanceOf(address(recipient));
             require(
                 nttManagerBalanceBefore + sendingAmount == nttManagerBalanceAfter,
                 "Should be locking the tokens"
@@ -394,11 +394,11 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
         uint256 supplyAfter = token2.totalSupply();
 
         require(sendingAmount + supplyBefore == supplyAfter, "Supplies not changed - minting");
-        require(token2.balanceOf(userB) == sendingAmount, "User didn't receive tokens");
+        require(token2.balanceOf(recipient) == sendingAmount, "User didn't receive tokens");
         require(token2.balanceOf(address(nttManagerChain2)) == 0, "NttManager has unintended funds");
 
         // Go back the other way from a THIRD user
-        vm.prank(userB);
+        vm.prank(recipient);
         token2.transfer(userC, sendingAmount);
 
         vm.startPrank(userC);
@@ -425,7 +425,7 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
                 sendingAmount - supplyBefore == supplyAfter,
                 "Supplies don't match - tokens not burned"
             );
-            require(token2.balanceOf(userB) == 0, "OG user receive tokens");
+            require(token2.balanceOf(recipient) == 0, "OG user receive tokens");
             require(token2.balanceOf(userC) == 0, "Sending user didn't receive tokens");
             require(
                 token2.balanceOf(address(nttManagerChain2)) == 0,
@@ -445,8 +445,8 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
         vm.selectFork(sourceFork); // Move back to the source chain to check out the balances
 
         require(supplyBefore - sendingAmount == supplyAfter, "Supplies weren't burned as expected");
-        require(token1.balanceOf(userA) == 0, "UserA received funds on the transfer back");
-        require(token1.balanceOf(userB) == 0, "UserB received funds on the transfer back");
+        require(token1.balanceOf(sender) == 0, "UserA received funds on the transfer back");
+        require(token1.balanceOf(recipient) == 0, "UserB received funds on the transfer back");
         require(token1.balanceOf(userC) == 0, "UserC received funds on the transfer back");
         require(token1.balanceOf(userD) == sendingAmount, "User didn't receive tokens going back");
         require(
@@ -504,10 +504,10 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
         _enableSR([wormholeTransceiverChain1, wormholeTransceiverChain1Other], chainId2);
 
         uint256 sendingAmount = 5 * 10 ** token1.decimals();
-        _prepareTransfer(token1, userA, address(nttManagerChain1), sendingAmount);
+        _prepareTransfer(token1, sender, address(nttManagerChain1), sendingAmount);
 
         uint256 nttManagerBalanceBefore = token1.balanceOf(address(nttManagerChain1));
-        uint256 userBalanceBefore = token1.balanceOf(address(userA));
+        uint256 recipientalanceBefore = token1.balanceOf(address(sender));
 
         // send token through standard relayer
         WormholeTransceiver[] memory transceivers = new WormholeTransceiver[](2);
@@ -515,13 +515,13 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
         transceivers[1] = wormholeTransceiverChain1Other;
 
         // create fresh address so ether balance before transfer is 0.
-        address refundAddress = address(0x478);
+        address refundAddress = makeAddr("refund");
         transferToken(
-            userB, refundAddress, nttManagerChain1, sendingAmount, chainId2, transceivers, false
+            recipient, refundAddress, nttManagerChain1, sendingAmount, chainId2, transceivers, false
         );
         // Balance check on funds going in and out working as expected
         uint256 nttManagerBalanceAfter = token1.balanceOf(address(nttManagerChain1));
-        uint256 userBalanceAfter = token1.balanceOf(address(userB));
+        uint256 recipientalanceAfter = token1.balanceOf(address(recipient));
 
         assertEq(
             nttManagerBalanceBefore + sendingAmount,
@@ -529,7 +529,9 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             "Should be locking the tokens"
         );
         assertEq(
-            userBalanceBefore - sendingAmount, userBalanceAfter, "User should have sent tokens"
+            recipientalanceBefore - sendingAmount,
+            recipientalanceAfter,
+            "User should have sent tokens"
         );
         vm.stopPrank();
         uint256 supplyBefore = getTotalSupply(targetFork, token2);
@@ -541,7 +543,7 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
         vm.selectFork(targetFork);
         uint256 supplyAfter = token2.totalSupply();
         assertEq(sendingAmount + supplyBefore, supplyAfter, "Supplies not changed - minting");
-        assertEq(token2.balanceOf(userB), sendingAmount, "User didn't receive tokens");
+        assertEq(token2.balanceOf(recipient), sendingAmount, "User didn't receive tokens");
         assertEq(token2.balanceOf(address(nttManagerChain2)), 0, "NttManager has unintended funds");
 
         // push variables onto the stack again to avoid stack too deep error
@@ -549,7 +551,7 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
         uint8 decs = decimals;
         DummyToken tokenPush = token1;
         bytes32 hash = _computeManagerMessageDigest(
-            userA, userB, sendingAmt.trim(decs, 7), address(tokenPush), chainId1, chainId2
+            sender, recipient, sendingAmt.trim(decs, 7), address(tokenPush), chainId1, chainId2
         );
 
         // number of attestations on the message should be equal to the number of transceivers
