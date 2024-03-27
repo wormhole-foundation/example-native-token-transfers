@@ -80,7 +80,9 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
             tokenAddress: toWormholeFormat(nttManagerToken),
             tokenDecimals: INttManager(nttManager).tokenDecimals()
         });
-        wormhole.publishMessage(0, TransceiverStructs.encodeTransceiverInit(init), consistencyLevel);
+        wormhole.publishMessage{value: msg.value}(
+            0, TransceiverStructs.encodeTransceiverInit(init), consistencyLevel
+        );
     }
 
     function _checkImmutables() internal view override {
@@ -195,7 +197,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     // =============== Admin ===============================================================
 
     /// @inheritdoc IWormholeTransceiverState
-    function setWormholePeer(uint16 peerChainId, bytes32 peerContract) external onlyOwner {
+    function setWormholePeer(uint16 peerChainId, bytes32 peerContract) external payable onlyOwner {
         if (peerChainId == 0) {
             revert InvalidWormholeChainIdZero();
         }
@@ -221,7 +223,7 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
             transceiverChainId: peerChainId,
             transceiverAddress: peerContract
         });
-        wormhole.publishMessage(
+        wormhole.publishMessage{value: msg.value}(
             0, TransceiverStructs.encodeTransceiverRegistration(registration), consistencyLevel
         );
 
