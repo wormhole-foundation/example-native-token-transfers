@@ -18,7 +18,19 @@ library TransceiverStructs {
     /// @dev Selector 0x56d2569d.
     /// @param prefix The prefix that was found in the encoded message.
     error IncorrectPrefix(bytes4 prefix);
+
+    /// @notice Error thrown when the transceiver instructions aren't
+    ///         encoded with strictly increasing indices
+    /// @dev Selector 0x71f23ef2.
     error UnorderedInstructions();
+
+    /// @notice Error thrown when a transceiver instruction index
+    ///         is greater than the number of registered transceivers
+    /// @dev We index from 0 so if providedIndex == numTransceivers then we're out-of-bounds too
+    /// @dev Selector 0x689f5016.
+    /// @param providedIndex The index specified in the instruction
+    /// @param numTransceivers The number of registered transceivers
+    error InvalidInstructionIndex(uint256 providedIndex, uint256 numTransceivers);
 
     /// @dev Prefix for all NativeTokenTransfer payloads
     ///      This is 0x99'N''T''T'
@@ -354,6 +366,12 @@ library TransceiverStructs {
             if (i != 0 && instructionIndex <= lastIndex) {
                 revert UnorderedInstructions();
             }
+
+            // Instruction index is out of bounds
+            if (instructionIndex >= numRegisteredTransceivers) {
+                revert InvalidInstructionIndex(instructionIndex, numRegisteredTransceivers);
+            }
+
             lastIndex = instructionIndex;
 
             instructions[instructionIndex] = instruction;
