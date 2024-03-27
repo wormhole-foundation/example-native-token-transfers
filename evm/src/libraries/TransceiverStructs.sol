@@ -331,17 +331,17 @@ library TransceiverStructs {
 
     function parseTransceiverInstructions(
         bytes memory encoded,
-        uint256 numEnabledTransceivers
+        uint256 numRegisteredTransceivers
     ) public pure returns (TransceiverInstruction[] memory) {
         uint256 offset = 0;
         uint256 instructionsLength;
         (instructionsLength, offset) = encoded.asUint8Unchecked(offset);
 
-        // We allocate an array with the length of the number of enabled transceivers
+        // We allocate an array with the length of the number of registered transceivers
         // This gives us the flexibility to not have to pass instructions for transceivers that
         // don't need them
         TransceiverInstruction[] memory instructions =
-            new TransceiverInstruction[](numEnabledTransceivers);
+            new TransceiverInstruction[](numRegisteredTransceivers);
 
         uint256 lastIndex = 0;
         for (uint256 i = 0; i < instructionsLength; i++) {
