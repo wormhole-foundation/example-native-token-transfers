@@ -21,10 +21,7 @@ import {
 import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 import * as fs from "fs";
 
-import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
 import { SolanaNtt } from "../src/index.js";
-
-//registerPayloadTypes("Ntt", nttNamedPayloads);
 
 const solanaRootDir = `${__dirname}/../../../solana`;
 
@@ -86,7 +83,7 @@ describe("example-native-token-transfers", () => {
       transceiver: {
         wormhole: NTT_ADDRESS,
       },
-    }) satisfies Ntt<"Devnet", "Solana">;
+    });
 
     tokenAccount = await spl.createAssociatedTokenAccount(
       connection,
