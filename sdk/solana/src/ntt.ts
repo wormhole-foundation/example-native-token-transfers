@@ -197,26 +197,163 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     );
   }
 
+  async *registerTransceiver(args: {
+    payer: Keypair;
+    owner: Keypair;
+    transceiver: PublicKey;
+  }) {
+    const config = await this.getConfig();
+    if (config.paused) throw new Error("Contract is paused");
+
+    const ix = await this.program.methods
+      .registerTransceiver()
+      .accounts({
+        payer: args.payer.publicKey,
+        owner: args.owner.publicKey,
+        config: this.pdas.configAccount(),
+        transceiver: args.transceiver,
+        registeredTransceiver: this.pdas.registeredTransceiver(
+          args.transceiver
+        ),
+      })
+      .instruction();
+
+    const wormholeMessage = Keypair.generate();
+    const whAccs = utils.getWormholeDerivedAccounts(
+      this.program.programId,
+      this.wormholeId
+    );
+    const broadcastIx = await this.program.methods
+      .broadcastWormholeId()
+      .accounts({
+        payer: args.payer.publicKey,
+        config: this.pdas.configAccount(),
+        mint: config.mint,
+        wormholeMessage: wormholeMessage.publicKey,
+        emitter: this.pdas.emitterAccount(),
+        wormhole: {
+          bridge: whAccs.wormholeBridge,
+          feeCollector: whAccs.wormholeFeeCollector,
+          sequence: whAccs.wormholeSequence,
+          program: this.wormholeId,
+        },
+      })
+      .instruction();
+
+    const tx = new Transaction();
+    tx.feePayer = args.payer.publicKey;
+    tx.add(ix, broadcastIx);
+    yield this.createUnsignedTx(
+      { transaction: tx, signers: [wormholeMessage] },
+      "Ntt.RegisterTransceiver"
+    );
+  }
+
+  async *setWormholeTransceiverPeer(args: {
+    payer: Keypair;
+    owner: Keypair;
+    chain: Chain;
+    address: ArrayLike<number>;
+    config?: Config;
+  }) {
+    const ix = await this.program.methods
+      .setWormholePeer({
+        chainId: { id: toChainId(args.chain) },
+        address: Array.from(args.address),
+      })
+      .accounts({
+        payer: args.payer.publicKey,
+        owner: args.owner.publicKey,
+        config: this.pdas.configAccount(),
+        peer: this.pdas.transceiverPeerAccount(args.chain),
+      })
+      .instruction();
+
+    const wormholeMessage = Keypair.generate();
+    const whAccs = utils.getWormholeDerivedAccounts(
+      this.program.programId,
+      this.wormholeId
+    );
+    const broadcastIx = await this.program.methods
+      .broadcastWormholePeer({ chainId: toChainId(args.chain) })
+      .accounts({
+        payer: args.payer.publicKey,
+        config: this.pdas.configAccount(),
+        peer: this.pdas.transceiverPeerAccount(args.chain),
+        wormholeMessage: wormholeMessage.publicKey,
+        emitter: this.pdas.emitterAccount(),
+        wormhole: {
+          bridge: whAccs.wormholeBridge,
+          feeCollector: whAccs.wormholeFeeCollector,
+          sequence: whAccs.wormholeSequence,
+          program: this.wormholeId,
+        },
+      })
+      .instruction();
+
+    const tx = new Transaction();
+    tx.feePayer = args.payer.publicKey;
+    tx.add(ix, broadcastIx);
+
+    yield this.createUnsignedTx(
+      {
+        transaction: tx,
+        signers: [wormholeMessage],
+      },
+      "Ntt.SetWormholeTransceiverPeer"
+    );
+  }
+
+  async *setPeer(args: {
+    payer: Keypair;
+    owner: Keypair;
+    chain: Chain;
+    address: ArrayLike<number>;
+    limit: BN;
+    tokenDecimals: number;
+    config?: Config;
+  }) {
+    const ix = await this.program.methods
+      .setPeer({
+        chainId: { id: toChainId(args.chain) },
+        address: Array.from(args.address),
+        limit: args.limit,
+        tokenDecimals: args.tokenDecimals,
+      })
+      .accounts({
+        payer: args.payer.publicKey,
+        owner: args.owner.publicKey,
+        config: this.pdas.configAccount(),
+        peer: this.pdas.peerAccount(args.chain),
+        inboxRateLimit: this.pdas.inboxRateLimitAccount(args.chain),
+      })
+      .instruction();
+
+    const tx = new Transaction();
+    tx.feePayer = args.payer.publicKey;
+    tx.add(ix);
+    yield this.createUnsignedTx({ transaction: tx }, "Ntt.SetPeer");
+  }
+
   async *transfer(
     sender: AccountAddress<C>,
     amount: bigint,
     destination: ChainAddress,
-    queue: boolean
+    queue: boolean,
+    outboxItem?: Keypair
   ): AsyncGenerator<UnsignedTransaction<N, C>, any, unknown> {
     const config: Config = await this.getConfig();
+    if (config.paused) throw new Error("Contract is paused");
 
-    const outboxItem = Keypair.generate();
+    outboxItem = outboxItem ?? Keypair.generate();
 
     const senderAddress = new SolanaAddress(sender).unwrap();
     const fromAuthority = senderAddress;
     const from = getAssociatedTokenAddressSync(config.mint, fromAuthority);
 
     const transferArgs: TransferArgs = {
-      amount: new BN(amount.toString()),
-      recipientChain: { id: toChainId(destination.chain) },
-      recipientAddress: Array.from(
-        destination.address.toUniversalAddress().toUint8Array()
-      ),
+      amount: amount,
+      recipient: destination,
       shouldQueue: queue,
     };
 
@@ -270,7 +407,6 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     yield* this.core.postVaa(payer, wormholeNTT);
 
     const senderAddress = new SolanaAddress(payer).unwrap();
-
     const nttMessage = wormholeNTT.payload.nttManagerPayload;
     const emitterChain = wormholeNTT.emitterChain;
 
@@ -392,9 +528,18 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       args.transferArgs
     );
 
-    const recipientChain = toChain(args.transferArgs.recipientChain.id);
+    const recipientChain = args.transferArgs.recipient.chain;
     return await this.program.methods
-      .transferLock(args.transferArgs)
+      .transferLock({
+        recipientChain: { id: toChainId(recipientChain) },
+        amount: new BN(args.transferArgs.amount.toString()),
+        recipientAddress: Array.from(
+          args.transferArgs.recipient.address
+            .toUniversalAddress()
+            .toUint8Array()
+        ),
+        shouldQueue: args.transferArgs.shouldQueue,
+      })
       .accounts({
         common: {
           payer: args.payer,
@@ -424,9 +569,18 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");
 
-    const recipientChain = toChain(args.transferArgs.recipientChain.id);
+    const recipientChain = toChain(args.transferArgs.recipient.chain);
     return await this.program.methods
-      .transferBurn(args.transferArgs)
+      .transferBurn({
+        recipientChain: { id: toChainId(recipientChain) },
+        amount: new BN(args.transferArgs.amount.toString()),
+        recipientAddress: Array.from(
+          args.transferArgs.recipient.address
+            .toUniversalAddress()
+            .toUint8Array()
+        ),
+        shouldQueue: args.transferArgs.shouldQueue,
+      })
       .accounts({
         common: {
           payer: args.payer,
@@ -598,7 +752,6 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         .unwrap();
 
     const inboxItem = this.pdas.inboxItemAccount(args.chain, args.nttMessage);
-    console.log("Inbox Item", inboxItem.toBase58());
 
     return await this.program.methods
       .releaseInboundUnlock({
