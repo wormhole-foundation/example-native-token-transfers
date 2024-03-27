@@ -10,7 +10,7 @@ pragma solidity >=0.8.8 <0.9.0;
  * execute code based on the current state of the contract.
  *
  */
-import {Initializable} from "./external/Initializable.sol";
+import "openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
 abstract contract PausableUpgradeable is Initializable {
     /*

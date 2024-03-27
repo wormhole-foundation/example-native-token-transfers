@@ -4,7 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 import {Test} from "forge-std/Test.sol";
 import {VmSafe, Vm} from "forge-std/Vm.sol";
 
-import "../../src/libraries/external/Initializable.sol";
+import "openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
 library Utils {
     /// @dev Given a log of account accesses (captured by

@@ -5,7 +5,7 @@ import "wormhole-solidity-sdk/Utils.sol";
 
 import "../libraries/TransceiverStructs.sol";
 import "../libraries/PausableOwnable.sol";
-import "../libraries/external/ReentrancyGuardUpgradeable.sol";
+import "openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import "../libraries/Implementation.sol";
 
 import "../interfaces/INttManager.sol";
@@ -83,7 +83,7 @@ abstract contract Transceiver is
     /// =============== GETTERS & SETTERS ===============================================
 
     function getNttManagerOwner() public view returns (address) {
-        return IOwnableUpgradeable(nttManager).owner();
+        return OwnableUpgradeable(nttManager).owner();
     }
 
     function getNttManagerToken() public view virtual returns (address) {

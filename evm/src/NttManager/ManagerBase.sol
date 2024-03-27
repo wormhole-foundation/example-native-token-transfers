@@ -4,8 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 import "wormhole-solidity-sdk/Utils.sol";
 import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 
-import "../libraries/external/OwnableUpgradeable.sol";
-import "../libraries/external/ReentrancyGuardUpgradeable.sol";
+import "openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import "../libraries/TransceiverStructs.sol";
 import "../libraries/TransceiverHelpers.sol";
 import "../libraries/PausableOwnable.sol";

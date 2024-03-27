@@ -3,7 +3,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "./PausableUpgradeable.sol";
-import "./external/OwnableUpgradeable.sol";
+import "openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
 
 abstract contract PausableOwnable is PausableUpgradeable, OwnableUpgradeable {
     /*

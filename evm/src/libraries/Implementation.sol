@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.8 <0.9.0;
 
-import "./external/Initializable.sol";
-import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
+import "openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
+import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Utils.sol";
 
 /// @dev This contract should be used as a base contract for implementation contracts
 ///      that are used with ERC1967Proxy.
 ///      It ensures that the contract cannot be initialized directly, only through
 ///      the proxy (by disabling initializers in the constructor).
 ///      It also exposes a migrate function that is called during upgrades.
-abstract contract Implementation is Initializable, ERC1967Upgrade {
+abstract contract Implementation is Initializable {
     address immutable _this;
 
     error OnlyDelegateCall();
@@ -79,7 +79,7 @@ abstract contract Implementation is Initializable, ERC1967Upgrade {
 
     function _upgrade(address newImplementation) internal {
         _checkDelegateCall();
-        _upgradeTo(newImplementation);
+        ERC1967Utils.upgradeToAndCall(newImplementation, "");
 
         _Migrating storage _migrating = _getMigratingStorage();
         assert(!_migrating.isMigrating);

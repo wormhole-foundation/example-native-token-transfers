@@ -3,9 +3,9 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
+import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Utils.sol";
 
-contract DummyToken is ERC20, ERC1967Upgrade {
+contract DummyToken is ERC20 {
     constructor() ERC20("DummyToken", "DTKN") {}
 
     // NOTE: this is purposefully not called mint() to so we can test that in
@@ -27,7 +27,7 @@ contract DummyToken is ERC20, ERC1967Upgrade {
     }
 
     function upgrade(address newImplementation) public {
-        _upgradeTo(newImplementation);
+        ERC1967Utils.upgradeToAndCall(newImplementation, "");
     }
 }
 
