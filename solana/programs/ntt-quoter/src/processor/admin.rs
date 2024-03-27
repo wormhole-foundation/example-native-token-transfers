@@ -1,6 +1,6 @@
 use crate::{
     error::NttQuoterError,
-    state::{Instance, RegisteredChain},
+    state::{Instance, RegisteredChain, RegisteredNtt},
 };
 use anchor_lang::prelude::*;
 use wormhole_solana_utils::cpi::bpf_loader_upgradeable as bpf;
@@ -119,5 +119,73 @@ pub struct RegisterChain<'info> {
 pub fn register_chain(ctx: Context<RegisterChain>, _args: RegisterChainArgs) -> Result<()> {
     ctx.accounts.registered_chain.bump = ctx.bumps.registered_chain;
     ctx.accounts.registered_chain.base_price = u64::MAX;
+    Ok(())
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct RegisterNttArgs {
+    pub ntt_program_id: Pubkey,
+    pub wormhole_transceiver_index: u8,
+    pub gas_cost: u32,
+}
+
+#[derive(Accounts)]
+#[instruction(args: RegisterNttArgs)]
+pub struct RegisterNtt<'info> {
+    #[account(
+        mut,
+        constraint = instance.is_authorized(&authority.key()) @ NttQuoterError::NotAuthorized
+    )]
+    pub authority: Signer<'info>,
+
+    pub instance: Account<'info, Instance>,
+
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + RegisteredNtt::INIT_SPACE,
+        seeds = [RegisteredNtt::SEED_PREFIX, args.ntt_program_id.key().as_ref()],
+        bump,
+    )]
+    pub registered_ntt: Account<'info, RegisteredNtt>,
+
+    system_program: Program<'info, System>,
+}
+
+pub fn register_ntt(ctx: Context<RegisterNtt>, args: RegisterNttArgs) -> Result<()> {
+    ctx.accounts.registered_ntt.bump = ctx.bumps.registered_ntt;
+    ctx.accounts.registered_ntt.wormhole_transceiver_index = args.wormhole_transceiver_index;
+    ctx.accounts.registered_ntt.gas_cost = args.gas_cost;
+    Ok(())
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct DeregisterNttArgs {
+    pub ntt_program_id: Pubkey,
+}
+
+#[derive(Accounts)]
+#[instruction(args: DeregisterNttArgs)]
+pub struct DeregisterNtt<'info> {
+    #[account(
+        mut,
+        constraint = instance.is_authorized(&authority.key()) @ NttQuoterError::NotAuthorized
+    )]
+    pub authority: Signer<'info>,
+
+    pub instance: Account<'info, Instance>,
+
+    #[account(
+        mut,
+        close = authority,
+        seeds = [RegisteredNtt::SEED_PREFIX, args.ntt_program_id.key().as_ref()],
+        bump = registered_ntt.bump,
+    )]
+    pub registered_ntt: Account<'info, RegisteredNtt>,
+
+    system_program: Program<'info, System>,
+}
+
+pub fn deregister_ntt(_ctx: Context<DeregisterNtt>, _args: DeregisterNttArgs) -> Result<()> {
     Ok(())
 }

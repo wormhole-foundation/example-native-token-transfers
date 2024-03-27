@@ -7,9 +7,23 @@ use solana_program::{native_token::LAMPORTS_PER_SOL, sysvar};
 
 use crate::{
     error::NttQuoterError,
-    state::{Instance, RegisteredChain, RelayRequest},
-    EVM_GAS_COST, WORMHOLE_TRANSCEIVER_INDEX,
+    state::{Instance, RegisteredChain, RegisteredNtt, RelayRequest},
 };
+
+//TODO eventually drop the released constraint and instead implement release by relayer
+fn check_release_constraint_and_fetch_chain_id(
+    outbox_item: &AccountInfo,
+    registered_ntt: &RegisteredNtt,
+) -> Result<u16> {
+    let mut acc_data: &[_] = &outbox_item.try_borrow_data()?;
+    let item = OutboxItem::try_deserialize(&mut acc_data)?;
+
+    if !item.released.get(registered_ntt.wormhole_transceiver_index) {
+        return Err(NttQuoterError::OutboxItemNotReleased.into());
+    }
+
+    Ok(item.recipient_chain.id)
+}
 
 #[derive(Accounts)]
 pub struct RequestRelay<'info> {
@@ -21,7 +35,10 @@ pub struct RequestRelay<'info> {
     #[account(
         seeds = [
             RegisteredChain::SEED_PREFIX,
-            outbox_item.recipient_chain.id.to_be_bytes().as_ref()
+            check_release_constraint_and_fetch_chain_id(
+                &outbox_item,
+                &registered_ntt
+            )?.to_be_bytes().as_ref()
         ],
         bump = registered_chain.bump,
         constraint = registered_chain.base_price != u64::MAX @
@@ -29,12 +46,15 @@ pub struct RequestRelay<'info> {
     )]
     pub registered_chain: Account<'info, RegisteredChain>,
 
-    //TODO eventually drop the released constraint and instead implement release by relayer
     #[account(
-        owner = example_native_token_transfers::ID,
-        constraint = outbox_item.released.get(WORMHOLE_TRANSCEIVER_INDEX),
+        seeds = [RegisteredNtt::SEED_PREFIX, outbox_item.owner.to_bytes().as_ref()],
+        bump = registered_ntt.bump,
     )]
-    pub outbox_item: Account<'info, OutboxItem>,
+    pub registered_ntt: Account<'info, RegisteredNtt>,
+
+    /// CHECK: in order to avoid double deserialization, we combine the fetching of the chain id
+    ///        and checking the release constraint into a single function
+    pub outbox_item: AccountInfo<'info>,
 
     #[account(
         init,
@@ -82,8 +102,12 @@ pub fn request_relay(ctx: Context<RequestRelay>, args: RequestRelayArgs) -> Resu
     );
 
     let relay_fee_in_lamports = {
-        let target_native_in_gwei =
-            args.gas_dropoff + mul_div(accs.registered_chain.gas_price, EVM_GAS_COST, GWEI);
+        let target_native_in_gwei = args.gas_dropoff
+            + mul_div(
+                accs.registered_chain.gas_price,
+                accs.registered_ntt.gas_cost as u64,
+                GWEI,
+            );
 
         //usd/target_native[usd, 6 decimals] * target_native[gwei, 9 decimals] = usd[usd, 6 decimals]
         let target_native_in_usd = mul_div(

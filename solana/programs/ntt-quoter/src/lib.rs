@@ -16,11 +16,7 @@ mod state;
 // type SolAmount = u64; //in lamports, i.e. 9 decimals
 // type NativeAmount = u64; //in gwei, i.e. also uses 9 decimals
 
-// !! update constant in TypeScript SDK when updating this value !!
-const EVM_GAS_COST: u64 = 250_000; //TODO determine true gas cost on EVM
-
 declare_id!("NttQuoter1111111111111111111111111111111111");
-const WORMHOLE_TRANSCEIVER_INDEX: u8 = 0;
 
 #[program]
 pub mod ntt_quoter {
@@ -48,6 +44,14 @@ pub mod ntt_quoter {
 
     pub fn register_chain(ctx: Context<RegisterChain>, args: RegisterChainArgs) -> Result<()> {
         processor::register_chain(ctx, args)
+    }
+
+    pub fn register_ntt(ctx: Context<RegisterNtt>, args: RegisterNttArgs) -> Result<()> {
+        processor::register_ntt(ctx, args)
+    }
+
+    pub fn deregister_ntt(ctx: Context<DeregisterNtt>, args: DeregisterNttArgs) -> Result<()> {
+        processor::deregister_ntt(ctx, args)
     }
 
     pub fn update_sol_price(ctx: Context<UpdateSolPrice>, args: UpdateSolPriceArgs) -> Result<()> {
