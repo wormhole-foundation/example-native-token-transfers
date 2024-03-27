@@ -13,7 +13,7 @@ import type {
   ContractRunner,
   ContractMethod,
   Listener,
-} from 'ethers';
+} from "ethers";
 import type {
   TypedContractEvent,
   TypedDeferredTopicFilter,
@@ -21,7 +21,7 @@ import type {
   TypedLogDescription,
   TypedListener,
   TypedContractMethod,
-} from './common.js';
+} from "./common";
 
 export declare namespace TransceiverStructs {
   export type NttManagerMessageStruct = {
@@ -33,18 +33,8 @@ export declare namespace TransceiverStructs {
   export type NttManagerMessageStructOutput = [
     id: string,
     sender: string,
-    payload: string,
+    payload: string
   ] & { id: string; sender: string; payload: string };
-
-  export type TransceiverInstructionStruct = {
-    index: BigNumberish;
-    payload: BytesLike;
-  };
-
-  export type TransceiverInstructionStructOutput = [
-    index: bigint,
-    payload: string,
-  ] & { index: bigint; payload: string };
 }
 
 export declare namespace IRateLimiter {
@@ -57,7 +47,7 @@ export declare namespace IRateLimiter {
   export type RateLimitParamsStructOutput = [
     limit: bigint,
     currentCapacity: bigint,
-    lastTxTimestamp: bigint,
+    lastTxTimestamp: bigint
   ] & { limit: bigint; currentCapacity: bigint; lastTxTimestamp: bigint };
 
   export type InboundQueuedTransferStruct = {
@@ -69,7 +59,7 @@ export declare namespace IRateLimiter {
   export type InboundQueuedTransferStructOutput = [
     amount: bigint,
     txTimestamp: bigint,
-    recipient: string,
+    recipient: string
   ] & { amount: bigint; txTimestamp: bigint; recipient: string };
 
   export type OutboundQueuedTransferStruct = {
@@ -87,7 +77,7 @@ export declare namespace IRateLimiter {
     txTimestamp: bigint,
     recipientChain: bigint,
     sender: string,
-    transceiverInstructions: string,
+    transceiverInstructions: string
   ] & {
     recipient: string;
     amount: bigint;
@@ -106,372 +96,368 @@ export declare namespace INttManager {
 
   export type NttManagerPeerStructOutput = [
     peerAddress: string,
-    tokenDecimals: bigint,
+    tokenDecimals: bigint
   ] & { peerAddress: string; tokenDecimals: bigint };
 }
 
 export interface NttManagerInterface extends Interface {
   getFunction(
     nameOrSignature:
-      | 'attestationReceived'
-      | 'chainId'
-      | 'completeInboundQueuedTransfer'
-      | 'completeOutboundQueuedTransfer'
-      | 'executeMsg'
-      | 'getCurrentInboundCapacity'
-      | 'getCurrentOutboundCapacity'
-      | 'getInboundLimitParams'
-      | 'getInboundQueuedTransfer'
-      | 'getMigratesImmutables'
-      | 'getMode'
-      | 'getOutboundLimitParams'
-      | 'getOutboundQueuedTransfer'
-      | 'getPeer'
-      | 'getThreshold'
-      | 'getTransceivers'
-      | 'initialize'
-      | 'isMessageApproved'
-      | 'isMessageExecuted'
-      | 'isPaused'
-      | 'messageAttestations'
-      | 'migrate'
-      | 'mode'
-      | 'nextMessageSequence'
-      | 'owner'
-      | 'pause'
-      | 'pauser'
-      | 'quoteDeliveryPrice'
-      | 'rateLimitDuration'
-      | 'removeTransceiver'
-      | 'setInboundLimit'
-      | 'setOutboundLimit'
-      | 'setPeer'
-      | 'setThreshold'
-      | 'setTransceiver'
-      | 'token'
-      | 'tokenDecimals'
-      | 'transceiverAttestedToMessage'
-      | 'transfer(uint256,uint16,bytes32)'
-      | 'transfer(uint256,uint16,bytes32,bool,bytes)'
-      | 'transferOwnership'
-      | 'transferPauserCapability'
-      | 'unpause'
-      | 'upgrade',
+      | "attestationReceived"
+      | "chainId"
+      | "completeInboundQueuedTransfer"
+      | "completeOutboundQueuedTransfer"
+      | "executeMsg"
+      | "getCurrentInboundCapacity"
+      | "getCurrentOutboundCapacity"
+      | "getInboundLimitParams"
+      | "getInboundQueuedTransfer"
+      | "getMigratesImmutables"
+      | "getMode"
+      | "getOutboundLimitParams"
+      | "getOutboundQueuedTransfer"
+      | "getPeer"
+      | "getThreshold"
+      | "getTransceivers"
+      | "initialize"
+      | "isMessageApproved"
+      | "isMessageExecuted"
+      | "isPaused"
+      | "messageAttestations"
+      | "migrate"
+      | "mode"
+      | "nextMessageSequence"
+      | "owner"
+      | "pause"
+      | "pauser"
+      | "quoteDeliveryPrice"
+      | "rateLimitDuration"
+      | "removeTransceiver"
+      | "setInboundLimit"
+      | "setOutboundLimit"
+      | "setPeer"
+      | "setThreshold"
+      | "setTransceiver"
+      | "token"
+      | "tokenDecimals"
+      | "transceiverAttestedToMessage"
+      | "transfer(uint256,uint16,bytes32)"
+      | "transfer(uint256,uint16,bytes32,bool,bytes)"
+      | "transferOwnership"
+      | "transferPauserCapability"
+      | "unpause"
+      | "upgrade"
   ): FunctionFragment;
 
   getEvent(
     nameOrSignatureOrTopic:
-      | 'AdminChanged'
-      | 'BeaconUpgraded'
-      | 'InboundTransferQueued'
-      | 'Initialized'
-      | 'MessageAlreadyExecuted'
-      | 'MessageAttestedTo'
-      | 'NotPaused'
-      | 'OutboundTransferQueued'
-      | 'OutboundTransferRateLimited'
-      | 'OwnershipTransferred'
-      | 'Paused'
-      | 'PauserTransferred'
-      | 'PeerUpdated'
-      | 'ThresholdChanged'
-      | 'TransceiverAdded'
-      | 'TransceiverRemoved'
-      | 'TransferRedeemed'
-      | 'TransferSent'
-      | 'Upgraded',
+      | "AdminChanged"
+      | "BeaconUpgraded"
+      | "InboundTransferQueued"
+      | "Initialized"
+      | "MessageAlreadyExecuted"
+      | "MessageAttestedTo"
+      | "NotPaused"
+      | "OutboundTransferQueued"
+      | "OutboundTransferRateLimited"
+      | "OwnershipTransferred"
+      | "Paused"
+      | "PauserTransferred"
+      | "PeerUpdated"
+      | "ThresholdChanged"
+      | "TransceiverAdded"
+      | "TransceiverRemoved"
+      | "TransferRedeemed"
+      | "TransferSent"
+      | "Upgraded"
   ): EventFragment;
 
   encodeFunctionData(
-    functionFragment: 'attestationReceived',
+    functionFragment: "attestationReceived",
     values: [
       BigNumberish,
       BytesLike,
-      TransceiverStructs.NttManagerMessageStruct,
-    ],
+      TransceiverStructs.NttManagerMessageStruct
+    ]
   ): string;
-  encodeFunctionData(functionFragment: 'chainId', values?: undefined): string;
+  encodeFunctionData(functionFragment: "chainId", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: 'completeInboundQueuedTransfer',
-    values: [BytesLike],
-  ): string;
-  encodeFunctionData(
-    functionFragment: 'completeOutboundQueuedTransfer',
-    values: [BigNumberish],
+    functionFragment: "completeInboundQueuedTransfer",
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'executeMsg',
+    functionFragment: "completeOutboundQueuedTransfer",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "executeMsg",
     values: [
       BigNumberish,
       BytesLike,
-      TransceiverStructs.NttManagerMessageStruct,
-    ],
+      TransceiverStructs.NttManagerMessageStruct
+    ]
   ): string;
   encodeFunctionData(
-    functionFragment: 'getCurrentInboundCapacity',
-    values: [BigNumberish],
+    functionFragment: "getCurrentInboundCapacity",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'getCurrentOutboundCapacity',
-    values?: undefined,
+    functionFragment: "getCurrentOutboundCapacity",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'getInboundLimitParams',
-    values: [BigNumberish],
+    functionFragment: "getInboundLimitParams",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'getInboundQueuedTransfer',
-    values: [BytesLike],
+    functionFragment: "getInboundQueuedTransfer",
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'getMigratesImmutables',
-    values?: undefined,
+    functionFragment: "getMigratesImmutables",
+    values?: undefined
   ): string;
-  encodeFunctionData(functionFragment: 'getMode', values?: undefined): string;
+  encodeFunctionData(functionFragment: "getMode", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: 'getOutboundLimitParams',
-    values?: undefined,
-  ): string;
-  encodeFunctionData(
-    functionFragment: 'getOutboundQueuedTransfer',
-    values: [BigNumberish],
+    functionFragment: "getOutboundLimitParams",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'getPeer',
-    values: [BigNumberish],
+    functionFragment: "getOutboundQueuedTransfer",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'getThreshold',
-    values?: undefined,
+    functionFragment: "getPeer",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'getTransceivers',
-    values?: undefined,
+    functionFragment: "getThreshold",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'initialize',
-    values?: undefined,
+    functionFragment: "getTransceivers",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'isMessageApproved',
-    values: [BytesLike],
+    functionFragment: "initialize",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'isMessageExecuted',
-    values: [BytesLike],
-  ): string;
-  encodeFunctionData(functionFragment: 'isPaused', values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: 'messageAttestations',
-    values: [BytesLike],
-  ): string;
-  encodeFunctionData(functionFragment: 'migrate', values?: undefined): string;
-  encodeFunctionData(functionFragment: 'mode', values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: 'nextMessageSequence',
-    values?: undefined,
-  ): string;
-  encodeFunctionData(functionFragment: 'owner', values?: undefined): string;
-  encodeFunctionData(functionFragment: 'pause', values?: undefined): string;
-  encodeFunctionData(functionFragment: 'pauser', values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: 'quoteDeliveryPrice',
-    values: [
-      BigNumberish,
-      TransceiverStructs.TransceiverInstructionStruct[],
-      AddressLike[],
-    ],
+    functionFragment: "isMessageApproved",
+    values: [BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'rateLimitDuration',
-    values?: undefined,
+    functionFragment: "isMessageExecuted",
+    values: [BytesLike]
+  ): string;
+  encodeFunctionData(functionFragment: "isPaused", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "messageAttestations",
+    values: [BytesLike]
+  ): string;
+  encodeFunctionData(functionFragment: "migrate", values?: undefined): string;
+  encodeFunctionData(functionFragment: "mode", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "nextMessageSequence",
+    values?: undefined
+  ): string;
+  encodeFunctionData(functionFragment: "owner", values?: undefined): string;
+  encodeFunctionData(functionFragment: "pause", values?: undefined): string;
+  encodeFunctionData(functionFragment: "pauser", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "quoteDeliveryPrice",
+    values: [BigNumberish, BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'removeTransceiver',
-    values: [AddressLike],
+    functionFragment: "rateLimitDuration",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'setInboundLimit',
-    values: [BigNumberish, BigNumberish],
+    functionFragment: "removeTransceiver",
+    values: [AddressLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'setOutboundLimit',
-    values: [BigNumberish],
+    functionFragment: "setInboundLimit",
+    values: [BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'setPeer',
-    values: [BigNumberish, BytesLike, BigNumberish, BigNumberish],
+    functionFragment: "setOutboundLimit",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'setThreshold',
-    values: [BigNumberish],
+    functionFragment: "setPeer",
+    values: [BigNumberish, BytesLike, BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'setTransceiver',
-    values: [AddressLike],
-  ): string;
-  encodeFunctionData(functionFragment: 'token', values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: 'tokenDecimals',
-    values?: undefined,
+    functionFragment: "setThreshold",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'transceiverAttestedToMessage',
-    values: [BytesLike, BigNumberish],
+    functionFragment: "setTransceiver",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(functionFragment: "token", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "tokenDecimals",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'transfer(uint256,uint16,bytes32)',
-    values: [BigNumberish, BigNumberish, BytesLike],
+    functionFragment: "transceiverAttestedToMessage",
+    values: [BytesLike, BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'transfer(uint256,uint16,bytes32,bool,bytes)',
-    values: [BigNumberish, BigNumberish, BytesLike, boolean, BytesLike],
+    functionFragment: "transfer(uint256,uint16,bytes32)",
+    values: [BigNumberish, BigNumberish, BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'transferOwnership',
-    values: [AddressLike],
+    functionFragment: "transfer(uint256,uint16,bytes32,bool,bytes)",
+    values: [BigNumberish, BigNumberish, BytesLike, boolean, BytesLike]
   ): string;
   encodeFunctionData(
-    functionFragment: 'transferPauserCapability',
-    values: [AddressLike],
+    functionFragment: "transferOwnership",
+    values: [AddressLike]
   ): string;
-  encodeFunctionData(functionFragment: 'unpause', values?: undefined): string;
   encodeFunctionData(
-    functionFragment: 'upgrade',
-    values: [AddressLike],
+    functionFragment: "transferPauserCapability",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(functionFragment: "unpause", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "upgrade",
+    values: [AddressLike]
   ): string;
 
   decodeFunctionResult(
-    functionFragment: 'attestationReceived',
-    data: BytesLike,
+    functionFragment: "attestationReceived",
+    data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: 'chainId', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "chainId", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: 'completeInboundQueuedTransfer',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: 'completeOutboundQueuedTransfer',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(functionFragment: 'executeMsg', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'getCurrentInboundCapacity',
-    data: BytesLike,
+    functionFragment: "completeInboundQueuedTransfer",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'getCurrentOutboundCapacity',
-    data: BytesLike,
+    functionFragment: "completeOutboundQueuedTransfer",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "executeMsg", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "getCurrentInboundCapacity",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'getInboundLimitParams',
-    data: BytesLike,
+    functionFragment: "getCurrentOutboundCapacity",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'getInboundQueuedTransfer',
-    data: BytesLike,
+    functionFragment: "getInboundLimitParams",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'getMigratesImmutables',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(functionFragment: 'getMode', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'getOutboundLimitParams',
-    data: BytesLike,
+    functionFragment: "getInboundQueuedTransfer",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'getOutboundQueuedTransfer',
-    data: BytesLike,
+    functionFragment: "getMigratesImmutables",
+    data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: 'getPeer', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "getMode", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: 'getThreshold',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: 'getTransceivers',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(functionFragment: 'initialize', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'isMessageApproved',
-    data: BytesLike,
+    functionFragment: "getOutboundLimitParams",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'isMessageExecuted',
-    data: BytesLike,
+    functionFragment: "getOutboundQueuedTransfer",
+    data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: 'isPaused', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "getPeer", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: 'messageAttestations',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(functionFragment: 'migrate', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'mode', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'nextMessageSequence',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(functionFragment: 'owner', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'pause', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'pauser', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'quoteDeliveryPrice',
-    data: BytesLike,
+    functionFragment: "getThreshold",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'rateLimitDuration',
-    data: BytesLike,
+    functionFragment: "getTransceivers",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "initialize", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "isMessageApproved",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'removeTransceiver',
-    data: BytesLike,
+    functionFragment: "isMessageExecuted",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "isPaused", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "messageAttestations",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "migrate", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "mode", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "nextMessageSequence",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "pause", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "pauser", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "quoteDeliveryPrice",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'setInboundLimit',
-    data: BytesLike,
+    functionFragment: "rateLimitDuration",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'setOutboundLimit',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(functionFragment: 'setPeer', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'setThreshold',
-    data: BytesLike,
+    functionFragment: "removeTransceiver",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'setTransceiver',
-    data: BytesLike,
-  ): Result;
-  decodeFunctionResult(functionFragment: 'token', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'tokenDecimals',
-    data: BytesLike,
+    functionFragment: "setInboundLimit",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'transceiverAttestedToMessage',
-    data: BytesLike,
+    functionFragment: "setOutboundLimit",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "setPeer", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "setThreshold",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'transfer(uint256,uint16,bytes32)',
-    data: BytesLike,
+    functionFragment: "setTransceiver",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "token", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "tokenDecimals",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'transfer(uint256,uint16,bytes32,bool,bytes)',
-    data: BytesLike,
+    functionFragment: "transceiverAttestedToMessage",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'transferOwnership',
-    data: BytesLike,
+    functionFragment: "transfer(uint256,uint16,bytes32)",
+    data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'transferPauserCapability',
-    data: BytesLike,
+    functionFragment: "transfer(uint256,uint16,bytes32,bool,bytes)",
+    data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: 'unpause', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'upgrade', data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "transferOwnership",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "transferPauserCapability",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "unpause", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "upgrade", data: BytesLike): Result;
 }
 
 export namespace AdminChangedEvent {
@@ -540,12 +526,12 @@ export namespace MessageAttestedToEvent {
   export type InputTuple = [
     digest: BytesLike,
     transceiver: AddressLike,
-    index: BigNumberish,
+    index: BigNumberish
   ];
   export type OutputTuple = [
     digest: string,
     transceiver: string,
-    index: bigint,
+    index: bigint
   ];
   export interface OutputObject {
     digest: string;
@@ -587,13 +573,13 @@ export namespace OutboundTransferRateLimitedEvent {
     sender: AddressLike,
     sequence: BigNumberish,
     amount: BigNumberish,
-    currentCapacity: BigNumberish,
+    currentCapacity: BigNumberish
   ];
   export type OutputTuple = [
     sender: string,
     sequence: bigint,
     amount: bigint,
-    currentCapacity: bigint,
+    currentCapacity: bigint
   ];
   export interface OutputObject {
     sender: string;
@@ -651,14 +637,14 @@ export namespace PeerUpdatedEvent {
     oldPeerContract: BytesLike,
     oldPeerDecimals: BigNumberish,
     peerContract: BytesLike,
-    peerDecimals: BigNumberish,
+    peerDecimals: BigNumberish
   ];
   export type OutputTuple = [
     chainId_: bigint,
     oldPeerContract: string,
     oldPeerDecimals: bigint,
     peerContract: string,
-    peerDecimals: bigint,
+    peerDecimals: bigint
   ];
   export interface OutputObject {
     chainId_: bigint;
@@ -676,7 +662,7 @@ export namespace PeerUpdatedEvent {
 export namespace ThresholdChangedEvent {
   export type InputTuple = [
     oldThreshold: BigNumberish,
-    threshold: BigNumberish,
+    threshold: BigNumberish
   ];
   export type OutputTuple = [oldThreshold: bigint, threshold: bigint];
   export interface OutputObject {
@@ -693,12 +679,12 @@ export namespace TransceiverAddedEvent {
   export type InputTuple = [
     transceiver: AddressLike,
     transceiversNum: BigNumberish,
-    threshold: BigNumberish,
+    threshold: BigNumberish
   ];
   export type OutputTuple = [
     transceiver: string,
     transceiversNum: bigint,
-    threshold: bigint,
+    threshold: bigint
   ];
   export interface OutputObject {
     transceiver: string;
@@ -742,14 +728,14 @@ export namespace TransferSentEvent {
     amount: BigNumberish,
     fee: BigNumberish,
     recipientChain: BigNumberish,
-    msgSequence: BigNumberish,
+    msgSequence: BigNumberish
   ];
   export type OutputTuple = [
     recipient: string,
     amount: bigint,
     fee: bigint,
     recipientChain: bigint,
-    msgSequence: bigint,
+    msgSequence: bigint
   ];
   export interface OutputObject {
     recipient: string;
@@ -785,182 +771,178 @@ export interface NttManager extends BaseContract {
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TypedEventLog<TCEvent>>>;
   queryFilter<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
     fromBlockOrBlockhash?: string | number | undefined,
-    toBlock?: string | number | undefined,
+    toBlock?: string | number | undefined
   ): Promise<Array<TypedEventLog<TCEvent>>>;
 
   on<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
   on<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
 
   once<TCEvent extends TypedContractEvent>(
     event: TCEvent,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
   once<TCEvent extends TypedContractEvent>(
     filter: TypedDeferredTopicFilter<TCEvent>,
-    listener: TypedListener<TCEvent>,
+    listener: TypedListener<TCEvent>
   ): Promise<this>;
 
   listeners<TCEvent extends TypedContractEvent>(
-    event: TCEvent,
+    event: TCEvent
   ): Promise<Array<TypedListener<TCEvent>>>;
   listeners(eventName?: string): Promise<Array<Listener>>;
   removeAllListeners<TCEvent extends TypedContractEvent>(
-    event?: TCEvent,
+    event?: TCEvent
   ): Promise<this>;
 
   attestationReceived: TypedContractMethod<
     [
       sourceChainId: BigNumberish,
       sourceNttManagerAddress: BytesLike,
-      payload: TransceiverStructs.NttManagerMessageStruct,
+      payload: TransceiverStructs.NttManagerMessageStruct
     ],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
-  chainId: TypedContractMethod<[], [bigint], 'view'>;
+  chainId: TypedContractMethod<[], [bigint], "view">;
 
   completeInboundQueuedTransfer: TypedContractMethod<
     [digest: BytesLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   completeOutboundQueuedTransfer: TypedContractMethod<
     [messageSequence: BigNumberish],
     [bigint],
-    'payable'
+    "payable"
   >;
 
   executeMsg: TypedContractMethod<
     [
       sourceChainId: BigNumberish,
       sourceNttManagerAddress: BytesLike,
-      message: TransceiverStructs.NttManagerMessageStruct,
+      message: TransceiverStructs.NttManagerMessageStruct
     ],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   getCurrentInboundCapacity: TypedContractMethod<
     [chainId_: BigNumberish],
     [bigint],
-    'view'
+    "view"
   >;
 
-  getCurrentOutboundCapacity: TypedContractMethod<[], [bigint], 'view'>;
+  getCurrentOutboundCapacity: TypedContractMethod<[], [bigint], "view">;
 
   getInboundLimitParams: TypedContractMethod<
     [chainId_: BigNumberish],
     [IRateLimiter.RateLimitParamsStructOutput],
-    'view'
+    "view"
   >;
 
   getInboundQueuedTransfer: TypedContractMethod<
     [digest: BytesLike],
     [IRateLimiter.InboundQueuedTransferStructOutput],
-    'view'
+    "view"
   >;
 
-  getMigratesImmutables: TypedContractMethod<[], [boolean], 'view'>;
+  getMigratesImmutables: TypedContractMethod<[], [boolean], "view">;
 
-  getMode: TypedContractMethod<[], [bigint], 'view'>;
+  getMode: TypedContractMethod<[], [bigint], "view">;
 
   getOutboundLimitParams: TypedContractMethod<
     [],
     [IRateLimiter.RateLimitParamsStructOutput],
-    'view'
+    "view"
   >;
 
   getOutboundQueuedTransfer: TypedContractMethod<
     [queueSequence: BigNumberish],
     [IRateLimiter.OutboundQueuedTransferStructOutput],
-    'view'
+    "view"
   >;
 
   getPeer: TypedContractMethod<
     [chainId_: BigNumberish],
     [INttManager.NttManagerPeerStructOutput],
-    'view'
+    "view"
   >;
 
-  getThreshold: TypedContractMethod<[], [bigint], 'view'>;
+  getThreshold: TypedContractMethod<[], [bigint], "view">;
 
-  getTransceivers: TypedContractMethod<[], [string[]], 'view'>;
+  getTransceivers: TypedContractMethod<[], [string[]], "view">;
 
-  initialize: TypedContractMethod<[], [void], 'nonpayable'>;
+  initialize: TypedContractMethod<[], [void], "nonpayable">;
 
   isMessageApproved: TypedContractMethod<
     [digest: BytesLike],
     [boolean],
-    'view'
+    "view"
   >;
 
   isMessageExecuted: TypedContractMethod<
     [digest: BytesLike],
     [boolean],
-    'view'
+    "view"
   >;
 
-  isPaused: TypedContractMethod<[], [boolean], 'view'>;
+  isPaused: TypedContractMethod<[], [boolean], "view">;
 
   messageAttestations: TypedContractMethod<
     [digest: BytesLike],
     [bigint],
-    'view'
+    "view"
   >;
 
-  migrate: TypedContractMethod<[], [void], 'nonpayable'>;
+  migrate: TypedContractMethod<[], [void], "nonpayable">;
 
-  mode: TypedContractMethod<[], [bigint], 'view'>;
+  mode: TypedContractMethod<[], [bigint], "view">;
 
-  nextMessageSequence: TypedContractMethod<[], [bigint], 'view'>;
+  nextMessageSequence: TypedContractMethod<[], [bigint], "view">;
 
-  owner: TypedContractMethod<[], [string], 'view'>;
+  owner: TypedContractMethod<[], [string], "view">;
 
-  pause: TypedContractMethod<[], [void], 'nonpayable'>;
+  pause: TypedContractMethod<[], [void], "nonpayable">;
 
-  pauser: TypedContractMethod<[], [string], 'view'>;
+  pauser: TypedContractMethod<[], [string], "view">;
 
   quoteDeliveryPrice: TypedContractMethod<
-    [
-      recipientChain: BigNumberish,
-      transceiverInstructions: TransceiverStructs.TransceiverInstructionStruct[],
-      enabledTransceivers: AddressLike[],
-    ],
+    [recipientChain: BigNumberish, transceiverInstructions: BytesLike],
     [[bigint[], bigint]],
-    'view'
+    "view"
   >;
 
-  rateLimitDuration: TypedContractMethod<[], [bigint], 'view'>;
+  rateLimitDuration: TypedContractMethod<[], [bigint], "view">;
 
   removeTransceiver: TypedContractMethod<
     [transceiver: AddressLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   setInboundLimit: TypedContractMethod<
     [limit: BigNumberish, chainId_: BigNumberish],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   setOutboundLimit: TypedContractMethod<
     [limit: BigNumberish],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   setPeer: TypedContractMethod<
@@ -968,416 +950,412 @@ export interface NttManager extends BaseContract {
       peerChainId: BigNumberish,
       peerContract: BytesLike,
       decimals: BigNumberish,
-      inboundLimit: BigNumberish,
+      inboundLimit: BigNumberish
     ],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   setThreshold: TypedContractMethod<
     [threshold: BigNumberish],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   setTransceiver: TypedContractMethod<
     [transceiver: AddressLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
-  token: TypedContractMethod<[], [string], 'view'>;
+  token: TypedContractMethod<[], [string], "view">;
 
-  tokenDecimals: TypedContractMethod<[], [bigint], 'view'>;
+  tokenDecimals: TypedContractMethod<[], [bigint], "view">;
 
   transceiverAttestedToMessage: TypedContractMethod<
     [digest: BytesLike, index: BigNumberish],
     [boolean],
-    'view'
+    "view"
   >;
 
-  'transfer(uint256,uint16,bytes32)': TypedContractMethod<
+  "transfer(uint256,uint16,bytes32)": TypedContractMethod<
     [amount: BigNumberish, recipientChain: BigNumberish, recipient: BytesLike],
     [bigint],
-    'payable'
+    "payable"
   >;
 
-  'transfer(uint256,uint16,bytes32,bool,bytes)': TypedContractMethod<
+  "transfer(uint256,uint16,bytes32,bool,bytes)": TypedContractMethod<
     [
       amount: BigNumberish,
       recipientChain: BigNumberish,
       recipient: BytesLike,
       shouldQueue: boolean,
-      transceiverInstructions: BytesLike,
+      transceiverInstructions: BytesLike
     ],
     [bigint],
-    'payable'
+    "payable"
   >;
 
   transferOwnership: TypedContractMethod<
     [newOwner: AddressLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   transferPauserCapability: TypedContractMethod<
     [newPauser: AddressLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
-  unpause: TypedContractMethod<[], [void], 'nonpayable'>;
+  unpause: TypedContractMethod<[], [void], "nonpayable">;
 
   upgrade: TypedContractMethod<
     [newImplementation: AddressLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   getFunction<T extends ContractMethod = ContractMethod>(
-    key: string | FunctionFragment,
+    key: string | FunctionFragment
   ): T;
 
   getFunction(
-    nameOrSignature: 'attestationReceived',
+    nameOrSignature: "attestationReceived"
   ): TypedContractMethod<
     [
       sourceChainId: BigNumberish,
       sourceNttManagerAddress: BytesLike,
-      payload: TransceiverStructs.NttManagerMessageStruct,
+      payload: TransceiverStructs.NttManagerMessageStruct
     ],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
   getFunction(
-    nameOrSignature: 'chainId',
-  ): TypedContractMethod<[], [bigint], 'view'>;
+    nameOrSignature: "chainId"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: 'completeInboundQueuedTransfer',
-  ): TypedContractMethod<[digest: BytesLike], [void], 'nonpayable'>;
+    nameOrSignature: "completeInboundQueuedTransfer"
+  ): TypedContractMethod<[digest: BytesLike], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'completeOutboundQueuedTransfer',
-  ): TypedContractMethod<[messageSequence: BigNumberish], [bigint], 'payable'>;
+    nameOrSignature: "completeOutboundQueuedTransfer"
+  ): TypedContractMethod<[messageSequence: BigNumberish], [bigint], "payable">;
   getFunction(
-    nameOrSignature: 'executeMsg',
+    nameOrSignature: "executeMsg"
   ): TypedContractMethod<
     [
       sourceChainId: BigNumberish,
       sourceNttManagerAddress: BytesLike,
-      message: TransceiverStructs.NttManagerMessageStruct,
+      message: TransceiverStructs.NttManagerMessageStruct
     ],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
   getFunction(
-    nameOrSignature: 'getCurrentInboundCapacity',
-  ): TypedContractMethod<[chainId_: BigNumberish], [bigint], 'view'>;
+    nameOrSignature: "getCurrentInboundCapacity"
+  ): TypedContractMethod<[chainId_: BigNumberish], [bigint], "view">;
   getFunction(
-    nameOrSignature: 'getCurrentOutboundCapacity',
-  ): TypedContractMethod<[], [bigint], 'view'>;
+    nameOrSignature: "getCurrentOutboundCapacity"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: 'getInboundLimitParams',
+    nameOrSignature: "getInboundLimitParams"
   ): TypedContractMethod<
     [chainId_: BigNumberish],
     [IRateLimiter.RateLimitParamsStructOutput],
-    'view'
+    "view"
   >;
   getFunction(
-    nameOrSignature: 'getInboundQueuedTransfer',
+    nameOrSignature: "getInboundQueuedTransfer"
   ): TypedContractMethod<
     [digest: BytesLike],
     [IRateLimiter.InboundQueuedTransferStructOutput],
-    'view'
+    "view"
   >;
   getFunction(
-    nameOrSignature: 'getMigratesImmutables',
-  ): TypedContractMethod<[], [boolean], 'view'>;
+    nameOrSignature: "getMigratesImmutables"
+  ): TypedContractMethod<[], [boolean], "view">;
   getFunction(
-    nameOrSignature: 'getMode',
-  ): TypedContractMethod<[], [bigint], 'view'>;
+    nameOrSignature: "getMode"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: 'getOutboundLimitParams',
+    nameOrSignature: "getOutboundLimitParams"
   ): TypedContractMethod<
     [],
     [IRateLimiter.RateLimitParamsStructOutput],
-    'view'
+    "view"
   >;
   getFunction(
-    nameOrSignature: 'getOutboundQueuedTransfer',
+    nameOrSignature: "getOutboundQueuedTransfer"
   ): TypedContractMethod<
     [queueSequence: BigNumberish],
     [IRateLimiter.OutboundQueuedTransferStructOutput],
-    'view'
+    "view"
   >;
   getFunction(
-    nameOrSignature: 'getPeer',
+    nameOrSignature: "getPeer"
   ): TypedContractMethod<
     [chainId_: BigNumberish],
     [INttManager.NttManagerPeerStructOutput],
-    'view'
+    "view"
   >;
   getFunction(
-    nameOrSignature: 'getThreshold',
-  ): TypedContractMethod<[], [bigint], 'view'>;
+    nameOrSignature: "getThreshold"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: 'getTransceivers',
-  ): TypedContractMethod<[], [string[]], 'view'>;
+    nameOrSignature: "getTransceivers"
+  ): TypedContractMethod<[], [string[]], "view">;
   getFunction(
-    nameOrSignature: 'initialize',
-  ): TypedContractMethod<[], [void], 'nonpayable'>;
+    nameOrSignature: "initialize"
+  ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'isMessageApproved',
-  ): TypedContractMethod<[digest: BytesLike], [boolean], 'view'>;
+    nameOrSignature: "isMessageApproved"
+  ): TypedContractMethod<[digest: BytesLike], [boolean], "view">;
   getFunction(
-    nameOrSignature: 'isMessageExecuted',
-  ): TypedContractMethod<[digest: BytesLike], [boolean], 'view'>;
+    nameOrSignature: "isMessageExecuted"
+  ): TypedContractMethod<[digest: BytesLike], [boolean], "view">;
   getFunction(
-    nameOrSignature: 'isPaused',
-  ): TypedContractMethod<[], [boolean], 'view'>;
+    nameOrSignature: "isPaused"
+  ): TypedContractMethod<[], [boolean], "view">;
   getFunction(
-    nameOrSignature: 'messageAttestations',
-  ): TypedContractMethod<[digest: BytesLike], [bigint], 'view'>;
+    nameOrSignature: "messageAttestations"
+  ): TypedContractMethod<[digest: BytesLike], [bigint], "view">;
   getFunction(
-    nameOrSignature: 'migrate',
-  ): TypedContractMethod<[], [void], 'nonpayable'>;
+    nameOrSignature: "migrate"
+  ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'mode',
-  ): TypedContractMethod<[], [bigint], 'view'>;
+    nameOrSignature: "mode"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: 'nextMessageSequence',
-  ): TypedContractMethod<[], [bigint], 'view'>;
+    nameOrSignature: "nextMessageSequence"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: 'owner',
-  ): TypedContractMethod<[], [string], 'view'>;
+    nameOrSignature: "owner"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: 'pause',
-  ): TypedContractMethod<[], [void], 'nonpayable'>;
+    nameOrSignature: "pause"
+  ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'pauser',
-  ): TypedContractMethod<[], [string], 'view'>;
+    nameOrSignature: "pauser"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: 'quoteDeliveryPrice',
+    nameOrSignature: "quoteDeliveryPrice"
   ): TypedContractMethod<
-    [
-      recipientChain: BigNumberish,
-      transceiverInstructions: TransceiverStructs.TransceiverInstructionStruct[],
-      enabledTransceivers: AddressLike[],
-    ],
+    [recipientChain: BigNumberish, transceiverInstructions: BytesLike],
     [[bigint[], bigint]],
-    'view'
+    "view"
   >;
   getFunction(
-    nameOrSignature: 'rateLimitDuration',
-  ): TypedContractMethod<[], [bigint], 'view'>;
+    nameOrSignature: "rateLimitDuration"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: 'removeTransceiver',
-  ): TypedContractMethod<[transceiver: AddressLike], [void], 'nonpayable'>;
+    nameOrSignature: "removeTransceiver"
+  ): TypedContractMethod<[transceiver: AddressLike], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'setInboundLimit',
+    nameOrSignature: "setInboundLimit"
   ): TypedContractMethod<
     [limit: BigNumberish, chainId_: BigNumberish],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
   getFunction(
-    nameOrSignature: 'setOutboundLimit',
-  ): TypedContractMethod<[limit: BigNumberish], [void], 'nonpayable'>;
+    nameOrSignature: "setOutboundLimit"
+  ): TypedContractMethod<[limit: BigNumberish], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'setPeer',
+    nameOrSignature: "setPeer"
   ): TypedContractMethod<
     [
       peerChainId: BigNumberish,
       peerContract: BytesLike,
       decimals: BigNumberish,
-      inboundLimit: BigNumberish,
+      inboundLimit: BigNumberish
     ],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
   getFunction(
-    nameOrSignature: 'setThreshold',
-  ): TypedContractMethod<[threshold: BigNumberish], [void], 'nonpayable'>;
+    nameOrSignature: "setThreshold"
+  ): TypedContractMethod<[threshold: BigNumberish], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'setTransceiver',
-  ): TypedContractMethod<[transceiver: AddressLike], [void], 'nonpayable'>;
+    nameOrSignature: "setTransceiver"
+  ): TypedContractMethod<[transceiver: AddressLike], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'token',
-  ): TypedContractMethod<[], [string], 'view'>;
+    nameOrSignature: "token"
+  ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: 'tokenDecimals',
-  ): TypedContractMethod<[], [bigint], 'view'>;
+    nameOrSignature: "tokenDecimals"
+  ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: 'transceiverAttestedToMessage',
+    nameOrSignature: "transceiverAttestedToMessage"
   ): TypedContractMethod<
     [digest: BytesLike, index: BigNumberish],
     [boolean],
-    'view'
+    "view"
   >;
   getFunction(
-    nameOrSignature: 'transfer(uint256,uint16,bytes32)',
+    nameOrSignature: "transfer(uint256,uint16,bytes32)"
   ): TypedContractMethod<
     [amount: BigNumberish, recipientChain: BigNumberish, recipient: BytesLike],
     [bigint],
-    'payable'
+    "payable"
   >;
   getFunction(
-    nameOrSignature: 'transfer(uint256,uint16,bytes32,bool,bytes)',
+    nameOrSignature: "transfer(uint256,uint16,bytes32,bool,bytes)"
   ): TypedContractMethod<
     [
       amount: BigNumberish,
       recipientChain: BigNumberish,
       recipient: BytesLike,
       shouldQueue: boolean,
-      transceiverInstructions: BytesLike,
+      transceiverInstructions: BytesLike
     ],
     [bigint],
-    'payable'
+    "payable"
   >;
   getFunction(
-    nameOrSignature: 'transferOwnership',
-  ): TypedContractMethod<[newOwner: AddressLike], [void], 'nonpayable'>;
+    nameOrSignature: "transferOwnership"
+  ): TypedContractMethod<[newOwner: AddressLike], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'transferPauserCapability',
-  ): TypedContractMethod<[newPauser: AddressLike], [void], 'nonpayable'>;
+    nameOrSignature: "transferPauserCapability"
+  ): TypedContractMethod<[newPauser: AddressLike], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'unpause',
-  ): TypedContractMethod<[], [void], 'nonpayable'>;
+    nameOrSignature: "unpause"
+  ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: 'upgrade',
+    nameOrSignature: "upgrade"
   ): TypedContractMethod<
     [newImplementation: AddressLike],
     [void],
-    'nonpayable'
+    "nonpayable"
   >;
 
   getEvent(
-    key: 'AdminChanged',
+    key: "AdminChanged"
   ): TypedContractEvent<
     AdminChangedEvent.InputTuple,
     AdminChangedEvent.OutputTuple,
     AdminChangedEvent.OutputObject
   >;
   getEvent(
-    key: 'BeaconUpgraded',
+    key: "BeaconUpgraded"
   ): TypedContractEvent<
     BeaconUpgradedEvent.InputTuple,
     BeaconUpgradedEvent.OutputTuple,
     BeaconUpgradedEvent.OutputObject
   >;
   getEvent(
-    key: 'InboundTransferQueued',
+    key: "InboundTransferQueued"
   ): TypedContractEvent<
     InboundTransferQueuedEvent.InputTuple,
     InboundTransferQueuedEvent.OutputTuple,
     InboundTransferQueuedEvent.OutputObject
   >;
   getEvent(
-    key: 'Initialized',
+    key: "Initialized"
   ): TypedContractEvent<
     InitializedEvent.InputTuple,
     InitializedEvent.OutputTuple,
     InitializedEvent.OutputObject
   >;
   getEvent(
-    key: 'MessageAlreadyExecuted',
+    key: "MessageAlreadyExecuted"
   ): TypedContractEvent<
     MessageAlreadyExecutedEvent.InputTuple,
     MessageAlreadyExecutedEvent.OutputTuple,
     MessageAlreadyExecutedEvent.OutputObject
   >;
   getEvent(
-    key: 'MessageAttestedTo',
+    key: "MessageAttestedTo"
   ): TypedContractEvent<
     MessageAttestedToEvent.InputTuple,
     MessageAttestedToEvent.OutputTuple,
     MessageAttestedToEvent.OutputObject
   >;
   getEvent(
-    key: 'NotPaused',
+    key: "NotPaused"
   ): TypedContractEvent<
     NotPausedEvent.InputTuple,
     NotPausedEvent.OutputTuple,
     NotPausedEvent.OutputObject
   >;
   getEvent(
-    key: 'OutboundTransferQueued',
+    key: "OutboundTransferQueued"
   ): TypedContractEvent<
     OutboundTransferQueuedEvent.InputTuple,
     OutboundTransferQueuedEvent.OutputTuple,
     OutboundTransferQueuedEvent.OutputObject
   >;
   getEvent(
-    key: 'OutboundTransferRateLimited',
+    key: "OutboundTransferRateLimited"
   ): TypedContractEvent<
     OutboundTransferRateLimitedEvent.InputTuple,
     OutboundTransferRateLimitedEvent.OutputTuple,
     OutboundTransferRateLimitedEvent.OutputObject
   >;
   getEvent(
-    key: 'OwnershipTransferred',
+    key: "OwnershipTransferred"
   ): TypedContractEvent<
     OwnershipTransferredEvent.InputTuple,
     OwnershipTransferredEvent.OutputTuple,
     OwnershipTransferredEvent.OutputObject
   >;
   getEvent(
-    key: 'Paused',
+    key: "Paused"
   ): TypedContractEvent<
     PausedEvent.InputTuple,
     PausedEvent.OutputTuple,
     PausedEvent.OutputObject
   >;
   getEvent(
-    key: 'PauserTransferred',
+    key: "PauserTransferred"
   ): TypedContractEvent<
     PauserTransferredEvent.InputTuple,
     PauserTransferredEvent.OutputTuple,
     PauserTransferredEvent.OutputObject
   >;
   getEvent(
-    key: 'PeerUpdated',
+    key: "PeerUpdated"
   ): TypedContractEvent<
     PeerUpdatedEvent.InputTuple,
     PeerUpdatedEvent.OutputTuple,
     PeerUpdatedEvent.OutputObject
   >;
   getEvent(
-    key: 'ThresholdChanged',
+    key: "ThresholdChanged"
   ): TypedContractEvent<
     ThresholdChangedEvent.InputTuple,
     ThresholdChangedEvent.OutputTuple,
     ThresholdChangedEvent.OutputObject
   >;
   getEvent(
-    key: 'TransceiverAdded',
+    key: "TransceiverAdded"
   ): TypedContractEvent<
     TransceiverAddedEvent.InputTuple,
     TransceiverAddedEvent.OutputTuple,
     TransceiverAddedEvent.OutputObject
   >;
   getEvent(
-    key: 'TransceiverRemoved',
+    key: "TransceiverRemoved"
   ): TypedContractEvent<
     TransceiverRemovedEvent.InputTuple,
     TransceiverRemovedEvent.OutputTuple,
     TransceiverRemovedEvent.OutputObject
   >;
   getEvent(
-    key: 'TransferRedeemed',
+    key: "TransferRedeemed"
   ): TypedContractEvent<
     TransferRedeemedEvent.InputTuple,
     TransferRedeemedEvent.OutputTuple,
     TransferRedeemedEvent.OutputObject
   >;
   getEvent(
-    key: 'TransferSent',
+    key: "TransferSent"
   ): TypedContractEvent<
     TransferSentEvent.InputTuple,
     TransferSentEvent.OutputTuple,
     TransferSentEvent.OutputObject
   >;
   getEvent(
-    key: 'Upgraded',
+    key: "Upgraded"
   ): TypedContractEvent<
     UpgradedEvent.InputTuple,
     UpgradedEvent.OutputTuple,
@@ -1385,7 +1363,7 @@ export interface NttManager extends BaseContract {
   >;
 
   filters: {
-    'AdminChanged(address,address)': TypedContractEvent<
+    "AdminChanged(address,address)": TypedContractEvent<
       AdminChangedEvent.InputTuple,
       AdminChangedEvent.OutputTuple,
       AdminChangedEvent.OutputObject
@@ -1396,7 +1374,7 @@ export interface NttManager extends BaseContract {
       AdminChangedEvent.OutputObject
     >;
 
-    'BeaconUpgraded(address)': TypedContractEvent<
+    "BeaconUpgraded(address)": TypedContractEvent<
       BeaconUpgradedEvent.InputTuple,
       BeaconUpgradedEvent.OutputTuple,
       BeaconUpgradedEvent.OutputObject
@@ -1407,7 +1385,7 @@ export interface NttManager extends BaseContract {
       BeaconUpgradedEvent.OutputObject
     >;
 
-    'InboundTransferQueued(bytes32)': TypedContractEvent<
+    "InboundTransferQueued(bytes32)": TypedContractEvent<
       InboundTransferQueuedEvent.InputTuple,
       InboundTransferQueuedEvent.OutputTuple,
       InboundTransferQueuedEvent.OutputObject
@@ -1418,7 +1396,7 @@ export interface NttManager extends BaseContract {
       InboundTransferQueuedEvent.OutputObject
     >;
 
-    'Initialized(uint64)': TypedContractEvent<
+    "Initialized(uint64)": TypedContractEvent<
       InitializedEvent.InputTuple,
       InitializedEvent.OutputTuple,
       InitializedEvent.OutputObject
@@ -1429,7 +1407,7 @@ export interface NttManager extends BaseContract {
       InitializedEvent.OutputObject
     >;
 
-    'MessageAlreadyExecuted(bytes32,bytes32)': TypedContractEvent<
+    "MessageAlreadyExecuted(bytes32,bytes32)": TypedContractEvent<
       MessageAlreadyExecutedEvent.InputTuple,
       MessageAlreadyExecutedEvent.OutputTuple,
       MessageAlreadyExecutedEvent.OutputObject
@@ -1440,7 +1418,7 @@ export interface NttManager extends BaseContract {
       MessageAlreadyExecutedEvent.OutputObject
     >;
 
-    'MessageAttestedTo(bytes32,address,uint8)': TypedContractEvent<
+    "MessageAttestedTo(bytes32,address,uint8)": TypedContractEvent<
       MessageAttestedToEvent.InputTuple,
       MessageAttestedToEvent.OutputTuple,
       MessageAttestedToEvent.OutputObject
@@ -1451,7 +1429,7 @@ export interface NttManager extends BaseContract {
       MessageAttestedToEvent.OutputObject
     >;
 
-    'NotPaused(bool)': TypedContractEvent<
+    "NotPaused(bool)": TypedContractEvent<
       NotPausedEvent.InputTuple,
       NotPausedEvent.OutputTuple,
       NotPausedEvent.OutputObject
@@ -1462,7 +1440,7 @@ export interface NttManager extends BaseContract {
       NotPausedEvent.OutputObject
     >;
 
-    'OutboundTransferQueued(uint64)': TypedContractEvent<
+    "OutboundTransferQueued(uint64)": TypedContractEvent<
       OutboundTransferQueuedEvent.InputTuple,
       OutboundTransferQueuedEvent.OutputTuple,
       OutboundTransferQueuedEvent.OutputObject
@@ -1473,7 +1451,7 @@ export interface NttManager extends BaseContract {
       OutboundTransferQueuedEvent.OutputObject
     >;
 
-    'OutboundTransferRateLimited(address,uint64,uint256,uint256)': TypedContractEvent<
+    "OutboundTransferRateLimited(address,uint64,uint256,uint256)": TypedContractEvent<
       OutboundTransferRateLimitedEvent.InputTuple,
       OutboundTransferRateLimitedEvent.OutputTuple,
       OutboundTransferRateLimitedEvent.OutputObject
@@ -1484,7 +1462,7 @@ export interface NttManager extends BaseContract {
       OutboundTransferRateLimitedEvent.OutputObject
     >;
 
-    'OwnershipTransferred(address,address)': TypedContractEvent<
+    "OwnershipTransferred(address,address)": TypedContractEvent<
       OwnershipTransferredEvent.InputTuple,
       OwnershipTransferredEvent.OutputTuple,
       OwnershipTransferredEvent.OutputObject
@@ -1495,7 +1473,7 @@ export interface NttManager extends BaseContract {
       OwnershipTransferredEvent.OutputObject
     >;
 
-    'Paused(bool)': TypedContractEvent<
+    "Paused(bool)": TypedContractEvent<
       PausedEvent.InputTuple,
       PausedEvent.OutputTuple,
       PausedEvent.OutputObject
@@ -1506,7 +1484,7 @@ export interface NttManager extends BaseContract {
       PausedEvent.OutputObject
     >;
 
-    'PauserTransferred(address,address)': TypedContractEvent<
+    "PauserTransferred(address,address)": TypedContractEvent<
       PauserTransferredEvent.InputTuple,
       PauserTransferredEvent.OutputTuple,
       PauserTransferredEvent.OutputObject
@@ -1517,7 +1495,7 @@ export interface NttManager extends BaseContract {
       PauserTransferredEvent.OutputObject
     >;
 
-    'PeerUpdated(uint16,bytes32,uint8,bytes32,uint8)': TypedContractEvent<
+    "PeerUpdated(uint16,bytes32,uint8,bytes32,uint8)": TypedContractEvent<
       PeerUpdatedEvent.InputTuple,
       PeerUpdatedEvent.OutputTuple,
       PeerUpdatedEvent.OutputObject
@@ -1528,7 +1506,7 @@ export interface NttManager extends BaseContract {
       PeerUpdatedEvent.OutputObject
     >;
 
-    'ThresholdChanged(uint8,uint8)': TypedContractEvent<
+    "ThresholdChanged(uint8,uint8)": TypedContractEvent<
       ThresholdChangedEvent.InputTuple,
       ThresholdChangedEvent.OutputTuple,
       ThresholdChangedEvent.OutputObject
@@ -1539,7 +1517,7 @@ export interface NttManager extends BaseContract {
       ThresholdChangedEvent.OutputObject
     >;
 
-    'TransceiverAdded(address,uint256,uint8)': TypedContractEvent<
+    "TransceiverAdded(address,uint256,uint8)": TypedContractEvent<
       TransceiverAddedEvent.InputTuple,
       TransceiverAddedEvent.OutputTuple,
       TransceiverAddedEvent.OutputObject
@@ -1550,7 +1528,7 @@ export interface NttManager extends BaseContract {
       TransceiverAddedEvent.OutputObject
     >;
 
-    'TransceiverRemoved(address,uint8)': TypedContractEvent<
+    "TransceiverRemoved(address,uint8)": TypedContractEvent<
       TransceiverRemovedEvent.InputTuple,
       TransceiverRemovedEvent.OutputTuple,
       TransceiverRemovedEvent.OutputObject
@@ -1561,7 +1539,7 @@ export interface NttManager extends BaseContract {
       TransceiverRemovedEvent.OutputObject
     >;
 
-    'TransferRedeemed(bytes32)': TypedContractEvent<
+    "TransferRedeemed(bytes32)": TypedContractEvent<
       TransferRedeemedEvent.InputTuple,
       TransferRedeemedEvent.OutputTuple,
       TransferRedeemedEvent.OutputObject
@@ -1572,7 +1550,7 @@ export interface NttManager extends BaseContract {
       TransferRedeemedEvent.OutputObject
     >;
 
-    'TransferSent(bytes32,uint256,uint256,uint16,uint64)': TypedContractEvent<
+    "TransferSent(bytes32,uint256,uint256,uint16,uint64)": TypedContractEvent<
       TransferSentEvent.InputTuple,
       TransferSentEvent.OutputTuple,
       TransferSentEvent.OutputObject
@@ -1583,7 +1561,7 @@ export interface NttManager extends BaseContract {
       TransferSentEvent.OutputObject
     >;
 
-    'Upgraded(address)': TypedContractEvent<
+    "Upgraded(address)": TypedContractEvent<
       UpgradedEvent.InputTuple,
       UpgradedEvent.OutputTuple,
       UpgradedEvent.OutputObject
