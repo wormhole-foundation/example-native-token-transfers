@@ -23,6 +23,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
     using BytesParsing for bytes;
 
     uint16 constant chainId = 7;
+    uint16 constant chainId2 = 8;
 
     uint256 constant DEVNET_GUARDIAN_PK =
         0xcfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0;
@@ -45,7 +46,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         nttManager = MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
         nttManager.initialize();
 
-        nttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 9, type(uint64).max);
+        nttManager.setPeer(chainId2, toWormholeFormat(address(0x1)), 9, type(uint64).max);
 
         DummyTransceiver e = new DummyTransceiver(address(nttManager));
         nttManager.setTransceiver(address(e));
@@ -86,7 +87,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         uint256 transferAmount = 3 * 10 ** decimals;
         token.approve(address(nttManager), transferAmount);
-        nttManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
+        nttManager.transfer(transferAmount, chainId2, toWormholeFormat(user_B), false, new bytes(1));
 
         vm.stopPrank();
 
@@ -102,7 +103,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         // assert inbound rate limit for destination chain is still at the max.
         // the backflow should not override the limit.
         IRateLimiter.RateLimitParams memory inboundLimitParams =
-            nttManager.getInboundLimitParams(chainId);
+            nttManager.getInboundLimitParams(chainId2);
         assertEq(
             inboundLimitParams.currentCapacity.getAmount(), inboundLimitParams.limit.getAmount()
         );
@@ -126,7 +127,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         uint256 transferAmount = 3 * 10 ** decimals;
         token.approve(address(nttManager), transferAmount);
-        nttManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
+        nttManager.transfer(transferAmount, chainId2, toWormholeFormat(user_B), false, new bytes(1));
 
         vm.stopPrank();
 
@@ -166,7 +167,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         uint256 transferAmount = 3 * 10 ** decimals;
         token.approve(address(nttManager), transferAmount);
-        nttManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
+        nttManager.transfer(transferAmount, chainId2, toWormholeFormat(user_B), false, new bytes(1));
 
         vm.stopPrank();
 
@@ -201,7 +202,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         uint256 transferAmount = 3 * 10 ** decimals;
         token.approve(address(nttManager), transferAmount);
-        nttManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
+        nttManager.transfer(transferAmount, chainId2, toWormholeFormat(user_B), false, new bytes(1));
 
         vm.stopPrank();
 
@@ -250,7 +251,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         uint256 transferAmount = 4 * 10 ** decimals;
         token.approve(address(nttManager), transferAmount);
-        nttManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
+        nttManager.transfer(transferAmount, chainId2, toWormholeFormat(user_B), false, new bytes(1));
 
         vm.stopPrank();
 
@@ -293,7 +294,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         // transfer 2 tokens
         uint256 transferAmount = 2 * 10 ** decimals;
         token.approve(address(nttManager), transferAmount);
-        nttManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
+        nttManager.transfer(transferAmount, chainId2, toWormholeFormat(user_B), false, new bytes(1));
 
         vm.stopPrank();
 
@@ -347,7 +348,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
                 IRateLimiter.NotEnoughCapacity.selector, outboundLimit, transferAmount
             )
         );
-        nttManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
+        nttManager.transfer(transferAmount, chainId2, toWormholeFormat(user_B), false, new bytes(1));
     }
 
     function test_outboundRateLimit_multiHit() public {
@@ -366,7 +367,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         uint256 transferAmount = 3 * 10 ** decimals;
         token.approve(address(nttManager), transferAmount);
-        nttManager.transfer(transferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1));
+        nttManager.transfer(transferAmount, chainId2, toWormholeFormat(user_B), false, new bytes(1));
 
         // assert that first transfer went through
         assertEq(token.balanceOf(address(user_A)), 2 * 10 ** decimals);
@@ -388,7 +389,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
             )
         );
         nttManager.transfer(
-            badTransferAmount, chainId, toWormholeFormat(user_B), false, new bytes(1)
+            badTransferAmount, chainId2, toWormholeFormat(user_B), false, new bytes(1)
         );
     }
 
@@ -416,14 +417,14 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         // transfer with shouldQueue == true
         uint64 qSeq = nttManager.transfer(
-            transferAmount, chainId, toWormholeFormat(user_B), true, new bytes(1)
+            transferAmount, chainId2, toWormholeFormat(user_B), true, new bytes(1)
         );
 
         // assert that the transfer got queued up
         assertEq(qSeq, 0);
         IRateLimiter.OutboundQueuedTransfer memory qt = nttManager.getOutboundQueuedTransfer(0);
         assertEq(qt.amount.getAmount(), transferAmount.trim(decimals, decimals).getAmount());
-        assertEq(qt.recipientChain, chainId);
+        assertEq(qt.recipientChain, chainId2);
         assertEq(qt.recipient, toWormholeFormat(user_B));
         assertEq(qt.txTimestamp, initialBlockTimestamp);
 
@@ -619,7 +620,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
         token.approve(address(nttManager), type(uint256).max);
         // transfer 10 tokens from user_A -> user_B via the nttManager
         nttManager.transfer(
-            transferAmount.untrim(decimals), chainId, toWormholeFormat(user_B), false, new bytes(1)
+            transferAmount.untrim(decimals), chainId2, toWormholeFormat(user_B), false, new bytes(1)
         );
 
         vm.stopPrank();
@@ -800,7 +801,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
             vm.expectRevert(abi.encodeWithSelector(INttManager.ZeroAmount.selector));
             nttManager.transfer(
                 transferAmount.untrim(decimals),
-                chainId,
+                chainId2,
                 toWormholeFormat(user_B),
                 false,
                 new bytes(1)
@@ -811,7 +812,7 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         // transfer tokens from user_A -> user_B via the nttManager
         nttManager.transfer(
-            transferAmount.untrim(decimals), chainId, toWormholeFormat(user_B), false, new bytes(1)
+            transferAmount.untrim(decimals), chainId2, toWormholeFormat(user_B), false, new bytes(1)
         );
 
         vm.stopPrank();
@@ -935,14 +936,14 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         // shouldQueue == true
         uint64 qSeq = nttManager.transfer(
-            transferAmount, chainId, toWormholeFormat(user_B), true, new bytes(1)
+            transferAmount, chainId2, toWormholeFormat(user_B), true, new bytes(1)
         );
 
         // assert that the transfer got queued up
         assertEq(qSeq, 0);
         IRateLimiter.OutboundQueuedTransfer memory qt = nttManager.getOutboundQueuedTransfer(0);
         assertEq(qt.amount.getAmount(), transferAmount.trim(decimals, decimals).getAmount());
-        assertEq(qt.recipientChain, chainId);
+        assertEq(qt.recipientChain, chainId2);
         assertEq(qt.recipient, toWormholeFormat(user_B));
         assertEq(qt.txTimestamp, initialBlockTimestamp);
 
