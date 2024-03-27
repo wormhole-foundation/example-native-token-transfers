@@ -937,4 +937,37 @@ contract TestNttManager is Test, IRateLimiterEvents {
         vm.expectRevert(abi.encodeWithSelector(NumberOfDecimalsNotEqual.selector, 8, 7));
         e1.receiveMessage(transceiverMessage);
     }
+
+    function test_transferWithInstructionIndexOutOfBounds() public {
+        TransceiverStructs.TransceiverInstruction memory TransceiverInstruction =
+            TransceiverStructs.TransceiverInstruction({index: 100, payload: new bytes(1)});
+        TransceiverStructs.TransceiverInstruction[] memory TransceiverInstructions =
+            new TransceiverStructs.TransceiverInstruction[](1);
+        TransceiverInstructions[0] = TransceiverInstruction;
+        bytes memory encodedInstructions =
+            TransceiverStructs.encodeTransceiverInstructions(TransceiverInstructions);
+
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(nttManager.token());
+
+        uint8 decimals = token.decimals();
+
+        nttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 9, type(uint64).max);
+        nttManager.setOutboundLimit(packTrimmedAmount(type(uint64).max, 8).untrim(decimals));
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+
+        vm.startPrank(user_A);
+
+        token.approve(address(nttManager), 3 * 10 ** decimals);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(TransceiverStructs.InvalidInstructionIndex.selector, 100, 1)
+        );
+        nttManager.transfer(
+            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false, encodedInstructions
+        );
+    }
 }
