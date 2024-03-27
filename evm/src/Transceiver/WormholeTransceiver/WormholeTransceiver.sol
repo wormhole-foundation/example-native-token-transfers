@@ -263,7 +263,7 @@ contract WormholeTransceiver is
         bytes32 recipientNttManagerAddress,
         bytes memory nttManagerMessage,
         bool isSpecialRelayer
-    ) pure internal returns (TransceiverStructs.TransceiverMessage memory, bytes memory) {
+    ) internal pure returns (TransceiverStructs.TransceiverMessage memory, bytes memory) {
         // Transceiver payload is prefixed with 2 bytes
         // representing the version of the payload.
         // The rest of the bytes are the -actual- payload data.
