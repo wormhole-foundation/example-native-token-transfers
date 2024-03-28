@@ -26,6 +26,7 @@ docker_build(
     ref = "ntt-solana-contract",
     context = "./",
     dockerfile = "./solana/Dockerfile",
+    ignore = ["sdk/__tests__/*"],
 )
 k8s_yaml_with_ns("./solana/solana-devnet.yaml")
 k8s_resource(
