@@ -13,7 +13,9 @@
     "ts-jest": "^29.1.2",
     "@wormhole-foundation/sdk-connect":"0.5.2-beta.4",
     "@wormhole-foundation/sdk-solana":"0.5.2-beta.4",
+    "@wormhole-foundation/sdk-solana-core":"0.5.2-beta.4",
     "@wormhole-foundation/sdk-evm":"0.5.2-beta.4",
+    "@wormhole-foundation/sdk-evm-core":"0.5.2-beta.4",
     "ethers": "^6.5.1",
     "@solana/web3.js": "1.89.1",
     "@solana/spl-token": "0.3.9"

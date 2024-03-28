@@ -1,6 +1,6 @@
 import { web3 } from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
-import { PublicKey } from "@solana/web3.js";
+import { Connection, PublicKey } from "@solana/web3.js";
 import {
   Chain,
   ChainContext,
@@ -9,10 +9,12 @@ import {
   WormholeMessageId,
   amount,
   chainToPlatform,
+  encoding,
   signSendWait as ssw,
   toChainId,
 } from "@wormhole-foundation/sdk-connect";
 import {
+  EvmChains,
   EvmPlatform,
   getEvmSignerForSigner,
 } from "@wormhole-foundation/sdk-evm";
@@ -22,17 +24,20 @@ import {
 } from "@wormhole-foundation/sdk-solana";
 import { ethers } from "ethers";
 
+import "@wormhole-foundation/sdk-evm-core";
+import "@wormhole-foundation/sdk-solana-core";
+
 import { DummyTokenMintAndBurn__factory } from "../evm/ethers-ci-contracts/factories/DummyToken.sol/DummyTokenMintAndBurn__factory.js";
 import { DummyToken__factory } from "../evm/ethers-ci-contracts/factories/DummyToken.sol/DummyToken__factory.js";
 import { ERC1967Proxy__factory } from "../evm/ethers-ci-contracts/factories/ERC1967Proxy__factory.js";
 import { NttManager__factory } from "../evm/ethers-ci-contracts/factories/NttManager__factory.js";
 import { TransceiverStructs__factory } from "../evm/ethers-ci-contracts/factories/TransceiverStructs__factory.js";
+import { TrimmedAmountLib__factory } from "../evm/ethers-ci-contracts/factories/TrimmedAmount.sol/TrimmedAmountLib__factory.js";
 import { WormholeTransceiver__factory } from "../evm/ethers-ci-contracts/factories/WormholeTransceiver__factory.js";
 
 import solanaTiltKey from "./solana-tilt.json"; // from https://github.com/wormhole-foundation/wormhole/blob/main/solana/keys/solana-devnet.json
 
 import { Ntt } from "../definition/src/index.js";
-import { TrimmedAmountLib__factory } from "../evm/ethers-ci-contracts/factories/TrimmedAmount.sol/TrimmedAmountLib__factory.js";
 import { EvmNtt } from "../evm/src/ntt.js";
 import { SolanaNtt } from "../solana/src/ntt.js";
 
@@ -158,15 +163,15 @@ async function getSigner(ctx: Ctx): Promise<Signer> {
   switch (platform) {
     case "Evm":
       return getEvmSignerForSigner(
-        await ctx.context.getRpc(),
+        ctx.context.chain as EvmChains,
         await getNativeSigner(ctx)
       );
     case "Solana":
       return new SolanaSendSigner(
         await ctx.context.getRpc(),
         "Solana",
-        await getNativeSigner(ctx),
-        true // Debug
+        await getNativeSigner(ctx)
+        // true // Debug
       );
     default:
       throw new Error(
@@ -254,6 +259,7 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
   );
   await managerAddress.waitForDeployment();
 
+  await sleep(2);
   console.log("Deploying manager proxy");
   const ERC1967ProxyFactory = new ERC1967Proxy__factory(wallet);
   const managerProxyAddress = await ERC1967ProxyFactory.deploy(
@@ -282,11 +288,14 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
     "0x0000000000000000000000000000000000000000", // TODO - Specialized relayer??????
     200, // Consistency level
     500000n, // Gas limit
-    overrides
+    {
+      gasLimit: 30000000n,
+    }
   );
   await WormholeTransceiverAddress.waitForDeployment();
 
   // // Setup with the proxy
+  await sleep(2);
   console.log("Deploy transceiver proxy");
   const transceiverProxyFactory = new ERC1967Proxy__factory(wallet);
   const transceiverProxyAddress = await transceiverProxyFactory.deploy(
@@ -330,7 +339,7 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
 
 async function deploySolana(ctx: Ctx): Promise<Ctx> {
   const signer = await getSigner(ctx);
-  const connection = await ctx.context.getRpc();
+  const connection = (await ctx.context.getRpc()) as Connection;
   const address = new PublicKey(signer.address());
   const coreAddress = ctx.context.config.contracts.coreBridge!;
   console.log(`Using public key: ${address}`);
@@ -380,9 +389,9 @@ async function deploySolana(ctx: Ctx): Promise<Ctx> {
 
   // Check to see if already deployed, dirty env
   const mgrProgram = await connection.getAccountInfo(
-    new PublicKey(managerProgramId)
+    new PublicKey(manager.pdas.configAccount())
   );
-  if (!mgrProgram) {
+  if (!mgrProgram || mgrProgram.data.length === 0) {
     await spl.setAuthority(
       connection,
       SOL_PRIVATE_KEY,
@@ -428,13 +437,12 @@ async function deploySolana(ctx: Ctx): Promise<Ctx> {
 
 async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
   const target = targetCtx.context;
-  const peer = targetCtx.context;
+  const peer = peerCtx.context;
 
   const targetPlatform = chainToPlatform(target.chain);
   const peerPlatform = chainToPlatform(peer.chain);
 
   const peerContracts = peerCtx.contracts!;
-  const targetContracts = targetCtx.contracts!;
 
   const managerAddress = Wormhole.parseAddress(
     peer.chain,
@@ -451,9 +459,8 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
 
   const tokenDecimals = peer.config.nativeTokenDecimals;
 
-  const inboundLimit = amount.units(amount.parse("10000", tokenDecimals));
-
   if (targetPlatform === "Evm") {
+    const inboundLimit = amount.units(amount.parse("10000", tokenDecimals));
     const targetContracts = targetCtx.contracts!;
     const signer = (await getNativeSigner(targetCtx)) as ethers.Wallet;
 
@@ -488,25 +495,12 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
     }
   } else if (targetPlatform === "Solana") {
     const signer = await getSigner(targetCtx);
-    const manager = new SolanaNtt(
-      NETWORK,
-      "Solana",
-      await peer.getRpc(),
-      peer.config.contracts.coreBridge!,
-      {
-        token: targetContracts.token,
-        manager: targetContracts.manager,
-        transceiver: {
-          wormhole: targetContracts.transceiver,
-        },
-      }
-    );
-
+    const manager = (await getNtt(targetCtx)) as SolanaNtt<"Devnet", "Solana">;
     const setXcvrPeerTxs = manager.setWormholeTransceiverPeer({
       payer: SOL_PRIVATE_KEY,
       owner: SOL_PRIVATE_KEY,
       chain: peer.chain,
-      address: Buffer.from(transceiverEmitter.substring(2), "hex"),
+      address: encoding.hex.decode(transceiverEmitter),
     });
     await signSendWait(target, setXcvrPeerTxs, signer);
 
@@ -514,8 +508,8 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
       payer: SOL_PRIVATE_KEY,
       owner: SOL_PRIVATE_KEY,
       chain: peer.chain,
-      address: Buffer.from(managerAddress.substring(2), "hex"),
-      limit: inboundLimit,
+      address: encoding.hex.decode(managerAddress),
+      limit: 1000000000n,
       tokenDecimals,
     });
     await signSendWait(target, setPeerTxs, signer);
@@ -527,7 +521,7 @@ async function link(chainInfos: Ctx[]) {
   console.log("========================");
   for (const targetInfo of chainInfos) {
     for (const peerInfo of chainInfos) {
-      if (targetInfo === peerInfo) continue;
+      if (peerInfo.context.chain === targetInfo.context.chain) continue;
       console.log(
         `Registering ${peerInfo.context.chain} on ${targetInfo.context.chain}`
       );
@@ -584,6 +578,7 @@ async function transferWithChecks(
   const dstSigner = await getSigner(destinationCtx);
 
   const sender = Wormhole.chainAddress(srcSigner.chain(), srcSigner.address());
+  console.log(dstSigner.chain(), dstSigner.address());
   const receiver = Wormhole.chainAddress(
     dstSigner.chain(),
     dstSigner.address()
@@ -610,43 +605,41 @@ async function transferWithChecks(
   const sourceCheckAmount = srcPlatform === "Solana" ? scaledAmt : amt;
   const destinationCheckAmount = dstPlatform === "Solana" ? scaledAmt : amt;
 
+  checkBalances(
+    sourceCtx.mode,
+    [managerBalanceBeforeSend, managerBalanceAfterSend],
+    [userBalanceBeforeSend, userBalanceAfterSend],
+    sourceCheckAmount
+  );
+  checkBalances(
+    destinationCtx.mode,
+    [managerBalanceBeforeRecv, managerBalanceAfterRecv],
+    [userBalanceBeforeRecv, userBalanceAfterRecv],
+    destinationCheckAmount
+  );
+}
+
+function checkBalances(
+  mode: Mode,
+  managerBalance: [bigint, bigint],
+  userBalances: [bigint, bigint],
+  check: bigint
+) {
+  const [managerBefore, managerAfter] = managerBalance;
   if (
-    sourceCtx.mode === "burning"
-      ? !(managerBalanceAfterSend === 0n)
-      : !(
-          managerBalanceAfterSend ===
-          managerBalanceBeforeSend + sourceCheckAmount
-        )
+    mode === "burning"
+      ? !(managerAfter === 0n)
+      : !(managerAfter === managerBefore + check)
   ) {
     throw new Error(
-      `Source manager amount incorrect: before ${managerBalanceBeforeSend.toString()}, after ${managerBalanceAfterSend.toString()}`
+      `Source manager amount incorrect: before ${managerBefore.toString()}, after ${managerAfter.toString()}`
     );
   }
 
-  if (!(userBalanceAfterSend == userBalanceBeforeSend - sourceCheckAmount)) {
+  const [userBefore, userAfter] = userBalances;
+  if (!(userAfter == userBefore - check)) {
     throw new Error(
-      `Source user amount incorrect: before ${userBalanceBeforeSend.toString()}, after ${userBalanceAfterSend.toString()}`
-    );
-  }
-
-  if (
-    destinationCtx.mode === "burning"
-      ? !(managerBalanceAfterRecv === 0n)
-      : !(
-          managerBalanceAfterRecv ===
-          managerBalanceBeforeRecv - destinationCheckAmount
-        )
-  ) {
-    throw new Error(
-      `Destination manager amount incorrect: before ${managerBalanceBeforeRecv.toString()}, after ${managerBalanceAfterRecv.toString()}`
-    );
-  }
-
-  if (
-    !(userBalanceAfterRecv === userBalanceBeforeRecv + destinationCheckAmount)
-  ) {
-    throw new Error(
-      `Destination user amount incorrect: before ${userBalanceBeforeRecv.toString()}, after ${userBalanceAfterRecv.toString()}`
+      `Source user amount incorrect: before ${userBefore.toString()}, after ${userAfter.toString()}`
     );
   }
 }
@@ -689,14 +682,12 @@ describe("Hub Tests", function () {
     ];
 
     // Deploy contracts for hub chain
-    console.log("Deploying hub contract to: ", hubChain.chain);
-    const hub = await deploy({ context: hubChain, mode: "locking" });
-
-    // Deply contracts for spoke chains
-    console.log("Deploying Spoke contract to: ", spokeChainA.chain);
-    const spokeA = await deploy({ context: spokeChainA, mode: "burning" });
-    console.log("Deploying Spoke contract to: ", spokeChainB.chain);
-    const spokeB = await deploy({ context: spokeChainB, mode: "burning" });
+    console.log("Deploying contracts");
+    const [hub, spokeA, spokeB] = await Promise.all([
+      deploy({ context: hubChain, mode: "locking" }),
+      deploy({ context: spokeChainA, mode: "burning" }),
+      deploy({ context: spokeChainB, mode: "burning" }),
+    ]);
 
     // Link contracts
     console.log("Linking Peers");

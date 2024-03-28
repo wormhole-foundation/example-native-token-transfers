@@ -254,7 +254,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     payer: Keypair;
     owner: Keypair;
     chain: Chain;
-    address: ArrayLike<number>;
+    address: Uint8Array;
     config?: Config;
   }) {
     const ix = await this.program.methods

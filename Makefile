@@ -5,7 +5,7 @@ all: build
 
 .PHONY: build
 build-evm:
-	cd evm && forge build
+	cd evm && forge build --via-ir
 
 .PHONY: clean-evm
 clean-evm:
@@ -18,7 +18,6 @@ build-evm-prod: clean-evm
 .PHONY: gen-evm-bindings
 gen-evm-bindings: build-evm-prod
 	cd ci_tests && rm -rf evm_binding && npm ci && npm run gen-evm-bindings && cd -
-	cd sdk/evm && rm -rf src/ethers-contracts && npm ci && npm run genenerate && cd -
 
 #######################
 ## TESTS
