@@ -204,6 +204,8 @@ contract WormholeTransceiver is
 
             emit RelayingInfo(uint8(RelayingType.Standard), deliveryPayment);
         } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
+            (transceiverMessage, encodedTransceiverPayload) =
+                _encodePayload(caller, recipientNttManagerAddress, nttManagerMessage, true);
             uint256 wormholeFee = wormhole.messageFee();
             uint64 sequence = wormhole.publishMessage{value: wormholeFee}(
                 0, encodedTransceiverPayload, consistencyLevel
@@ -254,5 +256,33 @@ contract WormholeTransceiver is
     function _verifyBridgeVM(IWormhole.VM memory vm) internal view returns (bool) {
         checkFork(wormholeTransceiver_evmChainId);
         return getWormholePeer(vm.emitterChainId) == vm.emitterAddress;
+    }
+
+    function _encodePayload(
+        address caller,
+        bytes32 recipientNttManagerAddress,
+        bytes memory nttManagerMessage,
+        bool isSpecialRelayer
+    ) internal pure returns (TransceiverStructs.TransceiverMessage memory, bytes memory) {
+        // Transceiver payload is prefixed with 2 bytes
+        // representing the version of the payload.
+        // The rest of the bytes are the -actual- payload data.
+        // In payload v1, the payload data is a boolean
+        // representing whether the message should be picked
+        // up by the special relayer or not.
+        bytes memory transceiverPayload = abi.encodePacked(uint16(1), isSpecialRelayer);
+
+        (
+            TransceiverStructs.TransceiverMessage memory transceiverMessage,
+            bytes memory encodedPayload
+        ) = TransceiverStructs.buildAndEncodeTransceiverMessage(
+            WH_TRANSCEIVER_PAYLOAD_PREFIX,
+            toWormholeFormat(caller),
+            recipientNttManagerAddress,
+            nttManagerMessage,
+            transceiverPayload
+        );
+
+        return (transceiverMessage, encodedPayload);
     }
 }
