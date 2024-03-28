@@ -16,11 +16,15 @@ pub struct UpdateSolPrice<'info> {
     )]
     pub authority: Signer<'info>,
 
-    #[account(mut)]
     pub instance: Account<'info, Instance>,
 }
 
 pub fn update_sol_price(ctx: Context<UpdateSolPrice>, args: UpdateSolPriceArgs) -> Result<()> {
+    // `sol_price` is used as a divisor in arithmetic operations so it is invalid for its value to
+    // be zero.
+    if args.sol_price == 0 {
+        return Err(NttQuoterError::PriceCannotBeZero.into());
+    }
     ctx.accounts.instance.sol_price = args.sol_price;
     Ok(())
 }
