@@ -19,13 +19,13 @@ pub struct ReleaseOutbound<'info> {
 
     #[account(
         mut,
-        constraint = !outbox_item.released.get(transceiver.id) @ NTTError::MessageAlreadySent,
+        constraint = !outbox_item.released.get(transceiver.id)? @ NTTError::MessageAlreadySent,
     )]
     pub outbox_item: Account<'info, OutboxItem>,
 
     #[account(
         constraint = transceiver.transceiver_address == crate::ID,
-        constraint = config.enabled_transceivers.get(transceiver.id) @ NTTError::DisabledTransceiver
+        constraint = config.enabled_transceivers.get(transceiver.id)? @ NTTError::DisabledTransceiver
     )]
     pub transceiver: Account<'info, RegisteredTransceiver>,
 
@@ -65,7 +65,7 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, args: ReleaseOutboundArgs
         }
     }
 
-    assert!(accs.outbox_item.released.get(accs.transceiver.id));
+    assert!(accs.outbox_item.released.get(accs.transceiver.id)?);
     let message: TransceiverMessage<WormholeTransceiver, NativeTokenTransfer> =
         TransceiverMessage::new(
             // TODO: should we just put the ntt id here statically?
