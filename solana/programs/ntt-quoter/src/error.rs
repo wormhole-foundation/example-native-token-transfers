@@ -15,9 +15,18 @@ pub enum NttQuoterError {
     #[msg("Relaying to the specified chain is disabled")]
     OutboxItemNotReleased = 0x5,
 
+    #[msg("Scaled value exceeds u64::MAX")]
+    ScalingOverflow = 0x6,
+
+    #[msg("Cannot divide by zero")]
+    DivByZero = 0x7,
+
     #[msg("The fee recipient cannot be the default address (0x0)")]
     FeeRecipientCannotBeDefault = 0x101,
 
     #[msg("Must be owner or assistant")]
     NotAuthorized = 0x102,
+
+    #[msg("The price cannot be zero")]
+    PriceCannotBeZero = 0x103,
 }
