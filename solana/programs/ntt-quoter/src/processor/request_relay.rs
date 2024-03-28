@@ -92,6 +92,7 @@ const GWEI: u64 = u64::pow(10, 9);
 //     might be more efficient to use f64 or ruint crate
 // SECURITY: Integer division is OK here. The calling code is responsible for understanding that
 // this function returns the quotient of the operation and that the remainder will be lost.
+// The divisor is explicitly checked in this function.
 #[allow(clippy::integer_division)]
 fn mul_div(scalar: u64, numerator: u64, denominator: u64) -> StdResult<u64, NttQuoterError> {
     if denominator == 0 {
