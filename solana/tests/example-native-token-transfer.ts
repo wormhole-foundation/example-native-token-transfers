@@ -111,7 +111,6 @@ describe('example-native-token-transfers', () => {
         recipientChain: 'ethereum',
         recipientAddress: Array.from(user.publicKey.toBuffer()), // TODO: dummy
         shouldQueue: false,
-        config: await ntt.getConfig()
       })
 
       const wormholeMessage = ntt.wormholeMessageAccountAddress(outboxItem)
@@ -190,7 +189,6 @@ describe('example-native-token-transfers', () => {
       const released = await ntt.redeem({
         payer,
         vaa: vaaBuf,
-        config: await ntt.getConfig()
       })
 
       expect(released).to.equal(true)
