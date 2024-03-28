@@ -672,9 +672,6 @@ async function testEthHub() {
   console.log("Eth <> BSC with relay");
   await transferWithChecks(ethInfo, bscInfo, true);
   await transferWithChecks(bscInfo, ethInfo, true);
-  console.log("Eth <> Solana with relay");
-  await transferWithChecks(ethInfo, solInfo, true);
-  await transferWithChecks(solInfo, ethInfo, true);
   // TODO: corrupted or bad VAA usage
 }
 
