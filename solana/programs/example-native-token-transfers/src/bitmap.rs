@@ -35,6 +35,14 @@ impl Bitmap {
         let bm = BM::<128>::from_value(self.map) & BM::<128>::from_value(enabled.map);
         bm.len() as u8
     }
+
+    pub fn len(self) -> usize {
+        BM::<128>::from_value(self.map).len()
+    }
+
+    pub fn is_empty(self) -> bool {
+        BM::<128>::from_value(self.map).is_empty()
+    }
 }
 
 #[cfg(test)]
