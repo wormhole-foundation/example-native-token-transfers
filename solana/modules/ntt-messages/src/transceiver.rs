@@ -232,7 +232,7 @@ mod test {
                     },
                 },
             },
-            transceiver_payload: vec![],
+            transceiver_payload: vec![0x00, 0x01, 0x01],
         };
         assert_eq!(message, expected);
         assert_eq!(vec.len(), 0);
