@@ -1,5 +1,4 @@
 import * as anchor from "@coral-xyz/anchor";
-import { BN } from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
 import {
   ChainContext,
@@ -119,7 +118,7 @@ describe("example-native-token-transfers", () => {
         owner: payer,
         chain: "Solana",
         mint,
-        outboundLimit: new BN(1000000),
+        outboundLimit: 1000000n,
         mode: "locking",
       });
       await signSendWait(ctx, initTxs, signer);
@@ -147,7 +146,7 @@ describe("example-native-token-transfers", () => {
         owner: payer,
         chain: "Ethereum",
         address: remoteMgrAddress.toUint8Array(),
-        limit: new BN(1000000),
+        limit: 1000000n,
         tokenDecimals: 18,
       });
       await signSendWait(ctx, setPeerTxs, signer);

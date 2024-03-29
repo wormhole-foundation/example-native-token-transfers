@@ -157,7 +157,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     owner: Keypair;
     chain: Chain;
     mint: PublicKey;
-    outboundLimit: BN;
+    outboundLimit: bigint;
     mode: "burning" | "locking";
   }) {
     const mode: any =
@@ -172,8 +172,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       );
     }
     const tokenProgram = mintInfo.owner;
+    const limit = new BN(args.outboundLimit.toString());
     const ix = await this.program.methods
-      .initialize({ chainId, limit: args.outboundLimit, mode })
+      .initialize({ chainId, limit: limit, mode })
       .accounts({
         payer: args.payer.publicKey,
         deployer: args.owner.publicKey,
@@ -253,7 +254,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     payer: Keypair;
     owner: Keypair;
     chain: Chain;
-    address: ArrayLike<number>;
+    address: Uint8Array;
     config?: Config;
   }) {
     const ix = await this.program.methods
@@ -309,7 +310,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     owner: Keypair;
     chain: Chain;
     address: ArrayLike<number>;
-    limit: BN;
+    limit: bigint;
     tokenDecimals: number;
     config?: Config;
   }) {
@@ -317,7 +318,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       .setPeer({
         chainId: { id: toChainId(args.chain) },
         address: Array.from(args.address),
-        limit: args.limit,
+        limit: new BN(args.limit.toString()),
         tokenDecimals: args.tokenDecimals,
       })
       .accounts({

@@ -2,15 +2,15 @@ import { PublicKey, PublicKeyInitData } from "@solana/web3.js";
 import {
   Chain,
   ChainId,
+  CustomConversion,
+  Layout,
   encoding,
   keccak256,
   toChainId,
+  ChainAddress,
 } from "@wormhole-foundation/sdk-connect";
 import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
 import BN from "bn.js";
-
-import { CustomConversion, Layout } from "@wormhole-foundation/sdk-base";
-import { ChainAddress } from "@wormhole-foundation/sdk-connect";
 
 export const BPF_LOADER_UPGRADEABLE_PROGRAM_ID = new PublicKey(
   "BPFLoaderUpgradeab1e11111111111111111111111"
