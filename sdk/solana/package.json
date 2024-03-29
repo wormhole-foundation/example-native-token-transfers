@@ -41,7 +41,7 @@
     "test:ci": "jest --config ./jest.config.ts",
     "copy:idl": "cp ../../solana/target/idl/*.json ./src/anchor-idl/",
     "copy:types": "cp ../../solana/target/types/*.ts ./src/anchor-idl/",
-    "generate": "npm run copy:idl && npm run copy:types"
+    "generate": "mkdir -p ./src/anchor-idl/ && npm run copy:idl && npm run copy:types"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.5",
