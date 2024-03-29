@@ -207,6 +207,8 @@ cp env/.env.sample env/testnet/sepolia.env
 
 Do this for each blockchain network that the `NTTManager` and `WormholeTransceiver` contracts will be deployed to. Then configure each `.env` file and set the `RPC` variables.
 
+Currently the `MAX_OUTBOUND_LIMIT` is set to zero in the sample `.env` file. This means that all outbound transfers will be queued by the rate limiter.
+
 #### Config Setup
 
 Before deploying the contracts, navigate to the `evm/cfg` directory and copy the sample file. Make sure to preserve the existing name:
@@ -218,6 +220,8 @@ cp WormholeNttConfig.json.sample WormholeNttConfig.json
 ```
 
 Configure each network to your liking (including adding/removing networks). We will eventually add the addresses of the deployed contracts to this file. Navigate back to the `evm` directory.
+
+Currently the per-chain `inBoundLimit` is set to zero by default. This means all inbound transfers will be queued by the rate limiter. Set this value accordingly.
 
 #### Deploy
 
@@ -246,6 +250,7 @@ bash sh/configure_wormhole_ntt.sh -n NETWORK_TYPE -c CHAIN_NAME -k PRIVATE_KEY
 ```
 
 #### Additional Notes
-Tokens powered by NTT in __burn__ mode require the `burn` method to be present. This method is not present in the standard ERC20 interface, but is found in the `ERC20Burnable` interface.
+
+Tokens powered by NTT in **burn** mode require the `burn` method to be present. This method is not present in the standard ERC20 interface, but is found in the `ERC20Burnable` interface.
 
 The `mint` and `setMinter` methods found in the [`INttToken` Interface](src/interfaces/INTTToken.sol) are not found in the standard `ERC20` interface.
