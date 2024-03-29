@@ -21,8 +21,10 @@ library TransceiverStructs {
 
     /// @notice Error thrown when the transceiver instructions aren't
     ///         encoded with strictly increasing indices
-    /// @dev Selector 0x71f23ef2.
-    error UnorderedInstructions();
+    /// @dev Selector 0x0555a4b9.
+    /// @param lastIndex Last parsed instruction index
+    /// @param instructionIndex The instruction index that was unordered
+    error UnorderedInstructions(uint256 lastIndex, uint256 instructionIndex);
 
     /// @notice Error thrown when a transceiver instruction index
     ///         is greater than the number of registered transceivers
@@ -364,7 +366,7 @@ library TransceiverStructs {
 
             // The instructions passed in have to be strictly increasing in terms of transceiver index
             if (i != 0 && instructionIndex <= lastIndex) {
-                revert UnorderedInstructions();
+                revert UnorderedInstructions(lastIndex, instructionIndex);
             }
 
             // Instruction index is out of bounds
