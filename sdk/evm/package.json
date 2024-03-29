@@ -39,7 +39,9 @@
     "rebuild": "npm run clean && npm run build",
     "clean": "rm -rf ./dist",
     "generate:test": "typechain --node16-modules --target ethers-v6 --out-dir ethers-ci-contracts '../../evm/out/**/*.json'",
-    "generate":"typechain --node16-modules --target ethers-v6 --out-dir src/ethers-contracts/ '../../evm/out/?(WormholeTransceiver.sol|NttManager.sol)/*.json'"
+    "generate:slim":"typechain --node16-modules --target ethers-v6 --out-dir src/ethers-contracts/ '../../evm/out/?(WormholeTransceiver.sol|NttManager.sol)/*.json'",
+    "generate":"npm run generate:slim",
+    "build:contracts":"cd .. && make build-evm"
   },
   "dependencies": {
     "@wormhole-foundation/sdk-connect": "0.5.2-beta.6",

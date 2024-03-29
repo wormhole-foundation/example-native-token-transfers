@@ -10,7 +10,9 @@
     "build:evm":"npm run build --workspace=definitions --workspace=evm",
     "generate":"npm run generate --workspaces --if-present",
     "test":"npm run test --workspaces --if-present",
-    "test:ci": "jest --config ./jest.config.ts"
+    "test:ci": "jest --config ./jest.config.ts",
+    "generate:test":"npm run generate:test --workspaces --if-present",
+    "build:deps":"npm run build:contracts --workspaces --if-present && npm run generate"
   },
   "dependencies": {
     "@wormhole-foundation/sdk-base": "0.5.2-beta.6",

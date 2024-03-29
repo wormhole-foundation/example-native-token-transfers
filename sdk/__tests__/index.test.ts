@@ -73,27 +73,26 @@ const cases = [
 ];
 
 const wh = new Wormhole(NETWORK, [EvmPlatform, SolanaPlatform], {
-  api: "http://127.0.0.1:7071",
   chains: {
     Ethereum: {
-      //rpc: "http://eth-devnet:8545",
-      rpc: "http://localhost:8545",
+      rpc: "http://eth-devnet:8545",
+      //rpc: "http://localhost:8545",
       contracts: {
         coreBridge: "0xC89Ce4735882C9F0f0FE26686c53074E09B0D550",
         relayer: "0x53855d4b64E9A3CF59A84bc768adA716B5536BC5",
       },
     },
     Bsc: {
-      //rpc: "http://eth-devnet2:8545",
-      rpc: "http://localhost:8546",
+      rpc: "http://eth-devnet2:8545",
+      //rpc: "http://localhost:8546",
       contracts: {
         coreBridge: "0xC89Ce4735882C9F0f0FE26686c53074E09B0D550",
         relayer: "0x53855d4b64E9A3CF59A84bc768adA716B5536BC5",
       },
     },
     Solana: {
-      //rpc: "http://solana-devnet:8899",
-      rpc: "http://localhost:8899",
+      rpc: "http://solana-devnet:8899",
+      //rpc: "http://localhost:8899",
       contracts: { coreBridge: "Bridge1p5gheXUvJ6jGWGeCsgPKgnE3YgdGKRVCMY9o" },
     },
   },
@@ -725,7 +724,7 @@ describe("Hub Tests", function () {
       wh.getChain(destinations[1] as Chain),
     ];
 
-    const redeploy = false;
+    const redeploy = true;
 
     let hub: Ctx, spokeA: Ctx, spokeB: Ctx;
     if (redeploy) {
