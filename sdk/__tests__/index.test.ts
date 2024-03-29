@@ -588,20 +588,15 @@ async function getManagerAndUserBalance(ctx: Ctx): Promise<[bigint, bigint]> {
     chain.chain,
     contracts.manager
   ).toString();
+
   if (chain.chain === "Solana") {
     const ntt = (await getNtt(ctx)) as SolanaNtt<"Devnet", "Solana">;
     const conf = await ntt.getConfig();
-    console.log(conf);
     managerAddress = conf.custody.toBase58();
-
-    console.log(managerAddress);
   }
 
   const mbal = await chain.getBalance(managerAddress, tokenAddress);
   const abal = await chain.getBalance(accountAddress.toString(), tokenAddress);
-
-  console.log(mbal, abal);
-
   return [mbal ?? 0n, abal ?? 0n];
 }
 
@@ -773,9 +768,6 @@ describe("Hub Tests", function () {
         mode: "burning",
       };
     }
-
-    // console.log(await getManagerAndUserBalance(hub));
-    // return;
 
     // Transfer tokens from hub to spoke and check balances
     console.log("Transfer hub to spoke A");
