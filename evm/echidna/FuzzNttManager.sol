@@ -86,24 +86,24 @@ contract FuzzNttManager is FuzzingHelpers {
                     "NttManager: transfer expected to fail if sending with 0 amount"
                 );
             }
-            else if (peer.peerAddress == bytes32(0)) {
-                assertWithMsg(
-                    errorSelector == selectorToUint(IManagerBase.PeerNotRegistered.selector),
-                    "NttManager: transfer expected to fail if sending to an unset peer"
-                );
-            } 
-            else if (numEnabledTransceivers == 0) {
-                assertWithMsg(
-                    errorSelector == selectorToUint(IManagerBase.NoEnabledTransceivers.selector),
-                    "NttManager: transfer expected to fail if sending when no transceivers are enabled"
-                );
-            }
             else if (peer.tokenDecimals == 0) {
                 assertWithMsg(
                     errorSelector == selectorToUint(INttManager.InvalidPeerDecimals.selector),
                     "NttManager: transfer expected to fail if sending to a peer with 0 decimals"
                 );
             }
+            else if (numEnabledTransceivers == 0) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.NoEnabledTransceivers.selector),
+                    "NttManager: transfer expected to fail if sending when no transceivers are enabled"
+                );
+            }
+            else if (peer.peerAddress == bytes32(0)) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.PeerNotRegistered.selector),
+                    "NttManager: transfer expected to fail if sending to an unset peer"
+                );
+            } 
             else {
                 assertWithMsg(
                     false,
@@ -164,29 +164,28 @@ contract FuzzNttManager is FuzzingHelpers {
                     "NttManager: transfer expected to fail if sending to 0 address"
                 );
             }
-            else if (peer.peerAddress == bytes32(0)) {
-                assertWithMsg(
-                    errorSelector == selectorToUint(IManagerBase.PeerNotRegistered.selector),
-                    "NttManager: transfer expected to fail if sending to an unset peer"
-                );
-            } 
-            else if (numEnabledTransceivers == 0) {
-                assertWithMsg(
-                    errorSelector == selectorToUint(IManagerBase.NoEnabledTransceivers.selector),
-                    "NttManager: transfer expected to fail if sending when no transceivers are enabled"
-                );
-            }
             else if (peer.tokenDecimals == 0) {
                 assertWithMsg(
                     errorSelector == selectorToUint(INttManager.InvalidPeerDecimals.selector),
                     "NttManager: transfer expected to fail if sending to a peer with 0 decimals"
                 );
             }
-
             else if (amount > currentOutboundCapacity) {
                 assertWithMsg(
                     errorSelector == selectorToUint(IRateLimiter.NotEnoughCapacity.selector),
                     "NttManager: transfer expected to fail if exceeding rate limit"
+                );
+            }
+            else if (numEnabledTransceivers == 0) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.NoEnabledTransceivers.selector),
+                    "NttManager: transfer expected to fail if sending when no transceivers are enabled"
+                );
+            }
+            else if (peer.peerAddress == bytes32(0)) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.PeerNotRegistered.selector),
+                    "NttManager: transfer expected to fail if sending to an unset peer"
                 );
             }
             else {
@@ -280,18 +279,6 @@ contract FuzzNttManager is FuzzingHelpers {
                     "NttManager: transfer expected to fail if sending to 0 address"
                 );
             }
-            else if (peer.peerAddress == bytes32(0)) {
-                assertWithMsg(
-                    errorSelector == selectorToUint(IManagerBase.PeerNotRegistered.selector),
-                    "NttManager: transfer expected to fail if sending to an unset peer"
-                );
-            }
-            else if (numEnabledTransceivers == 0) {
-                assertWithMsg(
-                    errorSelector == selectorToUint(IManagerBase.NoEnabledTransceivers.selector),
-                    "NttManager: transfer expected to fail if sending when no transceivers are enabled"
-                );
-            }
             else if (peer.tokenDecimals == 0) {
                 assertWithMsg(
                     errorSelector == selectorToUint(INttManager.InvalidPeerDecimals.selector),
@@ -302,6 +289,18 @@ contract FuzzNttManager is FuzzingHelpers {
                 assertWithMsg(
                     errorSelector == selectorToUint(IRateLimiter.NotEnoughCapacity.selector),
                     "NttManager: transfer expected to fail if exceeding rate limit and not queueing"
+                );
+            }
+            else if (numEnabledTransceivers == 0) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.NoEnabledTransceivers.selector),
+                    "NttManager: transfer expected to fail if sending when no transceivers are enabled"
+                );
+            }
+            else if (peer.peerAddress == bytes32(0)) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.PeerNotRegistered.selector),
+                    "NttManager: transfer expected to fail if sending to an unset peer"
                 );
             }
             else {
@@ -326,8 +325,6 @@ contract FuzzNttManager is FuzzingHelpers {
             encodedInstructions = unorderedInstructions[instructionIndex];
         }
 
-
-
         uint8 decimals = ERC20(dummyToken).decimals();
         uint8 minDecimals =  minUint8(8, minUint8(decimals, peer.tokenDecimals));
 
@@ -336,10 +333,15 @@ contract FuzzNttManager is FuzzingHelpers {
         amount = TrimmedAmountLib.scale(amount, minDecimals, decimals);
 
         uint256 currentOutboundCapacity = nttManager.getCurrentOutboundCapacity();
-    
+        uint64 nextMessageSequence = nttManager.nextMessageSequence();
         
         try nttManager.transfer(amount, recipientChainId, recipient, shouldQueue, encodedInstructions) {
-
+            // If we queued, we should have an item in the queue
+            if ((shouldQueue && amount > currentOutboundCapacity)) {
+                // This transfer has queued, so let's keep track of it
+                queuedOutboundTransfersArray.push(nextMessageSequence);
+                queuedOutboundTransfers[nextMessageSequence] = true;
+            }
         }
         catch (bytes memory revertData) {
             uint256 errorSelector = extractErrorSelector(revertData);
@@ -356,10 +358,16 @@ contract FuzzNttManager is FuzzingHelpers {
                     "NttManager: transfer expected to fail if sending to 0 address"
                 );
             }
-            else if (peer.peerAddress == bytes32(0)) {
+            else if (peer.tokenDecimals == 0) {
                 assertWithMsg(
-                    errorSelector == selectorToUint(IManagerBase.PeerNotRegistered.selector),
-                    "NttManager: transfer expected to fail if sending to an unset peer"
+                    errorSelector == selectorToUint(INttManager.InvalidPeerDecimals.selector),
+                    "NttManager: transfer expected to fail if sending to a peer with 0 decimals"
+                );
+            }
+            else if (!shouldQueue && amount > currentOutboundCapacity) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IRateLimiter.NotEnoughCapacity.selector),
+                    "NttManager: transfer expected to fail if exceeding rate limit and not queueing"
                 );
             }
             else if (numEnabledTransceivers == 0) {
@@ -368,10 +376,10 @@ contract FuzzNttManager is FuzzingHelpers {
                     "NttManager: transfer expected to fail if sending when no transceivers are enabled"
                 );
             }
-            else if (peer.tokenDecimals == 0) {
+            else if (peer.peerAddress == bytes32(0)) {
                 assertWithMsg(
-                    errorSelector == selectorToUint(INttManager.InvalidPeerDecimals.selector),
-                    "NttManager: transfer expected to fail if sending to a peer with 0 decimals"
+                    errorSelector == selectorToUint(IManagerBase.PeerNotRegistered.selector),
+                    "NttManager: transfer expected to fail if sending to an unset peer"
                 );
             }
             else if (errorSelector == selectorToUint(TransceiverStructs.InvalidInstructionIndex.selector)) {
@@ -385,12 +393,6 @@ contract FuzzNttManager is FuzzingHelpers {
                         );
                     }
                 }
-            }
-            else if (!shouldQueue && amount > currentOutboundCapacity) {
-                assertWithMsg(
-                    errorSelector == selectorToUint(IRateLimiter.NotEnoughCapacity.selector),
-                    "NttManager: transfer expected to fail if exceeding rate limit and not queueing"
-                );
             }
             else {
                 assertWithMsg(
@@ -448,6 +450,18 @@ contract FuzzNttManager is FuzzingHelpers {
                     errorSelector == selectorToUint(IRateLimiter.OutboundQueuedTransferStillQueued.selector),
                     "NttManager: completeOutboundQueuedTransfer expected to fail if not queued for long enough"
                 );
+            }
+            else if (errorSelector == selectorToUint(TransceiverStructs.InvalidInstructionIndex.selector)) {
+                TransceiverStructs.TransceiverInstruction[] memory instructions = 
+                    TransceiverStructs.parseTransceiverInstructions(queuedTransfer.transceiverInstructions, numRegisteredTransceivers);
+                for (uint256 i = 0; i < instructions.length; ++i) {
+                    if (instructions[i].index < numRegisteredTransceivers) {
+                        assertWithMsg(
+                            false,
+                            "NttManager: transfer should not fail if instruction index is in bounds"
+                        );
+                    }
+                }
             }
             else if (numEnabledTransceivers == 0) {
                 // In this case the sender should be able to cancel their outbound queued transfer
