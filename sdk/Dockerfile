@@ -9,7 +9,6 @@ RUN --mount=type=cache,uid=1000,gid=1000,target=/home/node/.npm \
 COPY --from=ntt-evm-contract . ../evm/out
 COPY --from=ntt-solana-contract /usr/src/solana/target/idl ../solana/target/idl
 COPY --from=ntt-solana-contract /usr/src/solana/target/types ../solana/target/types
-COPY --from=ntt-solana-contract /usr/src/solana/ts ../solana/ts
 
 RUN npm run generate
 RUN npm run build

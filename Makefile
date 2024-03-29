@@ -5,7 +5,7 @@ all: build
 
 .PHONY: build
 build-evm:
-	cd evm && forge build --via-ir
+	cd evm && forge build
 
 .PHONY: clean-evm
 clean-evm:

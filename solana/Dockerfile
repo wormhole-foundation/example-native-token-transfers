@@ -40,4 +40,3 @@ COPY --from=solana-contract /opt/solana/deps/wormhole_migration.so /opt/solana/d
 COPY sdk ../sdk
 COPY solana/Makefile Makefile
 RUN make target/idl/example_native_token_transfers.json
-COPY solana/ts ts

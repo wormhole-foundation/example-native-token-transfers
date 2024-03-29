@@ -41,7 +41,7 @@
     "generate:test": "typechain --node16-modules --target ethers-v6 --out-dir ethers-ci-contracts '../../evm/out/**/*.json'",
     "generate:slim":"typechain --node16-modules --target ethers-v6 --out-dir src/ethers-contracts/ '../../evm/out/?(WormholeTransceiver.sol|NttManager.sol)/*.json'",
     "generate":"npm run generate:slim",
-    "build:contracts":"cd .. && make build-evm"
+    "build:contracts":"cd ../.. && make build-evm-prod"
   },
   "dependencies": {
     "@wormhole-foundation/sdk-connect": "0.5.2-beta.6",

@@ -48,6 +48,9 @@ import { Ntt } from "../definitions/src/index.js";
 import { EvmNtt } from "../evm/src/ntt.js";
 import { SolanaNtt } from "../solana/src/ntt.js";
 
+// Note: Currently, in order for this to run, the evm bindings with extra contracts must be build
+// To do that, at the root, run `npm run generate:test`
+
 const NETWORK: "Devnet" = "Devnet";
 const ETH_PRIVATE_KEY =
   "0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"; // Ganache default private key
@@ -227,7 +230,7 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
   const wallet = (await getNativeSigner(ctx)) as ethers.Wallet;
 
   const overrides = {
-    gasLimit: 1000000n,
+    //gasLimit: 1000000n,
   };
 
   // Deploy libraries used by various things
@@ -314,10 +317,7 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
     ctx.context.config.contracts.relayer!, // Relayer contract -- double check these...https://github.com/wormhole-foundation/wormhole/blob/main/sdk/js/src/relayer/__tests__/wormhole_relayer.ts
     "0x0000000000000000000000000000000000000000", // TODO - Specialized relayer??????
     200, // Consistency level
-    500000n, // Gas limit
-    {
-      gasLimit: 30000000n,
-    }
+    500000n // Gas limit
   );
   await WormholeTransceiverAddress.waitForDeployment();
 
@@ -685,13 +685,6 @@ function checkBalances(
     );
   }
 }
-
-// async function sleep(seconds: number) {
-//   // sleep for seconds seconds
-//   await Promise.resolve(
-//     new Promise((resolve) => setTimeout(resolve, seconds * 1000))
-//   );
-// }
 
 async function tryAndWaitThrice(
   txGen: () => Promise<ethers.ContractTransactionResponse>
