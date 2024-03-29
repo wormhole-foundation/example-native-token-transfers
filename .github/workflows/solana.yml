@@ -114,8 +114,6 @@ jobs:
         - name: Set default Rust toolchain
           run: rustup default stable
           working-directory: ./solana
-        - name: Install SDK Deps
-          run: cd sdk && npm ci && cd solana && npm run generate 
         - name: anchor test --arch sbf
           run: make anchor-test
           working-directory: ./solana
