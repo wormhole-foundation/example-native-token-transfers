@@ -177,7 +177,8 @@ async function getNativeSigner(ctx: Ctx): Promise<any> {
   switch (platform) {
     case "Evm":
       const wallet = new ethers.Wallet(ETH_PRIVATE_KEY);
-      return wallet.connect(await ctx.context.getRpc());
+      const nonceManager = new ethers.NonceManager(wallet);
+      return nonceManager.connect(await ctx.context.getRpc());
     case "Solana":
       return SOL_PRIVATE_KEY;
     default:
