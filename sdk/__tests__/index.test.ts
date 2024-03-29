@@ -197,8 +197,8 @@ async function getSigner(ctx: Ctx): Promise<Signer> {
       return new SolanaSendSigner(
         await ctx.context.getRpc(),
         "Solana",
-        await getNativeSigner(ctx),
-        true // Debug
+        await getNativeSigner(ctx)
+        // true // Debug
       );
     default:
       throw new Error(
@@ -269,6 +269,8 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
 
   const chainId = toChainId(ctx.context.chain);
 
+  await sleep(2);
+
   // https://github.com/search?q=repo%3Awormhole-foundation%2Fwormhole-connect%20__factory&type=code
   // https://github.com/wormhole-foundation/wormhole/blob/00f504ef452ae2d94fa0024c026be2d8cf903ad5/clients/js/src/evm.ts#L335
 
@@ -302,6 +304,7 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
     wallet
   );
 
+  await sleep(2);
   console.log("Deploy transceiver implementation");
   const WormholeTransceiverFactory = new WormholeTransceiver__factory(
     myObj,
@@ -345,8 +348,8 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
 
   // Setup the initial calls, like transceivers for the manager
   console.log("Set transceiver for manager");
-  await tryAndWaitThrice(async () =>
-    manager.setTransceiver(await transceiver.getAddress())
+  await tryAndWaitThrice(() =>
+    transceiver.getAddress().then((addr) => manager.setTransceiver(addr))
   );
 
   console.log("Set outbound limit for manager");
@@ -688,7 +691,7 @@ function checkBalances(
 }
 
 async function sleep(seconds: number) {
-  // sleep for 2 seconds
+  // sleep for seconds seconds
   await Promise.resolve(
     new Promise((resolve) => setTimeout(resolve, seconds * 1000))
   );
