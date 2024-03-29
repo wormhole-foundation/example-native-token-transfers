@@ -6,10 +6,14 @@ import {
   ChainContext,
   Signer,
   Wormhole,
+  WormholeCore,
   WormholeMessageId,
   amount,
   chainToPlatform,
+  deserialize,
   encoding,
+  registerPayloadTypes,
+  serialize,
   signSendWait as ssw,
   toChainId,
 } from "@wormhole-foundation/sdk-connect";
@@ -19,10 +23,12 @@ import {
   getEvmSignerForSigner,
 } from "@wormhole-foundation/sdk-evm";
 import {
+  SolanaChains,
   SolanaPlatform,
   SolanaSendSigner,
 } from "@wormhole-foundation/sdk-solana";
 import { ethers } from "ethers";
+import * as fs from "fs";
 
 import "@wormhole-foundation/sdk-evm-core";
 import "@wormhole-foundation/sdk-solana-core";
@@ -37,7 +43,9 @@ import { WormholeTransceiver__factory } from "../evm/ethers-ci-contracts/factori
 
 import solanaTiltKey from "./solana-tilt.json"; // from https://github.com/wormhole-foundation/wormhole/blob/main/solana/keys/solana-devnet.json
 
-import { Ntt } from "../definition/src/index.js";
+import { EvmWormholeCore } from "@wormhole-foundation/sdk-evm-core";
+import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
+import { Ntt, nttNamedPayloads } from "../definitions/src/index.js";
 import { EvmNtt } from "../evm/src/ntt.js";
 import { SolanaNtt } from "../solana/src/ntt.js";
 
@@ -66,6 +74,7 @@ const cases = [
 ];
 
 const wh = new Wormhole(NETWORK, [EvmPlatform, SolanaPlatform], {
+  api: "http://127.0.0.1:7071",
   chains: {
     Ethereum: {
       //rpc: "http://eth-devnet:8545",
@@ -104,30 +113,50 @@ async function signSendWait(
   }
 }
 
+async function getCore(ctx: Ctx): Promise<WormholeCore<typeof NETWORK, any>> {
+  const platform = chainToPlatform(ctx.context.chain);
+  switch (platform) {
+    case "Evm":
+      return new EvmWormholeCore(
+        NETWORK,
+        ctx.context.chain as EvmChains,
+        await ctx.context.getRpc(),
+        ctx.context.config.contracts
+      );
+    case "Solana":
+      return new SolanaWormholeCore(
+        NETWORK,
+        ctx.context.chain as SolanaChains,
+        await ctx.context.getRpc(),
+        ctx.context.config.contracts
+      );
+    default:
+      throw new Error(
+        "Unsupported platform " + platform + " (add it to getNtt)"
+      );
+  }
+}
 async function getNtt(
   ctx: Ctx
 ): Promise<Ntt<typeof NETWORK, typeof ctx.context.chain>> {
   const platform = chainToPlatform(ctx.context.chain);
   switch (platform) {
     case "Evm":
-      return new EvmNtt(
-        NETWORK,
-        // @ts-ignore
-        ctx.context.chain,
-        await ctx.context.getRpc(),
-        {
-          token: ctx.contracts!.token,
-          manager: ctx.contracts!.manager,
-          transceiver: {
-            wormhole: ctx.contracts!.transceiver,
-          },
-        }
-      );
+      const rpc = await ctx.context.getRpc();
+      const entt = new EvmNtt(NETWORK, ctx.context.chain as EvmChains, rpc, {
+        token: ctx.contracts!.token,
+        manager: ctx.contracts!.manager,
+        transceiver: {
+          wormhole: ctx.contracts!.transceiver,
+        },
+      });
+      //@ts-ignore
+      entt.chainId = (await (rpc as ethers.Provider).getNetwork()).chainId;
+      return entt;
     case "Solana":
       return new SolanaNtt(
         NETWORK,
-        // @ts-ignore
-        ctx.context.chain,
+        ctx.context.chain as SolanaChains,
         await ctx.context.getRpc(),
         ctx.context.config.contracts.coreBridge!,
         {
@@ -537,14 +566,21 @@ async function receive(msgId: WormholeMessageId, destination: Ctx) {
       msgId.sequence
     }`
   );
-  const vaa = await wh.getVaa(msgId, "Uint8Array");
+
+  const _vaa = await wh.getVaa(msgId, "Uint8Array");
+
+  //registerPayloadTypes("Ntt", nttNamedPayloads);
+  const vaa = deserialize("Ntt:WormholeTransfer", serialize(_vaa!));
+  console.log(vaa);
 
   const signer = await getSigner(destination);
+  console.log(signer);
   const sender = Wormhole.chainAddress(signer.chain(), signer.address());
+  console.log(sender);
   const ntt = await getNtt(destination);
 
   console.log("Calling redeem on: ", destination.context.chain);
-  const redeemTxs = ntt.redeem([vaa], sender.address);
+  const redeemTxs = ntt.redeem([vaa!], sender.address);
   await signSendWait(destination.context, redeemTxs, signer);
 }
 
@@ -565,7 +601,7 @@ async function transferWithChecks(
   useRelayer: boolean = false
 ) {
   const amt = amount.units(
-    amount.parse("1", sourceCtx.context.config.nativeTokenDecimals)
+    amount.parse("0.001", sourceCtx.context.config.nativeTokenDecimals)
   );
   const scaledAmt = amount.units(amount.parse("1", 9));
 
@@ -585,12 +621,14 @@ async function transferWithChecks(
   );
 
   const srcNtt = await getNtt(sourceCtx);
-  const srcCore = await sourceCtx.context.getWormholeCore();
+  const srcCore = await getCore(sourceCtx);
 
   console.log("Calling transfer on: ", sourceCtx.context.chain);
   const transferTxs = srcNtt.transfer(sender.address, amt, receiver, false);
   const txids = await signSendWait(sourceCtx.context, transferTxs, srcSigner);
-  const msgId = (await srcCore.parseTransaction(txids[0]!.txid))[0]!;
+  const msgId = (
+    await srcCore.parseTransaction(txids[txids.length - 1]!.txid)
+  )[0]!;
 
   if (!useRelayer) await receive(msgId, destinationCtx);
 
@@ -681,28 +719,63 @@ describe("Hub Tests", function () {
       wh.getChain(destinations[1] as Chain),
     ];
 
-    // Deploy contracts for hub chain
-    console.log("Deploying contracts");
-    const [hub, spokeA, spokeB] = await Promise.all([
-      deploy({ context: hubChain, mode: "locking" }),
-      deploy({ context: spokeChainA, mode: "burning" }),
-      deploy({ context: spokeChainB, mode: "burning" }),
-    ]);
+    const redeploy = false;
 
-    // Link contracts
-    console.log("Linking Peers");
-    await link([hub, spokeA, spokeB]);
+    let hub: Ctx, spokeA: Ctx, spokeB: Ctx;
+    if (redeploy) {
+      // Deploy contracts for hub chain
+      console.log("Deploying contracts");
+      [hub, spokeA, spokeB] = await Promise.all([
+        deploy({ context: hubChain, mode: "locking" }),
+        deploy({ context: spokeChainA, mode: "burning" }),
+        deploy({ context: spokeChainB, mode: "burning" }),
+      ]);
+      console.log(
+        "Deployed: ",
+        { chain: hub.context.chain, ...hub.contracts },
+        { chain: spokeA.context.chain, ...spokeA.contracts },
+        { chain: spokeB.context.chain, ...spokeB.contracts }
+      );
+
+      // Link contracts
+      console.log("Linking Peers");
+      await link([hub, spokeA, spokeB]);
+
+      fs.writeFileSync(
+        "contracts.json",
+        JSON.stringify({
+          hub: { chain: hub.context.chain, ...hub.contracts },
+          spokeA: { chain: spokeA.context.chain, ...spokeA.contracts },
+          spokeB: { chain: spokeB.context.chain, ...spokeB.contracts },
+        })
+      );
+    } else {
+      const cached = JSON.parse(fs.readFileSync("contracts.json", "utf8"));
+      hub = { context: hubChain, mode: "locking", contracts: cached["hub"] };
+      spokeA = {
+        context: spokeChainA,
+        mode: "burning",
+        contracts: cached["spokeA"],
+      };
+      spokeB = {
+        context: spokeChainB,
+        contracts: cached["spokeB"],
+        mode: "burning",
+      };
+    }
+
+    console.log(hub, spokeA, spokeB);
 
     // Transfer tokens from hub to spoke and check balances
     console.log("Transfer hub to spoke A");
     await transferWithChecks(hub, spokeA);
+
     // Transfer between spokes and check balances
     console.log("Transfer spoke A to spoke B");
     await transferWithChecks(spokeA, spokeB);
+
     // Transfer back to hub and check balances
     console.log("Transfer spoke B to hub");
     await transferWithChecks(spokeB, hub);
-
-    expect(true).toBeTruthy();
   });
 });

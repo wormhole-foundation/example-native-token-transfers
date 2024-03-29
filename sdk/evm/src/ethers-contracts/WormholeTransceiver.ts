@@ -23,7 +23,27 @@ import type {
   TypedContractMethod,
 } from "./common.js";
 
+export declare namespace IWormholeTransceiver {
+  export type WormholeTransceiverInstructionStruct = {
+    shouldSkipRelayerSend: boolean;
+  };
+
+  export type WormholeTransceiverInstructionStructOutput = [
+    shouldSkipRelayerSend: boolean
+  ] & { shouldSkipRelayerSend: boolean };
+}
+
 export declare namespace TransceiverStructs {
+  export type TransceiverInstructionStruct = {
+    index: BigNumberish;
+    payload: BytesLike;
+  };
+
+  export type TransceiverInstructionStructOutput = [
+    index: bigint,
+    payload: string
+  ] & { index: bigint; payload: string };
+
   export type TransceiverMessageStruct = {
     sourceNttManagerAddress: BytesLike;
     recipientNttManagerAddress: BytesLike;
@@ -42,26 +62,6 @@ export declare namespace TransceiverStructs {
     nttManagerPayload: string;
     transceiverPayload: string;
   };
-
-  export type TransceiverInstructionStruct = {
-    index: BigNumberish;
-    payload: BytesLike;
-  };
-
-  export type TransceiverInstructionStructOutput = [
-    index: bigint,
-    payload: string
-  ] & { index: bigint; payload: string };
-}
-
-export declare namespace IWormholeTransceiver {
-  export type WormholeTransceiverInstructionStruct = {
-    shouldSkipRelayerSend: boolean;
-  };
-
-  export type WormholeTransceiverInstructionStructOutput = [
-    shouldSkipRelayerSend: boolean
-  ] & { shouldSkipRelayerSend: boolean };
 }
 
 export interface WormholeTransceiverInterface extends Interface {

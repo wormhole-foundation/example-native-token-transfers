@@ -56,6 +56,7 @@ export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
     const tx = await this.transceiver.receiveMessage.populateTransaction(
       serialize(attestation)
     );
+    console.log(tx);
 
     yield this.manager.createUnsignedTx(
       tx,

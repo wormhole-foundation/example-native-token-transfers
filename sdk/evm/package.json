@@ -42,9 +42,9 @@
     "generate":"typechain --node16-modules --target ethers-v6 --out-dir src/ethers-contracts/ '../../evm/out/?(WormholeTransceiver.sol|NttManager.sol)/*.json'"
   },
   "dependencies": {
-    "@wormhole-foundation/sdk-connect": "0.5.2-beta.3",
-    "@wormhole-foundation/sdk-evm": "0.5.2-beta.3",
-    "@wormhole-foundation/sdk-evm-core": "0.5.2-beta.3",
+    "@wormhole-foundation/sdk-connect": "0.5.2-beta.5",
+    "@wormhole-foundation/sdk-evm": "0.5.2-beta.5",
+    "@wormhole-foundation/sdk-evm-core": "0.5.2-beta.5",
     "@wormhole-foundation/sdk-definitions-ntt": "0.0.1",
     "typechain": "^8.3.2",
     "ethers": "^6.5.1",
