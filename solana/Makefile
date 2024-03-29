@@ -8,7 +8,7 @@ target/idl/example_native_token_transfers.json:
 	@echo "Removing generics from $@"
 	@ cat $@ | jq '(.accounts, .types) |= map(select(has("generics") | not))' > temp.json && mv temp.json $@
 	@ echo "Copying IDL files to SDK"
-	@ cd ../sdk/solana && npm run generate && npm run build:solana
+	@ cd ../sdk/solana && npm run generate && cd .. && npm run build:solana
 
 .PHONY: anchor-build
 _anchor-build:
