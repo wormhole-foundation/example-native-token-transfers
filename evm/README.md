@@ -198,6 +198,8 @@ $ cast --help
 
 #### Environment Setup
 
+Note: **All Chain IDs set in the deployment environment files and configuration files should be the Wormhold Chain ID**
+
 Copy the sample environment file located in `env/` into the target subdirectory of your choice (e.g., `testnet` or `mainnet`) and prefix the filename with your blockchain of choice:
 
 ```
@@ -206,6 +208,8 @@ cp env/.env.sample env/testnet/sepolia.env
 ```
 
 Do this for each blockchain network that the `NTTManager` and `WormholeTransceiver` contracts will be deployed to. Then configure each `.env` file and set the `RPC` variables.
+
+Currently the `MAX_OUTBOUND_LIMIT` is set to zero in the sample `.env` file. This means that all outbound transfers will be queued by the rate limiter.
 
 #### Config Setup
 
@@ -219,13 +223,17 @@ cp WormholeNttConfig.json.sample WormholeNttConfig.json
 
 Configure each network to your liking (including adding/removing networks). We will eventually add the addresses of the deployed contracts to this file. Navigate back to the `evm` directory.
 
+Currently the per-chain `inBoundLimit` is set to zero by default. This means all inbound transfers will be queued by the rate limiter. Set this value accordingly.
+
 #### Deploy
 
 Deploy the `NttManager` and `WormholeTransceiver` contracts by running the following command for each target network:
 
 ```
 bash sh/deploy_wormhole_ntt.sh -n NETWORK_TYPE -c CHAIN_NAME -k PRIVATE_KEY
+```
 
+```
 # Argument examples
 -n testnet, mainnet
 -c avalanche, ethereum, sepolia
@@ -239,13 +247,16 @@ Once all of the contracts have been deployed and the addresses have been saved, 
 
 ```
 bash sh/configure_wormhole_ntt.sh -n NETWORK_TYPE -c CHAIN_NAME -k PRIVATE_KEY
+```
 
+```
 # Argument examples
 -n testnet, mainnet
 -c avalanche, ethereum, sepolia
 ```
 
 #### Additional Notes
-Tokens powered by NTT in __burn__ mode require the `burn` method to be present. This method is not present in the standard ERC20 interface, but is found in the `ERC20Burnable` interface.
+
+Tokens powered by NTT in **burn** mode require the `burn` method to be present. This method is not present in the standard ERC20 interface, but is found in the `ERC20Burnable` interface.
 
 The `mint` and `setMinter` methods found in the [`INttToken` Interface](src/interfaces/INttToken.sol) are not found in the standard `ERC20` interface.
