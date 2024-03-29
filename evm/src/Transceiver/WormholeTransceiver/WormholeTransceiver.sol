@@ -199,6 +199,7 @@ contract WormholeTransceiver is
         if (!weIns.shouldSkipRelayerSend && _shouldRelayViaStandardRelaying(recipientChain)) {
             // NOTE: standard relaying supports refunds. The amount to be refunded will be sent
             // to a refundAddress specified by the client.
+            // to a refundAddress specified by the client on the destination chain.
 
             // push onto the stack again to avoid stack too deep error
             bytes32 refundRecipient = refundAddress;
