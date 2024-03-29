@@ -11,7 +11,6 @@ import {
   amount,
   chainToPlatform,
   deserialize,
-  deserializeLayout,
   encoding,
   serialize,
   signSendWait as ssw,
@@ -199,8 +198,8 @@ async function getSigner(ctx: Ctx): Promise<Signer> {
       return new SolanaSendSigner(
         await ctx.context.getRpc(),
         "Solana",
-        await getNativeSigner(ctx)
-        // true // Debug
+        await getNativeSigner(ctx),
+        true // Debug
       );
     default:
       throw new Error(
@@ -486,7 +485,7 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
     .toUniversalAddress()
     .toString();
 
-  const tokenDecimals = peer.config.nativeTokenDecimals;
+  const tokenDecimals = chainToPlatform(peer.chain) === "Evm" ? 18 : 9;
 
   if (targetPlatform === "Evm") {
     const inboundLimit = amount.units(amount.parse("10000", tokenDecimals));
@@ -502,24 +501,21 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
       signer
     );
 
+    const peerChainId = toChainId(peer.chain);
+
     await tryAndWaitThrice(() =>
-      manager.setPeer(
-        toChainId(peerCtx.context.chain),
-        managerAddress,
-        tokenDecimals,
-        inboundLimit
-      )
+      manager.setPeer(peerChainId, managerAddress, tokenDecimals, inboundLimit)
     );
     await tryAndWaitThrice(() =>
-      transceiver.setWormholePeer(toChainId(peer.chain), transceiverEmitter)
+      transceiver.setWormholePeer(peerChainId, transceiverEmitter)
     );
 
     if (peerPlatform === "Evm") {
       await tryAndWaitThrice(() =>
-        transceiver.setIsWormholeEvmChain(toChainId(peer.chain), true)
+        transceiver.setIsWormholeEvmChain(peerChainId, true)
       );
       await tryAndWaitThrice(() =>
-        transceiver.setIsWormholeRelayingEnabled(toChainId(peer.chain), true)
+        transceiver.setIsWormholeRelayingEnabled(peerChainId, true)
       );
     }
   } else if (targetPlatform === "Solana") {
@@ -570,12 +566,8 @@ async function receive(msgId: WormholeMessageId, destination: Ctx) {
 
   const _vaa = await wh.getVaa(msgId, "Uint8Array");
   const vaa = deserialize("Ntt:WormholeTransfer", serialize(_vaa!));
-  console.log(vaa);
-
   const signer = await getSigner(destination);
-  console.log(signer);
   const sender = Wormhole.chainAddress(signer.chain(), signer.address());
-  console.log(sender);
   const ntt = await getNtt(destination);
 
   console.log("Calling redeem on: ", destination.context.chain);
@@ -587,11 +579,30 @@ async function getManagerAndUserBalance(ctx: Ctx): Promise<[bigint, bigint]> {
   const chain = ctx.context;
   const contracts = ctx.contracts!;
   const tokenAddress = Wormhole.parseAddress(chain.chain, contracts.token);
-  const address = (await getSigner(ctx)).address();
-  return [
-    (await chain.getBalance(contracts.manager, tokenAddress))!,
-    (await chain.getBalance(address, tokenAddress))!,
-  ];
+  const accountAddress = Wormhole.parseAddress(
+    chain.chain,
+    (await getSigner(ctx)).address()
+  );
+
+  let managerAddress = Wormhole.parseAddress(
+    chain.chain,
+    contracts.manager
+  ).toString();
+  if (chain.chain === "Solana") {
+    const ntt = (await getNtt(ctx)) as SolanaNtt<"Devnet", "Solana">;
+    const conf = await ntt.getConfig();
+    console.log(conf);
+    managerAddress = conf.custody.toBase58();
+
+    console.log(managerAddress);
+  }
+
+  const mbal = await chain.getBalance(managerAddress, tokenAddress);
+  const abal = await chain.getBalance(accountAddress.toString(), tokenAddress);
+
+  console.log(mbal, abal);
+
+  return [mbal ?? 0n, abal ?? 0n];
 }
 
 async function transferWithChecks(
@@ -599,10 +610,14 @@ async function transferWithChecks(
   destinationCtx: Ctx,
   useRelayer: boolean = false
 ) {
-  const amt = amount.units(
-    amount.parse("0.001", sourceCtx.context.config.nativeTokenDecimals)
+  const sendAmt = "0.01";
+
+  const srcAmt = amount.units(
+    amount.parse(sendAmt, sourceCtx.context.config.nativeTokenDecimals)
   );
-  const scaledAmt = amount.units(amount.parse("1", 9));
+  const dstAmt = amount.units(
+    amount.parse(sendAmt, destinationCtx.context.config.nativeTokenDecimals)
+  );
 
   const [managerBalanceBeforeSend, userBalanceBeforeSend] =
     await getManagerAndUserBalance(sourceCtx);
@@ -613,7 +628,6 @@ async function transferWithChecks(
   const dstSigner = await getSigner(destinationCtx);
 
   const sender = Wormhole.chainAddress(srcSigner.chain(), srcSigner.address());
-  console.log(dstSigner.chain(), dstSigner.address());
   const receiver = Wormhole.chainAddress(
     dstSigner.chain(),
     dstSigner.address()
@@ -623,7 +637,8 @@ async function transferWithChecks(
   const srcCore = await getCore(sourceCtx);
 
   console.log("Calling transfer on: ", sourceCtx.context.chain);
-  const transferTxs = srcNtt.transfer(sender.address, amt, receiver, false);
+  const transferTxs = srcNtt.transfer(sender.address, srcAmt, receiver, false);
+
   const txids = await signSendWait(sourceCtx.context, transferTxs, srcSigner);
   const msgId = (
     await srcCore.parseTransaction(txids[txids.length - 1]!.txid)
@@ -636,33 +651,30 @@ async function transferWithChecks(
   const [managerBalanceAfterRecv, userBalanceAfterRecv] =
     await getManagerAndUserBalance(destinationCtx);
 
-  const srcPlatform = chainToPlatform(sourceCtx.context.chain);
-  const dstPlatform = chainToPlatform(destinationCtx.context.chain);
-
-  const sourceCheckAmount = srcPlatform === "Solana" ? scaledAmt : amt;
-  const destinationCheckAmount = dstPlatform === "Solana" ? scaledAmt : amt;
-
   checkBalances(
     sourceCtx.mode,
     [managerBalanceBeforeSend, managerBalanceAfterSend],
     [userBalanceBeforeSend, userBalanceAfterSend],
-    sourceCheckAmount
+    srcAmt
   );
+
   checkBalances(
     destinationCtx.mode,
     [managerBalanceBeforeRecv, managerBalanceAfterRecv],
     [userBalanceBeforeRecv, userBalanceAfterRecv],
-    destinationCheckAmount
+    -dstAmt
   );
 }
 
 function checkBalances(
   mode: Mode,
-  managerBalance: [bigint, bigint],
+  managerBalances: [bigint, bigint],
   userBalances: [bigint, bigint],
   check: bigint
 ) {
-  const [managerBefore, managerAfter] = managerBalance;
+  console.log(mode, managerBalances, userBalances, check);
+
+  const [managerBefore, managerAfter] = managerBalances;
   if (
     mode === "burning"
       ? !(managerAfter === 0n)
@@ -739,7 +751,6 @@ describe("Hub Tests", function () {
       // Link contracts
       console.log("Linking Peers");
       await link([hub, spokeA, spokeB]);
-
       fs.writeFileSync(
         "contracts.json",
         JSON.stringify({
@@ -763,7 +774,8 @@ describe("Hub Tests", function () {
       };
     }
 
-    console.log(hub, spokeA, spokeB);
+    // console.log(await getManagerAndUserBalance(hub));
+    // return;
 
     // Transfer tokens from hub to spoke and check balances
     console.log("Transfer hub to spoke A");

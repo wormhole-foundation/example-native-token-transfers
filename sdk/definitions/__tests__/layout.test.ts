@@ -30,6 +30,13 @@ describe("Ntt Layout Tests", function () {
         ),
         data
       );
+
+      const srcToken =
+        deserialized.nttManagerPayload.payload.sourceToken.toString();
+
+      expect(srcToken).toEqual(
+        "0xbeefface00000000000000000000000000000000000000000000000000000000"
+      );
       expect(deserialized.nttManagerPayload.payload.recipientChain).toEqual(
         "Neon"
       );

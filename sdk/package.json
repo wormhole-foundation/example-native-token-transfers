@@ -14,7 +14,7 @@
     "@wormhole-foundation/sdk-connect": "0.5.2-beta.5",
     "@wormhole-foundation/sdk-evm": "0.5.2-beta.5",
     "@wormhole-foundation/sdk-evm-core": "0.5.2-beta.5",
-    "@wormhole-foundation/sdk-solana": "0.5.2-beta.5",
+    "@wormhole-foundation/sdk-solana": "file:../../../wormhole-sdk-ts/wormhole-foundation-sdk-solana-0.5.2-beta.5.tgz",
     "@wormhole-foundation/sdk-solana-core": "file:../../../wormhole-sdk-ts/wormhole-foundation-sdk-solana-core-0.5.2-beta.5.tgz",
     "ethers": "^6.5.1",
     "ts-jest": "^29.1.2",
