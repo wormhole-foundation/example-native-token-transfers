@@ -6,6 +6,7 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "rebuild":"npm run rebuild --workspaces --if-present",
+    "generate":"npm run generate --workspaces --if-present",
     "test":"npm run test --workspaces --if-present",
     "test:ci": "jest --config ./jest.config.ts"
   },
