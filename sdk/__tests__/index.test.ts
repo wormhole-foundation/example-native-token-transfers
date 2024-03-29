@@ -704,7 +704,7 @@ async function tryAndWaitThrice(
       return await (await txGen()).wait();
     } catch (e) {
       attempts++;
-      sleep(1);
+      await sleep(1);
       if (attempts < 3) {
         console.log(`retry ${attempts}...`);
       } else {
