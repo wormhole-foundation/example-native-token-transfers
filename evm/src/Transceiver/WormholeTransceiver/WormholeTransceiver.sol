@@ -198,7 +198,6 @@ contract WormholeTransceiver is
 
         if (!weIns.shouldSkipRelayerSend && _shouldRelayViaStandardRelaying(recipientChain)) {
             // NOTE: standard relaying supports refunds. The amount to be refunded will be sent
-            // to a refundAddress specified by the client.
             // to a refundAddress specified by the client on the destination chain.
 
             // push onto the stack again to avoid stack too deep error
@@ -215,8 +214,7 @@ contract WormholeTransceiver is
                 fromWormholeFormat(refundRecipient)
             );
 
-            // TODO: emit the refund address
-            emit RelayingInfo(uint8(RelayingType.Standard), deliveryPayment);
+            emit RelayingInfo(uint8(RelayingType.Standard), refundAddress, deliveryPayment);
         } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
             uint256 wormholeFee = wormhole.messageFee();
             uint64 sequence = wormhole.publishMessage{value: wormholeFee}(
@@ -226,13 +224,17 @@ contract WormholeTransceiver is
                 getNttManagerToken(), recipientChain, 0, sequence
             );
 
-            emit RelayingInfo(uint8(RelayingType.Special), deliveryPayment);
+            // NOTE: specialized relaying does not currently support refunds. The zero address
+            // is used as a placeholder for the refund address until support is added.
+            emit RelayingInfo(uint8(RelayingType.Special), bytes32(0), deliveryPayment);
         } else {
             wormhole.publishMessage{value: deliveryPayment}(
                 0, encodedTransceiverPayload, consistencyLevel
             );
 
-            emit RelayingInfo(uint8(RelayingType.Manual), deliveryPayment);
+            // NOTE: manual relaying does not currently support refunds. The zero address
+            // is used as refundAddress.
+            emit RelayingInfo(uint8(RelayingType.Manual), bytes32(0), deliveryPayment);
         }
 
         emit SendTransceiverMessage(recipientChain, transceiverMessage);
