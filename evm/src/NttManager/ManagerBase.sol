@@ -185,11 +185,13 @@ abstract contract ManagerBase is
             revert PeerNotRegistered(recipientChain);
         }
 
+        // push onto the stack again to avoid stack too deep error
+        bytes32 refundRecipient = refundAddress;
+
         // call into transceiver contracts to send the message
         for (uint256 i = 0; i < numEnabledTransceivers; i++) {
             address transceiverAddr = enabledTransceivers[i];
 
-            bytes32 refundRecipient = refundAddress;
             // send it to the recipient nttManager based on the chain
             ITransceiver(transceiverAddr).sendMessage{value: priceQuotes[i]}(
                 recipientChain,
