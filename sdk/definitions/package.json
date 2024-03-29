@@ -45,7 +45,8 @@
     "build:esm": "tsc -p ./tsconfig.esm.json",
     "build": "npm run build:esm && npm run build:cjs",
     "rebuild": "npm run clean && npm run build",
-    "clean": "rm -rf ./dist && rm -rf ./.turbo"
+    "clean": "rm -rf ./dist && rm -rf ./.turbo",
+    "test": "jest --config ./jest.config.ts"
   },
   "dependencies": {
     "@noble/hashes": "^1.3.1",

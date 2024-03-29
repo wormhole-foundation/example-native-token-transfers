@@ -11,8 +11,8 @@ import {
   amount,
   chainToPlatform,
   deserialize,
+  deserializeLayout,
   encoding,
-  registerPayloadTypes,
   serialize,
   signSendWait as ssw,
   toChainId,
@@ -45,7 +45,7 @@ import solanaTiltKey from "./solana-tilt.json"; // from https://github.com/wormh
 
 import { EvmWormholeCore } from "@wormhole-foundation/sdk-evm-core";
 import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
-import { Ntt, nttNamedPayloads } from "../definitions/src/index.js";
+import { Ntt } from "../definitions/src/index.js";
 import { EvmNtt } from "../evm/src/ntt.js";
 import { SolanaNtt } from "../solana/src/ntt.js";
 
@@ -562,14 +562,13 @@ async function link(chainInfos: Ctx[]) {
 
 async function receive(msgId: WormholeMessageId, destination: Ctx) {
   console.log(
-    `Fetching VAA ${toChainId(msgId.chain)}/${msgId.emitter.toString()}/${
-      msgId.sequence
-    }`
+    `Fetching VAA ${toChainId(msgId.chain)}/${encoding.hex.encode(
+      msgId.emitter.toUint8Array(),
+      false
+    )}/${msgId.sequence}`
   );
 
   const _vaa = await wh.getVaa(msgId, "Uint8Array");
-
-  //registerPayloadTypes("Ntt", nttNamedPayloads);
   const vaa = deserialize("Ntt:WormholeTransfer", serialize(_vaa!));
   console.log(vaa);
 
