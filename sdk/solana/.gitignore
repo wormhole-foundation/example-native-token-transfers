@@ -1,1 +1,2 @@
-src/anchor-idl
+src/anchor-idl/*
+!src/anchor-idl/index.ts
