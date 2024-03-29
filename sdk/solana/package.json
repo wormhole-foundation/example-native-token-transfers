@@ -37,8 +37,8 @@
     "build:esm": "tsc -p ./tsconfig.esm.json",
     "build": "npm run build:esm && npm run build:cjs",
     "rebuild": "npm run clean && npm run build",
-    "clean": "rm -rf ./dist && rm -rf ./.turbo",
-    "test": "jest --config ./jest.config.ts"
+    "clean": "rm -rf ./dist",
+    "test:ci": "jest --config ./jest.config.ts"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.5",

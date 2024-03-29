@@ -115,8 +115,7 @@ jobs:
           run: rustup default stable
           working-directory: ./solana
         - name: Install SDK Deps
-          working-directory: ./solana
-          run: cd ../sdk && npm ci && npm run build && cd -
+          run: cd sdk && npm ci && npm run build
         - name: anchor test --arch sbf
           run: make anchor-test
           working-directory: ./solana

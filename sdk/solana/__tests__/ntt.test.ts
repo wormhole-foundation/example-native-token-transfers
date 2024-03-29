@@ -232,7 +232,7 @@ describe("example-native-token-transfers", () => {
             recipientChain: "Solana",
           },
         },
-        transceiverPayload: new Uint8Array(0),
+        transceiverPayload: null,
       } as const;
 
       const serialized = serializePayload(
