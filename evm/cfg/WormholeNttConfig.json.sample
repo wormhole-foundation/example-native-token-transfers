@@ -3,7 +3,7 @@
         {
             "chainId": 10002,
             "decimals": 6,
-            "inboundLimit": 18446744073709551614,
+            "inboundLimit": 0,
             "isEvmChain": true,
             "isWormholeRelayingEnabled": true,
             "isSpecialRelayingEnabled": false,
@@ -13,7 +13,7 @@
         {
             "chainId": 16,
             "decimals": 6,
-            "inboundLimit": 18446744073709551614,
+            "inboundLimit": 0,
             "isEvmChain": true,
             "isWormholeRelayingEnabled": true,
             "isSpecialRelayingEnabled": false,

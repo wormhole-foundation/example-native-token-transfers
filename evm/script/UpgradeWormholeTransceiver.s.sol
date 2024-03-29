@@ -20,7 +20,7 @@ contract UpgradeWormholeTransceiver is ParseNttConfig {
         address specialRelayerAddr;
         uint8 consistencyLevel;
         uint256 gasLimit;
-        uint64 outboundLimit;
+        uint256 outboundLimit;
     }
 
     // The minimum gas limit to verify a message on mainnet. If you're worried about saving
@@ -66,7 +66,7 @@ contract UpgradeWormholeTransceiver is ParseNttConfig {
         require(params.gasLimit >= MIN_WORMHOLE_GAS_LIMIT, "Invalid gas limit");
 
         // Outbound rate limiter limit.
-        params.outboundLimit = uint64(vm.envUint("RELEASE_OUTBOUND_LIMIT"));
+        params.outboundLimit = vm.envUint("RELEASE_OUTBOUND_LIMIT");
     }
 
     function run() public {
