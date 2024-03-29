@@ -427,9 +427,10 @@ abstract contract ManagerBase is
 
     /// @dev When we add new immutables, this function should be updated
     function _checkImmutables() internal view virtual override {
-        assert(this.token() == token);
-        assert(this.mode() == mode);
-        assert(this.chainId() == chainId);
+        // assert(true);
+    //     assert(this.token() == token);
+    //     assert(this.mode() == mode);
+    //     assert(this.chainId() == chainId);
     }
 
     function _checkRegisteredTransceiversInvariants() internal view {

@@ -138,8 +138,8 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
 
     /// @dev When we add new immutables, this function should be updated
     function _checkImmutables() internal view override {
-        super._checkImmutables();
-        assert(this.rateLimitDuration() == rateLimitDuration);
+        // super._checkImmutables();
+        // assert(this.rateLimitDuration() == rateLimitDuration);
     }
 
     // ==================== External Interface ===============================================

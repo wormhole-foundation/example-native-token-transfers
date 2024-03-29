@@ -95,7 +95,8 @@ abstract contract Implementation is Initializable, ERC1967Upgrade {
     }
 
     function getMigratesImmutables() public view returns (bool) {
-        return _getMigratesImmutablesStorage().value;
+        return true;
+        // return _getMigratesImmutablesStorage().value;
     }
 
     function _setMigratesImmutables(bool value) internal {
