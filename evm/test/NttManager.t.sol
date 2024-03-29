@@ -390,7 +390,12 @@ contract TestNttManager is Test, IRateLimiterEvents {
             TransceiverStructs.encodeTransceiverInstructions(transceiverInstructions);
 
         nttManager.transfer(
-            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false, instructions
+            1 * 10 ** decimals,
+            chainId,
+            toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
+            false,
+            instructions
         );
     }
 
@@ -415,7 +420,12 @@ contract TestNttManager is Test, IRateLimiterEvents {
         uint256 nttManagerBalanceBefore = token.balanceOf(address(nttManager));
 
         uint64 s1 = nttManager.transfer(
-            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), true, new bytes(1)
+            1 * 10 ** decimals,
+            chainId,
+            toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
+            true,
+            new bytes(1)
         );
         vm.stopPrank();
 
@@ -447,7 +457,12 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         // The next transfer has previous sequence number + 1
         uint64 s2 = nttManager.transfer(
-            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), true, new bytes(1)
+            1 * 10 ** decimals,
+            chainId,
+            toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
+            true,
+            new bytes(1)
         );
 
         assertEq(s2, s1 + 1);
@@ -1060,7 +1075,12 @@ contract TestNttManager is Test, IRateLimiterEvents {
             abi.encodeWithSelector(TransceiverStructs.InvalidInstructionIndex.selector, 100, 1)
         );
         nttManager.transfer(
-            1 * 10 ** decimals, chainId, toWormholeFormat(user_B), false, encodedInstructions
+            1 * 10 ** decimals,
+            chainId,
+            toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
+            false,
+            encodedInstructions
         );
     }
 }
