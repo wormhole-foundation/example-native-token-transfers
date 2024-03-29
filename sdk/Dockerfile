@@ -11,5 +11,6 @@ COPY --from=ntt-solana-contract /usr/src/solana/target/idl ../solana/target/idl
 COPY --from=ntt-solana-contract /usr/src/solana/target/types ../solana/target/types
 COPY --from=ntt-solana-contract /usr/src/solana/ts ../solana/ts
 
-# RUN npm run generate
-# RUN npm run build
+RUN npm run generate
+RUN npm run build
+RUN npm run generate:test
