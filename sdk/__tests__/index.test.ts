@@ -270,8 +270,6 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
 
   const chainId = toChainId(ctx.context.chain);
 
-  await sleep(2);
-
   // https://github.com/search?q=repo%3Awormhole-foundation%2Fwormhole-connect%20__factory&type=code
   // https://github.com/wormhole-foundation/wormhole/blob/00f504ef452ae2d94fa0024c026be2d8cf903ad5/clients/js/src/evm.ts#L335
 
@@ -289,7 +287,6 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
   );
   await managerAddress.waitForDeployment();
 
-  await sleep(2);
   console.log("Deploying manager proxy");
   const ERC1967ProxyFactory = new ERC1967Proxy__factory(wallet);
   const managerProxyAddress = await ERC1967ProxyFactory.deploy(
@@ -305,7 +302,6 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
     wallet
   );
 
-  await sleep(2);
   console.log("Deploy transceiver implementation");
   const WormholeTransceiverFactory = new WormholeTransceiver__factory(
     myObj,
@@ -326,7 +322,6 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
   await WormholeTransceiverAddress.waitForDeployment();
 
   // // Setup with the proxy
-  await sleep(2);
   console.log("Deploy transceiver proxy");
   const transceiverProxyFactory = new ERC1967Proxy__factory(wallet);
   const transceiverProxyAddress = await transceiverProxyFactory.deploy(
@@ -691,12 +686,12 @@ function checkBalances(
   }
 }
 
-async function sleep(seconds: number) {
-  // sleep for seconds seconds
-  await Promise.resolve(
-    new Promise((resolve) => setTimeout(resolve, seconds * 1000))
-  );
-}
+// async function sleep(seconds: number) {
+//   // sleep for seconds seconds
+//   await Promise.resolve(
+//     new Promise((resolve) => setTimeout(resolve, seconds * 1000))
+//   );
+// }
 
 async function tryAndWaitThrice(
   txGen: () => Promise<ethers.ContractTransactionResponse>
@@ -708,7 +703,6 @@ async function tryAndWaitThrice(
       return await (await txGen()).wait();
     } catch (e) {
       attempts++;
-      await sleep(1);
       if (attempts < 3) {
         console.log(`retry ${attempts}...`);
       } else {
