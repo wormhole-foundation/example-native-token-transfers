@@ -1,11 +1,11 @@
 import * as anchor from "@coral-xyz/anchor";
-import { BN } from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
 import {
   ChainContext,
   UniversalAddress,
   VAA,
   Wormhole,
+  deserialize,
   deserializePayload,
   encoding,
   serialize,
@@ -19,8 +19,8 @@ import {
 } from "@wormhole-foundation/sdk-solana";
 import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 import * as fs from "fs";
+
 import { SolanaNtt } from "../src/index.js";
-import { deserialize } from "@wormhole-foundation/sdk-connect";
 
 const solanaRootDir = `${__dirname}/../../../solana`;
 
@@ -118,7 +118,7 @@ describe("example-native-token-transfers", () => {
         owner: payer,
         chain: "Solana",
         mint,
-        outboundLimit: new BN(1000000),
+        outboundLimit: 1000000n,
         mode: "locking",
       });
       await signSendWait(ctx, initTxs, signer);
@@ -146,7 +146,7 @@ describe("example-native-token-transfers", () => {
         owner: payer,
         chain: "Ethereum",
         address: remoteMgrAddress.toUint8Array(),
-        limit: new BN(1000000),
+        limit: 1000000n,
         tokenDecimals: 18,
       });
       await signSendWait(ctx, setPeerTxs, signer);
@@ -232,7 +232,7 @@ describe("example-native-token-transfers", () => {
             recipientChain: "Solana",
           },
         },
-        transceiverPayload: new Uint8Array(0),
+        transceiverPayload: null,
       } as const;
 
       const serialized = serializePayload(

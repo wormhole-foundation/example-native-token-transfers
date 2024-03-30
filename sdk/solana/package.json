@@ -37,8 +37,12 @@
     "build:esm": "tsc -p ./tsconfig.esm.json",
     "build": "npm run build:esm && npm run build:cjs",
     "rebuild": "npm run clean && npm run build",
-    "clean": "rm -rf ./dist && rm -rf ./.turbo",
-    "test": "jest --config ./jest.config.ts"
+    "clean": "rm -rf ./dist",
+    "test:ci": "jest --config ./jest.config.ts",
+    "copy:idl": "cp ../../solana/target/idl/*.json ./src/anchor-idl/",
+    "copy:types": "cp ../../solana/target/types/*.ts ./src/anchor-idl/",
+    "generate": "npm run copy:idl && npm run copy:types",
+    "build:contracts": "cd ../../solana && make build"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.5",
@@ -51,9 +55,9 @@
     "@coral-xyz/borsh": "0.29.0",
     "@solana/spl-token": "0.3.9",
     "@solana/web3.js": "1.89.1",
-    "@wormhole-foundation/sdk-connect": "0.5.2-beta.3",
-    "@wormhole-foundation/sdk-solana": "0.5.2-beta.3",
-    "@wormhole-foundation/sdk-solana-core": "0.5.2-beta.3",
+    "@wormhole-foundation/sdk-connect": "0.5.2-beta.6",
+    "@wormhole-foundation/sdk-solana": "0.5.2-beta.6",
+    "@wormhole-foundation/sdk-solana-core": "0.5.2-beta.6",
     "@wormhole-foundation/sdk-definitions-ntt": "0.0.1"
   },
   "type": "module",

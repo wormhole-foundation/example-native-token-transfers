@@ -17,7 +17,7 @@ build-evm-prod: clean-evm
 
 .PHONY: gen-evm-bindings
 gen-evm-bindings: build-evm-prod
-	cd ci_tests && rm -rf evm_binding && npm ci && npm run gen-evm-bindings
+	cd sdk && npm ci && cd evm && npm run generate
 
 #######################
 ## TESTS

@@ -37,16 +37,20 @@
     "build:esm": "tsc -p ./tsconfig.esm.json",
     "build": "npm run build:esm && npm run build:cjs",
     "rebuild": "npm run clean && npm run build",
-    "clean": "rm -rf ./dist && rm -rf ./.turbo"
+    "clean": "rm -rf ./dist",
+    "generate:test": "typechain --node16-modules --target ethers-v6 --out-dir ethers-ci-contracts '../../evm/out/**/*.json'",
+    "generate:slim":"typechain --node16-modules --target ethers-v6 --out-dir src/ethers-contracts/ '../../evm/out/?(WormholeTransceiver.sol|NttManager.sol)/*.json'",
+    "generate":"npm run generate:slim",
+    "build:contracts":"cd ../.. && make build-evm-prod"
   },
   "dependencies": {
-    "@wormhole-foundation/sdk-connect": "0.5.2-beta.3",
-    "@wormhole-foundation/sdk-evm": "0.5.2-beta.3",
-    "@wormhole-foundation/sdk-evm-core": "0.5.2-beta.3",
+    "@wormhole-foundation/sdk-connect": "0.5.2-beta.6",
+    "@wormhole-foundation/sdk-evm": "0.5.2-beta.6",
+    "@wormhole-foundation/sdk-evm-core": "0.5.2-beta.6",
     "@wormhole-foundation/sdk-definitions-ntt": "0.0.1",
-    "typechain": "^8.2.0",
+    "typechain": "^8.3.2",
     "ethers": "^6.5.1",
-    "@typechain/ethers-v6": "^0.4.0"
+    "@typechain/ethers-v6": "^0.5.1"
   },
   "type": "module",
   "exports": {

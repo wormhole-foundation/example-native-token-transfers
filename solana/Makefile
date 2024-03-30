@@ -7,15 +7,19 @@ build: _anchor-build target/idl/example_native_token_transfers.json
 target/idl/example_native_token_transfers.json:
 	@echo "Removing generics from $@"
 	@ cat $@ | jq '(.accounts, .types) |= map(select(has("generics") | not))' > temp.json && mv temp.json $@
-# @ cp $@ ../sdk/solana/src/anchor-idl/
-# @ cp target/types/*.ts ../sdk/solana/src/anchor-idl/
 
 .PHONY: anchor-build
 _anchor-build:
 	@anchor build --arch sbf
 
-anchor-test: node_modules build target/idl/example_native_token_transfers.json
+anchor-test: node_modules build target/idl/example_native_token_transfers.json sdk
 	anchor test --skip-build
+
+sdk: build target/idl/example_native_token_transfers.json
+	@echo "Copying IDL files to SDK"
+	cd ../sdk/solana && npm run generate && cd -
+	@echo "Building SDK"
+	cd ../sdk && npm run build:solana
 
 node_modules: package-lock.json
 	npm ci
