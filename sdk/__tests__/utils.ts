@@ -61,16 +61,20 @@ interface Signers {
   signer: Signer;
   nativeSigner: any;
 }
-export type Ctx = {
+
+interface StartingCtx {
   context: ChainContext<typeof NETWORK>;
   mode: Mode;
+}
+
+export interface Ctx extends StartingCtx {
   signers: Signers;
   contracts?: {
     token: string;
     manager: string;
     transceiver: string;
   };
-};
+}
 
 export const wh = new Wormhole(NETWORK, [EvmPlatform, SolanaPlatform], {
   ...(process.env["CI"]
@@ -90,9 +94,9 @@ export const wh = new Wormhole(NETWORK, [EvmPlatform, SolanaPlatform], {
       }),
 });
 
-export async function deploy(_ctx: Partial<Ctx>): Promise<Ctx> {
+export async function deploy(_ctx: StartingCtx): Promise<Ctx> {
   const platform = chainToPlatform(_ctx.context!.chain);
-  const ctx = { _ctx, signers: await getSigners(_ctx) } as unknown as Ctx;
+  const ctx = { ..._ctx, signers: await getSigners(_ctx) };
   switch (platform) {
     case "Evm":
       return deployEvm(ctx);
@@ -522,12 +526,12 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
     .toUniversalAddress()
     .toString();
 
-  const tokenDecimals = chainToPlatform(peer.chain) === "Evm" ? 18 : 9;
-  const inboundLimit = amount.units(amount.parse("10000", tokenDecimals));
-
-  // TODO: add these methods to Interface
+  const tokenDecimals = chainToPlatform(target.chain) === "Evm" ? 18 : 9;
+  const inboundLimit = amount.units(amount.parse("100", tokenDecimals));
 
   if (targetPlatform === "Evm") {
+    // TODO: add these methods to Interface
+    // so we dont need switch
     const targetContracts = targetCtx.contracts!;
     const { nativeSigner: wallet } = targetCtx.signers;
 
@@ -542,6 +546,7 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
 
     const peerChainId = toChainId(peer.chain);
 
+    console.log("Evm inbound", inboundLimit);
     await tryAndWaitThrice(() =>
       manager.setPeer(peerChainId, managerAddress, tokenDecimals, inboundLimit)
     );
@@ -567,6 +572,8 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
       address: encoding.hex.decode(transceiverEmitter),
     });
     await signSendWait(target, setXcvrPeerTxs, signer);
+
+    console.log("Solana inbound", inboundLimit);
 
     const setPeerTxs = manager.setPeer({
       payer: keypair,
