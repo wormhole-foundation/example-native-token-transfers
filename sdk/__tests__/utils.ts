@@ -67,7 +67,12 @@ export type Ctx = {
 
 export const wh = new Wormhole(NETWORK, [EvmPlatform, SolanaPlatform], {
   ...(process.env["CI"]
-    ? {}
+    ? {
+        chains: {
+          // TODO: remove with next version of sdk
+          Bsc: { rpc: "http://eth-devnet2:8545" },
+        },
+      }
     : {
         api: "http://localhost:7071",
         chains: {
@@ -77,6 +82,104 @@ export const wh = new Wormhole(NETWORK, [EvmPlatform, SolanaPlatform], {
         },
       }),
 });
+
+export async function deploy(ctx: Ctx): Promise<Ctx> {
+  const platform = chainToPlatform(ctx.context.chain);
+  switch (platform) {
+    case "Evm":
+      return deployEvm(ctx);
+    case "Solana":
+      return deploySolana(ctx);
+    default:
+      throw new Error(
+        "Unsupported platform " + platform + " (add it to deploy)"
+      );
+  }
+}
+
+export async function link(chainInfos: Ctx[]) {
+  console.log("\nStarting linking process");
+  console.log("========================");
+  for (const targetInfo of chainInfos) {
+    const toRegister = chainInfos.filter(
+      (peerInfo) => peerInfo.context.chain !== targetInfo.context.chain
+    );
+
+    console.log(
+      "Registering peers for ",
+      targetInfo.context.chain,
+      ": ",
+      toRegister.map((x) => x.context.chain)
+    );
+
+    await Promise.all(
+      toRegister.map(async (peerInfo) => {
+        await setupPeer(targetInfo, peerInfo);
+      })
+    );
+  }
+  console.log("Finished linking!");
+}
+
+export async function transferWithChecks(
+  sourceCtx: Ctx,
+  destinationCtx: Ctx,
+  useRelayer: boolean = false
+) {
+  const sendAmt = "0.01";
+
+  const srcAmt = amount.units(
+    amount.parse(sendAmt, sourceCtx.context.config.nativeTokenDecimals)
+  );
+  const dstAmt = amount.units(
+    amount.parse(sendAmt, destinationCtx.context.config.nativeTokenDecimals)
+  );
+
+  const [managerBalanceBeforeSend, userBalanceBeforeSend] =
+    await getManagerAndUserBalance(sourceCtx);
+  const [managerBalanceBeforeRecv, userBalanceBeforeRecv] =
+    await getManagerAndUserBalance(destinationCtx);
+
+  const srcSigner = await getSigner(sourceCtx);
+  const dstSigner = await getSigner(destinationCtx);
+
+  const sender = Wormhole.chainAddress(srcSigner.chain(), srcSigner.address());
+  const receiver = Wormhole.chainAddress(
+    dstSigner.chain(),
+    dstSigner.address()
+  );
+
+  console.log("Calling transfer on: ", sourceCtx.context.chain);
+  const srcNtt = await getNtt(sourceCtx);
+  const transferTxs = srcNtt.transfer(sender.address, srcAmt, receiver, false);
+  const txids = await signSendWait(sourceCtx.context, transferTxs, srcSigner);
+
+  const srcCore = await sourceCtx.context.getWormholeCore();
+  const msgId = (
+    await srcCore.parseTransaction(txids[txids.length - 1]!.txid)
+  )[0]!;
+
+  if (!useRelayer) await receive(msgId, destinationCtx);
+
+  const [managerBalanceAfterSend, userBalanceAfterSend] =
+    await getManagerAndUserBalance(sourceCtx);
+  const [managerBalanceAfterRecv, userBalanceAfterRecv] =
+    await getManagerAndUserBalance(destinationCtx);
+
+  checkBalances(
+    sourceCtx.mode,
+    [managerBalanceBeforeSend, managerBalanceAfterSend],
+    [userBalanceBeforeSend, userBalanceAfterSend],
+    srcAmt
+  );
+
+  checkBalances(
+    destinationCtx.mode,
+    [managerBalanceBeforeRecv, managerBalanceAfterRecv],
+    [userBalanceBeforeRecv, userBalanceAfterRecv],
+    -dstAmt
+  );
+}
 
 // Wrap signSendWait from sdk to provide full error message
 async function signSendWait(
@@ -164,21 +267,7 @@ async function getSigner(ctx: Ctx): Promise<Signer> {
   }
 }
 
-export async function deploy(ctx: Ctx): Promise<Ctx> {
-  const platform = chainToPlatform(ctx.context.chain);
-  switch (platform) {
-    case "Evm":
-      return deployEvm(ctx);
-    case "Solana":
-      return deploySolana(ctx);
-    default:
-      throw new Error(
-        "Unsupported platform " + platform + " (add it to deploy)"
-      );
-  }
-}
-
-export async function deployEvm(ctx: Ctx): Promise<Ctx> {
+async function deployEvm(ctx: Ctx): Promise<Ctx> {
   const signer = await getSigner(ctx);
   const wallet = (await getNativeSigner(ctx)) as ethers.Wallet;
 
@@ -307,7 +396,7 @@ export async function deployEvm(ctx: Ctx): Promise<Ctx> {
   };
 }
 
-export async function deploySolana(ctx: Ctx): Promise<Ctx> {
+async function deploySolana(ctx: Ctx): Promise<Ctx> {
   const signer = await getSigner(ctx);
   const keypair = await getNativeSigner(ctx);
   const connection = (await ctx.context.getRpc()) as Connection;
@@ -471,30 +560,6 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
   }
 }
 
-export async function link(chainInfos: Ctx[]) {
-  console.log("\nStarting linking process");
-  console.log("========================");
-  for (const targetInfo of chainInfos) {
-    const toRegister = chainInfos.filter(
-      (peerInfo) => peerInfo.context.chain !== targetInfo.context.chain
-    );
-
-    console.log(
-      "Registering peers for ",
-      targetInfo.context.chain,
-      ": ",
-      toRegister.map((x) => x.context.chain)
-    );
-
-    await Promise.all(
-      toRegister.map(async (peerInfo) => {
-        await setupPeer(targetInfo, peerInfo);
-      })
-    );
-  }
-  console.log("Finished linking!");
-}
-
 async function receive(msgId: WormholeMessageId, destination: Ctx) {
   console.log(
     `Fetching VAA ${toChainId(msgId.chain)}/${encoding.hex.encode(
@@ -537,66 +602,6 @@ async function getManagerAndUserBalance(ctx: Ctx): Promise<[bigint, bigint]> {
   const mbal = await chain.getBalance(managerAddress, tokenAddress);
   const abal = await chain.getBalance(accountAddress.toString(), tokenAddress);
   return [mbal ?? 0n, abal ?? 0n];
-}
-
-export async function transferWithChecks(
-  sourceCtx: Ctx,
-  destinationCtx: Ctx,
-  useRelayer: boolean = false
-) {
-  const sendAmt = "0.01";
-
-  const srcAmt = amount.units(
-    amount.parse(sendAmt, sourceCtx.context.config.nativeTokenDecimals)
-  );
-  const dstAmt = amount.units(
-    amount.parse(sendAmt, destinationCtx.context.config.nativeTokenDecimals)
-  );
-
-  const [managerBalanceBeforeSend, userBalanceBeforeSend] =
-    await getManagerAndUserBalance(sourceCtx);
-  const [managerBalanceBeforeRecv, userBalanceBeforeRecv] =
-    await getManagerAndUserBalance(destinationCtx);
-
-  const srcSigner = await getSigner(sourceCtx);
-  const dstSigner = await getSigner(destinationCtx);
-
-  const sender = Wormhole.chainAddress(srcSigner.chain(), srcSigner.address());
-  const receiver = Wormhole.chainAddress(
-    dstSigner.chain(),
-    dstSigner.address()
-  );
-
-  console.log("Calling transfer on: ", sourceCtx.context.chain);
-  const srcNtt = await getNtt(sourceCtx);
-  const transferTxs = srcNtt.transfer(sender.address, srcAmt, receiver, false);
-  const txids = await signSendWait(sourceCtx.context, transferTxs, srcSigner);
-
-  const srcCore = await sourceCtx.context.getWormholeCore();
-  const msgId = (
-    await srcCore.parseTransaction(txids[txids.length - 1]!.txid)
-  )[0]!;
-
-  if (!useRelayer) await receive(msgId, destinationCtx);
-
-  const [managerBalanceAfterSend, userBalanceAfterSend] =
-    await getManagerAndUserBalance(sourceCtx);
-  const [managerBalanceAfterRecv, userBalanceAfterRecv] =
-    await getManagerAndUserBalance(destinationCtx);
-
-  checkBalances(
-    sourceCtx.mode,
-    [managerBalanceBeforeSend, managerBalanceAfterSend],
-    [userBalanceBeforeSend, userBalanceAfterSend],
-    srcAmt
-  );
-
-  checkBalances(
-    destinationCtx.mode,
-    [managerBalanceBeforeRecv, managerBalanceAfterRecv],
-    [userBalanceBeforeRecv, userBalanceAfterRecv],
-    -dstAmt
-  );
 }
 
 function checkBalances(
