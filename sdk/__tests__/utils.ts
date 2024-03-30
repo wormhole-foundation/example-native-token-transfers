@@ -2,6 +2,7 @@ import { web3 } from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
 import { Connection, PublicKey } from "@solana/web3.js";
 import {
+  ChainAddress,
   ChainContext,
   Signer,
   Wormhole,
@@ -55,9 +56,15 @@ const SOL_PRIVATE_KEY = web3.Keypair.fromSecretKey(
 );
 
 export type Mode = "locking" | "burning";
+interface Signers {
+  address: ChainAddress;
+  signer: Signer;
+  nativeSigner: any;
+}
 export type Ctx = {
   context: ChainContext<typeof NETWORK>;
   mode: Mode;
+  signers: Signers;
   contracts?: {
     token: string;
     manager: string;
@@ -83,8 +90,9 @@ export const wh = new Wormhole(NETWORK, [EvmPlatform, SolanaPlatform], {
       }),
 });
 
-export async function deploy(ctx: Ctx): Promise<Ctx> {
-  const platform = chainToPlatform(ctx.context.chain);
+export async function deploy(_ctx: Partial<Ctx>): Promise<Ctx> {
+  const platform = chainToPlatform(_ctx.context!.chain);
+  const ctx = { _ctx, signers: await getSigners(_ctx) } as unknown as Ctx;
   switch (platform) {
     case "Evm":
       return deployEvm(ctx);
@@ -140,8 +148,8 @@ export async function transferWithChecks(
   const [managerBalanceBeforeRecv, userBalanceBeforeRecv] =
     await getManagerAndUserBalance(destinationCtx);
 
-  const srcSigner = await getSigner(sourceCtx);
-  const dstSigner = await getSigner(destinationCtx);
+  const { signer: srcSigner } = sourceCtx.signers;
+  const { signer: dstSigner } = destinationCtx.signers;
 
   const sender = Wormhole.chainAddress(srcSigner.chain(), srcSigner.address());
   const receiver = Wormhole.chainAddress(
@@ -233,13 +241,13 @@ async function getNtt(
   }
 }
 
-async function getNativeSigner(ctx: Ctx): Promise<any> {
-  const platform = chainToPlatform(ctx.context.chain);
+async function getNativeSigner(ctx: Partial<Ctx>): Promise<any> {
+  const platform = chainToPlatform(ctx.context!.chain);
   switch (platform) {
     case "Evm":
       const wallet = new ethers.Wallet(ETH_PRIVATE_KEY);
       const nonceManager = new ethers.NonceManager(wallet);
-      return nonceManager.connect(await ctx.context.getRpc());
+      return nonceManager.connect(await ctx.context!.getRpc());
     case "Solana":
       return SOL_PRIVATE_KEY;
     default:
@@ -247,19 +255,31 @@ async function getNativeSigner(ctx: Ctx): Promise<any> {
   }
 }
 
-async function getSigner(ctx: Ctx): Promise<Signer> {
-  const platform = chainToPlatform(ctx.context.chain);
+async function getSigners(ctx: Partial<Ctx>): Promise<Signers> {
+  const platform = chainToPlatform(ctx.context!.chain);
   switch (platform) {
     case "Evm":
-      return getEvmSignerForSigner(
-        ctx.context.chain as EvmChains,
-        await getNativeSigner(ctx)
+      const evmNativeSigner = await getNativeSigner(ctx);
+      const evmSigner = await getEvmSignerForSigner(
+        ctx.context!.chain as EvmChains,
+        evmNativeSigner
       );
+      return {
+        nativeSigner: evmNativeSigner,
+        signer: evmSigner,
+        address: Wormhole.chainAddress(evmSigner.chain(), evmSigner.address()),
+      };
     case "Solana":
-      return getSolanaSignAndSendSigner(
-        await ctx.context.getRpc(),
-        await getNativeSigner(ctx)
+      const solNativeSigner = await getNativeSigner(ctx);
+      const solSigner = await getSolanaSignAndSendSigner(
+        await ctx.context!.getRpc(),
+        solNativeSigner
       );
+      return {
+        nativeSigner: solNativeSigner,
+        signer: solSigner,
+        address: Wormhole.chainAddress(solSigner.chain(), solSigner.address()),
+      };
     default:
       throw new Error(
         "Unsupported platform " + platform + " (add it to getSigner)"
@@ -268,8 +288,7 @@ async function getSigner(ctx: Ctx): Promise<Signer> {
 }
 
 async function deployEvm(ctx: Ctx): Promise<Ctx> {
-  const signer = await getSigner(ctx);
-  const wallet = (await getNativeSigner(ctx)) as ethers.Wallet;
+  const { signer, nativeSigner: wallet } = ctx.signers;
 
   // Deploy libraries used by various things
   console.log("Deploying transceiverStructs");
@@ -397,8 +416,7 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
 }
 
 async function deploySolana(ctx: Ctx): Promise<Ctx> {
-  const signer = await getSigner(ctx);
-  const keypair = await getNativeSigner(ctx);
+  const { signer, nativeSigner: keypair } = ctx.signers;
   const connection = (await ctx.context.getRpc()) as Connection;
   const address = new PublicKey(signer.address());
   const coreAddress = ctx.context.config.contracts.coreBridge!;
@@ -505,19 +523,21 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
     .toString();
 
   const tokenDecimals = chainToPlatform(peer.chain) === "Evm" ? 18 : 9;
+  const inboundLimit = amount.units(amount.parse("10000", tokenDecimals));
+
+  // TODO: add these methods to Interface
 
   if (targetPlatform === "Evm") {
-    const inboundLimit = amount.units(amount.parse("10000", tokenDecimals));
     const targetContracts = targetCtx.contracts!;
-    const signer = (await getNativeSigner(targetCtx)) as ethers.Wallet;
+    const { nativeSigner: wallet } = targetCtx.signers;
 
     const manager = NttManager__factory.connect(
       targetContracts.manager,
-      signer
+      wallet
     );
     const transceiver = WormholeTransceiver__factory.connect(
       targetContracts.transceiver,
-      signer
+      wallet
     );
 
     const peerChainId = toChainId(peer.chain);
@@ -538,22 +558,22 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
       );
     }
   } else if (targetPlatform === "Solana") {
-    const signer = await getSigner(targetCtx);
+    const { signer, nativeSigner: keypair } = targetCtx.signers;
     const manager = (await getNtt(targetCtx)) as SolanaNtt<"Devnet", "Solana">;
     const setXcvrPeerTxs = manager.setWormholeTransceiverPeer({
-      payer: SOL_PRIVATE_KEY,
-      owner: SOL_PRIVATE_KEY,
+      payer: keypair,
+      owner: keypair,
       chain: peer.chain,
       address: encoding.hex.decode(transceiverEmitter),
     });
     await signSendWait(target, setXcvrPeerTxs, signer);
 
     const setPeerTxs = manager.setPeer({
-      payer: SOL_PRIVATE_KEY,
-      owner: SOL_PRIVATE_KEY,
+      payer: keypair,
+      owner: keypair,
       chain: peer.chain,
       address: encoding.hex.decode(managerAddress),
-      limit: 1000000000n,
+      limit: inboundLimit,
       tokenDecimals,
     });
     await signSendWait(target, setPeerTxs, signer);
@@ -561,6 +581,7 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
 }
 
 async function receive(msgId: WormholeMessageId, destination: Ctx) {
+  const { signer, address: sender } = destination.signers;
   console.log(
     `Fetching VAA ${toChainId(msgId.chain)}/${encoding.hex.encode(
       msgId.emitter.toUint8Array(),
@@ -568,13 +589,12 @@ async function receive(msgId: WormholeMessageId, destination: Ctx) {
     )}/${msgId.sequence}`
   );
 
+  // TODO: can this be done in single step now?
   const _vaa = await wh.getVaa(msgId, "Uint8Array");
   const vaa = deserialize("Ntt:WormholeTransfer", serialize(_vaa!));
-  const signer = await getSigner(destination);
-  const sender = Wormhole.chainAddress(signer.chain(), signer.address());
-  const ntt = await getNtt(destination);
 
   console.log("Calling redeem on: ", destination.context.chain);
+  const ntt = await getNtt(destination);
   const redeemTxs = ntt.redeem([vaa!], sender.address);
   await signSendWait(destination.context, redeemTxs, signer);
 }
@@ -582,17 +602,15 @@ async function receive(msgId: WormholeMessageId, destination: Ctx) {
 async function getManagerAndUserBalance(ctx: Ctx): Promise<[bigint, bigint]> {
   const chain = ctx.context;
   const contracts = ctx.contracts!;
+  const { address } = ctx.signers;
   const tokenAddress = Wormhole.parseAddress(chain.chain, contracts.token);
-  const accountAddress = Wormhole.parseAddress(
-    chain.chain,
-    (await getSigner(ctx)).address()
-  );
+  const accountAddress = address.address.toString();
 
+  // TODO: add getCustodyAddress to interface
   let managerAddress = Wormhole.parseAddress(
     chain.chain,
     contracts.manager
   ).toString();
-
   if (chain.chain === "Solana") {
     const ntt = (await getNtt(ctx)) as SolanaNtt<"Devnet", "Solana">;
     const conf = await ntt.getConfig();
@@ -600,7 +618,7 @@ async function getManagerAndUserBalance(ctx: Ctx): Promise<[bigint, bigint]> {
   }
 
   const mbal = await chain.getBalance(managerAddress, tokenAddress);
-  const abal = await chain.getBalance(accountAddress.toString(), tokenAddress);
+  const abal = await chain.getBalance(accountAddress, tokenAddress);
   return [mbal ?? 0n, abal ?? 0n];
 }
 
