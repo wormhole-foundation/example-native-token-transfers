@@ -223,6 +223,10 @@ cp WormholeNttConfig.json.sample WormholeNttConfig.json
 
 Configure each network to your liking (including adding/removing networks). We will eventually add the addresses of the deployed contracts to this file. Navigate back to the `evm` directory.
 
+___
+⚠️ **WARNING:** Ensure that if the `NttManager` on the source chain is configured to be in `LOCKING` mode, the corresponding `NttManager`s on the target chains are configured to be in `BURNING` mode. If not, transfers will NOT go through and user funds may be lost! Proceed with caution!
+___
+
 Currently the per-chain `inBoundLimit` is set to zero by default. This means all inbound transfers will be queued by the rate limiter. Set this value accordingly.
 
 #### Deploy
