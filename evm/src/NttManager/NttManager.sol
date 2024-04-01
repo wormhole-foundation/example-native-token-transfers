@@ -30,7 +30,9 @@ import {ManagerBase} from "./ManagerBase.sol";
 ///  - the amount
 ///  - the recipient chain
 ///  - the recipient address
-///  - the refund address: the address to refund the user for "dummy" attestations
+///  - the refund address: the address to which refunds are issued for any unused gas
+///    for attestations on a given transfer. If the gas limit is configured
+///    to be too high, users will be refunded the difference.
 ///  - (optional) a flag to indicate whether the transfer should be queued
 ///    if the rate limit is exceeded
 contract NttManager is INttManager, RateLimiter, ManagerBase {
