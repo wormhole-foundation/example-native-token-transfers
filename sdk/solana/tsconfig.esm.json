@@ -1,0 +1,9 @@
+{
+  "extends": "../tsconfig.esm.json",
+  "include": ["src", "./jest.config.ts"],
+  "compilerOptions": {
+    "outDir": "dist/esm",
+    "rootDir": ".",
+    "resolveJsonModule": true
+  }
+}
