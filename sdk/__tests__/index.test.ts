@@ -6,7 +6,7 @@ import { deploy, link, transferWithChecks, wh } from "./utils.js";
 
 const cases = [
   ["Solana", ["Ethereum", "Bsc"]],
-  // ["Ethereum", ["Bsc", "Solana"]],
+  ["Ethereum", ["Bsc", "Solana"]],
   // ["Bsc", ["Ethereum", "Solana"]],
 ];
 
