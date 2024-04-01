@@ -195,14 +195,14 @@ export class EvmNtt<N extends Network, C extends EvmChains>
         "TokenBridge.Approve"
       );
     }
-
+    const receiver = universalAddress(destination);
     const txReq = await this.manager
       .getFunction("transfer(uint256,uint16,bytes32,bytes32,bool,bytes)")
       .populateTransaction(
         amount,
         toChainId(destination.chain),
-        universalAddress(destination),
-        sender.toUniversalAddress().toString(),
+        receiver,
+        receiver,
         queue,
         transceiverIxs,
         { value: totalPrice }
