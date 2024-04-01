@@ -528,9 +528,12 @@ async function transferWithChecks(
       token.approve(sourceChain.managerAddress, amount)
     );
     const txResponse = await tryAndWaitThrice(() =>
-      manager["transfer(uint256,uint16,bytes32,bool,bytes)"](
+      manager["transfer(uint256,uint16,bytes32,bytes32,bool,bytes)"](
         amount,
         destinationChain.chainId,
+        destinationChain.type === "evm"
+          ? addressToBytes32(ETH_PUBLIC_KEY)
+          : `0x${SOL_PUBLIC_KEY.toBuffer().toString("hex")}`,
         destinationChain.type === "evm"
           ? addressToBytes32(ETH_PUBLIC_KEY)
           : `0x${SOL_PUBLIC_KEY.toBuffer().toString("hex")}`,
