@@ -89,6 +89,10 @@ interface INttManager is IManagerBase {
     /// @dev Selector 0x9c8d2cd2.
     error InvalidRecipient();
 
+    /// @notice Error when the recipient is invalid.
+    /// @dev Selector 0xe2fe2726.
+    error InvalidRefundAddress();
+
     /// @notice Error when the amount burned is different than the balance difference,
     ///         since NTT does not support burn fees.
     /// @dev Selector 0x02156a8f.
