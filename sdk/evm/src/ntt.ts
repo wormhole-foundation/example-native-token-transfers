@@ -197,11 +197,12 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     }
 
     const txReq = await this.manager
-      .getFunction("transfer(uint256,uint16,bytes32,bool,bytes)")
+      .getFunction("transfer(uint256,uint16,bytes32,bytes32,bool,bytes)")
       .populateTransaction(
         amount,
         toChainId(destination.chain),
         universalAddress(destination),
+        sender.toUniversalAddress().toString(),
         queue,
         transceiverIxs,
         { value: totalPrice }
