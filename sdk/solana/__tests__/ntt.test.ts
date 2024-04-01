@@ -3,7 +3,10 @@ import * as spl from "@solana/spl-token";
 import {
   ChainAddress,
   ChainContext,
+  Network,
+  Signer,
   UniversalAddress,
+  UnsignedTransaction,
   VAA,
   Wormhole,
   deserialize,
@@ -11,7 +14,7 @@ import {
   encoding,
   serialize,
   serializePayload,
-  signSendWait,
+  signSendWait as ssw,
   testing,
 } from "@wormhole-foundation/sdk-connect";
 import {
@@ -32,7 +35,27 @@ const GUARDIAN_KEY =
 const CORE_BRIDGE_ADDRESS = "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth";
 const NTT_ADDRESS = "nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS";
 
-const w = new Wormhole("Devnet", [SolanaPlatform]);
+async function signSendWait(
+  chain: ChainContext<Network>,
+  txs: AsyncGenerator<UnsignedTransaction>,
+  signer: Signer
+) {
+  try {
+    await ssw(chain, txs, signer);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+const w = new Wormhole("Devnet", [SolanaPlatform], {
+  chains: {
+    Solana: {
+      contracts: {
+        coreBridge: CORE_BRIDGE_ADDRESS,
+      },
+    },
+  },
+});
 
 const remoteXcvr: ChainAddress = {
   chain: "Ethereum",
