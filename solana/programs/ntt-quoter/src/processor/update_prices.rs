@@ -16,6 +16,7 @@ pub struct UpdateSolPrice<'info> {
     )]
     pub authority: Signer<'info>,
 
+    #[account(mut)]
     pub instance: Account<'info, Instance>,
 }
 
