@@ -56,8 +56,6 @@ export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
     const tx = await this.transceiver.receiveMessage.populateTransaction(
       serialize(attestation)
     );
-    console.log(tx);
-
     yield this.manager.createUnsignedTx(
       tx,
       "WormholeTransceiver.receiveMessage"
@@ -162,7 +160,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
 
   async *setWormholeTransceiverPeer(peer: ChainAddress<C>) {
     // TODO: we only have one right now, so just set the peer on that one
-    this.xcvrs[0]!.setPeer(peer);
+    yield* this.xcvrs[0]!.setPeer(peer);
   }
 
   async *transfer(

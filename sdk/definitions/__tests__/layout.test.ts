@@ -1,4 +1,8 @@
-import { deserializeLayout, encoding } from "@wormhole-foundation/sdk-base";
+import {
+  deserializeLayout,
+  encoding,
+  serializeLayout,
+} from "@wormhole-foundation/sdk-base";
 import * as path from "path";
 import * as fs from "fs";
 import {
@@ -40,7 +44,17 @@ describe("Ntt Layout Tests", function () {
       expect(deserialized.nttManagerPayload.payload.recipientChain).toEqual(
         "Neon"
       );
+      console.log(deserialized.transceiverPayload?.forSpecializedRelayer);
       expect(deserialized.transceiverPayload).toBeNull();
+
+      expect(
+        serializeLayout(
+          wormholeTransceiverMessageLayout(
+            nttManagerMessageLayout(nativeTokenTransferLayout)
+          ),
+          deserialized
+        )
+      ).toEqual(data);
     }
   );
 });

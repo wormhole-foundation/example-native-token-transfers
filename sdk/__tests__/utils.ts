@@ -476,7 +476,7 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
   const transceiverEmitter = Wormhole.chainAddress(peer.chain, transceiver);
 
   const tokenDecimals = target.config.nativeTokenDecimals;
-  const inboundLimit = amount.units(amount.parse("100", tokenDecimals));
+  const inboundLimit = amount.units(amount.parse("1000", tokenDecimals));
 
   const { signer, address: sender } = targetCtx.signers;
 
@@ -487,7 +487,6 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
   // console.log("Check me", expectedMgrAddress);
 
   const nttManager = await getNtt(targetCtx);
-
   const setPeerTxs = nttManager.setPeer(
     managerAddress,
     tokenDecimals,
@@ -520,12 +519,11 @@ async function receive(msgId: WormholeMessageId, destination: Ctx) {
       false
     )}/${msgId.sequence}`
   );
-
-  const vaa = await wh.getVaa(msgId, "Ntt:WormholeTransfer");
+  const _vaa = await wh.getVaa(msgId, "Ntt:WormholeTransfer");
 
   console.log("Calling redeem on: ", destination.context.chain);
   const ntt = await getNtt(destination);
-  const redeemTxs = ntt.redeem([vaa!], sender.address);
+  const redeemTxs = ntt.redeem([_vaa!], sender.address);
   await signSendWait(destination.context, redeemTxs, signer);
 }
 
