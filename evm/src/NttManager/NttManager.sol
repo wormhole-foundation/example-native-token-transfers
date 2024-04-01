@@ -333,6 +333,10 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
             revert InvalidRecipient();
         }
 
+        if (refundAddress == bytes32(0)) {
+            revert InvalidRefundAddress();
+        }
+
         {
             // Lock/burn tokens before checking rate limits
             // use transferFrom to pull tokens from the user and lock them
