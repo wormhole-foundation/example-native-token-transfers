@@ -351,6 +351,8 @@ abstract contract ManagerBase is
         }
 
         emit TransceiverAdded(transceiver, _getNumTransceiversStorage().enabled, _threshold.num);
+
+        _checkThresholdInvariants();
     }
 
     /// @inheritdoc IManagerBase
@@ -365,6 +367,8 @@ abstract contract ManagerBase is
         }
 
         emit TransceiverRemoved(transceiver, _threshold.num);
+
+        _checkThresholdInvariants();
     }
 
     /// @inheritdoc IManagerBase
