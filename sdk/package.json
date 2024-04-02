@@ -35,6 +35,7 @@
   "workspaces": [
     "definitions",
     "solana",
-    "evm"
+    "evm",
+    "route"
   ]
 }
