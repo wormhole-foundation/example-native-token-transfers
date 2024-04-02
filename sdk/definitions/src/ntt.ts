@@ -127,12 +127,14 @@ export interface Ntt<N extends Network, C extends Chain> {
    * @param amount the amount to transfer
    * @param destination the destination chain
    * @param queue whether to queue the transfer if the outbound capacity is exceeded
+   * @param relay whether to relay the transfer
    */
   transfer(
     sender: AccountAddress<C>,
     amount: bigint,
     destination: ChainAddress,
-    queue: boolean
+    queue: boolean,
+    relay?: boolean
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
 
   /**
@@ -213,9 +215,6 @@ export namespace WormholeNttTransceiver {
  */
 export interface WormholeNttTransceiver<N extends Network, C extends Chain>
   extends NttTransceiver<N, C, WormholeNttTransceiver.VAA> {}
-
-//export interface ZKTransceiver<N extends Network, C extends Chain>
-//  extends NttTransceiver<N, C, Uint8Array> {}
 
 declare module "@wormhole-foundation/sdk-definitions" {
   export namespace WormholeRegistry {

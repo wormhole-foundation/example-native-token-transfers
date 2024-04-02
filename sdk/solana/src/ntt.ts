@@ -340,8 +340,11 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     amount: bigint,
     destination: ChainAddress,
     queue: boolean,
+    relay?: boolean,
     outboxItem?: Keypair
   ): AsyncGenerator<UnsignedTransaction<N, C>, any, unknown> {
+    if (relay) throw new Error("Relayer not available on solana");
+
     const config: Config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");
 
