@@ -529,6 +529,7 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
         vm.startPrank(userA);
         token1.approve(address(nttManagerChain1), sendingAmount);
 
+        vm.chainId(chainId1);
         vm.recordLogs();
 
         // Send token through standard means (not relayer)
