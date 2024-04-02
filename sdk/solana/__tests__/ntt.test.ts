@@ -186,7 +186,14 @@ describe("example-native-token-transfers", () => {
       // TODO: keep or remove the `outboxItem` param?
       // added as a way to keep tests the same but it technically breaks the Ntt interface
       const outboxItem = anchor.web3.Keypair.generate();
-      const xferTxs = ntt.transfer(sender, amount, receiver, false, outboxItem);
+      const xferTxs = ntt.transfer(
+        sender,
+        amount,
+        receiver,
+        false, // Dont queue
+        false, // Dont relay
+        outboxItem
+      );
       await signSendWait(ctx, xferTxs, signer);
 
       const wormholeMessage = ntt.pdas.wormholeMessageAccount(
