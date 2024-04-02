@@ -1,0 +1,26 @@
+kind: Job
+apiVersion: batch/v1
+metadata:
+  name: ntt-ci-tests
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: ntt-ci-tests
+          image: ntt-ci
+          command:
+            - /bin/sh
+            - -c
+            - 'npm run test:ci && echo "done!" && touch /success'
+          readinessProbe:
+            exec:
+              command:
+                - test
+                - -e
+                - "/success"
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+
