@@ -41,8 +41,8 @@ export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
       );
   }
 
-  encodeFlags(skipRelay: boolean): Uint8Array {
-    return new Uint8Array([skipRelay ? 1 : 0]);
+  encodeFlags(flags: { skipRelay: boolean }): Uint8Array {
+    return new Uint8Array([flags.skipRelay ? 1 : 0]);
   }
 
   async *setPeer(peer: ChainAddress<C>) {
@@ -123,11 +123,11 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     // >;
   }
 
-  private encodeFlags(enabledIdxs?: number[]): Ntt.TransceiverInstruction[] {
+  private encodeFlags(ixs: (any | null)[]): Ntt.TransceiverInstruction[] {
     return this.xcvrs
       .map((xcvr, idx) => {
-        if (!enabledIdxs || enabledIdxs.includes(idx))
-          return { index: idx, payload: xcvr.encodeFlags(true) };
+        if (ixs[idx])
+          return { index: idx, payload: xcvr.encodeFlags(ixs[idx]) };
         return null;
       })
       .filter((x) => x !== null) as Ntt.TransceiverInstruction[];
@@ -140,7 +140,9 @@ export class EvmNtt<N extends Network, C extends EvmChains>
   async quoteDeliveryPrice(dstChain: Chain): Promise<[bigint[], bigint]> {
     return this.manager.quoteDeliveryPrice.staticCall(
       toChainId(dstChain),
-      Ntt.encodeTransceiverInstructions(this.encodeFlags())
+      Ntt.encodeTransceiverInstructions(
+        this.encodeFlags([{ skipRelay: false }])
+      )
     );
   }
 
@@ -160,6 +162,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
 
   async *setWormholeTransceiverPeer(peer: ChainAddress<C>) {
     // TODO: we only have one right now, so just set the peer on that one
+    // in the future, these should(?) be keyed by attestation type
     yield* this.xcvrs[0]!.setPeer(peer);
   }
 
@@ -167,11 +170,16 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     sender: AccountAddress<C>,
     amount: bigint,
     destination: ChainAddress,
-    queue: boolean
+    queue: boolean,
+    relay?: boolean
   ): AsyncGenerator<EvmUnsignedTransaction<N, C>> {
-    const [_, totalPrice] = await this.quoteDeliveryPrice(destination.chain);
+    let totalPrice = 0n;
+    if (relay) {
+      [, totalPrice] = await this.quoteDeliveryPrice(destination.chain);
+    }
+
     const transceiverIxs = Ntt.encodeTransceiverInstructions(
-      this.encodeFlags()
+      this.encodeFlags([{ skipRelay: !relay }])
     );
     const senderAddress = new EvmAddress(sender).toString();
 
@@ -213,7 +221,10 @@ export class EvmNtt<N extends Network, C extends EvmChains>
 
   // TODO: should this be some map of idx to transceiver?
   async *redeem(attestations: Ntt.Attestation[]) {
-    if (attestations.length !== this.xcvrs.length) throw "no";
+    if (attestations.length !== this.xcvrs.length)
+      throw new Error(
+        "Not enough attestations for the registered Transceivers"
+      );
 
     for (const idx in this.xcvrs) {
       const xcvr = this.xcvrs[idx]!;
