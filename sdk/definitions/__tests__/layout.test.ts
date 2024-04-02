@@ -44,7 +44,6 @@ describe("Ntt Layout Tests", function () {
       expect(deserialized.nttManagerPayload.payload.recipientChain).toEqual(
         "Neon"
       );
-      console.log(deserialized.transceiverPayload?.forSpecializedRelayer);
       expect(deserialized.transceiverPayload).toBeNull();
 
       expect(
