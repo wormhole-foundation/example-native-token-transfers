@@ -26,16 +26,16 @@ import {
   NttTransceiver,
   WormholeNttTransceiver,
 } from "@wormhole-foundation/sdk-definitions-ntt";
-import type { Provider, TransactionRequest } from "ethers";
+import { Contract, type Provider, type TransactionRequest } from "ethers";
 import { ethers_contracts } from "./index.js";
 
 export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
   implements NttTransceiver<N, C, WormholeNttTransceiver.VAA>
 {
-  transceiver: ethers_contracts.WormholeTransceiver;
+  transceiver: ethers_contracts._0_1_0.WormholeTransceiver;
   constructor(readonly manager: EvmNtt<N, C>, readonly address: string) {
     this.transceiver =
-      ethers_contracts.factories.WormholeTransceiver__factory.connect(
+      ethers_contracts._0_1_0.factories.WormholeTransceiver__factory.connect(
         address,
         manager.provider
       );
@@ -78,9 +78,11 @@ export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
 export class EvmNtt<N extends Network, C extends EvmChains>
   implements Ntt<N, C>
 {
+  static ABI_VERSION = "0.1.0";
+
   tokenAddress: string;
   readonly chainId: bigint;
-  manager: ethers_contracts.NttManager;
+  manager: ethers_contracts._0_1_0.NttManager;
   xcvrs: EvmNttWormholeTranceiver<N, C>[];
   managerAddress: string;
 
@@ -99,10 +101,11 @@ export class EvmNtt<N extends Network, C extends EvmChains>
 
     this.tokenAddress = contracts.ntt.token;
     this.managerAddress = contracts.ntt.manager;
-    this.manager = ethers_contracts.factories.NttManager__factory.connect(
-      contracts.ntt.manager,
-      this.provider
-    );
+    this.manager =
+      ethers_contracts._0_1_0.factories.NttManager__factory.connect(
+        contracts.ntt.manager,
+        this.provider
+      );
 
     this.xcvrs = [
       // Enable more Transceivers here
@@ -131,6 +134,27 @@ export class EvmNtt<N extends Network, C extends EvmChains>
         return null;
       })
       .filter((x) => x !== null) as Ntt.TransceiverInstruction[];
+  }
+
+  async getVersion() {
+    const contract = new Contract(
+      this.managerAddress,
+      ["function NTT_MANAGER_VERSION() public view returns (string)"],
+      this.provider
+    );
+    try {
+      const abiVersion = await contract
+        .getFunction("NTT_MANAGER_VERSION")
+        .staticCall();
+      if (!abiVersion) {
+        throw new Error("NTT_MANAGER_VERSION not found");
+      }
+    } catch (e) {
+      console.error(
+        `Failed to get NTT_MANAGER_VERSION from contract ${this.managerAddress} on chain ${this.chain}`
+      );
+      throw e;
+    }
   }
 
   async getCustodyAddress() {
