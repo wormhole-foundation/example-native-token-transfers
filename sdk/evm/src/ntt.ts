@@ -137,12 +137,13 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     return this.managerAddress;
   }
 
-  async quoteDeliveryPrice(dstChain: Chain): Promise<[bigint[], bigint]> {
+  async quoteDeliveryPrice(
+    dstChain: Chain,
+    ixs: Ntt.TransceiverInstruction[]
+  ): Promise<[bigint[], bigint]> {
     return this.manager.quoteDeliveryPrice.staticCall(
       toChainId(dstChain),
-      Ntt.encodeTransceiverInstructions(
-        this.encodeFlags([{ skipRelay: false }])
-      )
+      Ntt.encodeTransceiverInstructions(ixs)
     );
   }
 
@@ -173,15 +174,14 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     queue: boolean,
     relay?: boolean
   ): AsyncGenerator<EvmUnsignedTransaction<N, C>> {
-    let totalPrice = 0n;
-    if (relay) {
-      [, totalPrice] = await this.quoteDeliveryPrice(destination.chain);
-    }
-
-    const transceiverIxs = Ntt.encodeTransceiverInstructions(
-      this.encodeFlags([{ skipRelay: !relay }])
-    );
     const senderAddress = new EvmAddress(sender).toString();
+
+    // Note: these flags are indexed by transceiver index
+    const ixs = this.encodeFlags([{ skipRelay: !relay }]);
+    const [, totalPrice] = await this.quoteDeliveryPrice(
+      destination.chain,
+      ixs
+    );
 
     //TODO check for ERC-2612 (permit) support on token?
     const tokenContract = EvmPlatform.getTokenImplementation(
@@ -203,6 +203,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
         "TokenBridge.Approve"
       );
     }
+
     const receiver = universalAddress(destination);
     const txReq = await this.manager
       .getFunction("transfer(uint256,uint16,bytes32,bytes32,bool,bytes)")
@@ -212,7 +213,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
         receiver,
         receiver,
         queue,
-        transceiverIxs,
+        Ntt.encodeTransceiverInstructions(ixs),
         { value: totalPrice }
       );
 
