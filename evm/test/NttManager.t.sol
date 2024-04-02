@@ -273,6 +273,11 @@ contract TestNttManager is Test, IRateLimiterEvents {
         nttManager.setTransceiver(address(e));
     }
 
+    function test_disableAllTransceiversFails() public {
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.ZeroThreshold.selector));
+        nttManager.removeTransceiver(address(dummyTransceiver));
+    }
+
     function test_multipleTransceivers() public {
         DummyTransceiver e1 = new DummyTransceiver(address(nttManager));
         DummyTransceiver e2 = new DummyTransceiver(address(nttManager));
@@ -300,26 +305,31 @@ contract TestNttManager is Test, IRateLimiterEvents {
     }
 
     function test_noEnabledTransceivers() public {
-        nttManager.removeTransceiver(address(dummyTransceiver));
+        DummyToken token = new DummyToken();
+        NttManager implementation = new MockNttManagerContract(
+            address(token), IManagerBase.Mode.LOCKING, chainId, 1 days, false
+        );
+
+        MockNttManagerContract newNttManager =
+            MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
+        newNttManager.initialize();
 
         address user_A = address(0x123);
         address user_B = address(0x456);
 
-        DummyToken token = DummyToken(nttManager.token());
-
         uint8 decimals = token.decimals();
 
-        nttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 9, type(uint64).max);
-        nttManager.setOutboundLimit(packTrimmedAmount(type(uint64).max, 8).untrim(decimals));
+        newNttManager.setPeer(chainId, toWormholeFormat(address(0x1)), 9, type(uint64).max);
+        newNttManager.setOutboundLimit(packTrimmedAmount(type(uint64).max, 8).untrim(decimals));
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
 
         vm.startPrank(user_A);
 
-        token.approve(address(nttManager), 3 * 10 ** decimals);
+        token.approve(address(newNttManager), 3 * 10 ** decimals);
 
         vm.expectRevert(abi.encodeWithSelector(IManagerBase.NoEnabledTransceivers.selector));
-        nttManager.transfer(
+        newNttManager.transfer(
             1 * 10 ** decimals,
             chainId,
             toWormholeFormat(user_B),
