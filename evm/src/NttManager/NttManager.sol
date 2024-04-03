@@ -196,9 +196,6 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         bytes32 sourceNttManagerAddress,
         TransceiverStructs.NttManagerMessage memory message
     ) public whenNotPaused {
-        // verify chain has not forked
-        checkFork(evmChainId);
-
         (bytes32 digest, bool alreadyExecuted) =
             _isMessageExecuted(sourceChainId, sourceNttManagerAddress, message);
 
@@ -394,6 +391,9 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
                 revert NotEnoughCapacity(getCurrentOutboundCapacity(), amount);
             }
             if (shouldQueue && isAmountRateLimited) {
+                // verify chain has not forked
+                checkFork(evmChainId);
+
                 // emit an event to notify the user that the transfer is rate limited
                 emit OutboundTransferRateLimited(
                     msg.sender, sequence, amount, getCurrentOutboundCapacity()
@@ -444,6 +444,9 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         address sender,
         bytes memory transceiverInstructions
     ) internal returns (uint64 msgSequence) {
+        // verify chain has not forked
+        checkFork(evmChainId);
+
         (
             address[] memory enabledTransceivers,
             TransceiverStructs.TransceiverInstruction[] memory instructions,
@@ -503,6 +506,9 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         TrimmedAmount amount,
         bool cancelled
     ) internal {
+        // verify chain has not forked
+        checkFork(evmChainId);
+
         // calculate proper amount of tokens to unlock/mint to recipient
         // untrim the amount
         uint256 untrimmedAmount = amount.untrim(tokenDecimals());
