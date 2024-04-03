@@ -11,6 +11,7 @@ import "../src/interfaces/IManagerBase.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
 import "../src/NttManager/TransceiverRegistry.sol";
 import "../src/libraries/PausableUpgradeable.sol";
+import "../src/libraries/TransceiverHelpers.sol";
 import {Utils} from "./libraries/Utils.sol";
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
@@ -785,6 +786,120 @@ contract TestNttManager is Test, IRateLimiterEvents {
             )
         );
         e2.receiveMessage(encodedEm);
+    }
+
+    function test_transfersOnForkedChains() public {
+        uint256 evmChainId = block.chainid;
+
+        address user_A = address(0x123);
+        address user_B = address(0x456);
+
+        DummyToken token = DummyToken(nttManager.token());
+
+        uint8 decimals = token.decimals();
+
+        nttManager.setPeer(
+            TransceiverHelpersLib.SENDING_CHAIN_ID,
+            toWormholeFormat(address(nttManagerOther)),
+            9,
+            type(uint64).max
+        );
+        nttManager.setOutboundLimit(0);
+
+        token.mintDummy(address(user_A), 5 * 10 ** decimals);
+
+        vm.startPrank(user_A);
+
+        token.approve(address(nttManager), 3 * 10 ** decimals);
+
+        uint64 sequence = nttManager.transfer(
+            1 * 10 ** decimals,
+            TransceiverHelpersLib.SENDING_CHAIN_ID,
+            toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
+            true,
+            new bytes(1)
+        );
+
+        vm.warp(vm.getBlockTimestamp() + 1 days);
+
+        vm.chainId(chainId);
+
+        // Queued outbound transfers can't be completed
+        vm.expectRevert(abi.encodeWithSelector(InvalidFork.selector, evmChainId, chainId));
+        nttManager.completeOutboundQueuedTransfer(sequence);
+
+        // Queued outbound transfers can't be cancelled
+        vm.expectRevert(abi.encodeWithSelector(InvalidFork.selector, evmChainId, chainId));
+        nttManager.cancelOutboundQueuedTransfer(sequence);
+
+        // Outbound transfers fail when queued
+        vm.expectRevert(abi.encodeWithSelector(InvalidFork.selector, evmChainId, chainId));
+        nttManager.transfer(
+            1 * 10 ** decimals,
+            TransceiverHelpersLib.SENDING_CHAIN_ID,
+            toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
+            true,
+            new bytes(1)
+        );
+        vm.stopPrank();
+
+        nttManager.setOutboundLimit(packTrimmedAmount(type(uint64).max, 8).untrim(decimals));
+        // Outbound transfers fail when not queued
+        vm.prank(user_A);
+        vm.expectRevert(abi.encodeWithSelector(InvalidFork.selector, evmChainId, chainId));
+        nttManager.transfer(
+            1 * 10 ** decimals,
+            TransceiverHelpersLib.SENDING_CHAIN_ID,
+            toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
+            false,
+            new bytes(1)
+        );
+
+        // INBOUND
+
+        bytes memory tokenTransferMessage = TransceiverStructs.encodeNativeTokenTransfer(
+            TransceiverStructs.NativeTokenTransfer({
+                amount: packTrimmedAmount(100, 8),
+                sourceToken: toWormholeFormat(address(token)),
+                to: toWormholeFormat(user_B),
+                toChain: chainId
+            })
+        );
+
+        bytes memory transceiverMessage;
+        TransceiverStructs.NttManagerMessage memory nttManagerMessage;
+        (nttManagerMessage, transceiverMessage) = TransceiverHelpersLib
+            .buildTransceiverMessageWithNttManagerPayload(
+            0,
+            toWormholeFormat(address(0x1)),
+            toWormholeFormat(address(nttManagerOther)),
+            toWormholeFormat(address(nttManager)),
+            tokenTransferMessage
+        );
+
+        // Inbound transfers can't be completed
+        vm.expectRevert(abi.encodeWithSelector(InvalidFork.selector, evmChainId, chainId));
+        dummyTransceiver.receiveMessage(transceiverMessage);
+
+        // Inbound queued transfers can't be completed
+        nttManager.setInboundLimit(0, TransceiverHelpersLib.SENDING_CHAIN_ID);
+
+        vm.chainId(evmChainId);
+
+        bytes32 hash = TransceiverStructs.nttManagerMessageDigest(
+            TransceiverHelpersLib.SENDING_CHAIN_ID, nttManagerMessage
+        );
+        dummyTransceiver.receiveMessage(transceiverMessage);
+
+        vm.chainId(chainId);
+
+        vm.warp(vm.getBlockTimestamp() + 1 days);
+
+        vm.expectRevert(abi.encodeWithSelector(InvalidFork.selector, evmChainId, chainId));
+        nttManager.completeInboundQueuedTransfer(hash);
     }
 
     // TODO:
