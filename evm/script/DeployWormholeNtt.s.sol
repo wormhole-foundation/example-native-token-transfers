@@ -136,7 +136,7 @@ contract DeployWormholeNtt is Script, ParseNttConfig {
         params.outboundLimit = vm.envUint("RELEASE_OUTBOUND_LIMIT");
     }
 
-    function run() public {
+    function run() public returns (address, address) {
         vm.startBroadcast();
 
         // Sanity check deployment parameters.
@@ -154,5 +154,6 @@ contract DeployWormholeNtt is Script, ParseNttConfig {
         );
 
         vm.stopBroadcast();
+        return (manager, tranceiver);
     }
 }
