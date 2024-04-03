@@ -230,6 +230,22 @@ contract TestNttManager is Test, IRateLimiterEvents {
         assertEq(nttManager.isPaused(), false);
     }
 
+    // === deployment with invalid token
+    function test_brokenToken() public {
+        DummyToken t = new DummyTokenBroken();
+        NttManager implementation = new MockNttManagerContract(
+            address(t), IManagerBase.Mode.LOCKING, chainId, 1 days, false
+        );
+
+        NttManager newNttManager =
+            MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
+        vm.expectRevert(abi.encodeWithSelector(INttManager.StaticcallFailed.selector));
+        newNttManager.initialize();
+
+        vm.expectRevert(abi.encodeWithSelector(INttManager.StaticcallFailed.selector));
+        newNttManager.transfer(1, 1, bytes32("1"));
+    }
+
     // === transceiver registration
 
     function test_registerTransceiver() public {
