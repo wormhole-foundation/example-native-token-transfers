@@ -27,18 +27,34 @@ import {
   WormholeNttTransceiver,
 } from "@wormhole-foundation/sdk-definitions-ntt";
 import { Contract, type Provider, type TransactionRequest } from "ethers";
-import { ethers_contracts } from "./index.js";
+import {
+  AbiVersion,
+  AbiVersions,
+  NttBindings,
+  NttManagerBindings,
+  NttTransceiverBindings,
+} from "./bindings.js";
+
+async function loadAbiVersion(version: string) {
+  if (!(version in AbiVersions))
+    throw new Error(`Unknown ABI version: ${version}`);
+  const module = AbiVersions[version as AbiVersion];
+  return module;
+}
 
 export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
   implements NttTransceiver<N, C, WormholeNttTransceiver.VAA>
 {
-  transceiver: ethers_contracts._0_1_0.WormholeTransceiver;
-  constructor(readonly manager: EvmNtt<N, C>, readonly address: string) {
-    this.transceiver =
-      ethers_contracts._0_1_0.factories.WormholeTransceiver__factory.connect(
-        address,
-        manager.provider
-      );
+  transceiver: NttTransceiverBindings.NttTransceiver;
+  constructor(
+    readonly manager: EvmNtt<N, C>,
+    readonly address: string,
+    abiBindings: NttBindings
+  ) {
+    this.transceiver = abiBindings.NttTransceiver.connect(
+      address,
+      manager.provider
+    );
   }
 
   encodeFlags(flags: { skipRelay: boolean }): Uint8Array {
@@ -78,11 +94,9 @@ export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
 export class EvmNtt<N extends Network, C extends EvmChains>
   implements Ntt<N, C>
 {
-  static ABI_VERSION = "0.1.0";
-
   tokenAddress: string;
   readonly chainId: bigint;
-  manager: ethers_contracts._0_1_0.NttManager;
+  manager: NttManagerBindings.NttManager;
   xcvrs: EvmNttWormholeTranceiver<N, C>[];
   managerAddress: string;
 
@@ -90,7 +104,8 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     readonly network: N,
     readonly chain: C,
     readonly provider: Provider,
-    readonly contracts: Contracts & { ntt?: Ntt.Contracts }
+    readonly contracts: Contracts & { ntt?: Ntt.Contracts },
+    abiBindings: NttBindings = AbiVersions["default"]
   ) {
     if (!contracts.ntt) throw new Error("No Ntt Contracts provided");
 
@@ -101,15 +116,18 @@ export class EvmNtt<N extends Network, C extends EvmChains>
 
     this.tokenAddress = contracts.ntt.token;
     this.managerAddress = contracts.ntt.manager;
-    this.manager =
-      ethers_contracts._0_1_0.factories.NttManager__factory.connect(
-        contracts.ntt.manager,
-        this.provider
-      );
+    this.manager = abiBindings.NttManager.connect(
+      contracts.ntt.manager,
+      this.provider
+    );
 
     this.xcvrs = [
       // Enable more Transceivers here
-      new EvmNttWormholeTranceiver(this, contracts.ntt.transceiver.wormhole!),
+      new EvmNttWormholeTranceiver(
+        this,
+        contracts.ntt.transceiver.wormhole!,
+        abiBindings!
+      ),
     ];
   }
 
@@ -117,13 +135,23 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     provider: Provider,
     config: ChainsConfig<N, EvmPlatformType>
   ): Promise<EvmNtt<N, EvmChains>> {
-    throw "Not Implemented";
-    // TODO
-    // const [network, chain] = await EvmPlatform.chainFromRpc(provider);
-    // return new EvmNtt(network, chain, provider, {} as Ntt.Contracts) as EvmNtt<
-    //   N,
-    //   EvmChains
-    // >;
+    const [network, chain] = await EvmPlatform.chainFromRpc(provider);
+    const conf = config[chain]!;
+    if (conf.network !== network)
+      throw new Error(`Network mismatch: ${conf.network} != ${network}`);
+
+    const { ntt } = conf.contracts as { ntt: Ntt.Contracts };
+
+    const version = await EvmNtt.getVersion(ntt.manager, provider);
+    const abiBindings = await loadAbiVersion(version);
+
+    return new EvmNtt(
+      network as N,
+      chain,
+      provider,
+      conf.contracts,
+      abiBindings
+    );
   }
 
   private encodeFlags(ixs: (any | null)[]): Ntt.TransceiverInstruction[] {
@@ -136,11 +164,11 @@ export class EvmNtt<N extends Network, C extends EvmChains>
       .filter((x) => x !== null) as Ntt.TransceiverInstruction[];
   }
 
-  async getVersion() {
+  static async getVersion(address: string, provider: Provider) {
     const contract = new Contract(
-      this.managerAddress,
+      address,
       ["function NTT_MANAGER_VERSION() public view returns (string)"],
-      this.provider
+      provider
     );
     try {
       const abiVersion = await contract
@@ -149,9 +177,10 @@ export class EvmNtt<N extends Network, C extends EvmChains>
       if (!abiVersion) {
         throw new Error("NTT_MANAGER_VERSION not found");
       }
+      return abiVersion;
     } catch (e) {
       console.error(
-        `Failed to get NTT_MANAGER_VERSION from contract ${this.managerAddress} on chain ${this.chain}`
+        `Failed to get NTT_MANAGER_VERSION from contract ${address}`
       );
       throw e;
     }
