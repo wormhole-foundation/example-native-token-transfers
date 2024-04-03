@@ -4,6 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import "../../src/libraries/TrimmedAmount.sol";
 import "../../src/NttManager/NttManager.sol";
+import "../../src/interfaces/INttManager.sol";
 
 library NttManagerHelpersLib {
     uint16 constant SENDING_CHAIN_ID = 1;
@@ -16,8 +17,13 @@ library NttManagerHelpersLib {
         NttManager recipientNttManager,
         uint8 decimals
     ) internal {
-        (, bytes memory queriedDecimals) =
+        (bool success, bytes memory queriedDecimals) =
             address(nttManager.token()).staticcall(abi.encodeWithSignature("decimals()"));
+
+        if (!success) {
+            revert INttManager.StaticcallFailed();
+        }
+
         uint8 tokenDecimals = abi.decode(queriedDecimals, (uint8));
         recipientNttManager.setPeer(
             SENDING_CHAIN_ID, toWormholeFormat(address(nttManager)), tokenDecimals, type(uint64).max
