@@ -117,6 +117,10 @@ interface INttManager is IManagerBase {
     /// @notice Peer cannot have zero decimals.
     error InvalidPeerDecimals();
 
+    /// @notice Staticcall reverted
+    /// @dev Selector 0x1222cd83
+    error StaticcallFailed();
+
     /// @notice Error when someone other than the original sender tries to cancel a queued outbound transfer.
     /// @dev Selector 0xceb40a85.
     /// @param canceller The address trying to cancel the transfer.

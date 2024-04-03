@@ -531,7 +531,13 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     }
 
     function tokenDecimals() public view override(INttManager, RateLimiter) returns (uint8) {
-        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
+        (bool success, bytes memory queriedDecimals) =
+            token.staticcall(abi.encodeWithSignature("decimals()"));
+
+        if (!success) {
+            revert StaticcallFailed();
+        }
+
         return abi.decode(queriedDecimals, (uint8));
     }
 
@@ -572,8 +578,13 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         address tokenAddr,
         address accountAddr
     ) internal view returns (uint256) {
-        (, bytes memory queriedBalance) =
+        (bool success, bytes memory queriedBalance) =
             tokenAddr.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, accountAddr));
+
+        if (!success) {
+            revert StaticcallFailed();
+        }
+
         return abi.decode(queriedBalance, (uint256));
     }
 }
