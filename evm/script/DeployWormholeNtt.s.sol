@@ -154,6 +154,6 @@ contract DeployWormholeNtt is Script, ParseNttConfig {
         );
 
         vm.stopBroadcast();
-        return (manager, tranceiver);
+        return (manager, transceiver);
     }
 }
