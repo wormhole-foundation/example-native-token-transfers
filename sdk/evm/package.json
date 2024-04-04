@@ -39,17 +39,20 @@
     "rebuild": "npm run clean && npm run build",
     "clean": "rm -rf ./dist",
     "generate:test": "typechain --node16-modules --target ethers-v6 --out-dir ethers-ci-contracts '../../evm/out/**/*.json'",
-    "generate:slim": "typechain --node16-modules --target ethers-v6 --out-dir src/ethers-contracts/ '../../evm/out/?(WormholeTransceiver.sol|NttManager.sol)/*.json'",
+    "generate:slim": "ABI_VERSION=0_1_0 && typechain --node16-modules --target ethers-v6 --out-dir src/ethers-contracts/$ABI_VERSION '../../evm/out/?(WormholeTransceiver.sol|NttManager.sol)/*.json'",
     "generate": "npm run generate:slim",
-    "build:contracts": "cd ../.. && make build-evm-prod"
+    "build:contracts": "cd ../.. && make build-evm-prod",
+    "test": "jest --config ./jest.config.ts"
   },
   "dependencies": {
-    "@typechain/ethers-v6": "^0.5.1",
     "@wormhole-foundation/sdk-connect": ">=0.5.2",
     "@wormhole-foundation/sdk-definitions-ntt": "0.0.1-beta.1",
     "@wormhole-foundation/sdk-evm": ">=0.5.2",
     "@wormhole-foundation/sdk-evm-core": ">=0.5.2",
-    "ethers": "^6.5.1",
+    "ethers": "^6.5.1"
+  },
+  "devDependencies": {
+    "@typechain/ethers-v6": "^0.5.1",
     "typechain": "^8.3.2"
   },
   "type": "module",
