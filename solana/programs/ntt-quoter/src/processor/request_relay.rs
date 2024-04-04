@@ -103,11 +103,8 @@ fn mul_div(scalar: u64, numerator: u64, denominator: u64) -> StdResult<u64, NttQ
     if scalar == 0 || numerator == 0 {
         return Ok(0);
     }
-
     u64::try_from(u128::from(scalar) * u128::from(numerator) / u128::from(denominator))
-        .map_or(Err(NttQuoterError::ScalingOverflow), |quotient| {
-            Ok(quotient)
-        })
+        .map_err(NttQuoterError::from)
 }
 
 pub fn request_relay(ctx: Context<RequestRelay>, args: RequestRelayArgs) -> Result<()> {

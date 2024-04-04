@@ -1,3 +1,5 @@
+use std::num::TryFromIntError;
+
 #[anchor_lang::prelude::error_code]
 pub enum NttQuoterError {
     #[msg("Relay fees exceeds specified max")]
@@ -29,4 +31,10 @@ pub enum NttQuoterError {
 
     #[msg("The price cannot be zero")]
     PriceCannotBeZero = 0x103,
+}
+
+impl From<TryFromIntError> for NttQuoterError {
+    fn from(_: TryFromIntError) -> Self {
+        Self::ScalingOverflow
+    }
 }
