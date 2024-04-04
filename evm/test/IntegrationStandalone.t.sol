@@ -232,7 +232,8 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             nttManagerChain2.transfer(
                 sendingAmount,
                 chainId1,
-                bytes32(uint256(uint160(userD))),
+                toWormholeFormat(userD),
+                toWormholeFormat(userC),
                 false,
                 encodeTransceiverInstruction(true)
             );
@@ -293,7 +294,8 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             nttManagerChain1.transfer(
                 sendingAmount,
                 chainId2,
-                bytes32(uint256(uint160(userB))),
+                toWormholeFormat(userB),
+                toWormholeFormat(userA),
                 true,
                 encodeTransceiverInstruction(true)
             );
@@ -370,7 +372,8 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             nttManagerChain2.transfer(
                 sendingAmount,
                 chainId1,
-                bytes32(uint256(uint160(userD))),
+                toWormholeFormat(userD),
+                toWormholeFormat(userC),
                 true,
                 encodeTransceiverInstruction(true)
             );
@@ -526,6 +529,7 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
         vm.startPrank(userA);
         token1.approve(address(nttManagerChain1), sendingAmount);
 
+        vm.chainId(chainId1);
         vm.recordLogs();
 
         // Send token through standard means (not relayer)
@@ -533,7 +537,8 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             nttManagerChain1.transfer(
                 sendingAmount,
                 chainId2,
-                bytes32(uint256(uint160(userB))),
+                toWormholeFormat(userB),
+                toWormholeFormat(userA),
                 false,
                 encodeTransceiverInstructions(true)
             );
@@ -590,7 +595,8 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             nttManagerChain2.transfer(
                 sendingAmount,
                 chainId1,
-                bytes32(uint256(uint160(userA))),
+                toWormholeFormat(userA),
+                toWormholeFormat(userB),
                 false,
                 encodeTransceiverInstructions(true)
             );

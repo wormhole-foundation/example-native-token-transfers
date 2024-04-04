@@ -24,6 +24,7 @@ contract DummyTransceiver is Transceiver, ITransceiverReceiver {
         uint256, /* deliveryPayment */
         address, /* caller */
         bytes32, /* recipientNttManagerAddress */
+        bytes32, /* refundAddres */
         TransceiverStructs.TransceiverInstruction memory, /* instruction */
         bytes memory /* payload */
     ) internal override {

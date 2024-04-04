@@ -30,6 +30,9 @@ import {ManagerBase} from "./ManagerBase.sol";
 ///  - the amount
 ///  - the recipient chain
 ///  - the recipient address
+///  - the refund address: the address to which refunds are issued for any unused gas
+///    for attestations on a given transfer. If the gas limit is configured
+///    to be too high, users will be refunded the difference.
 ///  - (optional) a flag to indicate whether the transfer should be queued
 ///    if the rate limit is exceeded
 contract NttManager is INttManager, RateLimiter, ManagerBase {
@@ -37,6 +40,8 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     using SafeERC20 for IERC20;
     using TrimmedAmountLib for uint256;
     using TrimmedAmountLib for TrimmedAmount;
+
+    string public constant NTT_MANAGER_VERSION = "0.1.0";
 
     // =============== Setup =================================================================
 
@@ -52,6 +57,9 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         // check if the owner is the deployer of this contract
         if (msg.sender != deployer) {
             revert UnexpectedDeployer(deployer, msg.sender);
+        }
+        if (msg.value != 0) {
+            revert UnexpectedMsgValue();
         }
         __PausedOwnable_init(msg.sender, msg.sender);
         __ReentrancyGuard_init();
@@ -148,7 +156,8 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint16 recipientChain,
         bytes32 recipient
     ) external payable nonReentrant whenNotPaused returns (uint64) {
-        return _transferEntryPoint(amount, recipientChain, recipient, false, new bytes(1));
+        return
+            _transferEntryPoint(amount, recipientChain, recipient, recipient, false, new bytes(1));
     }
 
     /// @inheritdoc INttManager
@@ -156,11 +165,12 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint256 amount,
         uint16 recipientChain,
         bytes32 recipient,
+        bytes32 refundAddress,
         bool shouldQueue,
         bytes memory transceiverInstructions
     ) external payable nonReentrant whenNotPaused returns (uint64) {
         return _transferEntryPoint(
-            amount, recipientChain, recipient, shouldQueue, transceiverInstructions
+            amount, recipientChain, recipient, refundAddress, shouldQueue, transceiverInstructions
         );
     }
 
@@ -186,9 +196,6 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         bytes32 sourceNttManagerAddress,
         TransceiverStructs.NttManagerMessage memory message
     ) public whenNotPaused {
-        // verify chain has not forked
-        checkFork(evmChainId);
-
         (bytes32 digest, bool alreadyExecuted) =
             _isMessageExecuted(sourceChainId, sourceNttManagerAddress, message);
 
@@ -227,7 +234,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         // by the same amount (we call this "backflow")
         _backfillOutboundAmount(nativeTransferAmount);
 
-        _mintOrUnlockToRecipient(digest, transferRecipient, nativeTransferAmount);
+        _mintOrUnlockToRecipient(digest, transferRecipient, nativeTransferAmount, false);
     }
 
     /// @inheritdoc INttManager
@@ -247,7 +254,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         delete _getInboundQueueStorage()[digest];
 
         // run it through the mint/unlock logic
-        _mintOrUnlockToRecipient(digest, queuedTransfer.recipient, queuedTransfer.amount);
+        _mintOrUnlockToRecipient(digest, queuedTransfer.recipient, queuedTransfer.amount, false);
     }
 
     /// @inheritdoc INttManager
@@ -278,8 +285,35 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
             queuedTransfer.amount,
             queuedTransfer.recipientChain,
             queuedTransfer.recipient,
+            queuedTransfer.refundAddress,
             queuedTransfer.sender,
             queuedTransfer.transceiverInstructions
+        );
+    }
+
+    /// @inheritdoc INttManager
+    function cancelOutboundQueuedTransfer(uint64 messageSequence)
+        external
+        nonReentrant
+        whenNotPaused
+    {
+        // find the message in the queue
+        OutboundQueuedTransfer memory queuedTransfer = _getOutboundQueueStorage()[messageSequence];
+        if (queuedTransfer.txTimestamp == 0) {
+            revert OutboundQueuedTransferNotFound(messageSequence);
+        }
+
+        // check msg.sender initiated the transfer
+        if (queuedTransfer.sender != msg.sender) {
+            revert CancellerNotSender(msg.sender, queuedTransfer.sender);
+        }
+
+        // remove transfer from the queue
+        delete _getOutboundQueueStorage()[messageSequence];
+
+        // return the queued funds to the sender
+        _mintOrUnlockToRecipient(
+            bytes32(uint256(messageSequence)), msg.sender, queuedTransfer.amount, true
         );
     }
 
@@ -289,6 +323,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint256 amount,
         uint16 recipientChain,
         bytes32 recipient,
+        bytes32 refundAddress,
         bool shouldQueue,
         bytes memory transceiverInstructions
     ) internal returns (uint64) {
@@ -298,6 +333,10 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
 
         if (recipient == bytes32(0)) {
             revert InvalidRecipient();
+        }
+
+        if (refundAddress == bytes32(0)) {
+            revert InvalidRefundAddress();
         }
 
         {
@@ -352,6 +391,9 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
                 revert NotEnoughCapacity(getCurrentOutboundCapacity(), amount);
             }
             if (shouldQueue && isAmountRateLimited) {
+                // verify chain has not forked
+                checkFork(evmChainId);
+
                 // emit an event to notify the user that the transfer is rate limited
                 emit OutboundTransferRateLimited(
                     msg.sender, sequence, amount, getCurrentOutboundCapacity()
@@ -363,6 +405,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
                     trimmedAmount,
                     recipientChain,
                     recipient,
+                    refundAddress,
                     msg.sender,
                     transceiverInstructions
                 );
@@ -382,7 +425,13 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         _backfillInboundAmount(internalAmount, recipientChain);
 
         return _transfer(
-            sequence, trimmedAmount, recipientChain, recipient, msg.sender, transceiverInstructions
+            sequence,
+            trimmedAmount,
+            recipientChain,
+            recipient,
+            refundAddress,
+            msg.sender,
+            transceiverInstructions
         );
     }
 
@@ -391,9 +440,13 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         TrimmedAmount amount,
         uint16 recipientChain,
         bytes32 recipient,
+        bytes32 refundAddress,
         address sender,
         bytes memory transceiverInstructions
     ) internal returns (uint64 msgSequence) {
+        // verify chain has not forked
+        checkFork(evmChainId);
+
         (
             address[] memory enabledTransceivers,
             TransceiverStructs.TransceiverInstruction[] memory instructions,
@@ -417,10 +470,14 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
             )
         );
 
+        // push onto the stack again to avoid stack too deep error
+        uint16 destinationChain = recipientChain;
+
         // send the message
         _sendMessageToTransceivers(
             recipientChain,
-            _getPeersStorage()[recipientChain].peerAddress,
+            refundAddress,
+            _getPeersStorage()[destinationChain].peerAddress,
             priceQuotes,
             instructions,
             enabledTransceivers,
@@ -429,26 +486,38 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
 
         // push it on the stack again to avoid a stack too deep error
         TrimmedAmount amt = amount;
-        uint16 destinationChain = recipientChain;
 
         emit TransferSent(
-            recipient, amt.untrim(tokenDecimals()), totalPriceQuote, destinationChain, seq
+            recipient,
+            refundAddress,
+            amt.untrim(tokenDecimals()),
+            totalPriceQuote,
+            destinationChain,
+            seq
         );
 
         // return the sequence number
-        return sequence;
+        return seq;
     }
 
     function _mintOrUnlockToRecipient(
         bytes32 digest,
         address recipient,
-        TrimmedAmount amount
+        TrimmedAmount amount,
+        bool cancelled
     ) internal {
+        // verify chain has not forked
+        checkFork(evmChainId);
+
         // calculate proper amount of tokens to unlock/mint to recipient
         // untrim the amount
         uint256 untrimmedAmount = amount.untrim(tokenDecimals());
 
-        emit TransferRedeemed(digest);
+        if (cancelled) {
+            emit OutboundTransferCancelled(uint256(digest), recipient, untrimmedAmount);
+        } else {
+            emit TransferRedeemed(digest);
+        }
 
         if (mode == Mode.LOCKING) {
             // unlock tokens to the specified recipient
@@ -462,7 +531,13 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     }
 
     function tokenDecimals() public view override(INttManager, RateLimiter) returns (uint8) {
-        (, bytes memory queriedDecimals) = token.staticcall(abi.encodeWithSignature("decimals()"));
+        (bool success, bytes memory queriedDecimals) =
+            token.staticcall(abi.encodeWithSignature("decimals()"));
+
+        if (!success) {
+            revert StaticcallFailed();
+        }
+
         return abi.decode(queriedDecimals, (uint8));
     }
 
@@ -503,8 +578,13 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         address tokenAddr,
         address accountAddr
     ) internal view returns (uint256) {
-        (, bytes memory queriedBalance) =
+        (bool success, bytes memory queriedBalance) =
             tokenAddr.staticcall(abi.encodeWithSelector(IERC20.balanceOf.selector, accountAddr));
+
+        if (!success) {
+            revert StaticcallFailed();
+        }
+
         return abi.decode(queriedBalance, (uint256));
     }
 }

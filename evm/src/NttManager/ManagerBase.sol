@@ -171,6 +171,7 @@ abstract contract ManagerBase is
 
     function _sendMessageToTransceivers(
         uint16 recipientChain,
+        bytes32 refundAddress,
         bytes32 peerAddress,
         uint256[] memory priceQuotes,
         TransceiverStructs.TransceiverInstruction[] memory transceiverInstructions,
@@ -184,15 +185,20 @@ abstract contract ManagerBase is
             revert PeerNotRegistered(recipientChain);
         }
 
+        // push onto the stack again to avoid stack too deep error
+        bytes32 refundRecipient = refundAddress;
+
         // call into transceiver contracts to send the message
         for (uint256 i = 0; i < numEnabledTransceivers; i++) {
             address transceiverAddr = enabledTransceivers[i];
+
             // send it to the recipient nttManager based on the chain
             ITransceiver(transceiverAddr).sendMessage{value: priceQuotes[i]}(
                 recipientChain,
                 transceiverInstructions[transceiverInfos[transceiverAddr].index],
                 nttManagerMessage,
-                peerAddress
+                peerAddress,
+                refundRecipient
             );
         }
     }
@@ -215,6 +221,7 @@ abstract contract ManagerBase is
         TransceiverStructs.TransceiverInstruction[] memory instructions;
 
         {
+            uint256 numRegisteredTransceivers = _getRegisteredTransceiversStorage().length;
             uint256 numEnabledTransceivers = enabledTransceivers.length;
 
             if (numEnabledTransceivers == 0) {
@@ -222,7 +229,7 @@ abstract contract ManagerBase is
             }
 
             instructions = TransceiverStructs.parseTransceiverInstructions(
-                transceiverInstructions, numEnabledTransceivers
+                transceiverInstructions, numRegisteredTransceivers
             );
         }
 
@@ -344,6 +351,8 @@ abstract contract ManagerBase is
         }
 
         emit TransceiverAdded(transceiver, _getNumTransceiversStorage().enabled, _threshold.num);
+
+        _checkThresholdInvariants();
     }
 
     /// @inheritdoc IManagerBase
@@ -358,6 +367,8 @@ abstract contract ManagerBase is
         }
 
         emit TransceiverRemoved(transceiver, _threshold.num);
+
+        _checkThresholdInvariants();
     }
 
     /// @inheritdoc IManagerBase

@@ -33,6 +33,8 @@ contract WormholeTransceiver is
 {
     using BytesParsing for bytes;
 
+    string public constant WORMHOLE_TRANSCEIVER_VERSION = "0.1.0";
+
     constructor(
         address nttManager,
         address wormholeCoreBridge,
@@ -176,6 +178,7 @@ contract WormholeTransceiver is
         uint256 deliveryPayment,
         address caller,
         bytes32 recipientNttManagerAddress,
+        bytes32 refundAddress,
         TransceiverStructs.TransceiverInstruction memory instruction,
         bytes memory nttManagerMessage
     ) internal override {
@@ -194,15 +197,24 @@ contract WormholeTransceiver is
             parseWormholeTransceiverInstruction(instruction.payload);
 
         if (!weIns.shouldSkipRelayerSend && _shouldRelayViaStandardRelaying(recipientChain)) {
+            // NOTE: standard relaying supports refunds. The amount to be refunded will be sent
+            // to a refundAddress specified by the client on the destination chain.
+
+            // push onto the stack again to avoid stack too deep error
+            bytes32 refundRecipient = refundAddress;
+            uint16 destinationChain = recipientChain;
+
             wormholeRelayer.sendPayloadToEvm{value: deliveryPayment}(
-                recipientChain,
-                fromWormholeFormat(getWormholePeer(recipientChain)),
+                destinationChain,
+                fromWormholeFormat(getWormholePeer(destinationChain)),
                 encodedTransceiverPayload,
                 0,
-                gasLimit
+                gasLimit,
+                destinationChain,
+                fromWormholeFormat(refundRecipient)
             );
 
-            emit RelayingInfo(uint8(RelayingType.Standard), deliveryPayment);
+            emit RelayingInfo(uint8(RelayingType.Standard), refundAddress, deliveryPayment);
         } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
             (transceiverMessage, encodedTransceiverPayload) =
                 _encodePayload(caller, recipientNttManagerAddress, nttManagerMessage, true);
@@ -214,13 +226,17 @@ contract WormholeTransceiver is
                 getNttManagerToken(), recipientChain, 0, sequence
             );
 
-            emit RelayingInfo(uint8(RelayingType.Special), deliveryPayment);
+            // NOTE: specialized relaying does not currently support refunds. The zero address
+            // is used as a placeholder for the refund address until support is added.
+            emit RelayingInfo(uint8(RelayingType.Special), bytes32(0), deliveryPayment);
         } else {
             wormhole.publishMessage{value: deliveryPayment}(
                 0, encodedTransceiverPayload, consistencyLevel
             );
 
-            emit RelayingInfo(uint8(RelayingType.Manual), deliveryPayment);
+            // NOTE: manual relaying does not currently support refunds. The zero address
+            // is used as refundAddress.
+            emit RelayingInfo(uint8(RelayingType.Manual), bytes32(0), deliveryPayment);
         }
 
         emit SendTransceiverMessage(recipientChain, transceiverMessage);

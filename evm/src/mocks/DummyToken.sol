@@ -54,3 +54,13 @@ contract DummyTokenDifferentDecimals is DummyTokenMintAndBurn {
         return _decimals;
     }
 }
+
+contract DummyTokenBroken is DummyToken {
+    function decimals() public pure override returns (uint8) {
+        revert("broken decimals");
+    }
+
+    function balanceOf(address) public pure override returns (uint256) {
+        revert("broken balanceOf");
+    }
+}

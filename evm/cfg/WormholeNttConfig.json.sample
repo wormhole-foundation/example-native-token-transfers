@@ -1,9 +1,9 @@
 {
     "contracts": [
         {
-            "chainId": 10002,
-            "decimals": 6,
-            "inboundLimit": 18446744073709551614,
+            "chainId":,
+            "decimals":,
+            "inboundLimit":,
             "isEvmChain": true,
             "isWormholeRelayingEnabled": true,
             "isSpecialRelayingEnabled": false,
@@ -11,9 +11,9 @@
             "wormholeTransceiver": "0x00000000000000000000000000000000000000000000000000000000deadbeef"
         },
         {
-            "chainId": 16,
-            "decimals": 6,
-            "inboundLimit": 18446744073709551614,
+            "chainId":,
+            "decimals":,
+            "inboundLimit":,
             "isEvmChain": true,
             "isWormholeRelayingEnabled": true,
             "isSpecialRelayingEnabled": false,

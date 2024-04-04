@@ -6,10 +6,10 @@ import "../libraries/TransceiverStructs.sol";
 interface IWormholeTransceiverState {
     /// @notice Emitted when a message is sent from the transceiver.
     /// @dev Topic0
-    ///      0x375a56c053c4d19a2e3445e97b7a28bf4e908617ce6d766e1e03a9d3f5276271.
+    ///      0xc3192e083c87c556db539f071d8a298869f487e951327b5616a6f85ae3da958e.
     /// @param relayingType The type of relaying.
     /// @param deliveryPayment The amount of ether sent along with the tx to cover the delivery fee.
-    event RelayingInfo(uint8 relayingType, uint256 deliveryPayment);
+    event RelayingInfo(uint8 relayingType, bytes32 refundAddress, uint256 deliveryPayment);
 
     /// @notice Emitted when a peer transceiver is set.
     /// @dev Topic0
@@ -94,7 +94,7 @@ interface IWormholeTransceiverState {
     /// @dev This function is only callable by the `owner`.
     /// @param chainId The Wormhole chain ID of the peer to set.
     /// @param peerContract The address of the peer contract on the given chain.
-    function setWormholePeer(uint16 chainId, bytes32 peerContract) external;
+    function setWormholePeer(uint16 chainId, bytes32 peerContract) external payable;
 
     /// @notice Set whether the chain is EVM compatible.
     /// @dev This function is only callable by the `owner`.
