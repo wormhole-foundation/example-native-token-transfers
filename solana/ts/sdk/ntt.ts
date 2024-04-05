@@ -3,9 +3,12 @@ import { serializeLayout, toChainId as SDKv2toChainId } from '@wormhole-foundati
 import {
   deserialize,
   nttManagerMessageLayout,
+} from '@wormhole-foundation/sdk-definitions'
+
+import {
   type NttManagerMessage,
   nativeTokenTransferLayout
-} from '@wormhole-foundation/sdk-definitions'
+} from './nttLayout'
 import { derivePostedVaaKey, getWormholeDerivedAccounts } from '@certusone/wormhole-sdk/lib/cjs/solana/wormhole'
 import { BN, translateError, type IdlAccounts, Program } from '@coral-xyz/anchor'
 import { associatedAddress } from '@coral-xyz/anchor/dist/cjs/utils/token'
