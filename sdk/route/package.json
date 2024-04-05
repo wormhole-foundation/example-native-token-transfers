@@ -37,12 +37,7 @@
     "build:esm": "tsc -p ./tsconfig.esm.json",
     "build": "npm run build:esm && npm run build:cjs",
     "rebuild": "npm run clean && npm run build",
-    "clean": "rm -rf ./dist",
-    "test:ci": "jest --config ./jest.config.ts",
-    "copy:idl": "cp ../../solana/target/idl/*.json ./src/anchor-idl/",
-    "copy:types": "cp ../../solana/target/types/*.ts ./src/anchor-idl/",
-    "generate": "npm run copy:idl && npm run copy:types",
-    "build:contracts": "cd ../../solana && make build"
+    "clean": "rm -rf ./dist"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.5",
@@ -58,7 +53,7 @@
     "@wormhole-foundation/sdk-definitions-ntt": "0.0.1-beta.1",
     "@wormhole-foundation/sdk-solana-ntt": "0.0.1-beta.1",
     "@wormhole-foundation/sdk-evm-ntt": "0.0.1-beta.1",
-    "@wormhole-foundation/sdk-connect": ">=0.5.2"
+    "@wormhole-foundation/sdk-connect": "0.5.3-beta.2"
   },
   "type": "module",
   "exports": {

@@ -130,6 +130,12 @@ export class EvmNtt<N extends Network, C extends EvmChains>
       ),
     ];
   }
+  getIsApproved(attestation: any): Promise<boolean> {
+    throw new Error("Method not implemented.");
+  }
+  getIsRedeemed(attestation: any): Promise<boolean> {
+    throw new Error("Method not implemented.");
+  }
 
   async getTokenDecimals(): Promise<number> {
     return await EvmPlatform.getDecimals(

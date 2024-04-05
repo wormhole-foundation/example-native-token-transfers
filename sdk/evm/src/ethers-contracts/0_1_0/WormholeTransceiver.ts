@@ -674,7 +674,7 @@ export interface WormholeTransceiver extends BaseContract {
     "view"
   >;
 
-  initialize: TypedContractMethod<[], [void], "nonpayable">;
+  initialize: TypedContractMethod<[], [void], "payable">;
 
   isPaused: TypedContractMethod<[], [boolean], "view">;
 
@@ -774,7 +774,7 @@ export interface WormholeTransceiver extends BaseContract {
   setWormholePeer: TypedContractMethod<
     [peerChainId: BigNumberish, peerContract: BytesLike],
     [void],
-    "nonpayable"
+    "payable"
   >;
 
   specialRelayer: TypedContractMethod<[], [string], "view">;
@@ -841,7 +841,7 @@ export interface WormholeTransceiver extends BaseContract {
   ): TypedContractMethod<[chainId: BigNumberish], [string], "view">;
   getFunction(
     nameOrSignature: "initialize"
-  ): TypedContractMethod<[], [void], "nonpayable">;
+  ): TypedContractMethod<[], [void], "payable">;
   getFunction(
     nameOrSignature: "isPaused"
   ): TypedContractMethod<[], [boolean], "view">;
@@ -944,7 +944,7 @@ export interface WormholeTransceiver extends BaseContract {
   ): TypedContractMethod<
     [peerChainId: BigNumberish, peerContract: BytesLike],
     [void],
-    "nonpayable"
+    "payable"
   >;
   getFunction(
     nameOrSignature: "specialRelayer"

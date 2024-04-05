@@ -103,6 +103,20 @@ export declare namespace INttManager {
   ] & { peerAddress: string; tokenDecimals: bigint };
 }
 
+export declare namespace TransceiverRegistry {
+  export type TransceiverInfoStruct = {
+    registered: boolean;
+    enabled: boolean;
+    index: BigNumberish;
+  };
+
+  export type TransceiverInfoStructOutput = [
+    registered: boolean,
+    enabled: boolean,
+    index: bigint
+  ] & { registered: boolean; enabled: boolean; index: bigint };
+}
+
 export interface NttManagerInterface extends Interface {
   getFunction(
     nameOrSignature:
@@ -123,6 +137,7 @@ export interface NttManagerInterface extends Interface {
       | "getOutboundQueuedTransfer"
       | "getPeer"
       | "getThreshold"
+      | "getTransceiverInfo"
       | "getTransceivers"
       | "initialize"
       | "isMessageApproved"
@@ -246,6 +261,10 @@ export interface NttManagerInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "getThreshold",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getTransceiverInfo",
     values?: undefined
   ): string;
   encodeFunctionData(
@@ -402,6 +421,10 @@ export interface NttManagerInterface extends Interface {
   decodeFunctionResult(functionFragment: "getPeer", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "getThreshold",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "getTransceiverInfo",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -945,9 +968,15 @@ export interface NttManager extends BaseContract {
 
   getThreshold: TypedContractMethod<[], [bigint], "view">;
 
+  getTransceiverInfo: TypedContractMethod<
+    [],
+    [TransceiverRegistry.TransceiverInfoStructOutput[]],
+    "view"
+  >;
+
   getTransceivers: TypedContractMethod<[], [string[]], "view">;
 
-  initialize: TypedContractMethod<[], [void], "nonpayable">;
+  initialize: TypedContractMethod<[], [void], "payable">;
 
   isMessageApproved: TypedContractMethod<
     [digest: BytesLike],
@@ -1171,11 +1200,18 @@ export interface NttManager extends BaseContract {
     nameOrSignature: "getThreshold"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
+    nameOrSignature: "getTransceiverInfo"
+  ): TypedContractMethod<
+    [],
+    [TransceiverRegistry.TransceiverInfoStructOutput[]],
+    "view"
+  >;
+  getFunction(
     nameOrSignature: "getTransceivers"
   ): TypedContractMethod<[], [string[]], "view">;
   getFunction(
     nameOrSignature: "initialize"
-  ): TypedContractMethod<[], [void], "nonpayable">;
+  ): TypedContractMethod<[], [void], "payable">;
   getFunction(
     nameOrSignature: "isMessageApproved"
   ): TypedContractMethod<[digest: BytesLike], [boolean], "view">;

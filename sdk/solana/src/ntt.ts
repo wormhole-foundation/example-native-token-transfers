@@ -114,6 +114,12 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       ),
     ];
   }
+  getIsApproved(attestation: any): Promise<boolean> {
+    throw new Error("Method not implemented.");
+  }
+  getIsRedeemed(attestation: any): Promise<boolean> {
+    throw new Error("Method not implemented.");
+  }
 
   static async fromRpc<N extends Network>(
     provider: Connection,
