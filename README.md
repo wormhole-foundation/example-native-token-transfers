@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="images/ntt-logo-black.png", height=100>
+  <img src="images/ntt-logo.png">
 </div>
 
 ---
