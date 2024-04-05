@@ -237,13 +237,14 @@ contract WormholeTransceiver is
             );
 
             // push onto the stack again to avoid stack too deep error
+            uint256 deliveryFee = deliveryPayment;
             uint16 destinationChain = recipientChain;
 
             uint256 wormholeFee = wormhole.messageFee();
             uint64 sequence = wormhole.publishMessage{value: wormholeFee}(
                 0, encodedTransceiverPayload, consistencyLevel
             );
-            specialRelayer.requestDelivery{value: deliveryPayment - wormholeFee}(
+            specialRelayer.requestDelivery{value: deliveryFee - wormholeFee}(
                 getNttManagerToken(), destinationChain, 0, sequence
             );
 
