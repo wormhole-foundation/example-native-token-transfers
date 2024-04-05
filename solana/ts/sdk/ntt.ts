@@ -2,11 +2,11 @@ import { type ChainName, toChainId, coalesceChainId, type ChainId, type SignedVa
 import { serializeLayout, toChainId as SDKv2toChainId } from '@wormhole-foundation/sdk-base'
 import {
   deserialize,
-  nttManagerMessageLayout,
 } from '@wormhole-foundation/sdk-definitions'
 
 import {
   type NttManagerMessage,
+  nttManagerMessageLayout,
   nativeTokenTransferLayout
 } from './nttLayout'
 import { derivePostedVaaKey, getWormholeDerivedAccounts } from '@certusone/wormhole-sdk/lib/cjs/solana/wormhole'
