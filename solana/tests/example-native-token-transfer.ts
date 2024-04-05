@@ -113,7 +113,7 @@ describe('example-native-token-transfers', () => {
 
       const messageData = PostedMessageData.deserialize(wormholeMessageAccount.data)
       const transceiverMessage =
-        deserializePayload("NTT:WormholeTransfer", messageData.message.payload)
+        deserializePayload("Ntt:WormholeTransfer", messageData.message.payload)
 
       // assert theat amount is what we expect
       expect(transceiverMessage.nttManagerPayload.payload.trimmedAmount).to.deep.equal({amount: 10000n, decimals: 8})
@@ -165,7 +165,7 @@ describe('example-native-token-transfers', () => {
         transceiverPayload: new Uint8Array(0)
       } as const
 
-      const serialized = serializePayload("NTT:WormholeTransfer", sendingTransceiverMessage)
+      const serialized = serializePayload("Ntt:WormholeTransfer", sendingTransceiverMessage)
 
       const published = emitter.publishMessage(
         0, // nonce
