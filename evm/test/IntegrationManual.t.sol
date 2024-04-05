@@ -239,7 +239,7 @@ contract TestRelayerEndToEndManual is IntegrationHelpers, IRateLimiterEvents {
             nttManagerChain1.transfer{
                 value: wormholeTransceiverChain1.quoteDeliveryPrice(
                     chainId2, buildTransceiverInstruction(false)
-                    )
+                )
             }(
                 sendingAmount,
                 chainId2,
