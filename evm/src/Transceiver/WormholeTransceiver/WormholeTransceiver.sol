@@ -184,6 +184,7 @@ contract WormholeTransceiver is
     ) internal override {
         TransceiverStructs.TransceiverMessage memory transceiverMessage;
         bytes memory encodedTransceiverPayload;
+        bytes32 wormholeFormattedCaller = toWormholeFormat(caller);
 
         WormholeTransceiverInstruction memory weIns =
             parseWormholeTransceiverInstruction(instruction.payload);
@@ -195,7 +196,7 @@ contract WormholeTransceiver is
             (transceiverMessage, encodedTransceiverPayload) = TransceiverStructs
                 .buildAndEncodeTransceiverMessage(
                 WH_TRANSCEIVER_PAYLOAD_PREFIX,
-                toWormholeFormat(caller),
+                wormholeFormattedCaller,
                 recipientNttManagerAddress,
                 nttManagerMessage,
                 new bytes(0)
@@ -229,17 +230,21 @@ contract WormholeTransceiver is
             (transceiverMessage, encodedTransceiverPayload) = TransceiverStructs
                 .buildAndEncodeTransceiverMessage(
                 WH_TRANSCEIVER_PAYLOAD_PREFIX,
-                toWormholeFormat(caller),
+                wormholeFormattedCaller,
                 recipientNttManagerAddress,
                 nttManagerMessage,
                 transceiverPayload
             );
+
+            // push onto the stack again to avoid stack too deep error
+            uint16 destinationChain = recipientChain;
+
             uint256 wormholeFee = wormhole.messageFee();
             uint64 sequence = wormhole.publishMessage{value: wormholeFee}(
                 0, encodedTransceiverPayload, consistencyLevel
             );
             specialRelayer.requestDelivery{value: deliveryPayment - wormholeFee}(
-                getNttManagerToken(), recipientChain, 0, sequence
+                getNttManagerToken(), destinationChain, 0, sequence
             );
 
             // NOTE: specialized relaying does not currently support refunds. The zero address
@@ -249,7 +254,7 @@ contract WormholeTransceiver is
             (transceiverMessage, encodedTransceiverPayload) = TransceiverStructs
                 .buildAndEncodeTransceiverMessage(
                 WH_TRANSCEIVER_PAYLOAD_PREFIX,
-                toWormholeFormat(caller),
+                wormholeFormattedCaller,
                 recipientNttManagerAddress,
                 nttManagerMessage,
                 new bytes(0)
