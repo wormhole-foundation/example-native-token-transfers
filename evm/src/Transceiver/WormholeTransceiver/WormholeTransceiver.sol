@@ -192,8 +192,9 @@ contract WormholeTransceiver is
             // NOTE: standard relaying supports refunds. The amount to be refunded will be sent
             // to a refundAddress specified by the client on the destination chain.
 
-            (transceiverMessage, encodedTransceiverPayload) =
-                _encodeTransceiverPayload(caller, recipientNttManagerAddress, nttManagerMessage, false);
+            (transceiverMessage, encodedTransceiverPayload) = _encodeTransceiverPayload(
+                caller, recipientNttManagerAddress, nttManagerMessage, false
+            );
 
             // push onto the stack again to avoid stack too deep error
             bytes32 refundRecipient = refundAddress;
@@ -211,8 +212,9 @@ contract WormholeTransceiver is
 
             emit RelayingInfo(uint8(RelayingType.Standard), refundAddress, deliveryPayment);
         } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
-            (transceiverMessage, encodedTransceiverPayload) =
-                _encodeTransceiverPayload(caller, recipientNttManagerAddress, nttManagerMessage, true);
+            (transceiverMessage, encodedTransceiverPayload) = _encodeTransceiverPayload(
+                caller, recipientNttManagerAddress, nttManagerMessage, true
+            );
             uint256 wormholeFee = wormhole.messageFee();
             uint64 sequence = wormhole.publishMessage{value: wormholeFee}(
                 0, encodedTransceiverPayload, consistencyLevel
@@ -225,8 +227,9 @@ contract WormholeTransceiver is
             // is used as a placeholder for the refund address until support is added.
             emit RelayingInfo(uint8(RelayingType.Special), bytes32(0), deliveryPayment);
         } else {
-            (transceiverMessage, encodedTransceiverPayload) =
-                _encodeTransceiverPayload(caller, recipientNttManagerAddress, nttManagerMessage, false);
+            (transceiverMessage, encodedTransceiverPayload) = _encodeTransceiverPayload(
+                caller, recipientNttManagerAddress, nttManagerMessage, false
+            );
 
             wormhole.publishMessage{value: deliveryPayment}(
                 0, encodedTransceiverPayload, consistencyLevel
