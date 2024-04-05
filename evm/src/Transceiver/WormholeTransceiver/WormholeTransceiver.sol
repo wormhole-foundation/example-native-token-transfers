@@ -250,7 +250,7 @@ contract WormholeTransceiver is
 
             // NOTE: specialized relaying does not currently support refunds. The zero address
             // is used as a placeholder for the refund address until support is added.
-            emit RelayingInfo(uint8(RelayingType.Special), bytes32(0), deliveryPayment);
+            emit RelayingInfo(uint8(RelayingType.Special), bytes32(0), deliveryFee);
         } else {
             (transceiverMessage, encodedTransceiverPayload) = TransceiverStructs
                 .buildAndEncodeTransceiverMessage(
