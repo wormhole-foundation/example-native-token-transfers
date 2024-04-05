@@ -10,13 +10,10 @@ import {
   deserializeLayout,
   serializeLayout,
 } from "@wormhole-foundation/sdk-base";
-
 import {
-  AutomaticTokenBridge,
   EmptyPlatformMap,
   NamedPayloads,
   RegisterPayloadTypes,
-  TokenBridge,
   layoutItems,
   registerPayloadTypes,
 } from "@wormhole-foundation/sdk-definitions";
