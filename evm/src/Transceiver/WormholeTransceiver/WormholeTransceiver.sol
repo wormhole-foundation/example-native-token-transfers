@@ -182,16 +182,8 @@ contract WormholeTransceiver is
         TransceiverStructs.TransceiverInstruction memory instruction,
         bytes memory nttManagerMessage
     ) internal override {
-        (
-            TransceiverStructs.TransceiverMessage memory transceiverMessage,
-            bytes memory encodedTransceiverPayload
-        ) = TransceiverStructs.buildAndEncodeTransceiverMessage(
-            WH_TRANSCEIVER_PAYLOAD_PREFIX,
-            toWormholeFormat(caller),
-            recipientNttManagerAddress,
-            nttManagerMessage,
-            new bytes(0)
-        );
+        TransceiverStructs.TransceiverMessage memory transceiverMessage;
+        bytes memory encodedTransceiverPayload;
 
         WormholeTransceiverInstruction memory weIns =
             parseWormholeTransceiverInstruction(instruction.payload);
@@ -199,6 +191,9 @@ contract WormholeTransceiver is
         if (!weIns.shouldSkipRelayerSend && _shouldRelayViaStandardRelaying(recipientChain)) {
             // NOTE: standard relaying supports refunds. The amount to be refunded will be sent
             // to a refundAddress specified by the client on the destination chain.
+
+            (transceiverMessage, encodedTransceiverPayload) =
+                _encodeTransceiverPayload(caller, recipientNttManagerAddress, nttManagerMessage, false);
 
             // push onto the stack again to avoid stack too deep error
             bytes32 refundRecipient = refundAddress;
@@ -217,7 +212,7 @@ contract WormholeTransceiver is
             emit RelayingInfo(uint8(RelayingType.Standard), refundAddress, deliveryPayment);
         } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
             (transceiverMessage, encodedTransceiverPayload) =
-                _encodePayload(caller, recipientNttManagerAddress, nttManagerMessage, true);
+                _encodeTransceiverPayload(caller, recipientNttManagerAddress, nttManagerMessage, true);
             uint256 wormholeFee = wormhole.messageFee();
             uint64 sequence = wormhole.publishMessage{value: wormholeFee}(
                 0, encodedTransceiverPayload, consistencyLevel
@@ -230,6 +225,9 @@ contract WormholeTransceiver is
             // is used as a placeholder for the refund address until support is added.
             emit RelayingInfo(uint8(RelayingType.Special), bytes32(0), deliveryPayment);
         } else {
+            (transceiverMessage, encodedTransceiverPayload) =
+                _encodeTransceiverPayload(caller, recipientNttManagerAddress, nttManagerMessage, false);
+
             wormhole.publishMessage{value: deliveryPayment}(
                 0, encodedTransceiverPayload, consistencyLevel
             );
@@ -276,29 +274,29 @@ contract WormholeTransceiver is
 
     /// _encodePayload adds a transceiver payload to the encoded NTT message.
     /// Before this, the payload added to the encoded NTT message was always empty.
-    /// (new bytes(0)). But now there is a case where the payload is used.
+    /// (new bytes(0)). But now there is a case for using it.
     /// This transceiver payload is used to signal whether the message should be
     /// picked up by the special relayer or not:
     ///  - It only affects the off-chain special relayer.
     ///  - It is only used when the message is sent to the special relayer.
     ///  - It is not used by the target NTT Manager contract.
     ///
-    /// Transceiver payload is prefixed with 2 bytes representing the version of 
+    /// Transceiver payload is prefixed with 2 bytes representing the version of
     /// the payload. The rest of the bytes are the -actual- payload data. In payload
-    /// v1, the payload data is a boolean representing whether the message should 
+    /// v1, the payload data is a boolean representing whether the message should
     /// be picked up by the special relayer or not.
     ///
     /// Since the transceiver payload is being used by the special relayer off-chain
-    /// component only, it can be changed and reshaped in the future, as long as 
+    /// component only, it can be changed and reshaped in the future, as long as
     /// a mechanism to tell the special relayer whether to pick up the message or not
     /// is maintained.
-    function _encodePayload(
+    function _encodeTransceiverPayload(
         address caller,
         bytes32 recipientNttManagerAddress,
         bytes memory nttManagerMessage,
         bool isSpecialRelayer
     ) internal pure returns (TransceiverStructs.TransceiverMessage memory, bytes memory) {
-        bytes memory transceiverPayload = abi.encodePacked(uint16(1), isSpecialRelayer);
+        bytes memory transceiverPayload = abi.encodePacked(uint16(1), true);
         (
             TransceiverStructs.TransceiverMessage memory transceiverMessage,
             bytes memory encodedPayload
@@ -307,7 +305,7 @@ contract WormholeTransceiver is
             toWormholeFormat(caller),
             recipientNttManagerAddress,
             nttManagerMessage,
-            transceiverPayload
+            isSpecialRelayer ? transceiverPayload : new bytes(0)
         );
 
         return (transceiverMessage, encodedPayload);
