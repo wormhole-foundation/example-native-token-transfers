@@ -284,7 +284,7 @@ contract WormholeTransceiver is
     ///  - It is only used when the message is sent to the special relayer.
     ///  - It is not used by the target NTT Manager contract.
     ///
-    /// Transceiver payload is prefixed with 2 bytes representing the version of
+    /// Transceiver payload is prefixed with 1 byte representing the version of
     /// the payload. The rest of the bytes are the -actual- payload data. In payload
     /// v1, the payload data is a boolean representing whether the message should
     /// be picked up by the special relayer or not.
@@ -299,7 +299,7 @@ contract WormholeTransceiver is
         bytes memory nttManagerMessage,
         bool isSpecialRelayer
     ) internal pure returns (TransceiverStructs.TransceiverMessage memory, bytes memory) {
-        bytes memory transceiverPayload = abi.encodePacked(uint16(1), true);
+        bytes memory transceiverPayload = abi.encodePacked(uint8(1), true);
         (
             TransceiverStructs.TransceiverMessage memory transceiverMessage,
             bytes memory encodedPayload
