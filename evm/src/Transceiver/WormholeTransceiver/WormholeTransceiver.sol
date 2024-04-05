@@ -182,16 +182,9 @@ contract WormholeTransceiver is
         TransceiverStructs.TransceiverInstruction memory instruction,
         bytes memory nttManagerMessage
     ) internal override {
-        (
-            TransceiverStructs.TransceiverMessage memory transceiverMessage,
-            bytes memory encodedTransceiverPayload
-        ) = TransceiverStructs.buildAndEncodeTransceiverMessage(
-            WH_TRANSCEIVER_PAYLOAD_PREFIX,
-            toWormholeFormat(caller),
-            recipientNttManagerAddress,
-            nttManagerMessage,
-            new bytes(0)
-        );
+        TransceiverStructs.TransceiverMessage memory transceiverMessage;
+        bytes memory encodedTransceiverPayload;
+        bytes32 wormholeFormattedCaller = toWormholeFormat(caller);
 
         WormholeTransceiverInstruction memory weIns =
             parseWormholeTransceiverInstruction(instruction.payload);
@@ -199,6 +192,15 @@ contract WormholeTransceiver is
         if (!weIns.shouldSkipRelayerSend && _shouldRelayViaStandardRelaying(recipientChain)) {
             // NOTE: standard relaying supports refunds. The amount to be refunded will be sent
             // to a refundAddress specified by the client on the destination chain.
+
+            (transceiverMessage, encodedTransceiverPayload) = TransceiverStructs
+                .buildAndEncodeTransceiverMessage(
+                WH_TRANSCEIVER_PAYLOAD_PREFIX,
+                wormholeFormattedCaller,
+                recipientNttManagerAddress,
+                nttManagerMessage,
+                new bytes(0)
+            );
 
             // push onto the stack again to avoid stack too deep error
             bytes32 refundRecipient = refundAddress;
@@ -216,18 +218,49 @@ contract WormholeTransceiver is
 
             emit RelayingInfo(uint8(RelayingType.Standard), refundAddress, deliveryPayment);
         } else if (!weIns.shouldSkipRelayerSend && isSpecialRelayingEnabled(recipientChain)) {
+            // This transceiver payload is used to signal whether the message should be
+            // picked up by the special relayer or not:
+            //  - It only affects the off-chain special relayer.
+            //  - It is not used by the target NTT Manager contract.
+            // Transceiver payload is prefixed with 1 byte representing the version of
+            // the payload. The rest of the bytes are the -actual- payload data. In payload
+            // v1, the payload data is a boolean representing whether the message should
+            // be picked up by the special relayer or not.
+            bytes memory transceiverPayload = abi.encodePacked(uint8(1), true);
+            (transceiverMessage, encodedTransceiverPayload) = TransceiverStructs
+                .buildAndEncodeTransceiverMessage(
+                WH_TRANSCEIVER_PAYLOAD_PREFIX,
+                wormholeFormattedCaller,
+                recipientNttManagerAddress,
+                nttManagerMessage,
+                transceiverPayload
+            );
+
+            // push onto the stack again to avoid stack too deep error
+            uint256 deliveryFee = deliveryPayment;
+            uint16 destinationChain = recipientChain;
+
             uint256 wormholeFee = wormhole.messageFee();
             uint64 sequence = wormhole.publishMessage{value: wormholeFee}(
                 0, encodedTransceiverPayload, consistencyLevel
             );
-            specialRelayer.requestDelivery{value: deliveryPayment - wormholeFee}(
-                getNttManagerToken(), recipientChain, 0, sequence
+            specialRelayer.requestDelivery{value: deliveryFee - wormholeFee}(
+                getNttManagerToken(), destinationChain, 0, sequence
             );
 
             // NOTE: specialized relaying does not currently support refunds. The zero address
             // is used as a placeholder for the refund address until support is added.
-            emit RelayingInfo(uint8(RelayingType.Special), bytes32(0), deliveryPayment);
+            emit RelayingInfo(uint8(RelayingType.Special), bytes32(0), deliveryFee);
         } else {
+            (transceiverMessage, encodedTransceiverPayload) = TransceiverStructs
+                .buildAndEncodeTransceiverMessage(
+                WH_TRANSCEIVER_PAYLOAD_PREFIX,
+                wormholeFormattedCaller,
+                recipientNttManagerAddress,
+                nttManagerMessage,
+                new bytes(0)
+            );
+
             wormhole.publishMessage{value: deliveryPayment}(
                 0, encodedTransceiverPayload, consistencyLevel
             );
