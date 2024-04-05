@@ -115,8 +115,7 @@ export class NTT {
   inboxItemAccountAddress(chain: ChainName | ChainId, nttMessage: NttMessage): PublicKey {
     const chainId = coalesceChainId(chain)
     const serialized = Buffer.from(
-      ""
-      // serializeLayout(nttManagerMessageLayout(nativeTokenTransferLayout), nttMessage)
+      serializeLayout(nttManagerMessageLayout(nativeTokenTransferLayout), nttMessage)
     )
     const hasher = new Keccak(256) //TODO replace with keccak256 from SDKv2
     hasher.update(Buffer.from(chainIdToBeBytes(chainId)))
