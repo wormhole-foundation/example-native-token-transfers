@@ -274,20 +274,31 @@ contract WormholeTransceiver is
         return getWormholePeer(vm.emitterChainId) == vm.emitterAddress;
     }
 
+    /// _encodePayload adds a transceiver payload to the encoded NTT message.
+    /// Before this, the payload added to the encoded NTT message was always empty.
+    /// (new bytes(0)). But now there is a case where the payload is used.
+    /// This transceiver payload is used to signal whether the message should be
+    /// picked up by the special relayer or not:
+    ///  - It only affects the off-chain special relayer.
+    ///  - It is only used when the message is sent to the special relayer.
+    ///  - It is not used by the target NTT Manager contract.
+    ///
+    /// Transceiver payload is prefixed with 2 bytes representing the version of 
+    /// the payload. The rest of the bytes are the -actual- payload data. In payload
+    /// v1, the payload data is a boolean representing whether the message should 
+    /// be picked up by the special relayer or not.
+    ///
+    /// Since the transceiver payload is being used by the special relayer off-chain
+    /// component only, it can be changed and reshaped in the future, as long as 
+    /// a mechanism to tell the special relayer whether to pick up the message or not
+    /// is maintained.
     function _encodePayload(
         address caller,
         bytes32 recipientNttManagerAddress,
         bytes memory nttManagerMessage,
         bool isSpecialRelayer
     ) internal pure returns (TransceiverStructs.TransceiverMessage memory, bytes memory) {
-        // Transceiver payload is prefixed with 2 bytes
-        // representing the version of the payload.
-        // The rest of the bytes are the -actual- payload data.
-        // In payload v1, the payload data is a boolean
-        // representing whether the message should be picked
-        // up by the special relayer or not.
         bytes memory transceiverPayload = abi.encodePacked(uint16(1), isSpecialRelayer);
-
         (
             TransceiverStructs.TransceiverMessage memory transceiverMessage,
             bytes memory encodedPayload
