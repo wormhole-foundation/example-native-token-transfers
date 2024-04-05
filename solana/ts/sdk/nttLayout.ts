@@ -3,6 +3,7 @@ import type {
   CustomizableBytes,
   Layout,
   LayoutToType,
+  Platform,
 } from "@wormhole-foundation/sdk-base";
 import {
   customizableBytes,
@@ -11,8 +12,11 @@ import {
 } from "@wormhole-foundation/sdk-base";
 
 import {
+  AutomaticTokenBridge,
+  EmptyPlatformMap,
   NamedPayloads,
   RegisterPayloadTypes,
+  TokenBridge,
   layoutItems,
   registerPayloadTypes,
 } from "@wormhole-foundation/sdk-definitions";
@@ -151,11 +155,21 @@ export const nttNamedPayloads = [
   ["WormholeTransfer", wormholeNativeTokenTransferLayout],
 ] as const satisfies NamedPayloads;
 
+export type NttProtocol = "Ntt";
+
+// factory registration:
+declare module "@wormhole-foundation/sdk-definitions" {
+  export namespace WormholeRegistry {
+    interface ProtocolToPlatformMapping {
+      Ntt: EmptyPlatformMap<Platform, NttProtocol>;
+    }
+  }
+}
 // factory registration:
 declare module "@wormhole-foundation/sdk-definitions" {
   export namespace WormholeRegistry {
     interface PayloadLiteralToLayoutMapping
-      extends RegisterPayloadTypes<"Ntt", typeof nttNamedPayloads> {}
+      extends RegisterPayloadTypes<NttProtocol, typeof nttNamedPayloads> {}
   }
 }
 

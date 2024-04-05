@@ -659,7 +659,7 @@ export class NTT {
       throw new Error('Contract is paused')
     }
 
-    const wormholeNTT = deserialize('NTT:WormholeTransfer', args.vaa)
+    const wormholeNTT = deserialize('Ntt:WormholeTransfer', args.vaa)
     const nttMessage = wormholeNTT.payload.nttManagerPayload
     // NOTE: we do an 'as ChainId' cast here, which is generally unsafe.
     // TODO: explain why this is fine here
@@ -690,7 +690,7 @@ export class NTT {
       throw new Error('Contract is paused')
     }
 
-    const wormholeNTT = deserialize('NTT:WormholeTransfer', args.vaa)
+    const wormholeNTT = deserialize('Ntt:WormholeTransfer', args.vaa)
     const nttMessage = wormholeNTT.payload.nttManagerPayload
     // NOTE: we do an 'as ChainId' cast here, which is generally unsafe.
     // TODO: explain why this is fine here
@@ -735,7 +735,7 @@ export class NTT {
       payer: args.payer.publicKey
     }
 
-    const wormholeNTT = deserialize('NTT:WormholeTransfer', args.vaa)
+    const wormholeNTT = deserialize('Ntt:WormholeTransfer', args.vaa)
     const nttMessage = wormholeNTT.payload.nttManagerPayload
     // TODO: explain why this is fine here
     const chainId = SDKv2toChainId(wormholeNTT.emitterChain) as ChainId
