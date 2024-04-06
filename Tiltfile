@@ -55,5 +55,5 @@ k8s_yaml_with_ns("./ci_tests/ci.yaml")
 k8s_resource(
     "ntt-ci-tests",
     labels = ["ntt"],
-    resource_deps = ["eth-devnet", "eth-devnet2", "solana-devnet", "guardian", "relayer-engine"],
+    resource_deps = ["eth-devnet", "eth-devnet2", "solana-devnet", "guardian", "relayer-engine", "wormchain"],
 )
