@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "go": "ts-node src/index.ts",
+    "go": "tsx src/index.ts",
     "gen-evm-bindings": "typechain --target ethers-v5 --out-dir evm_binding/ '../evm/out/*/*.json'"
   },
   "author": "",
@@ -13,12 +13,13 @@
     "@certusone/wormhole-sdk": "^0.10.11",
     "@coral-xyz/anchor": "^0.29.0",
     "@improbable-eng/grpc-web-node-http-transport": "^0.15.0",
-    "@wormhole-foundation/wormchain-sdk": "^0.0.1",
     "@wormhole-foundation/sdk-base": "^0.5.2",
     "@wormhole-foundation/sdk-definitions": "^0.5.2",
+    "@wormhole-foundation/wormchain-sdk": "^0.0.1",
     "cosmwasm": "^1.1.1",
     "ethers": "^5.7.2",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "tsx": "^4.7.2"
   },
   "devDependencies": {
     "@typechain/ethers-v5": "^11.1.2",
