@@ -130,6 +130,9 @@ export class EvmNtt<N extends Network, C extends EvmChains>
       ),
     ];
   }
+  getTokenDecimals(): Promise<number> {
+    throw new Error("Method not implemented.");
+  }
 
   static async fromRpc<N extends Network>(
     provider: Provider,

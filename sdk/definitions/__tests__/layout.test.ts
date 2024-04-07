@@ -3,13 +3,15 @@ import {
   encoding,
   serializeLayout,
 } from "@wormhole-foundation/sdk-base";
-import * as path from "path";
 import * as fs from "fs";
+import * as path from "path";
 import {
   nativeTokenTransferLayout,
   nttManagerMessageLayout,
+  transceiverInfo,
+  transceiverRegistration,
   wormholeTransceiverMessageLayout,
-} from "../src/nttLayout.js";
+} from "../src/index.js";
 
 const payloads = {
   transceiver: {
@@ -54,6 +56,33 @@ describe("Ntt Layout Tests", function () {
           deserialized
         )
       ).toEqual(data);
+    }
+  );
+
+  test.each(payloads.transceiver.info)(
+    "Test Transceiver %s messages",
+    async (filename) => {
+      const raw = fs
+        .readFileSync(path.join(filePath, filename), "utf-8")
+        .trim();
+      const data = encoding.hex.decode(raw);
+      const deserialized = deserializeLayout(transceiverInfo, data);
+      expect(deserialized.decimals).toEqual(16);
+      expect(deserialized.mode).toEqual(0);
+    }
+  );
+
+  test.each(payloads.transceiver.registration)(
+    "Test Transceiver %s messages",
+    async (filename) => {
+      const raw = fs
+        .readFileSync(path.join(filePath, filename), "utf-8")
+        .trim();
+      const data = encoding.hex.decode(raw);
+      const deserialized = deserializeLayout(transceiverRegistration, data);
+
+      expect(deserialized.chain).toEqual("Arbitrum");
+      expect(deserialized.transceiver).toBeTruthy();
     }
   );
 });
