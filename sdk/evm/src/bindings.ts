@@ -1,4 +1,4 @@
-import { Provider } from "ethers/providers";
+import { Provider } from "ethers";
 
 import { _0_1_0 } from "./ethers-contracts/index.js";
 
