@@ -17,12 +17,13 @@ import {
   UnsignedTransaction,
   keccak256,
 } from "@wormhole-foundation/sdk-definitions";
+
 import {
   NttManagerMessage,
   nativeTokenTransferLayout,
   nttManagerMessageLayout,
   transceiverInstructionLayout,
-} from "./nttLayout.js";
+} from "./layouts/index.js";
 
 /**
  * @namespace Ntt
@@ -108,14 +109,14 @@ export namespace Ntt {
  * @typeparam C the chain
  */
 export interface Ntt<N extends Network, C extends Chain> {
-  getCustodyAddress(): Promise<string>;
+  // ADMIN
+
   setPeer(
     peer: ChainAddress,
     tokenDecimals: number,
     inboundLimit: bigint,
     payer?: AccountAddress<C>
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
-
   setWormholeTransceiverPeer(
     peer: ChainAddress,
     payer?: AccountAddress<C>
@@ -145,6 +146,12 @@ export interface Ntt<N extends Network, C extends Chain> {
     attestations: Ntt.Attestation[],
     payer?: AccountAddress<C>
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
+
+  /** Get the address for the account that custodies locked tokens  */
+  getCustodyAddress(): Promise<string>;
+
+  /** Get the number of decimals associated with the token under management */
+  getTokenDecimals(): Promise<number>;
 
   /**
    * getCurrentOutboundCapacity returns the current outbound capacity of the Ntt manager
@@ -184,6 +191,11 @@ export interface NttTransceiver<
   C extends Chain,
   A extends Ntt.Attestation
 > {
+  /** setPeer sets a peer address for a given chain
+   * Note: Admin only
+   */
+  setPeer(peer: ChainAddress<Chain>): AsyncGenerator<UnsignedTransaction<N, C>>;
+
   /**
    * receive calls the `receive*` method on the transceiver
    *
@@ -194,8 +206,6 @@ export interface NttTransceiver<
     attestation: A,
     sender?: AccountAddress<C>
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
-
-  setPeer(peer: ChainAddress<Chain>): AsyncGenerator<UnsignedTransaction<N, C>>;
 }
 
 export namespace WormholeNttTransceiver {

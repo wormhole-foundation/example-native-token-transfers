@@ -143,6 +143,11 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     return this.config;
   }
 
+  async getTokenDecimals(): Promise<number> {
+    // TODO:
+    return 9;
+  }
+
   async getCustodyAddress(): Promise<string> {
     return (await this.getConfig()).custody.toBase58();
   }
