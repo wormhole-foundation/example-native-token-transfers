@@ -1,15 +1,18 @@
 use anchor_lang::prelude::*;
 
 use ntt_messages::{
-    ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage, transceiver::TransceiverMessage,
-    transceivers::wormhole::WormholeTransceiver,
+    chain_id::ChainId, ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage,
+    transceiver::TransceiverMessage, transceivers::wormhole::WormholeTransceiver,
 };
 use wormhole_io::TypePrefixedPayload;
 
 use crate::{
     config::*,
     error::NTTError,
-    queue::outbox::{OutboxItem, TokenTransferOutbox},
+    queue::{
+        inbox::TokenTransferInbox,
+        outbox::{OutboxItem, TokenTransferOutbox},
+    },
     registered_transceiver::*,
     transceivers::wormhole::accounts::*,
 };
@@ -21,13 +24,30 @@ pub struct ReleaseOutboundNativeTokenTransfer<'info> {
     pub inner: ReleaseOutbound<'info, NativeTokenTransfer>,
 }
 
-pub trait IntoMessage: Clone + AnchorDeserialize + AnchorSerialize + Space {
-    type OutboxItemType: Clone + AnchorSerialize + AnchorDeserialize + Space;
+pub trait Domain:
+    Clone + AnchorDeserialize + AnchorSerialize + Space + TypePrefixedPayload
+{
+    type Config: Clone + AccountDeserialize + AccountSerialize + Space + IsConfig;
+    type OutboxItem: Clone + AnchorSerialize + AnchorDeserialize + Space;
+    type InboxItem: Clone + AnchorSerialize + AnchorDeserialize + Space;
+    fn to_chain(&self) -> ChainId;
+}
+
+pub trait IntoMessage: Domain {
     fn into_message(accs: &ReleaseOutbound<Self>) -> Self;
 }
 
+impl Domain for NativeTokenTransfer {
+    type OutboxItem = TokenTransferOutbox;
+    type Config = Config;
+    type InboxItem = TokenTransferInbox;
+
+    fn to_chain(&self) -> ChainId {
+        self.to_chain
+    }
+}
+
 impl IntoMessage for NativeTokenTransfer {
-    type OutboxItemType = TokenTransferOutbox;
     fn into_message(accs: &ReleaseOutbound<Self>) -> Self {
         NativeTokenTransfer {
             amount: accs.outbox_item.payload.amount,
@@ -45,7 +65,7 @@ pub type ReleaseOutboundNativeTokenTransfer<'info> = ReleaseOutbound<'info, Nati
 pub mod __client_accounts_release_outbound_native_token_transfer {}
 
 #[derive(Accounts)]
-pub struct ReleaseOutbound<'info, A: IntoMessage> {
+pub struct ReleaseOutbound<'info, A: Domain> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
@@ -55,7 +75,7 @@ pub struct ReleaseOutbound<'info, A: IntoMessage> {
         mut,
         constraint = !outbox_item.released.get(transceiver.id) @ NTTError::MessageAlreadySent,
     )]
-    pub outbox_item: Account<'info, OutboxItem<A::OutboxItemType>>,
+    pub outbox_item: Account<'info, OutboxItem<A::OutboxItem>>,
 
     #[account(
         constraint = transceiver.transceiver_address == crate::ID,
@@ -92,7 +112,7 @@ pub fn release_outbound<A>(
     args: ReleaseOutboundArgs,
 ) -> Result<()>
 where
-    A: IntoMessage + TypePrefixedPayload,
+    A: IntoMessage,
 {
     let accs = ctx.accounts;
     let released = accs.outbox_item.try_release(accs.transceiver.id)?;

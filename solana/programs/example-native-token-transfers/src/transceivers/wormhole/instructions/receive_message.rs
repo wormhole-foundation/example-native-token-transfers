@@ -7,12 +7,13 @@ use ntt_messages::{
     transceivers::wormhole::WormholeTransceiver,
 };
 use wormhole_anchor_sdk::wormhole::PostedVaa;
-use wormhole_io::TypePrefixedPayload;
 
 use crate::{
     config::*, error::NTTError, messages::ValidatedTransceiverMessage,
     transceivers::accounts::peer::TransceiverPeer,
 };
+
+use super::Domain;
 
 pub trait TargetedMessage {
     fn to_chain(&self) -> ChainId;
@@ -38,10 +39,7 @@ pub type ReceiveMessageNativeTokenTransfer<'info> = ReceiveMessage<'info, Native
 pub mod __client_accounts_receive_message_native_token_transfer {}
 
 #[derive(Accounts)]
-pub struct ReceiveMessage<
-    'info,
-    A: Clone + AnchorDeserialize + AnchorSerialize + Space + TypePrefixedPayload + TargetedMessage,
-> {
+pub struct ReceiveMessage<'info, A: Domain> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
@@ -83,10 +81,7 @@ pub struct ReceiveMessage<
     pub system_program: Program<'info, System>,
 }
 
-pub fn receive_message<A>(ctx: Context<ReceiveMessage<A>>) -> Result<()>
-where
-    A: Clone + AnchorDeserialize + AnchorSerialize + Space + TypePrefixedPayload + TargetedMessage,
-{
+pub fn receive_message<A: Domain>(ctx: Context<ReceiveMessage<A>>) -> Result<()> {
     let message = ctx.accounts.vaa.message().message_data.clone();
     let chain_id = ctx.accounts.vaa.emitter_chain();
     ctx.accounts

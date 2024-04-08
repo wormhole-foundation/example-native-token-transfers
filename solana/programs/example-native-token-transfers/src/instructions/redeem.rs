@@ -14,15 +14,16 @@ use crate::{
         rate_limit::RateLimitResult,
     },
     registered_transceiver::*,
+    transceivers::wormhole::Domain,
 };
 
 #[derive(Accounts)]
-pub struct Redeem<'info> {
+pub struct RedeemCommon<'info, A: Domain> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
     // NOTE: this works when the contract is paused
-    pub config: Account<'info, Config>,
+    pub config: Account<'info, A::Config>,
 
     #[account(
         seeds = [NttManagerPeer::SEED_PREFIX, transceiver_message.from_chain.id.to_be_bytes().as_ref()],
@@ -33,31 +34,26 @@ pub struct Redeem<'info> {
 
     #[account(
         // check that the message is targeted to this chain
-        constraint = transceiver_message.message.ntt_manager_payload.payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
+        constraint = transceiver_message.message.ntt_manager_payload.payload.to_chain() == config.chain_id() @ NTTError::InvalidChainId,
         // check that we're the intended recipient
         constraint = transceiver_message.message.recipient_ntt_manager == crate::ID.to_bytes() @ NTTError::InvalidRecipientNttManager,
         // NOTE: we don't replay protect VAAs. Instead, we replay protect
         // executing the messages themselves with the [`released`] flag.
         owner = transceiver.transceiver_address,
     )]
-    pub transceiver_message: Account<'info, ValidatedTransceiverMessage<NativeTokenTransfer>>,
+    pub transceiver_message: Account<'info, ValidatedTransceiverMessage<A>>,
 
     #[account(
-        constraint = config.enabled_transceivers.get(transceiver.id) @ NTTError::DisabledTransceiver
+        constraint = config.enabled_transceivers().get(transceiver.id) @ NTTError::DisabledTransceiver
     )]
     pub transceiver: Account<'info, RegisteredTransceiver>,
 
     #[account(
-        constraint = mint.key() == config.mint
-    )]
-    pub mint: InterfaceAccount<'info, token_interface::Mint>,
-
-    #[account(
         init_if_needed,
         payer = payer,
-        space = 8 + InboxItem::<TokenTransferInbox>::INIT_SPACE,
+        space = 8 + InboxItem::<A::InboxItem>::INIT_SPACE,
         seeds = [
-            InboxItem::<TokenTransferInbox>::SEED_PREFIX,
+            InboxItem::<A::InboxItem>::SEED_PREFIX,
             transceiver_message.message.ntt_manager_payload.keccak256(
                 transceiver_message.from_chain
             ).as_ref(),
@@ -69,13 +65,25 @@ pub struct Redeem<'info> {
     /// transceivers "vote" on messages (by delivering them). By making the inbox
     /// items content-addressed, we can ensure that disagreeing votes don't
     /// interfere with each other.
-    pub inbox_item: Account<'info, InboxItem<TokenTransferInbox>>,
+    pub inbox_item: Account<'info, InboxItem<A::InboxItem>>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Redeem<'info> {
+    pub common: RedeemCommon<'info, NativeTokenTransfer>,
+
+    #[account(
+        constraint = mint.key() == common.config.mint
+    )]
+    pub mint: InterfaceAccount<'info, token_interface::Mint>,
 
     #[account(
         mut,
         seeds = [
             InboxRateLimit::SEED_PREFIX,
-            transceiver_message.from_chain.id.to_be_bytes().as_ref(),
+            common.transceiver_message.from_chain.id.to_be_bytes().as_ref(),
         ],
         bump,
     )]
@@ -83,8 +91,6 @@ pub struct Redeem<'info> {
 
     #[account(mut)]
     pub outbox_rate_limit: Account<'info, OutboxRateLimit>,
-
-    pub system_program: Program<'info, System>,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -93,22 +99,52 @@ pub struct RedeemArgs {}
 pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let accs = ctx.accounts;
 
-    let message: NttManagerMessage<NativeTokenTransfer> =
-        accs.transceiver_message.message.ntt_manager_payload.clone();
+    let message: NttManagerMessage<NativeTokenTransfer> = accs
+        .common
+        .transceiver_message
+        .message
+        .ntt_manager_payload
+        .clone();
 
     let amount = message.payload.amount.untrim(accs.mint.decimals);
 
-    if !accs.inbox_item.init {
-        let recipient_address =
-            Pubkey::try_from(message.payload.to).map_err(|_| NTTError::InvalidRecipientAddress)?;
+    let recipient_address =
+        Pubkey::try_from(message.payload.to).map_err(|_| NTTError::InvalidRecipientAddress)?;
 
+    let payload = TokenTransferInbox {
+        amount,
+        recipient_address,
+    };
+
+    let release_timestamp = match accs.inbox_rate_limit.rate_limit.consume_or_delay(amount) {
+        RateLimitResult::Consumed(now) => {
+            // When receiving a transfer, we refill the outbound rate limit with
+            // the same amount (we call this "backflow")
+            accs.outbox_rate_limit.rate_limit.refill(now, amount);
+            now
+        }
+        RateLimitResult::Delayed(release_timestamp) => release_timestamp,
+    };
+
+    redeem_common(
+        &mut accs.common,
+        payload,
+        ctx.bumps.common,
+        release_timestamp,
+    )
+}
+
+pub fn redeem_common<A: Domain>(
+    accs: &mut RedeemCommon<A>,
+    payload: A::InboxItem,
+    bumps: RedeemCommonBumps,
+    release_timestamp: i64,
+) -> Result<()> {
+    if !accs.inbox_item.init {
         accs.inbox_item.set_inner(InboxItem {
             init: true,
-            bump: ctx.bumps.inbox_item,
-            payload: TokenTransferInbox {
-                amount,
-                recipient_address,
-            },
+            bump: bumps.inbox_item,
+            payload,
             release_status: ReleaseStatus::NotApproved,
             votes: Bitmap::new(),
         });
@@ -120,21 +156,11 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     if accs
         .inbox_item
         .votes
-        .count_enabled_votes(accs.config.enabled_transceivers)
-        < accs.config.threshold
+        .count_enabled_votes(accs.config.enabled_transceivers())
+        < accs.config.threshold()
     {
         return Ok(());
     }
-
-    let release_timestamp = match accs.inbox_rate_limit.rate_limit.consume_or_delay(amount) {
-        RateLimitResult::Consumed(now) => {
-            // When receiving a transfer, we refill the outbound rate limit with
-            // the same amount (we call this "backflow")
-            accs.outbox_rate_limit.rate_limit.refill(now, amount);
-            now
-        }
-        RateLimitResult::Delayed(release_timestamp) => release_timestamp,
-    };
 
     accs.inbox_item.release_after(release_timestamp)?;
 

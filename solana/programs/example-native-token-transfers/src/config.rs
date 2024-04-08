@@ -57,15 +57,46 @@ impl Pausable for Config {
     }
 }
 
+pub trait IsConfig: Pausable {
+    fn enabled_transceivers(&self) -> Bitmap;
+    fn threshold(&self) -> u8;
+    fn chain_id(&self) -> ChainId;
+}
+
+impl IsConfig for Config {
+    fn enabled_transceivers(&self) -> Bitmap {
+        self.enabled_transceivers
+    }
+
+    fn threshold(&self) -> u8 {
+        self.threshold
+    }
+
+    fn chain_id(&self) -> ChainId {
+        self.chain_id
+    }
+}
+
+#[cfg(not(feature = "idl-build"))]
+pub trait MaybeIdlBuild {}
+#[cfg(not(feature = "idl-build"))]
+impl<A> MaybeIdlBuild for A {}
+
+#[cfg(feature = "idl-build")]
+pub trait MaybeIdlBuild {}
+#[cfg(feature = "idl-build")]
+impl<A: anchor_lang::IdlBuild> MaybeIdlBuild for A {}
+
 #[derive(Accounts)]
-pub struct NotPausedConfig<'info, C: Pausable> {
+pub struct NotPausedConfig<'info, C: Pausable + MaybeIdlBuild>
+{
     #[account(
         constraint = !config.is_paused() @ crate::error::NTTError::Paused,
     )]
     config: Account<'info, C>,
 }
 
-impl<'info, C: Pausable> Deref for NotPausedConfig<'info, C> {
+impl<'info, C: Pausable + MaybeIdlBuild> Deref for NotPausedConfig<'info, C> {
     type Target = C;
 
     fn deref(&self) -> &Self::Target {
@@ -73,7 +104,7 @@ impl<'info, C: Pausable> Deref for NotPausedConfig<'info, C> {
     }
 }
 
-impl<'info, C: Pausable> DerefMut for NotPausedConfig<'info, C> {
+impl<'info, C: Pausable + MaybeIdlBuild> DerefMut for NotPausedConfig<'info, C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.config
     }
