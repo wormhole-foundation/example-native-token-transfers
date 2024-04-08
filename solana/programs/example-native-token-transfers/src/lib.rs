@@ -81,7 +81,10 @@ pub mod example_native_token_transfers {
         instructions::transfer_burn(ctx, args)
     }
 
-    pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<()> {
+    pub fn transfer_lock<'info>(
+        ctx: Context<'_, '_, '_, 'info, TransferLock<'info>>,
+        args: TransferArgs,
+    ) -> Result<()> {
         instructions::transfer_lock(ctx, args)
     }
 
@@ -96,8 +99,8 @@ pub mod example_native_token_transfers {
         instructions::release_inbound_mint(ctx, args)
     }
 
-    pub fn release_inbound_unlock(
-        ctx: Context<ReleaseInboundUnlock>,
+    pub fn release_inbound_unlock<'info>(
+        ctx: Context<'_, '_, '_, 'info, ReleaseInboundUnlock<'info>>,
         args: ReleaseInboundArgs,
     ) -> Result<()> {
         instructions::release_inbound_unlock(ctx, args)
