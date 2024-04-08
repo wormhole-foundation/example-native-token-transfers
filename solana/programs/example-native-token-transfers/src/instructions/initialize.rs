@@ -65,6 +65,7 @@ pub struct Initialize<'info> {
         payer = payer,
         associated_token::mint = mint,
         associated_token::authority = token_authority,
+        associated_token::token_program = token_program,
     )]
     /// The custody account that holds tokens in locking mode.
     /// NOTE: the account is unconditionally initialized, but not used in
