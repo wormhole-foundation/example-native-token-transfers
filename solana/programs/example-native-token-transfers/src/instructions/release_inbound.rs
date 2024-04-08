@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
 use ntt_messages::mode::Mode;
+use spl_token_2022::onchain;
 
 use crate::{
     config::*,
@@ -119,8 +120,8 @@ pub struct ReleaseInboundUnlock<'info> {
 /// Setting this flag to `false` is useful when bundling this instruction
 /// together with [`crate::instructions::redeem`], so that the unlocking
 /// is attempted optimistically.
-pub fn release_inbound_unlock(
-    ctx: Context<ReleaseInboundUnlock>,
+pub fn release_inbound_unlock<'info>(
+    ctx: Context<'_, '_, '_, 'info, ReleaseInboundUnlock<'info>>,
     args: ReleaseInboundArgs,
 ) -> Result<()> {
     let inbox_item = &mut ctx.accounts.common.inbox_item;
@@ -138,22 +139,22 @@ pub fn release_inbound_unlock(
     assert!(inbox_item.release_status == ReleaseStatus::Released);
     match ctx.accounts.common.config.mode {
         Mode::Burning => Err(NTTError::InvalidMode.into()),
-        Mode::Locking => token_interface::transfer_checked(
-            CpiContext::new_with_signer(
-                ctx.accounts.common.token_program.to_account_info(),
-                token_interface::TransferChecked {
-                    from: ctx.accounts.custody.to_account_info(),
-                    to: ctx.accounts.common.recipient.to_account_info(),
-                    authority: ctx.accounts.common.token_authority.clone(),
-                    mint: ctx.accounts.common.mint.to_account_info(),
-                },
+        Mode::Locking => {
+            onchain::invoke_transfer_checked(
+                &ctx.accounts.common.token_program.key(),
+                ctx.accounts.custody.to_account_info(),
+                ctx.accounts.common.mint.to_account_info(),
+                ctx.accounts.common.recipient.to_account_info(),
+                ctx.accounts.common.token_authority.clone(),
+                ctx.remaining_accounts,
+                inbox_item.amount,
+                ctx.accounts.common.mint.decimals,
                 &[&[
                     crate::TOKEN_AUTHORITY_SEED,
                     &[ctx.bumps.common.token_authority],
                 ]],
-            ),
-            inbox_item.amount,
-            ctx.accounts.common.mint.decimals,
-        ),
+            )?;
+            Ok(())
+        }
     }
 }
