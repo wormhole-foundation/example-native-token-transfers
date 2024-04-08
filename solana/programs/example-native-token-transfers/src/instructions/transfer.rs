@@ -2,6 +2,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
 use ntt_messages::{chain_id::ChainId, mode::Mode, trimmed_amount::TrimmedAmount};
+use spl_token_2022::onchain;
 
 use crate::{
     bitmap::Bitmap,
@@ -215,7 +216,10 @@ pub struct TransferLock<'info> {
     pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
 }
 
-pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<()> {
+pub fn transfer_lock<'info>(
+    ctx: Context<'_, '_, '_, 'info, TransferLock<'info>>,
+    args: TransferArgs,
+) -> Result<()> {
     require_eq!(
         ctx.accounts.common.config.mode,
         Mode::Locking,
@@ -240,24 +244,21 @@ pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<(
 
     let before = accs.custody.amount;
 
-    token_interface::transfer_checked(
-        CpiContext::new_with_signer(
-            accs.common.token_program.to_account_info(),
-            token_interface::TransferChecked {
-                from: accs.common.from.to_account_info(),
-                to: accs.custody.to_account_info(),
-                authority: accs.session_authority.to_account_info(),
-                mint: accs.common.mint.to_account_info(),
-            },
-            &[&[
-                crate::SESSION_AUTHORITY_SEED,
-                accs.common.from.owner.as_ref(),
-                args.keccak256().as_ref(),
-                &[ctx.bumps.session_authority],
-            ]],
-        ),
+    onchain::invoke_transfer_checked(
+        &accs.common.token_program.key(),
+        accs.common.from.to_account_info(),
+        accs.common.mint.to_account_info(),
+        accs.custody.to_account_info(),
+        accs.session_authority.to_account_info(),
+        ctx.remaining_accounts,
         amount,
         accs.common.mint.decimals,
+        &[&[
+            crate::SESSION_AUTHORITY_SEED,
+            accs.common.from.owner.as_ref(),
+            args.keccak256().as_ref(),
+            &[ctx.bumps.session_authority],
+        ]],
     )?;
 
     accs.custody.reload()?;
