@@ -121,11 +121,6 @@ jobs:
         - name: Set default Rust toolchain
           run: rustup default stable
           working-directory: ./solana
-        - name: install solana
-          run: |
-            sh -c "$(curl -sSfL https://release.solana.com/v1.18.10/install)"
-            ~/.local/share/solana/install/active_release/bin/sdk/sbf/scripts/install.sh
-            export PATH="${HOME}/.local/share/solana/install/active_release/bin:${PATH}"
         - name: anchor test --arch sbf
           run: make anchor-test
           working-directory: ./solana
