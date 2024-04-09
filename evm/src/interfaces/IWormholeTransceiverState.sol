@@ -33,7 +33,7 @@ interface IWormholeTransceiverState {
 
     /// @notice Emitted when the chain is EVM compatible.
     /// @dev Topic0
-    ///      0x50bbeb4e180e8f9e429f6ef6b53496616c747fe502441c4f423d5fc9ec958d9c.
+    ///      0x4add57d97a7bf5035340ea1212aeeb3d4d3887eb1faf3821a8224c3a6956a10c.
     /// @param chainId The chain ID to set.
     /// @param isEvm A boolean indicating whether relaying is enabled.
     event SetIsWormholeEvmChain(uint16 chainId, bool isEvm);

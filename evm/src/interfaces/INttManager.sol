@@ -15,7 +15,7 @@ interface INttManager is IManagerBase {
 
     /// @notice Emitted when a message is sent from the nttManager.
     /// @dev Topic0
-    ///      0x9cc8ade41ef46b98ba8bcad8c6bfa643934e6b84d3ce066cd38b5f0813bb2ae5.
+    ///      0xe54e51e42099622516fa3b48e9733581c9dbdcb771cafb093f745a0532a35982.
     /// @param recipient The recipient of the message.
     /// @param refundAddress The address on the destination chain to which the
     ///                      refund of unused gas will be paid

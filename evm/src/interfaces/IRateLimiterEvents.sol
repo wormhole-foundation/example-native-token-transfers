@@ -18,7 +18,7 @@ interface IRateLimiterEvents {
 
     /// @notice Emitted when an outbound transfer is rate limited.
     /// @dev Topic0
-    ///      0x754d657d1363ee47d967b415652b739bfe96d5729ccf2f26625dcdbc147db68b.
+    ///      0xf33512b84e24a49905c26c6991942fc5a9652411769fc1e448f967cdb049f08a.
     /// @param sender The initial sender of the transfer.
     /// @param amount The amount to be transferred.
     /// @param currentCapacity The capacity left for transfers within the 24-hour window.

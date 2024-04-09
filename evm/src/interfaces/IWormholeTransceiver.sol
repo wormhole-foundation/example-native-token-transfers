@@ -33,7 +33,7 @@ interface IWormholeTransceiver is IWormholeTransceiverState {
 
     /// @notice Emitted when a message is sent from the transceiver.
     /// @dev Topic0
-    ///      0x53b3e029c5ead7bffc739118953883859d30b1aaa086e0dca4d0a1c99cd9c3f5.
+    ///      0x79376a0dc6cbfe6f6f8f89ad24c262a8c6233f8df181d3fe5abb2e2442e8c738.
     /// @param recipientChain The chain ID of the recipient.
     /// @param message The message.
     event SendTransceiverMessage(
