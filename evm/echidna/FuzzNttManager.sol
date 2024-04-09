@@ -29,7 +29,7 @@ contract FuzzNttManager is FuzzingHelpers {
     address[] registeredTransceivers;
 
     // Instructions
-    uint256 constant numTransceiverInstructions = 10;
+    uint256 constant numTransceiverInstructions = 10; // It takes some time to generate the instructions so let's use 10 as a default
     bytes[] orderedInstructions;
     bytes[] unorderedInstructions;
 
@@ -67,7 +67,7 @@ contract FuzzNttManager is FuzzingHelpers {
         uint64 nextMessageSequence = nttManager.nextMessageSequence();
 
         // We always queue to ensure we're always seizing the tokens
-        try nttManager.transfer(amount, recipientChainId, validAddress, true, new bytes(1)) {
+        try nttManager.transfer(amount, recipientChainId, validAddress, validAddress, true, new bytes(1)) {
             assert(IERC20(dummyToken).balanceOf(address(this)) == thisAddressBalanceBefore - amount);
             assert(IERC20(dummyToken).balanceOf(address(nttManager)) == amount + nttManagerBalanceBefore);
 
@@ -211,7 +211,7 @@ contract FuzzNttManager is FuzzingHelpers {
         uint256 currentInboundCapacity = nttManager.getCurrentInboundCapacity(recipientChainId);
         uint64 nextMessageSequence = nttManager.nextMessageSequence();
 
-        try nttManager.transfer(amount, recipientChainId, recipient, shouldQueue, new bytes(1)) {
+        try nttManager.transfer(amount, recipientChainId, recipient, recipient, shouldQueue, new bytes(1)) {
             // If we queued, we should have an item in the queue
             if ((shouldQueue && amount > currentOutboundCapacity)) {
                 // This transfer has queued, so let's keep track of it
@@ -335,7 +335,7 @@ contract FuzzNttManager is FuzzingHelpers {
         uint256 currentOutboundCapacity = nttManager.getCurrentOutboundCapacity();
         uint64 nextMessageSequence = nttManager.nextMessageSequence();
         
-        try nttManager.transfer(amount, recipientChainId, recipient, shouldQueue, encodedInstructions) {
+        try nttManager.transfer(amount, recipientChainId, recipient, recipient, shouldQueue, encodedInstructions) {
             // If we queued, we should have an item in the queue
             if ((shouldQueue && amount > currentOutboundCapacity)) {
                 // This transfer has queued, so let's keep track of it
@@ -563,6 +563,13 @@ contract FuzzNttManager is FuzzingHelpers {
                     "NttManager: setPeer expected to fail if setting zero peer decimals"
                 );
             }
+            // We set the chain id to 1 when we set up the manager
+            else if (peerChainId == 1) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(INttManager.InvalidPeerSameChainId.selector),
+                    "NttManager: setPeer expected to fail if setting for the same chain id"
+                );
+            }
             else if (!clampLimit) {
                 bytes32 errorStringHash = extractErrorString(revertData);
                 assertWithMsg(
@@ -714,6 +721,12 @@ contract FuzzNttManager is FuzzingHelpers {
                 assertWithMsg(
                     errorSelector == selectorToUint(TransceiverRegistry.DisabledTransceiver.selector),
                     "NttManager: removeTransceiver expected to fail if removing an already disabled transceiver"
+                );
+            }
+            else if (numEnabledTransceivers == 1) {
+                assertWithMsg(
+                    errorSelector == selectorToUint(IManagerBase.ZeroThreshold.selector),
+                    "NttManager: removeTransceiver expected to fail if trying to remove the last enabled transceiver"
                 );
             }
             else {

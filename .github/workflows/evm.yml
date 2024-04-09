@@ -41,3 +41,27 @@ jobs:
         run: |
           make check-format
         id: check
+    
+    name: echidna
+    runs-on: ubuntu-latest
+    steps:
+      steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Forge build
+        run: |
+          make test-push0
+        id: build
+
+      - uses: crytic/echidna-action@v2
+        with:
+          files: ./evm/echidna
+          config: ./evm/echidna.yaml
+          crytic-args: --ignore-compile
