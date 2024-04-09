@@ -1,43 +1,16 @@
 {
     "chains": [
       {
-        "description" : "Solana-Devnet", 
-        "chainId" : 1, 
-        "rpc" : "https://api.devnet.solana.com",
-        "networkType" : "solana",
-        "managerAddress" : "0x0ba50e1661e1aa0c07afdbac8349e925b1994b9c3ce2a647523704eba200985c"
+        "description" : "Ethereum", 
+        "rpc" : "https://ethereum-rpc.publicnode.com",
+        "networkType" : "evm",
+        "managerAddress" : "0xeBdCe9a913d9400EE75ef31Ce8bd34462D01a1c1"
       },
       {
-        "description": "Sepolia",
-        "evmNetworkId": 11155111,
-        "chainId": 10002,
-        "rpc": "https://rpc.sepolia.org",
+        "description": "Fantom",
+        "rpc": "https://rpc.fantom.network",
         "networkType" : "evm",
-        "managerAddress" : "0xB231aD95f2301bc82eA44c515001F0F746D637e0"
-      },
-      {
-        "description": "Arbitrum Sepolia",
-        "evmNetworkId": 421614,
-        "chainId": 10003,
-        "rpc": "https://arbitrum-sepolia.blockpi.network/v1/rpc/public",
-        "networkType" : "evm",
-        "managerAddress" : "0xEec94CD3083e067398256a79CcA7e740C5c8ef81"
-      },
-      {
-        "description": "Optimism Sepolia",
-        "evmNetworkId": 43113,
-        "chainId": 10005,
-        "rpc": "https://sepolia.optimism.io",
-        "networkType" : "evm",
-        "managerAddress" : "0x7f430D4e7939D994C0955A01FC75D9DE33F12D11"
-      },
-      {
-        "description": "Base Sepolia",
-        "evmNetworkId": 84532,
-        "chainId": 10004,
-        "rpc": "https://base-sepolia-rpc.publicnode.com",
-        "networkType" : "evm",
-        "managerAddress" : "0xB03b030b2f5B40819Df76467d67eD1C85Ff66fAD"
+        "managerAddress" : "0x68dB2f05Aa2d77DEf981fd2be32661340c9222FB"
       }
     ]
   }
