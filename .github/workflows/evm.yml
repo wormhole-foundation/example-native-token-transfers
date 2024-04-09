@@ -42,10 +42,10 @@ jobs:
           make check-format
         id: check
     
+  echidna:
     name: echidna
     runs-on: ubuntu-latest
     steps:
-      steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -60,8 +60,13 @@ jobs:
           make test-push0
         id: build
 
-      - uses: crytic/echidna-action@v2
-        with:
-          files: ./evm/echidna
-          config: ./evm/echidna.yaml
-          crytic-args: --ignore-compile
+      - name: Install Echidna
+        run: |
+          curl -LO https://github.com/crytic/echidna/releases/download/v2.2.3/echidna-2.2.3-x86_64-linux.tar.gz
+          tar -xzf echidna-2.2.3-x86_64-linux.tar.gz
+          pip install crytic-compile
+      
+      - name: Run Echidna
+        run: |
+          cd evm
+          ../echidna ./echidna --config echidna.yaml
