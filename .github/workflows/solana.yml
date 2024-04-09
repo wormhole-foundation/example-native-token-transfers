@@ -91,6 +91,13 @@ jobs:
           sh -c "$(curl -sSfL https://release.solana.com/v${SOLANA_VERSION}/install)"
           ~/.local/share/solana/install/active_release/bin/sdk/sbf/scripts/install.sh
 
+      - name: clean up free space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
       - name: cargo build-sbf && cargo test-sbf && cargo test
         env:
           RUST_BACKTRACE: "1"
