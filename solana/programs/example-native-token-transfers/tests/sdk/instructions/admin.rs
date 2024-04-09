@@ -7,7 +7,6 @@ use crate::sdk::accounts::NTT;
 pub struct SetPeer {
     pub payer: Pubkey,
     pub owner: Pubkey,
-    pub mint: Pubkey,
 }
 
 pub fn set_peer(ntt: &NTT, accounts: SetPeer, args: SetPeerArgs) -> Instruction {
@@ -68,7 +67,7 @@ pub fn register_transceiver(ntt: &NTT, accounts: RegisterTransceiver) -> Instruc
     };
 
     Instruction {
-        program_id: ntt.program,
+        program_id: ntt.program(),
         accounts: accounts.to_account_metas(None),
         data: data.data(),
     }
