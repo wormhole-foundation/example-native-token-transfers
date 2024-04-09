@@ -20,6 +20,7 @@ import {
   sendAndConfirmTransaction,
   type TransactionSignature,
   type Connection,
+  SystemProgram,
   TransactionMessage,
   VersionedTransaction
 } from '@solana/web3.js'
@@ -232,7 +233,7 @@ export class NTT {
     const tokenProgram = mintInfo.owner
     const ix = await this.program.methods
       .initialize({ chainId, limit: args.outboundLimit, mode })
-      .accounts({
+      .accountsStrict({
         payer: args.payer.publicKey,
         deployer: args.owner.publicKey,
         programData: programDataAddress(this.program.programId),
@@ -241,8 +242,10 @@ export class NTT {
         rateLimit: this.outboxRateLimitAccountAddress(),
         tokenProgram,
         tokenAuthority: this.tokenAuthorityAddress(),
-        custody: await this.custodyAccountAddress(args.mint),
+        custody: await this.custodyAccountAddress(args.mint, tokenProgram),
         bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
+        associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
       }).instruction();
     return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner]);
   }
@@ -298,7 +301,9 @@ export class NTT {
       args.from,
       this.sessionAuthorityAddress(args.fromAuthority.publicKey, transferArgs),
       args.fromAuthority.publicKey,
-      BigInt(args.amount.toString())
+      BigInt(args.amount.toString()),
+      [],
+      config.tokenProgram
     );
     const tx = new Transaction()
     tx.add(approveIx, transferIx, releaseIx)
@@ -398,7 +403,7 @@ export class NTT {
       shouldQueue: args.shouldQueue
     }
 
-    return await this.program.methods
+    const transferIx = await this.program.methods
       .transferLock(transferArgs)
       .accounts({
         common: {
@@ -416,6 +421,39 @@ export class NTT {
         sessionAuthority: this.sessionAuthorityAddress(args.fromAuthority, transferArgs)
       })
       .instruction()
+
+    const mintInfo = await splToken.getMint(
+      this.program.provider.connection,
+      config.mint,
+      undefined,
+      config.tokenProgram
+    )
+    const transferHook = splToken.getTransferHook(mintInfo)
+
+    if (transferHook) {
+      const source = args.from
+      const mint = config.mint
+      const destination = await this.custodyAccountAddress(config)
+      const owner = this.sessionAuthorityAddress(args.fromAuthority, transferArgs)
+      await addExtraAccountMetasForExecute(
+        this.program.provider.connection,
+        transferIx,
+        transferHook.programId,
+        source,
+        mint,
+        destination,
+        owner,
+        // TODO(csongor): compute the amount that's passed into transfer.
+        // Leaving this 0 is fine unless the transfer hook accounts addresses
+        // depend on the amount (which is unlikely).
+        // If this turns out to be the case, the amount to put here is the
+        // untrimmed amount after removing dust.
+        0,
+      );
+    }
+
+    return transferIx
+
   }
 
   /**
@@ -496,14 +534,15 @@ export class NTT {
       .releaseInboundMint({
         revertOnDelay: args.revertOnDelay
       })
-      .accounts({
+      .accountsStrict({
         common: {
           payer: args.payer,
           config: { config: this.configAccountAddress() },
           inboxItem: this.inboxItemAccountAddress(args.chain, args.nttMessage),
-          recipient: getAssociatedTokenAddressSync(mint, recipientAddress),
+          recipient: getAssociatedTokenAddressSync(mint, recipientAddress, true, config.tokenProgram),
           mint,
-          tokenAuthority: this.tokenAuthorityAddress()
+          tokenAuthority: this.tokenAuthorityAddress(),
+          tokenProgram: config.tokenProgram
         }
       })
       .instruction()
@@ -551,22 +590,50 @@ export class NTT {
 
     const mint = await this.mintAccountAddress(config)
 
-    return await this.program.methods
+    const transferIx = await this.program.methods
       .releaseInboundUnlock({
         revertOnDelay: args.revertOnDelay
       })
-      .accounts({
+      .accountsStrict({
         common: {
           payer: args.payer,
           config: { config: this.configAccountAddress() },
           inboxItem: this.inboxItemAccountAddress(args.chain, args.nttMessage),
-          recipient: getAssociatedTokenAddressSync(mint, recipientAddress),
+          recipient: getAssociatedTokenAddressSync(mint, recipientAddress, true, config.tokenProgram),
           mint,
-          tokenAuthority: this.tokenAuthorityAddress()
+          tokenAuthority: this.tokenAuthorityAddress(),
+          tokenProgram: config.tokenProgram
         },
         custody: await this.custodyAccountAddress(config)
       })
       .instruction()
+
+    const mintInfo = await splToken.getMint(this.program.provider.connection, config.mint, undefined, config.tokenProgram)
+    const transferHook = splToken.getTransferHook(mintInfo)
+
+    if (transferHook) {
+      const source = await this.custodyAccountAddress(config)
+      const mint = config.mint
+      const destination = getAssociatedTokenAddressSync(mint, recipientAddress, true, config.tokenProgram)
+      const owner = this.tokenAuthorityAddress()
+      await addExtraAccountMetasForExecute(
+        this.program.provider.connection,
+        transferIx,
+        transferHook.programId,
+        source,
+        mint,
+        destination,
+        owner,
+        // TODO(csongor): compute the amount that's passed into transfer.
+        // Leaving this 0 is fine unless the transfer hook accounts addresses
+        // depend on the amount (which is unlikely).
+        // If this turns out to be the case, the amount to put here is the
+        // untrimmed amount after removing dust.
+        0,
+      );
+    }
+
+    return transferIx
   }
 
   async releaseInboundUnlock(args: {
@@ -891,15 +958,98 @@ export class NTT {
    * (i.e. the program is initialised), the mint is derived from the config.
    * Otherwise, the mint must be provided.
    */
-  async custodyAccountAddress(configOrMint: Config | PublicKey): Promise<PublicKey> {
+  async custodyAccountAddress(configOrMint: Config | PublicKey, tokenProgram = splToken.TOKEN_PROGRAM_ID): Promise<PublicKey> {
     if (configOrMint instanceof PublicKey) {
-      return associatedAddress({ mint: configOrMint, owner: this.tokenAuthorityAddress() })
+      return splToken.getAssociatedTokenAddress(configOrMint, this.tokenAuthorityAddress(), true, tokenProgram)
     } else {
-      return associatedAddress({ mint: await this.mintAccountAddress(configOrMint), owner: this.tokenAuthorityAddress() })
+      return splToken.getAssociatedTokenAddress(configOrMint.mint, this.tokenAuthorityAddress(), true, configOrMint.tokenProgram)
     }
   }
 }
 
 function exhaustive<A>(_: never): A {
   throw new Error('Impossible')
+}
+
+/**
+ * TODO: this is copied from @solana/spl-token, because the most recent released
+ * version (0.4.3) is broken (does object equality instead of structural on the pubkey)
+ *
+ * this version fixes that error, looks like it's also fixed on main:
+ * https://github.com/solana-labs/solana-program-library/blob/ad4eb6914c5e4288ad845f29f0003cd3b16243e7/token/js/src/extensions/transferHook/instructions.ts#L208
+ */
+async function addExtraAccountMetasForExecute(
+    connection: Connection,
+    instruction: TransactionInstruction,
+    programId: PublicKey,
+    source: PublicKey,
+    mint: PublicKey,
+    destination: PublicKey,
+    owner: PublicKey,
+    amount: number | bigint,
+    commitment?: Commitment
+) {
+    const validateStatePubkey = splToken.getExtraAccountMetaAddress(mint, programId);
+    const validateStateAccount = await connection.getAccountInfo(validateStatePubkey, commitment);
+    if (validateStateAccount == null) {
+        return instruction;
+    }
+    const validateStateData = splToken.getExtraAccountMetas(validateStateAccount);
+
+    // Check to make sure the provided keys are in the instruction
+    if (![source, mint, destination, owner].every((key) => instruction.keys.some((meta) => meta.pubkey.equals(key)))) {
+        throw new Error('Missing required account in instruction');
+    }
+
+    const executeInstruction = splToken.createExecuteInstruction(
+        programId,
+        source,
+        mint,
+        destination,
+        owner,
+        validateStatePubkey,
+        BigInt(amount)
+    );
+
+    for (const extraAccountMeta of validateStateData) {
+        executeInstruction.keys.push(
+            deEscalateAccountMeta(
+                await splToken.resolveExtraAccountMeta(
+                    connection,
+                    extraAccountMeta,
+                    executeInstruction.keys,
+                    executeInstruction.data,
+                    executeInstruction.programId
+                ),
+                executeInstruction.keys
+            )
+        );
+    }
+
+    // Add only the extra accounts resolved from the validation state
+    instruction.keys.push(...executeInstruction.keys.slice(5));
+
+    // Add the transfer hook program ID and the validation state account
+    instruction.keys.push({ pubkey: programId, isSigner: false, isWritable: false });
+    instruction.keys.push({ pubkey: validateStatePubkey, isSigner: false, isWritable: false });
+}
+
+// TODO: delete (see above)
+function deEscalateAccountMeta(accountMeta: AccountMeta, accountMetas: AccountMeta[]): AccountMeta {
+    const maybeHighestPrivileges = accountMetas
+        .filter((x) => x.pubkey.equals(accountMeta.pubkey))
+        .reduce<{ isSigner: boolean; isWritable: boolean } | undefined>((acc, x) => {
+            if (!acc) return { isSigner: x.isSigner, isWritable: x.isWritable };
+            return { isSigner: acc.isSigner || x.isSigner, isWritable: acc.isWritable || x.isWritable };
+        }, undefined);
+    if (maybeHighestPrivileges) {
+        const { isSigner, isWritable } = maybeHighestPrivileges;
+        if (!isSigner && isSigner !== accountMeta.isSigner) {
+            accountMeta.isSigner = false;
+        }
+        if (!isWritable && isWritable !== accountMeta.isWritable) {
+            accountMeta.isWritable = false;
+        }
+    }
+    return accountMeta;
 }
