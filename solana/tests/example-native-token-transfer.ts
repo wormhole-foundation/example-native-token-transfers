@@ -16,14 +16,17 @@ import {
   serializePayload,
   deserializePayload,
 } from "@wormhole-foundation/sdk-definitions";
-import { NttMessage, postVaa, NTT, nttMessageLayout } from "../ts/sdk";
+import { postVaa, NTT, nttMessageLayout } from "../ts/sdk";
+import { WormholeTransceiverMessage } from "../ts/sdk/nttLayout";
+
 import {
-  NativeTokenTransfer,
-  TransceiverMessage,
-  WormholeTransceiverMessage,
-  nativeTokenTransferLayout,
-  nttManagerMessageLayout,
-} from "../ts/sdk/nttLayout";
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js";
+
+import { DummyTransferHook } from "../target/types/dummy_transfer_hook";
 
 export const GUARDIAN_KEY =
   "cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0";
@@ -48,25 +51,78 @@ describe("example-native-token-transfers", () => {
   const user = anchor.web3.Keypair.generate();
   let tokenAccount: anchor.web3.PublicKey;
 
-  let mint: anchor.web3.PublicKey;
+  const mint = anchor.web3.Keypair.generate();
 
-  before(async () => {
-    // airdrop some tokens to payer
-    mint = await spl.createMint(connection, payer, owner.publicKey, null, 9);
+  const dummyTransferHook = anchor.workspace
+    .DummyTransferHook as anchor.Program<DummyTransferHook>;
+
+  const [extraAccountMetaListPDA] = PublicKey.findProgramAddressSync(
+    [Buffer.from("extra-account-metas"), mint.publicKey.toBuffer()],
+    dummyTransferHook.programId
+  );
+
+  const [counterPDA] = PublicKey.findProgramAddressSync(
+    [Buffer.from("counter")],
+    dummyTransferHook.programId
+  );
+
+  async function counterValue(): Promise<anchor.BN> {
+    const counter = await dummyTransferHook.account.counter.fetch(counterPDA);
+    return counter.count
+  }
+
+  it("Initialize mint", async () => {
+    const extensions = [spl.ExtensionType.TransferHook];
+    const mintLen = spl.getMintLen(extensions);
+    const lamports = await connection.getMinimumBalanceForRentExemption(
+      mintLen
+    );
+
+    const transaction = new Transaction().add(
+      SystemProgram.createAccount({
+        fromPubkey: payer.publicKey,
+        newAccountPubkey: mint.publicKey,
+        space: mintLen,
+        lamports,
+        programId: spl.TOKEN_2022_PROGRAM_ID,
+      }),
+      spl.createInitializeTransferHookInstruction(
+        mint.publicKey,
+        owner.publicKey,
+        dummyTransferHook.programId,
+        spl.TOKEN_2022_PROGRAM_ID
+      ),
+      spl.createInitializeMintInstruction(
+        mint.publicKey,
+        9,
+        owner.publicKey,
+        null,
+        spl.TOKEN_2022_PROGRAM_ID
+      )
+    );
+
+    await sendAndConfirmTransaction(connection, transaction, [payer, mint]);
 
     tokenAccount = await spl.createAssociatedTokenAccount(
       connection,
       payer,
-      mint,
-      user.publicKey
+      mint.publicKey,
+      user.publicKey,
+      undefined,
+      spl.TOKEN_2022_PROGRAM_ID,
+      spl.ASSOCIATED_TOKEN_PROGRAM_ID
     );
+
     await spl.mintTo(
       connection,
       payer,
-      mint,
+      mint.publicKey,
       tokenAccount,
       owner,
-      BigInt(10000000)
+      BigInt(10000000),
+      undefined,
+      undefined,
+      spl.TOKEN_2022_PROGRAM_ID
     );
   });
 
@@ -75,22 +131,47 @@ describe("example-native-token-transfers", () => {
     expect(version).to.equal("1.0.0");
   });
 
+  it("Create ExtraAccountMetaList Account", async () => {
+    const initializeExtraAccountMetaListInstruction =
+      await dummyTransferHook.methods
+        .initializeExtraAccountMetaList()
+        .accountsStrict({
+          payer: payer.publicKey,
+          mint: mint.publicKey,
+          counter: counterPDA,
+          extraAccountMetaList: extraAccountMetaListPDA,
+          tokenProgram: spl.TOKEN_2022_PROGRAM_ID,
+          associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+
+    const transaction = new Transaction().add(
+      initializeExtraAccountMetaListInstruction
+    );
+
+    await sendAndConfirmTransaction(connection, transaction, [payer]);
+  });
+
   describe("Locking", () => {
     before(async () => {
       await spl.setAuthority(
         connection,
         payer,
-        mint,
+        mint.publicKey,
         owner,
-        0, // mint
-        ntt.tokenAuthorityAddress()
+        spl.AuthorityType.MintTokens,
+        ntt.tokenAuthorityAddress(),
+        [],
+        undefined,
+        spl.TOKEN_2022_PROGRAM_ID
       );
 
       await ntt.initialize({
         payer,
         owner: payer,
         chain: "solana",
-        mint,
+        mint: mint.publicKey,
         outboundLimit: new BN(1000000),
         mode: "locking",
       });
@@ -173,6 +254,7 @@ describe("example-native-token-transfers", () => {
 
       // TODO: assert other stuff in the message
       // console.log(nttManagerMessage);
+      expect((await counterValue()).toString()).to.be.eq("1")
     });
 
     it("Can receive tokens", async () => {
@@ -230,6 +312,8 @@ describe("example-native-token-transfers", () => {
       });
 
       expect(released).to.equal(true);
+
+      expect((await counterValue()).toString()).to.be.eq("2")
     });
   });
 
