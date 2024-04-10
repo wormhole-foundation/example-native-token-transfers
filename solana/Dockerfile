@@ -8,6 +8,7 @@ COPY Cargo.toml Cargo.toml
 COPY modules modules
 COPY programs programs
 COPY rust-toolchain rust-toolchain
+COPY scripts scripts
 
 ENV RUST_BACKTRACE=1
 
