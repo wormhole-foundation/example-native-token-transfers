@@ -111,9 +111,6 @@ jobs:
     container: backpackapp/build:v0.29.0
     steps:
         - uses: actions/checkout@v4
-        - name: Set default Rust toolchain
-          run: rustup default stable
-          working-directory: ./solana
         - name: anchor test --arch sbf
           run: make anchor-test
           working-directory: ./solana
