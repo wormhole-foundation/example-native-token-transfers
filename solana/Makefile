@@ -6,14 +6,14 @@ build: _anchor-build target/idl/example_native_token_transfers.json
 .PHONY: target/idl/example_native_token_transfers.json
 target/idl/example_native_token_transfers.json:
 	@echo "Removing generics from $@"
-	@ cat $@ | jq '(.accounts, .types) |= map(select(has("generics") | not))' > temp.json && mv temp.json $@
+	@ ./scripts/patch_idl $@
 
 .PHONY: anchor-build
 _anchor-build:
 	@anchor build --arch sbf
 
-anchor-test: node_modules build target/idl/example_native_token_transfers.json
-	anchor test --skip-build
+anchor-test:
+	anchor test
 
 node_modules: package-lock.json
 	npm ci

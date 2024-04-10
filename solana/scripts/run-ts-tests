@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+# This script patches the IDL file and runs the typescript tests.
+# It *should* be possible to set the test script in the [scripts] section of Anchor.toml to "./patch-idl && run yarn stuff"
+# but it seems to ignore the yarn stuff there. So this script does both in one go.
+
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+./patch-idl ../target/idl/example_native_token_transfers.json
+yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts
