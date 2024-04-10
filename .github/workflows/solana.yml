@@ -113,7 +113,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
         - uses: actions/checkout@v4
-        - uses: metadaoproject/anchor-test@v2
+        - uses: metadaoproject/setup-anchor@v2
           with:
-            anchor-version: '0.29.0'
+            node-version: '20.11.0'
             solana-cli-version: '1.18.10'
+            anchor-version: '0.29.0'
+        - name: Cache node_modules
+          uses: actions/cache@v3
+          with:
+            path: ./node_modules/
+            key: node-modules-${{ runner.os }}-build-${{ inputs.node-version }}
+        - name: Install node_modules
+          run: yarn
+          shell: bash
+        - name: Create keypair
+          run: solana-keygen new --no-bip39-passphrase
+          shell: bash
+        - name: Make Anchor.toml compatible with runner
+          run: sed -i 's:/user/:/runner/:' Anchor.toml
+          shell: bash
+        - name: Install Cargo toolchain
+          uses: actions-rs/toolchain@v1
+          with:
+            toolchain: stable
+            profile: minimal
+            components: rustc
+        - name: Cache Cargo dependencies
+          uses: Swatinem/rust-cache@v2
+        - name: Run tests
+          run: anchor test
+          shell: bash
