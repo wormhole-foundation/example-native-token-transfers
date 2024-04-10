@@ -35,7 +35,7 @@ pub struct Initialize<'info> {
         seeds = [crate::config::Config::SEED_PREFIX],
         bump
     )]
-    pub config: Account<'info, crate::config::Config>,
+    pub config: Box<Account<'info, crate::config::Config>>,
 
     #[account(
         constraint =
