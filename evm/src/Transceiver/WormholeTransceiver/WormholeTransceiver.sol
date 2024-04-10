@@ -33,7 +33,7 @@ contract WormholeTransceiver is
 {
     using BytesParsing for bytes;
 
-    string public constant WORMHOLE_TRANSCEIVER_VERSION = "0.1.0";
+    string public constant WORMHOLE_TRANSCEIVER_VERSION = "1.0.0";
 
     constructor(
         address nttManager,
