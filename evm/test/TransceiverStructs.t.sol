@@ -94,7 +94,7 @@ contract TestTransceiverStructs is Test {
             sourceNttManagerAddress: hex"042942FAFABE",
             recipientNttManagerAddress: hex"042942FABABE",
             nttManagerPayload: TransceiverStructs.encodeNttManagerMessage(mm),
-            transceiverPayload: hex"0101"
+            transceiverPayload: new bytes(0)
         });
 
         bytes memory encodedTransceiverMessage =
