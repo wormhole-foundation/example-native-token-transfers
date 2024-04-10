@@ -62,6 +62,8 @@ pub const TOKEN_AUTHORITY_SEED: &[u8] = b"token_authority";
 /// user, atomically).
 pub const SESSION_AUTHORITY_SEED: &[u8] = b"session_authority";
 
+pub const VERSION: &str = "0.1.0";
+
 #[program]
 pub mod example_native_token_transfers {
 
@@ -69,6 +71,10 @@ pub mod example_native_token_transfers {
 
     pub fn initialize(ctx: Context<Initialize>, args: InitializeArgs) -> Result<()> {
         instructions::initialize(ctx, args)
+    }
+
+    pub fn version(_ctx: Context<Version>) -> Result<String> {
+        Ok(VERSION.to_string())
     }
 
     pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<()> {
@@ -162,3 +168,6 @@ pub mod example_native_token_transfers {
         transceivers::wormhole::instructions::broadcast_peer(ctx, args)
     }
 }
+
+#[derive(Accounts)]
+pub struct Version {}
