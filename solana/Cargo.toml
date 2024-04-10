@@ -7,7 +7,6 @@ resolver = "2"
 
 # Lints to improve security
 [workspace.lints.clippy]
-# The following rules should be enabled but conflict with other open PRs.
 # TODO enable the commented rules below
 cast_possible_truncation = "deny"
 # cast_lossless= "deny"
