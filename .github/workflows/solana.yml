@@ -52,21 +52,10 @@ jobs:
           toolchain: ${{ steps.toolchain.outputs.version }}
           components: "clippy,rustfmt"
 
-      - name: Cache rust packages / build cache
-        uses: actions/cache@v3
-        env:
-          cache-name: solana-rust-packages
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/bin
-            ~/.cargo/registry
-            ~/.cargo/git/db
-            solana/target
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('solana/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
+          workspaces: "solana"
 
       - name: Run `cargo fmt`
         run: cargo fmt --check --all --manifest-path Cargo.toml
