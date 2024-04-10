@@ -113,7 +113,7 @@ jobs:
             path: ./solana/node_modules/
             key: node-modules-${{ runner.os }}-build-${{ inputs.node-version }}
         - name: Install node_modules
-          run: npm ci
+          run: make node_modules
           shell: bash
         - name: Create keypair
           run: solana-keygen new --no-bip39-passphrase

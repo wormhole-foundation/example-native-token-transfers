@@ -6,7 +6,7 @@ build: _anchor-build target/idl/example_native_token_transfers.json
 .PHONY: target/idl/example_native_token_transfers.json
 target/idl/example_native_token_transfers.json:
 	@echo "Removing generics from $@"
-	@ ./scripts/patch_idl $@
+	@ ./scripts/patch-idl $@
 
 .PHONY: anchor-build
 _anchor-build:
