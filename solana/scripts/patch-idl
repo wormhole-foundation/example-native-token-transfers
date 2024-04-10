@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+FILE=$1
+
+if [ -z "$FILE" ]; then
+    echo "Usage: $0 <file>"
+    exit 1
+fi
+
+cat $FILE | jq '(.accounts, .types) |= map(select(has("generics") | not))' > temp.json && mv temp.json $FILE
+echo "Patched $FILE"

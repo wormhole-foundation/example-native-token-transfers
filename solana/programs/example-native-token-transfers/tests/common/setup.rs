@@ -8,10 +8,7 @@ use example_native_token_transfers::{
 };
 use ntt_messages::{chain_id::ChainId, mode::Mode};
 use solana_program::{bpf_loader_upgradeable::UpgradeableLoaderState, rent::Rent};
-use solana_program_runtime::{
-    invoke_context::ProcessInstructionWithContext,
-    log_collector::log::{trace, warn},
-};
+use solana_program_runtime::log_collector::log::{trace, warn};
 use solana_program_test::{find_file, read_file, ProgramTest, ProgramTestContext};
 use solana_sdk::{
     account::Account, signature::Keypair, signer::Signer, system_instruction,
@@ -90,7 +87,6 @@ pub async fn setup_programs(program_owner: Pubkey) -> Result<ProgramTest, Error>
         &mut program_test,
         "example_native_token_transfers",
         example_native_token_transfers::ID,
-        None,
         Some(program_owner),
     );
 
@@ -99,14 +95,12 @@ pub async fn setup_programs(program_owner: Pubkey) -> Result<ProgramTest, Error>
         "wormhole_governance",
         wormhole_governance::ID,
         None,
-        None,
     );
 
     add_program_upgradeable(
         &mut program_test,
         "mainnet_core_bridge",
         wormhole_anchor_sdk::wormhole::program::ID,
-        None,
         None,
     );
 
@@ -320,7 +314,6 @@ pub fn add_program_upgradeable(
     program_test: &mut ProgramTest,
     program_name: &str,
     program_id: Pubkey,
-    process_instruction: Option<ProcessInstructionWithContext>,
     upgrade_authority_address: Option<Pubkey>,
 ) {
     let add_bpf = |this: &mut ProgramTest, program_file: PathBuf| {
@@ -401,27 +394,19 @@ pub fn add_program_upgradeable(
     };
 
     let program_file = find_file(&format!("{program_name}.so"));
-    match (prefer_bpf(), program_file, process_instruction) {
+    match (prefer_bpf(), program_file) {
         // If SBF is preferred (i.e., `test-sbf` is invoked) and a BPF shared object exists,
         // use that as the program data.
-        (true, Some(file), _) => add_bpf(program_test, file),
-
-        // If SBF is not required (i.e., we were invoked with `test`), use the provided
-        // processor function as is.
-        //
-        // TODO: figure out why tests hang if a processor panics when running native code.
-        (false, _, Some(process)) => {
-            program_test.add_builtin_program(program_name, program_id, process)
-        }
+        (true, Some(file)) => add_bpf(program_test, file),
 
         // Invalid: `test-sbf` invocation with no matching SBF shared object.
-        (true, None, _) => {
+        (true, None) => {
             warn_invalid_program_name();
             panic!("Program file data not available for {program_name} ({program_id})");
         }
 
         // Invalid: regular `test` invocation without a processor.
-        (false, _, None) => {
+        (false, _) => {
             panic!("Program processor not available for {program_name} ({program_id})");
         }
     }

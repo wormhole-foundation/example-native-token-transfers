@@ -7,6 +7,7 @@ COPY Cargo.lock Cargo.lock
 COPY Cargo.toml Cargo.toml
 COPY modules modules
 COPY programs programs
+COPY rust-toolchain rust-toolchain
 
 ENV RUST_BACKTRACE=1
 
@@ -37,5 +38,7 @@ COPY --from=solana-contract /opt/solana/deps/mpl_token_metadata.so /opt/solana/d
 COPY --from=solana-contract /opt/solana/deps/wormhole_migration.so /opt/solana/deps/wormhole_migration.so
 
 COPY Makefile Makefile
+COPY scripts scripts
+
 RUN make target/idl/example_native_token_transfers.json
 COPY ts ts
