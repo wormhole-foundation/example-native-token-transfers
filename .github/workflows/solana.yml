@@ -107,10 +107,10 @@ jobs:
   anchor-test:
     name: Anchor Test
     runs-on: ubuntu-latest
-    # Anchor Docker image: https://www.anchor-lang.com/docs/verifiable-builds#images
-    container: backpackapp/build:v0.29.0
     steps:
         - uses: actions/checkout@v4
-        - name: anchor test --arch sbf
-          run: make anchor-test
+        - uses: metadaoproject/anchor-test@v2
           working-directory: ./solana
+          with:
+            anchor-version: '0.29.0'
+            solana-cli-version: '1.18.10'
