@@ -61,8 +61,8 @@ jobs:
             ~/.cargo/bin
             ~/.cargo/registry
             ~/.cargo/git/db
-            target
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('Cargo.lock') }}
+            solana/target
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('solana/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache-name }}-
             ${{ runner.os }}-build-
@@ -140,6 +140,8 @@ jobs:
             components: rustc
         - name: Cache Cargo dependencies
           uses: Swatinem/rust-cache@v2
+          with:
+            workspaces: "solana"
         - name: Run tests
           run: anchor test
           shell: bash
