@@ -8,9 +8,9 @@ import "../../src/interfaces/INttManager.sol";
 import "../../src/interfaces/IWormholeTransceiver.sol";
 
 import {NttManager} from "../../src/NttManager/NttManager.sol";
-import {WormholeTransceiver} from "../../src/Transceiver/WormholeTransceiver/WormholeTransceiver.sol";
+import {WormholeTransceiver} from
+    "../../src/Transceiver/WormholeTransceiver/WormholeTransceiver.sol";
 import {ERC1967Proxy} from "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-
 
 contract DeployWormholeNttBase is ParseNttConfig {
     struct DeploymentParams {
@@ -135,6 +135,4 @@ contract DeployWormholeNttBase is ParseNttConfig {
         // Outbound rate limiter limit.
         params.outboundLimit = vm.envUint("RELEASE_OUTBOUND_LIMIT");
     }
-
-
 }

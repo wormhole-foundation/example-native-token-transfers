@@ -355,7 +355,7 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             nttManagerChain1.transfer{
                 value: wormholeTransceiverChain1.quoteDeliveryPrice(
                     chainId2, buildTransceiverInstruction(false)
-                )
+                    )
             }(
                 sendingAmount,
                 chainId2,
@@ -409,7 +409,7 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             nttManagerChain2.transfer{
                 value: wormholeTransceiverChain2.quoteDeliveryPrice(
                     chainId1, buildTransceiverInstruction(false)
-                )
+                    )
             }(
                 sendingAmount,
                 chainId1,
