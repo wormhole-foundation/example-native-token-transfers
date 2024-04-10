@@ -121,7 +121,7 @@ jobs:
         - name: Cache node_modules
           uses: actions/cache@v3
           with:
-            path: ./node_modules/
+            path: ./solana/node_modules/
             key: node-modules-${{ runner.os }}-build-${{ inputs.node-version }}
         - name: Install node_modules
           run: npm ci
