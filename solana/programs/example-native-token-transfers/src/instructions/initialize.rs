@@ -35,7 +35,7 @@ pub struct Initialize<'info> {
         seeds = [crate::config::Config::SEED_PREFIX],
         bump
     )]
-    pub config: Account<'info, crate::config::Config>,
+    pub config: Box<Account<'info, crate::config::Config>>,
 
     #[account(
         constraint =
@@ -43,7 +43,7 @@ pub struct Initialize<'info> {
             || mint.mint_authority.unwrap() == token_authority.key()
             @ NTTError::InvalidMintAuthority,
     )]
-    pub mint: InterfaceAccount<'info, token_interface::Mint>,
+    pub mint: Box<InterfaceAccount<'info, token_interface::Mint>>,
 
     #[account(
         init,
