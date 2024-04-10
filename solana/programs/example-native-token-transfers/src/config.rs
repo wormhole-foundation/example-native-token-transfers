@@ -31,7 +31,8 @@ pub struct Config {
     /// The number of transceivers that must attest to a transfer before it is
     /// accepted.
     pub threshold: u8,
-    /// Bitmap of enabled transceivers
+    /// Bitmap of enabled transceivers.
+    /// The maximum number of transceivers is equal to [`Bitmap::BITS`].
     pub enabled_transceivers: Bitmap,
     /// Pause the program. This is useful for upgrades and other maintenance.
     pub paused: bool,

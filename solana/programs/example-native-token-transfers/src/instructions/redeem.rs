@@ -46,7 +46,7 @@ pub struct Redeem<'info> {
     pub transceiver_message: Account<'info, ValidatedTransceiverMessage<NativeTokenTransfer>>,
 
     #[account(
-        constraint = config.enabled_transceivers.get(transceiver.id) @ NTTError::DisabledTransceiver
+        constraint = config.enabled_transceivers.get(transceiver.id)? @ NTTError::DisabledTransceiver
     )]
     pub transceiver: Account<'info, RegisteredTransceiver>,
 
@@ -131,7 +131,7 @@ pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     }
 
     // idempotent
-    accs.inbox_item.votes.set(accs.transceiver.id, true);
+    accs.inbox_item.votes.set(accs.transceiver.id, true)?;
 
     if accs
         .inbox_item

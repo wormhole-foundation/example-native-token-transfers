@@ -2,10 +2,13 @@ import { type ChainName, toChainId, coalesceChainId, type ChainId, type SignedVa
 import { serializeLayout, toChainId as SDKv2toChainId } from '@wormhole-foundation/sdk-base'
 import {
   deserialize,
-  nttManagerMessageLayout,
-  type NttManagerMessage,
-  nativeTokenTransferLayout
 } from '@wormhole-foundation/sdk-definitions'
+
+import {
+  type NttManagerMessage,
+  nttManagerMessageLayout,
+  nativeTokenTransferLayout
+} from './nttLayout'
 import { derivePostedVaaKey, getWormholeDerivedAccounts } from '@certusone/wormhole-sdk/lib/cjs/solana/wormhole'
 import { BN, translateError, type IdlAccounts, Program } from '@coral-xyz/anchor'
 import { associatedAddress } from '@coral-xyz/anchor/dist/cjs/utils/token'
@@ -111,7 +114,9 @@ export class NTT {
 
   inboxItemAccountAddress(chain: ChainName | ChainId, nttMessage: NttMessage): PublicKey {
     const chainId = coalesceChainId(chain)
-    const serialized = Buffer.from(serializeLayout(nttMessageLayout, nttMessage))
+    const serialized = Buffer.from(
+      serializeLayout(nttManagerMessageLayout(nativeTokenTransferLayout), nttMessage)
+    )
     const hasher = new Keccak(256) //TODO replace with keccak256 from SDKv2
     hasher.update(Buffer.from(chainIdToBeBytes(chainId)))
     hasher.update(serialized)
@@ -654,7 +659,7 @@ export class NTT {
       throw new Error('Contract is paused')
     }
 
-    const wormholeNTT = deserialize('NTT:WormholeTransfer', args.vaa)
+    const wormholeNTT = deserialize('Ntt:WormholeTransfer', args.vaa)
     const nttMessage = wormholeNTT.payload.nttManagerPayload
     // NOTE: we do an 'as ChainId' cast here, which is generally unsafe.
     // TODO: explain why this is fine here
@@ -685,7 +690,7 @@ export class NTT {
       throw new Error('Contract is paused')
     }
 
-    const wormholeNTT = deserialize('NTT:WormholeTransfer', args.vaa)
+    const wormholeNTT = deserialize('Ntt:WormholeTransfer', args.vaa)
     const nttMessage = wormholeNTT.payload.nttManagerPayload
     // NOTE: we do an 'as ChainId' cast here, which is generally unsafe.
     // TODO: explain why this is fine here
@@ -730,7 +735,7 @@ export class NTT {
       payer: args.payer.publicKey
     }
 
-    const wormholeNTT = deserialize('NTT:WormholeTransfer', args.vaa)
+    const wormholeNTT = deserialize('Ntt:WormholeTransfer', args.vaa)
     const nttMessage = wormholeNTT.payload.nttManagerPayload
     // TODO: explain why this is fine here
     const chainId = SDKv2toChainId(wormholeNTT.emitterChain) as ChainId
