@@ -6,11 +6,13 @@ import {
   ChainContext,
   NativeSigner,
   Signer,
+  VAA,
   Wormhole,
   WormholeMessageId,
   amount,
   chainToPlatform,
   encoding,
+  serialize,
   signSendWait as ssw,
   toChainId,
 } from "@wormhole-foundation/sdk";
@@ -33,6 +35,7 @@ import { Ntt } from "../definitions/src/index.js";
 import "../evm/src/index.js";
 import "../solana/src/index.js";
 import { SolanaNtt } from "../solana/src/index.js";
+import { submitAccountantVAA } from "./accountant.js";
 
 // Note: Currently, in order for this to run, the evm bindings with extra contracts must be build
 // To do that, at the root, run `npm run generate:test`
@@ -79,16 +82,16 @@ export async function deploy(_ctx: StartingCtx): Promise<Ctx> {
   const ctx = { ..._ctx, signers: await getSigners(_ctx) };
   switch (platform) {
     case "Evm":
-      await Promise.all(
-        Object.values(evm.protocolLoaders).map(async (loader) => await loader())
-      );
+      // await Promise.all(
+      //   Object.values(evm.protocolLoaders).map(async (loader) => await loader())
+      // );
       return deployEvm(ctx);
     case "Solana":
-      await Promise.all(
-        Object.values(solana.protocolLoaders).map(
-          async (loader) => await loader()
-        )
-      );
+      // await Promise.all(
+      //   Object.values(solana.protocolLoaders).map(
+      //     async (loader) => await loader()
+      //   )
+      // );
       return deploySolana(ctx);
     default:
       throw new Error(
@@ -116,7 +119,57 @@ export async function link(chainInfos: Ctx[]) {
       await setupPeer(targetInfo, peerInfo);
     }
   }
-  console.log("Finished linking!");
+
+  console.log("Finished linking! Sending VAAs to accountant");
+
+  await accountantRegistrations(chainInfos);
+
+  console.log("Finished sending VAAs to accountant");
+}
+
+async function getVaa(ctx: Ctx, sequence: bigint): Promise<VAA> {
+  const chain = ctx.context.chain;
+  const msgId = {
+    chain,
+    emitter: Wormhole.chainAddress(
+      chain,
+      ctx.contracts!.transceiver.wormhole
+    ).address.toUniversalAddress(),
+    sequence,
+  };
+
+  const vaa = await wh.getVaa(
+    msgId,
+    sequence === 0n ? "Ntt:TransceiverInfo" : "Ntt:TransceiverRegistration"
+  );
+  if (!vaa)
+    throw new Error(`Failed to get VAA for: ${msgId.chain}: ${msgId.sequence}`);
+
+  return vaa;
+}
+
+async function accountantRegistrations(ctxs: Ctx[]) {
+  console.log("Submitting NTT accountant registrations");
+
+  // first submit hub init
+  const hub = ctxs[0]!;
+  await submitAccountantVAA(serialize(await getVaa(hub, 0n)));
+
+  // then submit spoke to hub registrations
+  for (const ctx of ctxs.slice(1)) {
+    await submitAccountantVAA(serialize(await getVaa(ctx, 1n)));
+  }
+
+  // then submit the rest of the registrations
+  for (const ctx of ctxs) {
+    for (
+      let idx = ctx.context.chain === hub.context.chain ? 0 : 1;
+      idx < ctxs.length - 1;
+      idx++
+    ) {
+      await submitAccountantVAA(serialize(await getVaa(ctx, BigInt(1 + idx))));
+    }
+  }
 }
 
 export async function transferWithChecks(
@@ -501,6 +554,7 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
   );
   await signSendWait(target, setXcvrPeerTxs, signer);
 
+  // TODO:
   // if (targetPlatform === "Evm" && peerPlatform === "Evm") {
   //   await tryAndWaitThrice(() =>
   //     transceiver.setIsWormholeEvmChain(peerChainId, true)

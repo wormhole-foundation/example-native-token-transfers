@@ -6,6 +6,7 @@ import {
 import { nttManagerMessageLayout } from "./manager.js";
 import { nativeTokenTransferLayout } from "./transfer.js";
 import { wormholeTransceiverMessageLayout } from "./wormhole.js";
+import { transceiverInfo, transceiverRegistration } from "./transceiver.js";
 
 export const nttNamedPayloads = [
   [
@@ -14,6 +15,8 @@ export const nttNamedPayloads = [
       nttManagerMessageLayout(nativeTokenTransferLayout)
     ),
   ],
+  ["TransceiverInfo", transceiverInfo],
+  ["TransceiverRegistration", transceiverRegistration],
 ] as const satisfies NamedPayloads;
 
 // factory registration:
