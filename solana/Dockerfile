@@ -1,13 +1,13 @@
 FROM backpackapp/build:v0.29.0@sha256:9aee169b2d8b89b4a4243419ae35c176773136e78d751b3e439eff692c9c1293 as anchor
 
-WORKDIR /usr/src/anchor-ntt/
+WORKDIR /usr/src/solana/
 
-COPY Anchor.toml Anchor.toml
-COPY Cargo.lock Cargo.lock
-COPY Cargo.toml Cargo.toml
-COPY modules modules
-COPY programs programs
-COPY rust-toolchain rust-toolchain
+COPY solana/Anchor.toml Anchor.toml
+COPY solana/Cargo.lock Cargo.lock
+COPY solana/Cargo.toml Cargo.toml
+COPY solana/modules modules
+COPY solana/programs programs
+COPY solana/rust-toolchain rust-toolchain
 
 ENV RUST_BACKTRACE=1
 
@@ -37,8 +37,8 @@ COPY --from=solana-contract /opt/solana/deps/cpi_poster.so /opt/solana/deps/cpi_
 COPY --from=solana-contract /opt/solana/deps/mpl_token_metadata.so /opt/solana/deps/mpl_token_metadata.so
 COPY --from=solana-contract /opt/solana/deps/wormhole_migration.so /opt/solana/deps/wormhole_migration.so
 
-COPY Makefile Makefile
-COPY scripts scripts
+COPY sdk ../sdk
+COPY solana/Makefile Makefile
+COPY solana/scripts scripts
 
 RUN make target/idl/example_native_token_transfers.json
-COPY ts ts
