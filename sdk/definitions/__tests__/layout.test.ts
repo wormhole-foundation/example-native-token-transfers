@@ -90,3 +90,20 @@ describe("Ntt Layout Tests", function () {
     }
   );
 });
+
+//const vaa = createVAA("Ntt:TransceiverInfo", {
+//  guardianSet: 0,
+//  timestamp: 0,
+//  nonce: 0,
+//  emitterChain: "Solana",
+//  emitterAddress: new UniversalAddress(new Uint8Array(32)),
+//  sequence: BigInt(0),
+//  consistencyLevel: 0,
+//  signatures: [],
+//  payload: deserializeLayout(
+//    transceiverInfo,
+//    encoding.hex.decode(
+//      "9c23bd3b000000000000000000000000bb807f76cda53b1b4256e1b6f33bb46be36508e3000000000000000000000000002a68f967bfa230780a385175d0c86ae4048d309612"
+//    )
+//  ),
+//});

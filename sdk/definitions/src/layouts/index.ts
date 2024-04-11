@@ -1,12 +1,11 @@
 import {
   NamedPayloads,
   RegisterPayloadTypes,
-  registerPayloadTypes,
 } from "@wormhole-foundation/sdk-definitions";
 import { nttManagerMessageLayout } from "./manager.js";
+import { transceiverInfo, transceiverRegistration } from "./transceiver.js";
 import { nativeTokenTransferLayout } from "./transfer.js";
 import { wormholeTransceiverMessageLayout } from "./wormhole.js";
-import { transceiverInfo, transceiverRegistration } from "./transceiver.js";
 
 export const nttNamedPayloads = [
   [
@@ -26,8 +25,6 @@ declare module "@wormhole-foundation/sdk-definitions" {
       extends RegisterPayloadTypes<"Ntt", typeof nttNamedPayloads> {}
   }
 }
-
-registerPayloadTypes("Ntt", nttNamedPayloads);
 
 export * from "./amount.js";
 export * from "./manager.js";

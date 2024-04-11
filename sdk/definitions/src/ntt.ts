@@ -22,7 +22,9 @@ import {
   NttManagerMessage,
   nativeTokenTransferLayout,
   nttManagerMessageLayout,
+  transceiverInfo,
   transceiverInstructionLayout,
+  transceiverRegistration,
 } from "./layouts/index.js";
 
 /**
@@ -40,7 +42,13 @@ export namespace Ntt {
       wormhole: string;
     };
   };
+
   export type Message = NttManagerMessage<typeof nativeTokenTransferLayout>;
+
+  export type TransceiverInfo = NttManagerMessage<typeof transceiverInfo>;
+  export type TransceiverRegistration = NttManagerMessage<
+    typeof transceiverRegistration
+  >;
 
   // TODO: what are the set of attestation types for Ntt?
   // can we know this ahead of time or does it need to be
