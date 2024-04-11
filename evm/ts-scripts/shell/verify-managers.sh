@@ -54,7 +54,6 @@ for chain in $operating_chains; do
   # echo "etherscan_api_key: $etherscan_api_key"
   # echo "evm_network_id: $evm_network_id"
   # echo "transceiver_structs_address: $transceiver_structs_address"
-  # echo "trimmed_amount_lib_address: $trimmed_amount_lib_address"
 
   if [ "$implementation_address" = "" ] || 
     [ "$proxy_address" = "" ] ||
@@ -77,7 +76,6 @@ for chain in $operating_chains; do
   )
 
   lib_paths="src/libraries/TransceiverStructs.sol:TransceiverStructs:$transceiver_structs_address"
-  # a="src/libraries/TrimmedAmount.sol:TrimmedAmountLib:$trimmed_amount_lib_address"
 
   forge verify-contract --chain "$evm_network_id" \
     --etherscan-api-key "$etherscan_api_key" \
