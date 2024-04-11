@@ -42,7 +42,7 @@ describe("example-native-token-transfers", () => {
     "confirmed"
   );
   const ntt = new NTT(connection, {
-    nttId: "nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS",
+    nttId: "nTTh3bZ5Aer6xboWZe39RDEft4MeVxSQ8D1EYAVLZw9",
     wormholeId: "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth",
   });
   const user = anchor.web3.Keypair.generate();
