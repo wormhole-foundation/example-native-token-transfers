@@ -139,6 +139,7 @@ contract TestUpgrades is Test, IRateLimiterEvents {
         nttManagerChain1.setThreshold(1);
         nttManagerChain2.setThreshold(1);
         vm.chainId(chainId1);
+
     }
 
     function test_basicUpgradeNttManager() public {
@@ -441,6 +442,11 @@ contract TestUpgrades is Test, IRateLimiterEvents {
     }
 
     function basicFunctionality() public {
+
+        nttManagerChain1.setInboundPauseStatus(false);
+        nttManagerChain1.setOutboundPauseStatus(false);
+        nttManagerChain2.setInboundPauseStatus(false);
+        nttManagerChain2.setOutboundPauseStatus(false);
         vm.chainId(chainId1);
 
         // Setting up the transfer
@@ -583,6 +589,10 @@ contract TestUpgrades is Test, IRateLimiterEvents {
         }
 
         vm.stopPrank();
+        nttManagerChain1.setInboundPauseStatus(true);
+        nttManagerChain1.setOutboundPauseStatus(true);
+        nttManagerChain2.setInboundPauseStatus(true);
+        nttManagerChain2.setOutboundPauseStatus(true);
     }
 
     function encodeTransceiverInstruction(bool relayer_off) public view returns (bytes memory) {

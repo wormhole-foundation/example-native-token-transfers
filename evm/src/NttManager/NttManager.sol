@@ -64,6 +64,8 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         __PausedOwnable_init(msg.sender, msg.sender);
         __ReentrancyGuard_init();
         _setOutboundLimit(TrimmedAmountLib.max(tokenDecimals()));
+        _getUnilateralPauseStorage().inbound = true; 
+        _getUnilateralPauseStorage().outbound = true; 
     }
 
     function _initialize() internal virtual override {
@@ -104,7 +106,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         bytes32 peerContract,
         uint8 decimals,
         uint256 inboundLimit
-    ) public onlyOwner {
+    ) public onlyOwner outboundWhenPaused {
         if (peerChainId == 0) {
             revert InvalidPeerChainIdZero();
         }
@@ -158,7 +160,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint256 amount,
         uint16 recipientChain,
         bytes32 recipient
-    ) external payable nonReentrant whenNotPaused returns (uint64) {
+    ) external payable nonReentrant whenNotPaused outboundNotPaused returns (uint64) {
         return
             _transferEntryPoint(amount, recipientChain, recipient, recipient, false, new bytes(1));
     }
@@ -171,7 +173,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         bytes32 refundAddress,
         bool shouldQueue,
         bytes memory transceiverInstructions
-    ) external payable nonReentrant whenNotPaused returns (uint64) {
+    ) external payable nonReentrant whenNotPaused outboundNotPaused returns (uint64) {
         return _transferEntryPoint(
             amount, recipientChain, recipient, refundAddress, shouldQueue, transceiverInstructions
         );
@@ -182,7 +184,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
         TransceiverStructs.NttManagerMessage memory payload
-    ) external onlyTransceiver whenNotPaused {
+    ) external onlyTransceiver whenNotPaused inboundNotPaused{
         _verifyPeer(sourceChainId, sourceNttManagerAddress);
 
         // Compute manager message digest and record transceiver attestation.
@@ -198,7 +200,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
         TransceiverStructs.NttManagerMessage memory message
-    ) public whenNotPaused {
+    ) public whenNotPaused inboundNotPaused {
         (bytes32 digest, bool alreadyExecuted) =
             _isMessageExecuted(sourceChainId, sourceNttManagerAddress, message);
 
@@ -241,7 +243,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     }
 
     /// @inheritdoc INttManager
-    function completeInboundQueuedTransfer(bytes32 digest) external nonReentrant whenNotPaused {
+    function completeInboundQueuedTransfer(bytes32 digest) external nonReentrant whenNotPaused inboundNotPaused{
         // find the message in the queue
         InboundQueuedTransfer memory queuedTransfer = getInboundQueuedTransfer(digest);
         if (queuedTransfer.txTimestamp == 0) {
@@ -266,6 +268,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         payable
         nonReentrant
         whenNotPaused
+        outboundNotPaused
         returns (uint64)
     {
         // find the message in the queue

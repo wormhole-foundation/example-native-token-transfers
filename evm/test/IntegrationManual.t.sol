@@ -66,7 +66,7 @@ contract TestRelayerEndToEndManual is IntegrationHelpers, IRateLimiterEvents {
             address(new ERC1967Proxy(address(wormholeTransceiverChain1), ""))
         );
         wormholeTransceiverChain1.initialize();
-
+        
         nttManagerChain1.setTransceiver(address(wormholeTransceiverChain1));
         nttManagerChain1.setOutboundLimit(type(uint64).max);
         nttManagerChain1.setInboundLimit(type(uint64).max, chainId2);
@@ -108,6 +108,12 @@ contract TestRelayerEndToEndManual is IntegrationHelpers, IRateLimiterEvents {
     }
 
     function test_relayerTransceiverAuth() public {
+
+        nttManagerChain1.setInboundPauseStatus(false);
+        nttManagerChain1.setOutboundPauseStatus(false);
+        nttManagerChain2.setInboundPauseStatus(false);
+        nttManagerChain2.setOutboundPauseStatus(false);
+
         // Set up sensible WH transceiver peers
         _setTransceiverPeers(
             [wormholeTransceiverChain1, wormholeTransceiverChain2],
@@ -143,7 +149,9 @@ contract TestRelayerEndToEndManual is IntegrationHelpers, IRateLimiterEvents {
         vm.chainId(chainId2);
 
         // Set bad manager peer (0x1)
+        nttManagerChain2.setOutboundPauseStatus(true); 
         nttManagerChain2.setPeer(chainId1, toWormholeFormat(address(0x1)), 9, type(uint64).max);
+        nttManagerChain2.setOutboundPauseStatus(false); 
 
         vm.startPrank(relayer);
 
@@ -158,7 +166,9 @@ contract TestRelayerEndToEndManual is IntegrationHelpers, IRateLimiterEvents {
         );
         vm.stopPrank();
 
+        nttManagerChain2.setOutboundPauseStatus(true); 
         _setManagerPeer(nttManagerChain2, nttManagerChain1, chainId1, 9, type(uint64).max);
+        nttManagerChain2.setOutboundPauseStatus(false); 
 
         // Wrong caller - aka not relayer contract
         vm.prank(userD);
@@ -215,6 +225,15 @@ contract TestRelayerEndToEndManual is IntegrationHelpers, IRateLimiterEvents {
     }
 
     function test_relayerWithInvalidWHTransceiver() public {
+
+        require(nttManagerChain1.getUnilateralPause().inbound == true, "Inbound pause not true by default");
+        require(nttManagerChain1.getUnilateralPause().outbound == true, "Outbound pause not true by default");
+
+        nttManagerChain1.setInboundPauseStatus(false);
+        nttManagerChain1.setOutboundPauseStatus(false);
+        nttManagerChain2.setInboundPauseStatus(false);
+        nttManagerChain2.setOutboundPauseStatus(false);
+
         // Set up dodgy wormhole transceiver peers
         wormholeTransceiverChain2.setWormholePeer(chainId1, bytes32(uint256(uint160(address(0x1)))));
         wormholeTransceiverChain1.setWormholePeer(

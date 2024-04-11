@@ -50,6 +50,10 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         DummyTransceiver e = new DummyTransceiver(address(nttManager));
         nttManager.setTransceiver(address(e));
+
+        nttManager.setInboundPauseStatus(false);
+        nttManager.setOutboundPauseStatus(false);
+
     }
 
     function test_outboundRateLimit_setLimitSimple() public {
