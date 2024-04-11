@@ -1,11 +1,12 @@
 {
   "guardianSetIndex": 0,
+  "operatingChains": [10005],
   "chains": [
     {
       "description": "Sepolia",
       "evmNetworkId": 11155111,
       "chainId": 10002,
-      "rpc": "https://rpc.sepolia.org"
+      "rpc": "https://eth-sepolia-public.unifra.io"
     },
     {
       "description": "Arbitrum Sepolia",
@@ -17,13 +18,13 @@
       "description": "Optimism Sepolia",
       "evmNetworkId": 43113,
       "chainId": 10005,
-      "rpc": "https://sepolia.optimism.io"
+      "rpc": "https://rpc.ankr.com/optimism_sepolia"
     },
     {
       "description": "Base Sepolia",
       "evmNetworkId": 84532,
       "chainId": 10004,
-      "rpc": "https://base-sepolia-rpc.publicnode.com"
+      "rpc": "https://sepolia.base.org"
     }
   ]
 }

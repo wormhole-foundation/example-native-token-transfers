@@ -81,7 +81,7 @@ export const evmNttDeployments: NttDeployment[] = [
   },
 ];
 
-interface PeerQuotes {
+export interface PeerQuotes {
   // Specified in Gwei per Eth units.
   maxGasDropoffEth: string,
   // The base price 10^-6 dollars.
