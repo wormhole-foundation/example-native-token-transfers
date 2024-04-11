@@ -133,9 +133,6 @@ async function deployManagerLibraries(
 
   const structs = await new TransceiverStructs__factory(signer).deploy();
   libAddresses["src/libraries/TransceiverStructs.sol:TransceiverStructs"] = await structs.deployed().then((d) => d.address);
-  
-  const amountLib = await new TrimmedAmountLib__factory(signer).deploy();
-  libAddresses["src/libraries/TrimmedAmount.sol:TrimmedAmountLib"] = await amountLib.deployed().then((d) => d.address);
 
   return libAddresses;
 }
