@@ -103,6 +103,11 @@ export async function deploy(_ctx: StartingCtx): Promise<Ctx> {
 export async function link(chainInfos: Ctx[]) {
   console.log("\nStarting linking process");
   console.log("========================");
+
+  // first submit hub init to accountant
+  const hub = chainInfos[0]!;
+  await submitAccountantVAA(serialize(await getVaa(hub, 0n)));
+
   for (const targetInfo of chainInfos) {
     const toRegister = chainInfos.filter(
       (peerInfo) => peerInfo.context.chain !== targetInfo.context.chain
@@ -116,15 +121,10 @@ export async function link(chainInfos: Ctx[]) {
     );
 
     for (const peerInfo of toRegister) {
-      await setupPeer(targetInfo, peerInfo);
+      const vaa = await setupPeer(targetInfo, peerInfo);
+      await submitAccountantVAA(serialize(vaa!));
     }
   }
-
-  console.log("Finished linking! Sending VAAs to accountant");
-
-  await accountantRegistrations(chainInfos);
-
-  console.log("Finished sending VAAs to accountant");
 }
 
 async function getVaa(ctx: Ctx, sequence: bigint): Promise<VAA> {
@@ -146,30 +146,6 @@ async function getVaa(ctx: Ctx, sequence: bigint): Promise<VAA> {
     throw new Error(`Failed to get VAA for: ${msgId.chain}: ${msgId.sequence}`);
 
   return vaa;
-}
-
-async function accountantRegistrations(ctxs: Ctx[]) {
-  console.log("Submitting NTT accountant registrations");
-
-  // first submit hub init
-  const hub = ctxs[0]!;
-  await submitAccountantVAA(serialize(await getVaa(hub, 0n)));
-
-  // then submit spoke to hub registrations
-  for (const ctx of ctxs.slice(1)) {
-    await submitAccountantVAA(serialize(await getVaa(ctx, 1n)));
-  }
-
-  // then submit the rest of the registrations
-  for (const ctx of ctxs) {
-    for (
-      let idx = ctx.context.chain === hub.context.chain ? 0 : 1;
-      idx < ctxs.length - 1;
-      idx++
-    ) {
-      await submitAccountantVAA(serialize(await getVaa(ctx, BigInt(1 + idx))));
-    }
-  }
 }
 
 export async function transferWithChecks(
@@ -552,7 +528,11 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
     transceiverEmitter,
     sender.address
   );
-  await signSendWait(target, setXcvrPeerTxs, signer);
+  const xcvrPeerTxids = await signSendWait(target, setXcvrPeerTxs, signer);
+  console.log(xcvrPeerTxids);
+
+  const [whm] = await target.parseTransaction(xcvrPeerTxids[0]!.txid);
+  return await wh.getVaa(whm!, "Ntt:TransceiverRegistration");
 
   // TODO:
   // if (targetPlatform === "Evm" && peerPlatform === "Evm") {
