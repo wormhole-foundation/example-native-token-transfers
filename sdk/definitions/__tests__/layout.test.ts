@@ -46,7 +46,7 @@ describe("Ntt Layout Tests", function () {
       expect(deserialized.nttManagerPayload.payload.recipientChain).toEqual(
         "Neon"
       );
-      expect(deserialized.transceiverPayload).toBeNull();
+      expect(deserialized.transceiverPayload).toHaveLength(0);
 
       expect(
         serializeLayout(
@@ -69,6 +69,7 @@ describe("Ntt Layout Tests", function () {
       const deserialized = deserializeLayout(transceiverInfo, data);
       expect(deserialized.decimals).toEqual(16);
       expect(deserialized.mode).toEqual(0);
+      expect(serializeLayout(transceiverInfo, deserialized)).toEqual(data);
     }
   );
 
@@ -83,6 +84,9 @@ describe("Ntt Layout Tests", function () {
 
       expect(deserialized.chain).toEqual("Arbitrum");
       expect(deserialized.transceiver).toBeTruthy();
+      expect(serializeLayout(transceiverRegistration, deserialized)).toEqual(
+        data
+      );
     }
   );
 });

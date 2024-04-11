@@ -261,7 +261,7 @@ describe("example-native-token-transfers", () => {
             recipientChain: "Solana",
           },
         },
-        transceiverPayload: null,
+        transceiverPayload: new Uint8Array(),
       } as const;
 
       const serialized = serializePayload(
