@@ -1,9 +1,13 @@
+import { encoding } from "@wormhole-foundation/sdk";
 import {
   getWallet,
   getWormchainSigningClient,
 } from "@wormhole-foundation/wormchain-sdk";
-import { ZERO_FEE } from "@wormhole-foundation/wormchain-sdk/lib/core/consts";
-import { toUtf8 } from "cosmwasm";
+
+export const ZERO_FEE = {
+  amount: [{ amount: "0", denom: "uworm" }],
+  gas: "200000",
+};
 
 // cache the client and signer
 let client: Awaited<ReturnType<typeof getWormchainSigningClient>>;
@@ -17,16 +21,16 @@ export async function submitAccountantVAA(vaa: Uint8Array) {
     );
     client = await getWormchainSigningClient("http://wormchain:26657", wallet);
     const signers = await wallet.getAccounts();
-    signer = signers[0].address;
+    signer = signers[0]!.address;
   }
   const msg = client.wasm.msgExecuteContract({
     sender: signer,
     contract:
       "wormhole17p9rzwnnfxcjp32un9ug7yhhzgtkhvl9jfksztgw5uh69wac2pgshdnj3k",
-    msg: toUtf8(
+    msg: encoding.bytes.encode(
       JSON.stringify({
         submit_vaas: {
-          vaas: [Buffer.from(vaa).toString("base64")],
+          vaas: [encoding.b64.encode(vaa)],
         },
       })
     ),
