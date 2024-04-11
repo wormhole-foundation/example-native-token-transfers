@@ -15,7 +15,7 @@
     },
     {
       "description": "Optimism Sepolia",
-      "evmNetworkId": 43113,
+      "evmNetworkId": 11155420,
       "chainId": 10005,
       "rpc": "https://rpc.ankr.com/optimism_sepolia"
     },
