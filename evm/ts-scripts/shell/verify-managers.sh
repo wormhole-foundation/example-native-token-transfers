@@ -45,14 +45,14 @@ for chain in $operating_chains; do
   export implementation_address=$(jq --raw-output ".NttManagerImplementations[] | select(.chainId == $chain) | .address" $contracts_file_path)
   export proxy_address=$(jq --raw-output ".NttManagerProxies[] | select(.chainId == $chain) | .address" $contracts_file_path)
   export etherscan_api_key=$(jq --raw-output ".[] | select(.chainId == $chain) | .etherscan" $scanner_tokens_file)
-  export evm_network_id=$(jq ".chains[] | select(.chainId == $chain) | .evmNetworkId" $chains_file_path)
+  export evm_chain_id=$(jq ".chains[] | select(.chainId == $chain) | .evmNetworkId" $chains_file_path)
   export transceiver_structs_address=$(jq --raw-output ".TransceiverStructsLibs[] | select(.chainId == $chain) | .address" $contracts_file_path)
   export trimmed_amount_lib_address=$(jq --raw-output ".TrimmedAmountLibs[] | select(.chainId == $chain) | .address" $contracts_file_path)
 
   # echo "implementation_address: $implementation_address"
   # echo "proxy_address: $proxy_address"
   # echo "etherscan_api_key: $etherscan_api_key"
-  # echo "evm_network_id: $evm_network_id"
+  # echo "evm_chain_id: $evm_chain_id"
   # echo "transceiver_structs_address: $transceiver_structs_address"
 
   if [ "$implementation_address" = "" ] || 
@@ -60,7 +60,7 @@ for chain in $operating_chains; do
     [ "$etherscan_api_key" = "null" ] ||
     [ "$transceiver_structs_address" = "null" ] ||
     [ "$trimmed_amount_lib_address" = "null" ] ||
-    [ "$evm_network_id" = "null" ]; then
+    [ "$evm_chain_id" = "null" ]; then
       echo "One of the addresses is not set. Skipping...";
       continue
   fi
@@ -77,7 +77,7 @@ for chain in $operating_chains; do
 
   lib_paths="src/libraries/TransceiverStructs.sol:TransceiverStructs:$transceiver_structs_address"
 
-  forge verify-contract --chain "$evm_network_id" \
+  forge verify-contract --chain "$evm_chain_id" \
     --etherscan-api-key "$etherscan_api_key" \
     "$implementation_address" \
     --constructor-args $implementation_constructor_args \
@@ -85,7 +85,7 @@ for chain in $operating_chains; do
     src/NttManager/NttManager.sol:NttManager --watch
   
   init_data=$(cast calldata "initialize()")
-  forge verify-contract --chain "$evm_network_id" \
+  forge verify-contract --chain "$evm_chain_id" \
     --etherscan-api-key "$etherscan_api_key" \
     "$proxy_address" \
     lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy --watch \
