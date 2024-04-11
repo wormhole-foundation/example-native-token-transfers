@@ -72,7 +72,7 @@ describe("example-native-token-transfers", () => {
 
   it("Can check version", async () => {
     const version = await ntt.version(payer.publicKey);
-    expect(version).to.equal("0.1.0");
+    expect(version).to.equal("1.0.0");
   });
 
   describe("Locking", () => {
