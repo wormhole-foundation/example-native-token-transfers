@@ -10,7 +10,7 @@ import {
   nativeTokenTransferLayout
 } from './nttLayout'
 import { derivePostedVaaKey, getWormholeDerivedAccounts } from '@certusone/wormhole-sdk/lib/cjs/solana/wormhole'
-import { BN, translateError, type IdlAccounts, Program } from '@coral-xyz/anchor'
+import { BN, translateError, type IdlAccounts, Program, AnchorProvider, Wallet, } from '@coral-xyz/anchor'
 import { associatedAddress } from '@coral-xyz/anchor/dist/cjs/utils/token'
 import { getAssociatedTokenAddressSync } from '@solana/spl-token'
 import {
@@ -19,7 +19,9 @@ import {
   Transaction,
   sendAndConfirmTransaction,
   type TransactionSignature,
-  type Connection
+  type Connection,
+  TransactionMessage,
+  VersionedTransaction
 } from '@solana/web3.js'
 import { Keccak } from 'sha3'
 import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from '../../target/types/example_native_token_transfers'
@@ -168,6 +170,44 @@ export class NTT {
 
   registeredTransceiverAddress(transceiver: PublicKey): PublicKey {
     return this.derivePda(['registered_transceiver', transceiver.toBytes()])
+  }
+
+  // View functions
+
+  async version(pubkey: PublicKey): Promise<string> {
+    // the anchor library has a built-in method to read view functions. However,
+    // it requires a signer, which would trigger a wallet prompt on the frontend.
+    // Instead, we manually construct a versioned transaction and call the
+    // simulate function with sigVerify: false below.
+    //
+    // This way, the simulation won't require a signer, but it still requires
+    // the pubkey of an account that has some lamports in it (since the
+    // simulation checks if the account has enough money to pay for the transaction).
+    //
+    // It's a little unfortunate but it's the best we can do.
+    const ix = await this.program.methods.version()
+      .accountsStrict({}).instruction()
+    const latestBlockHash = await this.program.provider.connection.getLatestBlockhash()
+
+    const msg = new TransactionMessage({
+      payerKey: pubkey,
+      recentBlockhash: latestBlockHash.blockhash,
+      instructions: [ix],
+    }).compileToV0Message();
+
+    const tx = new VersionedTransaction(msg);
+
+    const txSimulation =
+      await this.program.provider.connection
+        .simulateTransaction(tx, {
+          sigVerify: false,
+        })
+
+    // the return buffer is in base64 and it encodes the string with a 32 bit
+    // little endian length prefix.
+    const buffer = Buffer.from(txSimulation.value.returnData?.data[0], 'base64')
+    const len = buffer.readUInt32LE(0)
+    return buffer.slice(4, len + 4).toString()
   }
 
   // Instructions
