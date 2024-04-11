@@ -43,22 +43,22 @@ abstract contract ManagerBase is
         deployer = msg.sender;
     }
 
-    modifier inboundNotPaused(){
-        if(_getUnilateralPauseStorage().inbound){
+    modifier inboundNotPaused() {
+        if (_getUnilateralPauseStorage().inbound) {
             revert InboundPaused();
         }
         _;
     }
 
-    modifier outboundNotPaused(){
-        if(_getUnilateralPauseStorage().outbound){
+    modifier outboundNotPaused() {
+        if (_getUnilateralPauseStorage().outbound) {
             revert OutboundPaused();
         }
         _;
     }
 
-    modifier outboundWhenPaused(){
-        if(_getUnilateralPauseStorage().outbound == false){
+    modifier outboundWhenPaused() {
+        if (_getUnilateralPauseStorage().outbound == false) {
             revert NotPausedForUpdate();
         }
         _;
@@ -79,7 +79,8 @@ abstract contract ManagerBase is
 
     bytes32 private constant THRESHOLD_SLOT = bytes32(uint256(keccak256("ntt.threshold")) - 1);
 
-    bytes32 private constant UNILATERAL_PAUSE_SLOT = bytes32(uint256(keccak256("ntt.unilateral_pause")) - 1);
+    bytes32 private constant UNILATERAL_PAUSE_SLOT =
+        bytes32(uint256(keccak256("ntt.unilateral_pause")) - 1);
 
     // =============== Storage Getters/Setters ==============================================
 
@@ -89,7 +90,7 @@ abstract contract ManagerBase is
             $.slot := slot
         }
     }
-    
+
     function _getThresholdStorage() private pure returns (_Threshold storage $) {
         uint256 slot = uint256(THRESHOLD_SLOT);
         assembly ("memory-safe") {
@@ -306,12 +307,9 @@ abstract contract ManagerBase is
 
     /// @inheritdoc IManagerBase
     function getUnilateralPause() public view returns (UnilateralPause memory) {
-        UnilateralPause storage u  = _getUnilateralPauseStorage();
+        UnilateralPause storage u = _getUnilateralPauseStorage();
 
-        return UnilateralPause({
-            inbound: u.inbound, 
-            outbound: u.outbound
-        });
+        return UnilateralPause({inbound: u.inbound, outbound: u.outbound});
     }
 
     /// @inheritdoc IManagerBase
@@ -357,11 +355,11 @@ abstract contract ManagerBase is
         _unpause();
     }
 
-    function setInboundPauseStatus(bool status) external onlyOwnerOrPauser(){
+    function setInboundPauseStatus(bool status) external onlyOwnerOrPauser {
         _getUnilateralPauseStorage().inbound = status;
     }
 
-    function setOutboundPauseStatus(bool status) external onlyOwnerOrPauser(){
+    function setOutboundPauseStatus(bool status) external onlyOwnerOrPauser {
         _getUnilateralPauseStorage().outbound = status;
     }
 

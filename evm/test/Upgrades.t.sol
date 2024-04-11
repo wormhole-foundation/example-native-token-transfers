@@ -139,7 +139,6 @@ contract TestUpgrades is Test, IRateLimiterEvents {
         nttManagerChain1.setThreshold(1);
         nttManagerChain2.setThreshold(1);
         vm.chainId(chainId1);
-
     }
 
     function test_basicUpgradeNttManager() public {
@@ -442,7 +441,6 @@ contract TestUpgrades is Test, IRateLimiterEvents {
     }
 
     function basicFunctionality() public {
-
         nttManagerChain1.setInboundPauseStatus(false);
         nttManagerChain1.setOutboundPauseStatus(false);
         nttManagerChain2.setInboundPauseStatus(false);

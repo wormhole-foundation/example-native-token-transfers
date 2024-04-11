@@ -99,7 +99,6 @@ contract TestNttManager is Test, IRateLimiterEvents {
     // === Deployments with rate limiter disabled
 
     function test_disabledRateLimiter() public {
-
         DummyToken t = new DummyToken();
         NttManager implementation =
             new MockNttManagerContract(address(t), IManagerBase.Mode.LOCKING, chainId, 0, true);
@@ -110,7 +109,6 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         DummyTransceiver e = new DummyTransceiver(address(nttManagerZeroRateLimiter));
         nttManagerZeroRateLimiter.setTransceiver(address(e));
-
 
         address user_A = address(0x123);
         address user_B = address(0x456);
@@ -149,7 +147,6 @@ contract TestNttManager is Test, IRateLimiterEvents {
         (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(nttManagerZeroRateLimiter);
         nttManagerZeroRateLimiter.setOutboundPauseStatus(true);
         nttManagerZeroRateLimiter.setThreshold(2);
-
 
         // register nttManager peer
         bytes32 peer = toWormholeFormat(address(nttManager));
@@ -358,7 +355,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
         newNttManager.setOutboundPauseStatus(true);
         newNttManager.setPeer(chainId2, toWormholeFormat(address(0x1)), 9, type(uint64).max);
         newNttManager.setOutboundLimit(packTrimmedAmount(type(uint64).max, 8).untrim(decimals));
-        newNttManager.setOutboundPauseStatus(false); 
+        newNttManager.setOutboundPauseStatus(false);
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
 
@@ -688,7 +685,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
     }
 
     function test_attestDisabled() public {
-         (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(nttManagerOther);
+        (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(nttManagerOther);
 
         nttManagerOther.setOutboundPauseStatus(true);
         nttManagerOther.setThreshold(2);
@@ -1303,7 +1300,6 @@ contract TestNttManager is Test, IRateLimiterEvents {
     }
 
     function test_setUnilateralPauseBase() public {
-
         // Both inbound and outbound pause should default to true on deployment
         // IManagerBase.UnilateralPause memory initial_p = nttManager.getUnilateralPause();
         // require(initial_p.inbound == true, "Inital inbound pause value unset");
@@ -1327,11 +1323,12 @@ contract TestNttManager is Test, IRateLimiterEvents {
         nttManager.setOutboundPauseStatus(false);
         IManagerBase.UnilateralPause memory p_after_update4 = nttManager.getUnilateralPause();
         require(p_after_update4.inbound == false, "Inbound pause value changed unexpectedly");
-        require(p_after_update4.outbound == false, "Outbound pause value did not reset back to false");
-    }    
+        require(
+            p_after_update4.outbound == false, "Outbound pause value did not reset back to false"
+        );
+    }
 
     function test_setUnilateralPauseAuth() public {
-
         IManagerBase.UnilateralPause memory initial_p = nttManager.getUnilateralPause();
         require(initial_p.inbound == false, "Inital inbound pause value unset");
         require(initial_p.outbound == false, "Inital outbound pause value unset");
@@ -1339,15 +1336,11 @@ contract TestNttManager is Test, IRateLimiterEvents {
         address user_B = address(0x456);
         vm.startPrank(user_B);
 
-        // Check if other can 
-        vm.expectRevert(
-            abi.encodeWithSelector(PausableUpgradeable.InvalidPauser.selector, user_B)
-        );
+        // Check if other can
+        vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.InvalidPauser.selector, user_B));
         nttManager.setInboundPauseStatus(false);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(PausableUpgradeable.InvalidPauser.selector, user_B)
-        );
+        vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.InvalidPauser.selector, user_B));
         nttManager.setOutboundPauseStatus(false);
 
         vm.stopPrank();
@@ -1357,5 +1350,4 @@ contract TestNttManager is Test, IRateLimiterEvents {
         require(p_after_update1.inbound == true, "Inbound pause value unset after update");
         require(p_after_update1.outbound == true, "Outbound pause value unset after update");
     }
-
 }

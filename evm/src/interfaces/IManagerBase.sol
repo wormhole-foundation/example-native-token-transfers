@@ -33,8 +33,8 @@ interface IManagerBase {
 
     /// @dev Structure for storing pause information for inbound and outbound transfers
     struct UnilateralPause {
-        bool inbound; 
-        bool outbound; 
+        bool inbound;
+        bool outbound;
     }
 
     /// @notice Emitted when a message has been attested to.
@@ -127,7 +127,6 @@ interface IManagerBase {
     /// @dev Select 0x37291df0
     error NotPausedForUpdate();
 
-
     /// @notice Fetch the delivery price for a given recipient chain transfer.
     /// @param recipientChain The chain ID of the transfer destination.
     /// @param transceiverInstructions The transceiver specific instructions for quoting and sending
@@ -184,7 +183,7 @@ interface IManagerBase {
     /// it to be considered valid and acted upon.
     function getThreshold() external view returns (uint8);
 
-    /// @notice Returns the inbound and outbound pause information for the manager. 
+    /// @notice Returns the inbound and outbound pause information for the manager.
     /// This is seperate to the general pause feature
     function getUnilateralPause() external view returns (UnilateralPause memory);
 

@@ -53,7 +53,6 @@ contract TestRateLimit is Test, IRateLimiterEvents {
 
         nttManager.setInboundPauseStatus(false);
         nttManager.setOutboundPauseStatus(false);
-
     }
 
     function test_outboundRateLimit_setLimitSimple() public {

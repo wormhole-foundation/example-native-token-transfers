@@ -150,7 +150,7 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
         nttManagerChain1.setInboundPauseStatus(false);
         nttManagerChain1.setOutboundPauseStatus(false);
         nttManagerChain2.setInboundPauseStatus(false);
-        nttManagerChain2.setOutboundPauseStatus(false); 
+        nttManagerChain2.setOutboundPauseStatus(false);
     }
 
     function test_chainToChainBase() public {
@@ -336,7 +336,6 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
         ); // Wrong chain receiving the signed VAA
         wormholeTransceiverChain1.receiveMessage(encodedVMs[0]);
 
-        
         vm.chainId(chainId2);
 
         // Check if the inbound pauser works effectively
@@ -344,7 +343,7 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
         vm.expectRevert(abi.encodeWithSelector(IManagerBase.InboundPaused.selector));
         wormholeTransceiverChain2.receiveMessage(encodedVMs[0]);
         nttManagerChain2.setInboundPauseStatus(false);
- 
+
         {
             uint256 supplyBefore = token2.totalSupply();
             wormholeTransceiverChain2.receiveMessage(encodedVMs[0]);

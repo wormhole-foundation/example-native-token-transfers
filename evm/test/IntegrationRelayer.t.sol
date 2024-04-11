@@ -165,17 +165,13 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
         );
 
         // Ensure that the enforcement for changing the peer is in place.
-        vm.expectRevert(
-            abi.encodeWithSelector(IManagerBase.NotPausedForUpdate.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.NotPausedForUpdate.selector));
         nttManagerChain2.setPeer(
             chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))), 9, type(uint64).max
         );
 
         // Test that the threshold must be changed while in the paused state
-        vm.expectRevert(
-            abi.encodeWithSelector(IManagerBase.NotPausedForUpdate.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.NotPausedForUpdate.selector));
         nttManagerChain2.setThreshold(1);
 
         // Set the peer
@@ -293,9 +289,13 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             );
 
             // Test whether a random caller can set the inbound or outbound pause status
-            vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.InvalidPauser.selector, userA));
+            vm.expectRevert(
+                abi.encodeWithSelector(PausableUpgradeable.InvalidPauser.selector, userA)
+            );
             nttManagerChain1.setOutboundPauseStatus(true);
-            vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.InvalidPauser.selector, userA));
+            vm.expectRevert(
+                abi.encodeWithSelector(PausableUpgradeable.InvalidPauser.selector, userA)
+            );
             nttManagerChain1.setInboundPauseStatus(true);
 
             // Pause outbound transfers and see if this still succeeds
@@ -413,7 +413,7 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             nttManagerChain1.transfer{
                 value: wormholeTransceiverChain1.quoteDeliveryPrice(
                     chainId2, buildTransceiverInstruction(false)
-                )
+                    )
             }(
                 sendingAmount,
                 chainId2,
@@ -467,7 +467,7 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             nttManagerChain2.transfer{
                 value: wormholeTransceiverChain2.quoteDeliveryPrice(
                     chainId1, buildTransceiverInstruction(false)
-                )
+                    )
             }(
                 sendingAmount,
                 chainId1,
