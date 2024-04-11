@@ -139,13 +139,14 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]): Promise<{
 
     if (desiredTransceiverAddr !== currentTransceiverAddr) {
       try {
-        await transceiverContract.setWormholePeer(
+        const tx = await transceiverContract.setWormholePeer(
           peer.chainId,
           Buffer.from(desiredTransceiverAddr, "hex")
         );
         log(
           `Registered transceiver peer for chain ${peer.chainId} at ${desiredTransceiverAddr}.`
         );
+        await tx.wait();
       } catch (error) {
         log(
           `Error registering transceiver peer for chain ${peer.chainId}: ${error}`
@@ -161,13 +162,14 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]): Promise<{
       (await transceiverContract.isWormholeEvmChain(peer.chainId)) !==
       peer.isWormholeEvmChain
     ) {
-      await transceiverContract.setIsWormholeEvmChain(
+      const tx = await transceiverContract.setIsWormholeEvmChain(
         peer.chainId,
         peer.isWormholeEvmChain
       );
       log(
         `Set ${peer.chainId} as wormhole evm chain = ${peer.isWormholeEvmChain}`
       );
+      await tx.wait();
     } else {
       log(`Chain ${peer.chainId} is already set as wormhole evm chain.`);
     }
@@ -176,13 +178,14 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]): Promise<{
       (await transceiverContract.isSpecialRelayingEnabled(peer.chainId)) !==
       peer.isSpecialRelayingEnabled
     ) {
-      await transceiverContract.setIsSpecialRelayingEnabled(
+      const tx = await transceiverContract.setIsSpecialRelayingEnabled(
         peer.chainId,
         peer.isSpecialRelayingEnabled
       );
       log(
         `Set isSpecialRelayingEnabled for chain ${peer.chainId} to ${peer.isSpecialRelayingEnabled}.`
       );
+      await tx.wait();
     } else {
       log(
         `isSpecialRelayingEnabled for chain ${peer.chainId} is already set to ${peer.isSpecialRelayingEnabled}.`
@@ -193,13 +196,14 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]): Promise<{
       (await transceiverContract.isWormholeRelayingEnabled(peer.chainId)) !==
       peer.isWormholeRelayingEnabled
     ) {
-      await transceiverContract.setIsWormholeRelayingEnabled(
+      const tx = await transceiverContract.setIsWormholeRelayingEnabled(
         peer.chainId,
         peer.isWormholeRelayingEnabled
       );
       log(
         `Set isWormholeRelayingEnabled for chain ${peer.chainId} to ${peer.isWormholeRelayingEnabled}.`
       );
+      await tx.wait();
     } else {
       log(
         `isWormholeRelayingEnabled for chain ${peer.chainId} is already set to ${peer.isWormholeRelayingEnabled}.`
