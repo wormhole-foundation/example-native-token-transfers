@@ -19,7 +19,7 @@ docker_build(
     ref = "solana-contract",
     context = ".wormhole/solana",
     dockerfile = ".wormhole/solana/Dockerfile",
-    target = "builder",
+    target = "dev-builder",
     build_args = {"BRIDGE_ADDRESS": "Bridge1p5gheXUvJ6jGWGeCsgPKgnE3YgdGKRVCMY9o"}
 )
 # Solana deploy

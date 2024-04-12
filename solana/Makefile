@@ -18,6 +18,13 @@ anchor-test:
 node_modules: package-lock.json
 	npm ci
 
+.PHONY: artifacts-mainnet
+artifacts-mainnet:
+	rm -rf $@
+	DOCKER_BUILDKIT=1 docker build -t export -o $@ .
+	@cd $@ && ls | xargs sha256sum > checksums.txt
+	@cat $@/checksums.txt
+
 .PHONY: clean
 clean:
 	anchor clean

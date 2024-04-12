@@ -8,10 +8,11 @@ COPY Cargo.toml Cargo.toml
 COPY modules modules
 COPY programs programs
 COPY rust-toolchain rust-toolchain
+COPY scripts scripts
 
 ENV RUST_BACKTRACE=1
 
-FROM anchor AS builder
+FROM anchor AS dev-builder
 
 RUN mkdir -p /opt/solana/deps
 
@@ -38,7 +39,15 @@ COPY --from=solana-contract /opt/solana/deps/mpl_token_metadata.so /opt/solana/d
 COPY --from=solana-contract /opt/solana/deps/wormhole_migration.so /opt/solana/deps/wormhole_migration.so
 
 COPY Makefile Makefile
-COPY scripts scripts
-
 RUN make target/idl/example_native_token_transfers.json
 COPY ts ts
+
+FROM anchor as mainnet-builder
+
+RUN --mount=type=cache,target=/opt/solana/deps/target,id=build_anchor_ntt_target \
+    --mount=type=cache,target=/usr/local/cargo/registry,id=cargo_registry \
+    --mount=type=cache,target=.anchor,id=anchor_cache \
+    anchor build --arch sbf -- --no-default-features --features mainnet
+
+FROM scratch as export
+COPY --from=mainnet-builder /usr/src/anchor-ntt/target/deploy /
