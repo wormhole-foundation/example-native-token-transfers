@@ -16,7 +16,7 @@ mod state;
 // type SolAmount = u64; //in lamports, i.e. 9 decimals
 // type NativeAmount = u64; //in gwei, i.e. also uses 9 decimals
 
-declare_id!("NttQuoter1111111111111111111111111111111111");
+declare_id!("NTtAaoDJhkeHeaVUHnyhwbPNAN6WgBpHkHBTc6d7vLK");
 
 #[program]
 pub mod ntt_quoter {

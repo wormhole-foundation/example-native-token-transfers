@@ -34,8 +34,8 @@
   {
     "chainId": 1,
     "decimals": 18,
-    "managerAddress": "nTTh3bZ5Aer6xboWZe39RDEft4MeVxSQ8D1EYAVLZw9",
-    "transceiverAddress": "9WNzy7xYZyL2k6JnE9dWSp7VpYkvfRN3Rhd8wHv9J9mY",
+    "managerAddress": "NTtAaoDJhkeHeaVUHnyhwbPNAN6WgBpHkHBTc6d7vLK",
+    "transceiverAddress": "ExVbjD8inGXkt7Cx8jVr4GF175sQy1MeqgfaY53Ah8as",
     "isWormholeRelayingEnabled": false,
     "isWormholeEvmChain": false,
     "isSpecialRelayingEnabled": true,

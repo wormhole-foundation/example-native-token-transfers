@@ -1,6 +1,6 @@
 [
   {
-    "token": "0xcE1DE1eA4b040D324a07719043A6234C94fd0b5d",
+    "token": "0x738141EFf659625F2eAD4feECDfCD94155C67f18",
     "mode": 1,
     "chainId": 10002,
     "rateLimitDuration": 3600,
@@ -15,7 +15,7 @@
     ]
   },
   {
-    "token": "0xBB91AC400e7A43a5e9B61e0a41F57Ec958d4D3d0",
+    "token": "0x395D3C74232D12916ecA8952BA352b4d27818035",
     "mode": 1,
     "chainId": 10003,
     "rateLimitDuration": 3600,
@@ -31,7 +31,7 @@
     ]
   },
   {
-    "token": "0x8F8e6988DcEe49Df95904c5214E4800Ac2Bb2114",
+    "token": "0x1d30E78B7C7fbbcef87ae6e97B5389b2e470CA4a",
     "mode": 1,
     "chainId": 10004,
     "rateLimitDuration": 3600,
@@ -46,7 +46,7 @@
     ]
   },
   {
-    "token": "0xa82A53Da98E7eD7a9C612bDe524BB2484a9a3eB4",
+    "token": "0xdDFeABcCf2063CD66f53a1218e23c681Ba6e7962",
     "mode": 1,
     "chainId": 10005,
     "rateLimitDuration": 3600,

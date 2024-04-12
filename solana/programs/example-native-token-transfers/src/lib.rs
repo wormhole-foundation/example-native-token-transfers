@@ -32,7 +32,7 @@ cfg_if::cfg_if! {
     } else if #[cfg(feature = "tilt-devnet")] {
         declare_id!("NTTManager111111111111111111111111111111111");
     } else {
-        declare_id!("nTTh3bZ5Aer6xboWZe39RDEft4MeVxSQ8D1EYAVLZw9");
+        declare_id!("NTtAaoDJhkeHeaVUHnyhwbPNAN6WgBpHkHBTc6d7vLK");
     }
 }
 
