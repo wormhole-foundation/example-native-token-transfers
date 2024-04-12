@@ -37,13 +37,14 @@ async function run() {
 
   const results = await Promise.all(
     chains.map(async (chain) => {
+      let result: { chainId: ChainId; peerUpdateTxs: string[]; error?: unknown; };
       try {
-        await registerPeers(chain, config);
-      } catch (error) {
-        return { chainId: chain.chainId, error };
+        result = await registerPeers(chain, config);
+      } catch (error: unknown) {
+        return { chainId: chain.chainId, peerUpdateTxs: [] as string[], error };
       }
 
-      return { chainId: chain.chainId };
+      return result;
     })
   );
 
@@ -57,16 +58,21 @@ async function run() {
       continue;
     }
 
-    console.log(`Configuration succeded for chain ${result.chainId}`);
+    console.log(`NttManager set peer txs for chain ${result.chainId}: \n  ${result.peerUpdateTxs.join("\n  ")}`);
   }
 }
 
-async function registerPeers(chain: ChainInfo, peers: PeerConfig[]) {
+async function registerPeers(chain: ChainInfo, peers: PeerConfig[]): Promise<{
+  chainId: ChainId;
+  peerUpdateTxs: string[]
+  error?: unknown;
+}> {
   const log = (...args: any[]) => console.log(`[${chain.chainId}]`, ...args);
 
   const managerContract = await getManagerContract(chain);
   const transceiverContract = await getTransceiverContract(chain);
 
+  const peerUpdateTxs: string[] = [];
   for (const peer of peers) {
     if (peer.chainId === chain.chainId) continue;
 
@@ -75,6 +81,7 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]) {
     if (!config.decimals)
       return {
         chainId: chain.chainId,
+        peerUpdateTxs,
         error: "No 'decimals' configuration found",
       };
 
@@ -85,22 +92,24 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]) {
     );
 
     if (!desiredPeerAddress)
-      return { chainId: chain.chainId, error: "No 'managerAddress' found" };
+      return { chainId: chain.chainId, peerUpdateTxs, error: "No 'managerAddress' found" };
 
     if (
       peerCurrentConfig.peerAddress !== desiredPeerAddress ||
       peerCurrentConfig.tokenDecimals !== config.decimals
     ) {
       try {
-        await managerContract.setPeer(
+        const tx = await managerContract.setPeer(
           peer.chainId,
           Buffer.from(desiredPeerAddress, "hex"),
           config.decimals,
           BigInt(config.inboundLimit)
         );
+        peerUpdateTxs.push(tx.hash);
         log(
-          `Registered manager peer for chain ${peer.chainId} at ${desiredPeerAddress}.`
+          `Registered manager peer for chain ${peer.chainId} at ${desiredPeerAddress}. Tx hash ${tx.hash}`
         );
+        await tx.wait();
       }
       catch (error) {
         log(`Error registering manager peer for chain ${peer.chainId}: ${error}`);
@@ -124,6 +133,7 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]) {
     if (!desiredTransceiverAddr)
       return {
         chainId: chain.chainId,
+        peerUpdateTxs,
         error: "No 'transceiverAddress' found",
       };
 
@@ -197,7 +207,7 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]) {
     }
   }
 
-  return { chainId: chain.chainId };
+  return { chainId: chain.chainId, peerUpdateTxs };
 }
 
 async function getTransceiverContract(chain: ChainInfo) {
