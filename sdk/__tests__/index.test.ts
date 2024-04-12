@@ -42,15 +42,12 @@ describe("Hub and Spoke Tests", function () {
     console.log("Transfer hub to spoke A");
     await transferWithChecks(hub, spokeA);
 
-    // tmp
-    await transferWithChecks(spokeA, hub);
+    // Transfer between spokes and check balances
+    console.log("Transfer spoke A to spoke B");
+    await transferWithChecks(spokeA, spokeB);
 
-    // // Transfer between spokes and check balances
-    // console.log("Transfer spoke A to spoke B");
-    // await transferWithChecks(spokeA, spokeB);
-
-    // // Transfer back to hub and check balances
-    // console.log("Transfer spoke B to hub");
-    // await transferWithChecks(spokeB, hub);
+    // Transfer back to hub and check balances
+    console.log("Transfer spoke B to hub");
+    await transferWithChecks(spokeB, hub);
   });
 });
