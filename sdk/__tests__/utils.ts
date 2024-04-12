@@ -102,7 +102,8 @@ export async function link(chainInfos: Ctx[]) {
   const hubChain = hub.context.chain;
 
   // [target, peer, vaa]
-  const registrations: [string, string, VAA][] = [];
+  const registrations: [string, string, VAA<"Ntt:TransceiverRegistration">][] =
+    [];
 
   for (const targetInfo of chainInfos) {
     const toRegister = chainInfos.filter(
@@ -133,7 +134,12 @@ export async function link(chainInfos: Ctx[]) {
     ([_, peer]) => peer === hubChain
   );
   for (const [, , vaa] of hubToSpokeRegistrations) {
-    console.log("Submitting hub to spoke registrations: ", vaa);
+    console.log(
+      "Submitting hub to spoke registrations: ",
+      vaa.emitterChain,
+      vaa.payload.chain,
+      vaa.payload.transceiver.toString()
+    );
     await submitAccountantVAA(serialize(vaa));
   }
 
@@ -142,7 +148,12 @@ export async function link(chainInfos: Ctx[]) {
     ([target, _]) => target === hubChain
   );
   for (const [, , vaa] of spokeToHubRegistrations) {
-    console.log("Submitting spoke to hub registrations: ", vaa);
+    console.log(
+      "Submitting spoke to hub registrations: ",
+      vaa.emitterChain,
+      vaa.payload.chain,
+      vaa.payload.transceiver.toString()
+    );
     await submitAccountantVAA(serialize(vaa));
   }
 
@@ -151,7 +162,12 @@ export async function link(chainInfos: Ctx[]) {
     ([target, peer]) => target !== hubChain && peer !== hubChain
   );
   for (const [, , vaa] of spokeToSpokeRegistrations) {
-    console.log("Submitting spoke to spoke registrations: ", vaa);
+    console.log(
+      "Submitting spoke to spoke registrations: ",
+      vaa.emitterChain,
+      vaa.payload.chain,
+      vaa.payload.transceiver.toString()
+    );
     await submitAccountantVAA(serialize(vaa));
   }
 }
