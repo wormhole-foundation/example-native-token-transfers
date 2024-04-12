@@ -18,6 +18,7 @@ type InitConfig = {
     wormholeProgramId: getEnv("WORMHOLE_PROGRAM_ID"),
     nttProgramId: getEnv("NTT_PROGRAM_ID"),
   };
+
   const signer = await getSigner();
   const signerPk = new PublicKey(await signer.getAddress());
 
@@ -70,6 +71,9 @@ type InitConfig = {
 
   await ledgerSignAndSend(registerTransceiverIxs, [wormholeMessageKeys]);
   
-  console.log(`Transceiver registered at: ${ntt.program.programId}`);
+  console.log(`Transceiver program registered: ${ntt.program.programId}`);
+
+  const emitterAddress = await ntt.emitterAccountAddress();
+  console.log(`Emitter account address: ${emitterAddress.toBase58()}`);
 })();
 

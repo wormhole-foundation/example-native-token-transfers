@@ -91,15 +91,21 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]) {
       peerCurrentConfig.peerAddress !== desiredPeerAddress ||
       peerCurrentConfig.tokenDecimals !== config.decimals
     ) {
-      await managerContract.setPeer(
-        peer.chainId,
-        Buffer.from(desiredPeerAddress, "hex"),
-        config.decimals,
-        BigInt(config.inboundLimit)
-      );
-      log(
-        `Registered manager peer for chain ${peer.chainId} at ${desiredPeerAddress}.`
-      );
+      try {
+        await managerContract.setPeer(
+          peer.chainId,
+          Buffer.from(desiredPeerAddress, "hex"),
+          config.decimals,
+          BigInt(config.inboundLimit)
+        );
+        log(
+          `Registered manager peer for chain ${peer.chainId} at ${desiredPeerAddress}.`
+        );
+      }
+      catch (error) {
+        log(`Error registering manager peer for chain ${peer.chainId}: ${error}`);
+      }
+
     } else {
       log(
         `Manager peer for chain ${peer.chainId} already registered at ${peerCurrentConfig.peerAddress}.`
@@ -122,13 +128,19 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]) {
       };
 
     if (desiredTransceiverAddr !== currentTransceiverAddr) {
-      await transceiverContract.setWormholePeer(
-        peer.chainId,
-        Buffer.from(desiredTransceiverAddr, "hex")
-      );
-      log(
-        `Registered transceiver peer for chain ${peer.chainId} at ${desiredTransceiverAddr}.`
-      );
+      try {
+        await transceiverContract.setWormholePeer(
+          peer.chainId,
+          Buffer.from(desiredTransceiverAddr, "hex")
+        );
+        log(
+          `Registered transceiver peer for chain ${peer.chainId} at ${desiredTransceiverAddr}.`
+        );
+      } catch (error) {
+        log(
+          `Error registering transceiver peer for chain ${peer.chainId}: ${error}`
+        );
+      }
     } else {
       log(
         `Transceiver peer for chain ${peer.chainId} was already registered at ${currentTransceiverAddr}.`
