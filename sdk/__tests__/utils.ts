@@ -82,16 +82,8 @@ export async function deploy(_ctx: StartingCtx): Promise<Ctx> {
   const ctx = { ..._ctx, signers: await getSigners(_ctx) };
   switch (platform) {
     case "Evm":
-      // await Promise.all(
-      //   Object.values(evm.protocolLoaders).map(async (loader) => await loader())
-      // );
       return deployEvm(ctx);
     case "Solana":
-      // await Promise.all(
-      //   Object.values(solana.protocolLoaders).map(
-      //     async (loader) => await loader()
-      //   )
-      // );
       return deploySolana(ctx);
     default:
       throw new Error(
@@ -107,6 +99,10 @@ export async function link(chainInfos: Ctx[]) {
   // first submit hub init to accountant
   const hub = chainInfos[0]!;
   await submitAccountantVAA(serialize(await getVaa(hub, 0n)));
+  const hubChain = hub.context.chain;
+
+  // [target, peer, vaa]
+  const registrations: [string, string, VAA][] = [];
 
   for (const targetInfo of chainInfos) {
     const toRegister = chainInfos.filter(
@@ -122,8 +118,41 @@ export async function link(chainInfos: Ctx[]) {
 
     for (const peerInfo of toRegister) {
       const vaa = await setupPeer(targetInfo, peerInfo);
-      await submitAccountantVAA(serialize(vaa!));
+      if (!vaa) throw new Error("No VAA found");
+      // Add to registrations by PEER chain so we can register hub first
+      registrations.push([
+        targetInfo.context.chain,
+        peerInfo.context.chain,
+        vaa,
+      ]);
     }
+  }
+
+  // Submit Hub to Spoke registrations
+  const hubToSpokeRegistrations = registrations.filter(
+    ([_, peer]) => peer === hubChain
+  );
+  for (const [, , vaa] of hubToSpokeRegistrations) {
+    console.log("Submitting hub to spoke registrations: ", vaa);
+    await submitAccountantVAA(serialize(vaa));
+  }
+
+  // Submit Spoke to Hub registrations
+  const spokeToHubRegistrations = registrations.filter(
+    ([target, _]) => target === hubChain
+  );
+  for (const [, , vaa] of spokeToHubRegistrations) {
+    console.log("Submitting spoke to hub registrations: ", vaa);
+    await submitAccountantVAA(serialize(vaa));
+  }
+
+  // Submit all other registrations
+  const spokeToSpokeRegistrations = registrations.filter(
+    ([target, peer]) => target !== hubChain && peer !== hubChain
+  );
+  for (const [, , vaa] of spokeToSpokeRegistrations) {
+    console.log("Submitting spoke to spoke registrations: ", vaa);
+    await submitAccountantVAA(serialize(vaa));
   }
 }
 
@@ -529,8 +558,6 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
     sender.address
   );
   const xcvrPeerTxids = await signSendWait(target, setXcvrPeerTxs, signer);
-  console.log(xcvrPeerTxids);
-
   const [whm] = await target.parseTransaction(xcvrPeerTxids[0]!.txid);
   return await wh.getVaa(whm!, "Ntt:TransceiverRegistration");
 
