@@ -15,9 +15,9 @@ console.log("Creating mint account with keypair:", mintKeypair.publicKey.toBase5
 
 (async () => {
   const tokenConfig = {
-    decimals: 9,
-    name: "Test NTT Token",
-    symbol: "TEST_NTT_TKN",
+    decimals: 6,
+    name: "W hub",
+    symbol: "Wh",
     uri: "https://thisisnot.arealurl/info.json",
   };
   const signer = await getSigner();

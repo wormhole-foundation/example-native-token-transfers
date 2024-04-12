@@ -1,23 +1,20 @@
 
 import { BN } from '@coral-xyz/anchor'
-import { coalesceChainName, tryHexToNativeString, tryNativeToHexString } from "@certusone/wormhole-sdk";
+import { Keypair, PublicKey } from "@solana/web3.js";
+import { ChainName, coalesceChainName, tryNativeToHexString } from "@certusone/wormhole-sdk";
 
-import { connection, deployerKeypair, evmNttDeployments, wormholeProgramId, nttProgramId } from "./env";
+import { connection, evmNttDeployments, getEnv, getSigner } from "./env";
 import { NTT } from "../sdk";
-
-if (!wormholeProgramId) {
-  throw new Error("WORMHOLE_PROGRAM_ID is not set");
-}
-
-if (!nttProgramId) {
-  throw new Error("NTT_PROGRAM_ID is not set");
-}
+import { ledgerSignAndSend } from './helpers';
 
 (async () => {
   const ntt = new NTT(connection, {
-    nttId: nttProgramId as any,
-    wormholeId: wormholeProgramId as any,
+    nttId: getEnv("NTT_PROGRAM_ID") as any,
+    wormholeId: getEnv("WORMHOLE_PROGRAM_ID") as any,
   });
+
+  const signer = await getSigner();
+  const signerPk = new PublicKey(await signer.getAddress());
 
   for (const deployment of evmNttDeployments) {
     const { chainId, transceiverAddress, managerAddress, tokenDecimals, limit } = deployment;
@@ -29,36 +26,38 @@ if (!nttProgramId) {
       continue;
     }
 
+    const wormholeMessage = Keypair.generate();
+
+    const normalizedTransceiverAddress = tryNativeToHexString(transceiverAddress, chainName);
+    const setTransceiverIxs = await ntt.createSetTransceiverPeerInstructions({
+      chain: chainName as ChainName,
+      payer: signerPk,
+      owner: signerPk,
+      address: Buffer.from(normalizedTransceiverAddress, "hex"),
+      wormholeMessage,
+    });
+    console.log(`Configuring peer address for ${chainId}: ${normalizedTransceiverAddress}`);
+
+    // // Set the evm manager as the manager peer
+    const normalizedManagerAddress = tryNativeToHexString(managerAddress, chainName);
+    const setPeerIx = await ntt.createSetPeerInstruction({
+      payer: signerPk,
+      owner: signerPk,
+      chain: chainName,
+      address: Buffer.from(normalizedManagerAddress, "hex"),
+      limit: new BN(limit),
+      tokenDecimals: tokenDecimals,
+    });
+    console.log(`Configuring manager peer address for ${chainId}: ${normalizedManagerAddress}`);
+
     try {
-      const normalizedTransceiverAddress = tryNativeToHexString(transceiverAddress, chainName);
-      await ntt.setWormholeTransceiverPeer({
-        payer: deployerKeypair,
-        owner: deployerKeypair,
-        chain: chainName,
-        address: Buffer.from(normalizedTransceiverAddress, "hex"),
-      });
-      console.log(`Configured peer address for ${chainId}: ${normalizedTransceiverAddress}`);
+      await ledgerSignAndSend([...setTransceiverIxs, setPeerIx], [wormholeMessage]);
     } catch (error) {
-      console.error(`Failed to configure manager peer address for ${chainId}: ${error}`);
+      console.error(`Failed to configure chain ${chainId}. Error: ${error}`);
       continue;
     }
 
-    // // Set the evm manager as the manager peer
-    try {
-      const normalizedManagerAddress = tryNativeToHexString(managerAddress, chainName);
-      await ntt.setPeer({
-        payer: deployerKeypair,
-        owner: deployerKeypair,
-        chain: chainName,
-        address: Buffer.from(normalizedManagerAddress, "hex"),
-        limit: new BN(limit),
-        tokenDecimals: tokenDecimals,
-      });
-      console.log(`Configured manager peer address for ${chainId}: ${normalizedManagerAddress}`);
-    } catch (error) {
-      console.error(`Failed to configure transceiver peer for ${chainId}: ${error}`);
-      continue;
-    }
+    console.log("Success.");
   }
 })();
 

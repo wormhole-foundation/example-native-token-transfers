@@ -1,33 +1,60 @@
-import { createAssociatedTokenAccount, mintTo } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, mintTo, createMintToCheckedInstruction, createMintToInstruction } from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
 
-import { connection, deployerKeypair, mintRecipientAddress, mintAddress } from "./env";
+import { connection, getEnv, getSigner } from "./env";
+import { ledgerSignAndSend } from "./helpers";
 
-if (!mintRecipientAddress) {
-  throw new Error("MINT_RECIPIENT_ADDRESS is not set");
+
+type MintTokensConfig = {
+  mintRecipientAddress: string;
+  mintAddress: string;
 }
-const mintRecipient = new PublicKey(mintRecipientAddress);
-
-if (!mintAddress) {
-  throw new Error("MINT_ADDRESS is not set");
-}
-
-const mint = new PublicKey(mintAddress);
 
 (async () => {
-  let ata;
+  const config: MintTokensConfig = {
+    mintRecipientAddress: getEnv("MINT_RECIPIENT_ADDRESS"),
+    mintAddress: getEnv("MINT_ADDRESS"),
+  }
+  const signer = await getSigner();
+  const signerPk = new PublicKey(await signer.getAddress());
 
-  // TODO: gracefully handle cases where ata already exists...
+  const mintRecipient = new PublicKey(config.mintRecipientAddress);
+  const mint = new PublicKey(config.mintAddress);
+
+  const ataAddress = getAssociatedTokenAddressSync(
+    mint,
+    mintRecipient, 
+    false,
+  );
+
+  // TODO: check if ata account already exists.
+
+  console.log("Creating ATA at address: ", ataAddress.toBase58());
+
+  const createATAIx = createAssociatedTokenAccountInstruction(
+    signerPk,
+    ataAddress,
+    mintRecipient,
+    mint,
+  );
+
   try {
-    ata = await createAssociatedTokenAccount(connection, deployerKeypair, mint, mintRecipient);
-    console.log("Created ATA at address:", ata.toBase58());
+    await ledgerSignAndSend([createATAIx], []);
+    console.log("ATA created successfully.");
   } catch (err) {
     console.error("Failed to create ATA");
     throw err;
   }
 
+  const mintToIx = await createMintToInstruction(
+    mint,
+    ataAddress,
+    signerPk,
+    BigInt(100000000000000),
+  );
+
   try {
-    await mintTo(connection, deployerKeypair, mint, ata, deployerKeypair.publicKey, BigInt(100000000000000));
+    await ledgerSignAndSend([mintToIx], []);
     console.log("Tokens minted successfully.");
   } catch (error) {
     console.error("Failed to mint tokens");
