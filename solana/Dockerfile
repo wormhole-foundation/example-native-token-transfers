@@ -8,10 +8,11 @@ COPY solana/Cargo.toml Cargo.toml
 COPY solana/modules modules
 COPY solana/programs programs
 COPY solana/rust-toolchain rust-toolchain
+COPY solana/scripts scripts
 
 ENV RUST_BACKTRACE=1
 
-FROM anchor AS builder
+FROM anchor AS dev-builder
 
 RUN mkdir -p /opt/solana/deps
 
@@ -37,8 +38,19 @@ COPY --from=solana-contract /opt/solana/deps/cpi_poster.so /opt/solana/deps/cpi_
 COPY --from=solana-contract /opt/solana/deps/mpl_token_metadata.so /opt/solana/deps/mpl_token_metadata.so
 COPY --from=solana-contract /opt/solana/deps/wormhole_migration.so /opt/solana/deps/wormhole_migration.so
 
-COPY sdk ../sdk
 COPY solana/Makefile Makefile
-COPY solana/scripts scripts
-
 RUN make target/idl/example_native_token_transfers.json
+COPY solana/ts ts
+
+FROM anchor as mainnet-builder
+
+ARG SOLANA_NETWORK
+RUN [ -z "$SOLANA_NETWORK" ] && echo "SOLANA_NETWORK is required" && exit 1 || echo "SOLANA_NETWORK=$SOLANA_NETWORK"
+
+RUN --mount=type=cache,target=/opt/solana/deps/target,id=build_anchor_ntt_target \
+    --mount=type=cache,target=/usr/local/cargo/registry,id=cargo_registry \
+    --mount=type=cache,target=.anchor,id=anchor_cache \
+    anchor build --arch sbf -- --no-default-features --features $SOLANA_NETWORK
+
+FROM scratch as export
+COPY --from=mainnet-builder /usr/src/solana/target/deploy /

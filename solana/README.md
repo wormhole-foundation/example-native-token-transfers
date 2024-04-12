@@ -1,4 +1,4 @@
-# Solana 
+# Solana
 
 ## Prequisities
 
@@ -6,10 +6,27 @@ Ensure that you are using the correct version of the Solana and Anchor CLI tools
 ```toml
 [toolchain]
 anchor_version = "0.29.0"   # CLI
-solana_version = "1.17.2"
+solana_version = "1.18.10"
 ```
 
-You will also need to install the toolchain listed in `rust-toolchain`.
+You will also need `rustup`.
+
+For building the mainnet binaries, the only requirements are `docker` and `make`:
+
+```sh
+make artifacts-mainnet
+```
+
+which will produce the object files into the `artifacts-mainnet` directory.
+This is the recommended way of building the binaries as it results in deterministic builds.
+For Solana devnet builds, or local testing builds, use the
+
+``` sh
+make artifacts-solana-devnet
+make artifacts-tilt-devnet
+```
+
+commands.
 
 ## Design Overview
 

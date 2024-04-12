@@ -29,6 +29,28 @@ idl: target/idl/example_native_token_transfers.json
 node_modules: package-lock.json
 	npm ci
 
+.PHONY: artifacts-mainnet
+artifacts-mainnet: NETWORK=mainnet
+artifacts-mainnet: _artifacts
+	mv _artifacts $@
+
+.PHONY: artifacts-solana-devnet
+artifacts-solana-devnet: NETWORK=solana-devnet
+artifacts-solana-devnet: _artifacts
+	mv _artifacts $@
+
+.PHONY: artifacts-tilt-devnet
+artifacts-tilt-devnet: NETWORK=tilt-devnet
+artifacts-tilt-devnet: _artifacts
+	mv _artifacts $@
+
+.PHONY: _artifacts
+_artifacts:
+	rm -rf $@
+	DOCKER_BUILDKIT=1 cd .. && docker build -f solana/Dockerfile --build-arg="SOLANA_NETWORK=$(NETWORK)" -t export -o solana/$@ .
+	@cd $@ && ls | xargs sha256sum > checksums.txt
+	@cat $@/checksums.txt
+
 .PHONY: clean
 clean:
 	anchor clean
