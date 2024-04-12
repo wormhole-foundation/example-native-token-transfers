@@ -82,7 +82,7 @@ for chain in $operating_chains; do
     "$transceiver_structs_address" \
     src/libraries/TransceiverStructs.sol:TransceiverStructs --watch
 
-  forge verify-contract --chain "$evm_network_id" \
+  forge verify-contract --chain "$evm_chain_id" \
     --etherscan-api-key "$etherscan_api_key" \
     "$implementation_address" \
     --constructor-args $implementation_constructor_args \
