@@ -130,8 +130,13 @@ export class EvmNtt<N extends Network, C extends EvmChains>
       ),
     ];
   }
-  getTokenDecimals(): Promise<number> {
-    throw new Error("Method not implemented.");
+
+  async getTokenDecimals(): Promise<number> {
+    return await EvmPlatform.getDecimals(
+      this.chain,
+      this.provider,
+      this.tokenAddress
+    );
   }
 
   static async fromRpc<N extends Network>(
