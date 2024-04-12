@@ -134,3 +134,12 @@ jobs:
         - name: Run tests
           run: anchor test
           shell: bash
+        - name: Set default Rust toolchain
+          run: rustup default stable
+          working-directory: ./solana
+        - name: anchor lint
+          run: make anchor-lint
+          working-directory: ./solana
+        - name: anchor test --arch sbf
+          run: make anchor-test
+          working-directory: ./solana

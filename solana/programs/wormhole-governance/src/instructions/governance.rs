@@ -42,8 +42,8 @@ pub struct Governance<'info> {
         seeds = [b"governance"],
         bump,
     )]
-    /// CHECK: TODO
-    pub governance: AccountInfo<'info>,
+    /// CHECK: This account is validated by Wormhole, not this program.
+    pub governance: UncheckedAccount<'info>,
 
     #[account(
         constraint = vaa.emitter_chain() == Into::<u16>::into(Chain::Solana) @ GovernanceError::InvalidGovernanceChain,
@@ -52,7 +52,8 @@ pub struct Governance<'info> {
     pub vaa: Account<'info, PostedVaa<GovernanceMessage>>,
 
     #[account(executable)]
-    pub program: AccountInfo<'info>,
+    /// CHECK: This account is validated by Wormhole, not this program.
+    pub program: UncheckedAccount<'info>,
 
     #[account(
         init,
