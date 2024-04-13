@@ -36,7 +36,7 @@ else
   operating_chains=$(jq -r '.operatingChains[]' $chains_file_path)
 fi
 
-export FOUNDRY_PROFILE=production
+export FOUNDRY_PROFILE=prod
 
 for chain in $operating_chains; do
   echo "Operating on chain $chain:"
