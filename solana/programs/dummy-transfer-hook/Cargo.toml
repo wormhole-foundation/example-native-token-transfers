@@ -14,6 +14,10 @@ no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
 default = []
+mainnet = []
+solana-devnet = []
+tilt-devnet = []
+tilt-devnet2 = [ "tilt-devnet" ]
 
 [dependencies]
 anchor-lang.workspace = true
