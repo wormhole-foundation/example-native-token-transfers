@@ -270,14 +270,10 @@ async function signSendWait(
 async function getNtt(
   ctx: Ctx
 ): Promise<Ntt<typeof NETWORK, typeof ctx.context.chain>> {
-  const ctor = ctx.context.platform.getProtocolInitializer("Ntt");
-  return new ctor(
-    ctx.context.network,
-    ctx.context.chain,
-    await ctx.context.getRpc(),
-    // @ts-ignore
-    { ...ctx.context.config.contracts!, ntt: ctx.contracts }
-  );
+  return ctx.context.getProtocol("Ntt", {
+    ...ctx.context.config.contracts!,
+    ntt: ctx.contracts,
+  });
 }
 
 function getNativeSigner(ctx: Partial<Ctx>): any {

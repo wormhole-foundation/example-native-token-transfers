@@ -150,7 +150,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
 
     const { ntt } = conf.contracts as { ntt: Ntt.Contracts };
 
-    const version = await EvmNtt.getVersion(ntt.manager, provider);
+    const version = await EvmNtt._getVersion(ntt.manager, provider);
     const abiBindings = await loadAbiVersion(version);
 
     return new EvmNtt(
@@ -172,7 +172,11 @@ export class EvmNtt<N extends Network, C extends EvmChains>
       .filter((x) => x !== null) as Ntt.TransceiverInstruction[];
   }
 
-  static async getVersion(address: string, provider: Provider) {
+  async getVersion(): Promise<string> {
+    return EvmNtt._getVersion(this.managerAddress, this.provider);
+  }
+
+  static async _getVersion(address: string, provider: Provider) {
     const contract = new Contract(
       address,
       ["function NTT_MANAGER_VERSION() public view returns (string)"],

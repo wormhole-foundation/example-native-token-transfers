@@ -8,6 +8,8 @@ import {
   PublicKey,
   Transaction,
   TransactionInstruction,
+  TransactionMessage,
+  VersionedTransaction,
 } from "@solana/web3.js";
 import {
   AccountAddress,
@@ -20,7 +22,9 @@ import {
   TokenAddress,
   UnsignedTransaction,
   toChain,
+  encoding,
   toChainId,
+  deserializeLayout,
 } from "@wormhole-foundation/sdk-connect";
 import {
   Ntt,
@@ -47,6 +51,7 @@ import {
   TransferArgs,
   nttAddresses,
   programDataAddress,
+  programVersionLayout,
 } from "./utils.js";
 
 export type Config = IdlAccounts<NativeTokenTransfer>["config"];
@@ -124,15 +129,12 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     if (conf.network !== network)
       throw new Error(`Network mismatch: ${conf.network} != ${network}`);
-    if (!conf.tokenMap) throw new Error("Token map not found");
+
+    if (!("ntt" in conf.contracts)) throw new Error("Ntt contracts not found");
 
     return new SolanaNtt(network as N, chain, provider, {
       ...conf.contracts,
-      ntt: {
-        token: "",
-        manager: "",
-        transceiver: { wormhole: "" },
-      },
+      ntt: conf.contracts["ntt"]!,
     });
   }
 
@@ -156,6 +158,63 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     return (await this.getConfig()).custody.toBase58();
   }
 
+  async getVersion(sender: AccountAddress<C>): Promise<string> {
+    return await SolanaNtt._getVersion(
+      this.program.programId.toBase58(),
+      this.connection,
+      sender
+    );
+  }
+
+  static async _getVersion(
+    programAddress: string,
+    connection: Connection,
+    sender: AccountAddress<SolanaChains>
+  ): Promise<string> {
+    const senderAddress = new SolanaAddress(sender).unwrap();
+
+    const program = new Program<NativeTokenTransfer>(
+      // @ts-ignore
+      idl.ntt,
+      programAddress,
+      { connection }
+    );
+
+    // the anchor library has a built-in method to read view functions. However,
+    // it requires a signer, which would trigger a wallet prompt on the frontend.
+    // Instead, we manually construct a versioned transaction and call the
+    // simulate function with sigVerify: false below.
+    //
+    // This way, the simulation won't require a signer, but it still requires
+    // the pubkey of an account that has some lamports in it (since the
+    // simulation checks if the account has enough money to pay for the transaction).
+    //
+    // It's a little unfortunate but it's the best we can do.
+
+    const ix = await program.methods.version().accountsStrict({}).instruction();
+    const latestBlockHash =
+      await program.provider.connection.getLatestBlockhash();
+
+    const msg = new TransactionMessage({
+      payerKey: senderAddress,
+      recentBlockhash: latestBlockHash.blockhash,
+      instructions: [ix],
+    }).compileToV0Message();
+
+    const tx = new VersionedTransaction(msg);
+
+    const txSimulation = await program.provider.connection.simulateTransaction(
+      tx,
+      { sigVerify: false }
+    );
+
+    console.log(txSimulation);
+
+    const data = encoding.b64.decode(txSimulation.value.returnData?.data[0]!);
+    const parsed = deserializeLayout(programVersionLayout, data);
+    return encoding.bytes.decode(parsed.version);
+  }
+
   async *initialize(args: {
     payer: Keypair;
     owner: Keypair;
@@ -176,7 +235,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       );
     }
 
-    const custodyAddress = await associatedAddress({
+    const custodyAddress = associatedAddress({
       mint: args.mint,
       owner: this.pdas.tokenAuthority(),
     });
