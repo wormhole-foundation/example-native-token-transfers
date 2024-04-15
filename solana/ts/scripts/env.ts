@@ -5,7 +5,7 @@ import {
 } from "@solana/web3.js";
 import { ChainId } from "@certusone/wormhole-sdk";
 import { SolanaLedgerSigner } from "@xlabs-xyz/ledger-signer-solana";
-import { Chain, chainIdToChain, chains } from "@wormhole-foundation/sdk-base";
+import { Chain, chainIdToChain } from "@wormhole-foundation/sdk-base";
 
 if (!process.env.LEDGER_DERIVATION_PATH) {
   throw new Error("LEDGER_DERIVATION_PATH is not set");
@@ -45,7 +45,31 @@ export type NttDeployment = {
   limit: number;
 };
 
+export type ManagersRegisteredPerChain = {
+  chainId: ChainId;
+  supportedManagers: {
+    programId: string;
+    gasCost: number;
+    wormholeTransceiverIndex;
+    isSupported: boolean;
+  }[]
+}[];
+
 // TODO: read this data from config files similarly to the evm scripts
+export const managerRegistrations = [
+  {
+    tokenAddress: "EetppHswYvV1jjRWoQKC1hejdeBDHR9NNzNtCyRQfrrQ",
+    supportedManagers: [
+      {
+        programId: "NTtAaoDJhkeHeaVUHnyhwbPNAN6WgBpHkHBTc6d7vLK",
+        gasCost: 400000,
+        wormholeTransceiverIndex: 0,
+        isSupported: true,
+      },
+    ],
+  }
+]
+
 export const evmNttDeployments: NttDeployment[] = [
   {
     chainId: 10002,

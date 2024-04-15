@@ -33,7 +33,7 @@
   },
   {
     "chainId": 1,
-    "decimals": 18,
+    "decimals": 6,
     "managerAddress": "NTtAaoDJhkeHeaVUHnyhwbPNAN6WgBpHkHBTc6d7vLK",
     "transceiverAddress": "ExVbjD8inGXkt7Cx8jVr4GF175sQy1MeqgfaY53Ah8as",
     "isWormholeRelayingEnabled": false,
