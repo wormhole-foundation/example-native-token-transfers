@@ -329,7 +329,7 @@ describe("example-native-token-transfers", () => {
           await ctx.getRpc(),
           new SolanaAddress(payer.publicKey.toBase58())
         );
-        expect(version).toBe("0.1.0");
+        expect(version).toBe("1.0.0");
       });
     });
   });
