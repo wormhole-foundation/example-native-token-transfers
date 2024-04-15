@@ -1,4 +1,4 @@
-import { IdlAccounts, Program } from "@coral-xyz/anchor";
+import { Program } from "@coral-xyz/anchor";
 import { associatedAddress } from "@coral-xyz/anchor/dist/cjs/utils/token.js";
 import * as splToken from "@solana/spl-token";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
@@ -21,10 +21,10 @@ import {
   Network,
   TokenAddress,
   UnsignedTransaction,
-  toChain,
-  encoding,
-  toChainId,
   deserializeLayout,
+  encoding,
+  toChain,
+  toChainId,
 } from "@wormhole-foundation/sdk-connect";
 import {
   Ntt,
@@ -44,8 +44,6 @@ import {
   utils,
 } from "@wormhole-foundation/sdk-solana-core";
 import BN from "bn.js";
-import type { NativeTokenTransfer } from "./anchor-idl/index.js";
-import { idl } from "./anchor-idl/index.js";
 import {
   BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
   TransferArgs,
@@ -54,8 +52,29 @@ import {
   programVersionLayout,
 } from "./utils.js";
 
-export type Config = IdlAccounts<NativeTokenTransfer>["config"];
-export type InboxItem = IdlAccounts<NativeTokenTransfer>["inboxItem"];
+import { IdlVersion, IdlVersions, NttBindings } from "./bindings.js";
+
+function loadIdlVersion(version: string) {
+  if (!(version in IdlVersions))
+    throw new Error(`Unknown IDL version: ${version}`);
+
+  return IdlVersions[version as IdlVersion];
+}
+
+function getProgram(
+  connection: Connection,
+  address: string,
+  version: string = "default"
+) {
+  const idl = loadIdlVersion(version);
+
+  return new Program<NttBindings.NativeTokenTransfer>(
+    // @ts-ignore
+    idl.idl.ntt,
+    address,
+    { connection }
+  );
+}
 
 export class SolanaNttWormholeTransceiver<
   N extends Network,
@@ -85,10 +104,10 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 {
   core: SolanaWormholeCore<N, C>;
   xcvrs: SolanaNttWormholeTransceiver<N, C>[];
-  program: Program<NativeTokenTransfer>;
   pdas: ReturnType<typeof nttAddresses>;
 
-  config?: Config;
+  program: Program<NttBindings.NativeTokenTransfer>;
+  config?: NttBindings.Config;
 
   constructor(
     readonly network: N,
@@ -98,12 +117,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   ) {
     if (!contracts.ntt) throw new Error("Ntt contracts not found");
 
-    this.program = new Program<NativeTokenTransfer>(
-      // @ts-ignore
-      idl.ntt,
-      this.contracts.ntt!.manager,
-      { connection }
-    );
+    this.program = getProgram(connection, contracts.ntt.manager);
 
     this.core = new SolanaWormholeCore<N, C>(
       network,
@@ -138,7 +152,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     });
   }
 
-  async getConfig(): Promise<Config> {
+  async getConfig(): Promise<NttBindings.Config> {
     this.config =
       this.config ??
       (await this.program.account.config.fetch(this.pdas.configAccount()));
@@ -173,12 +187,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   ): Promise<string> {
     const senderAddress = new SolanaAddress(sender).unwrap();
 
-    const program = new Program<NativeTokenTransfer>(
-      // @ts-ignore
-      idl.ntt,
-      programAddress,
-      { connection }
-    );
+    const program = getProgram(connection, programAddress);
 
     // the anchor library has a built-in method to read view functions. However,
     // it requires a signer, which would trigger a wallet prompt on the frontend.
@@ -413,7 +422,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   ): AsyncGenerator<UnsignedTransaction<N, C>, any, unknown> {
     if (relay) throw new Error("Relayer not available on solana");
 
-    const config: Config = await this.getConfig();
+    const config: NttBindings.Config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");
 
     outboxItem = outboxItem ?? Keypair.generate();
@@ -589,7 +598,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     from: PublicKey;
     fromAuthority: PublicKey;
     outboxItem: PublicKey;
-    config?: Config;
+    config?: NttBindings.Config;
   }): Promise<TransactionInstruction> {
     const config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");
@@ -635,7 +644,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     from: PublicKey;
     fromAuthority: PublicKey;
     outboxItem: PublicKey;
-    config?: Config;
+    config?: NttBindings.Config;
   }): Promise<TransactionInstruction> {
     const config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");

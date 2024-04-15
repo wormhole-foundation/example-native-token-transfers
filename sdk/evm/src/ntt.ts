@@ -35,11 +35,10 @@ import {
   NttTransceiverBindings,
 } from "./bindings.js";
 
-async function loadAbiVersion(version: string) {
+function loadAbiVersion(version: string) {
   if (!(version in AbiVersions))
     throw new Error(`Unknown ABI version: ${version}`);
-  const module = AbiVersions[version as AbiVersion];
-  return module;
+  return AbiVersions[version as AbiVersion];
 }
 
 export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
@@ -151,7 +150,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     const { ntt } = conf.contracts as { ntt: Ntt.Contracts };
 
     const version = await EvmNtt._getVersion(ntt.manager, provider);
-    const abiBindings = await loadAbiVersion(version);
+    const abiBindings = loadAbiVersion(version);
 
     return new EvmNtt(
       network as N,
