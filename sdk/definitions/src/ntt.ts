@@ -4,7 +4,6 @@ import {
   toChainId,
   type Chain,
   type Network,
-  type Platform,
 } from "@wormhole-foundation/sdk-base";
 
 import {
@@ -236,8 +235,11 @@ export interface WormholeNttTransceiver<N extends Network, C extends Chain>
 
 declare module "@wormhole-foundation/sdk-definitions" {
   export namespace WormholeRegistry {
+    interface ProtocolToInterfaceMapping<N, C> {
+      Ntt: Ntt<N, C>;
+    }
     interface ProtocolToPlatformMapping {
-      Ntt: EmptyPlatformMap<Platform, Ntt.ProtocolName>;
+      Ntt: EmptyPlatformMap<Ntt.ProtocolName>;
     }
   }
 }
