@@ -16,8 +16,6 @@ anchor-test: node_modules build target/idl/example_native_token_transfers.json s
 	anchor test --skip-build
 
 sdk: build target/idl/example_native_token_transfers.json
-	@echo "Copying IDL files to SDK"
-	cd ../sdk/solana && npm run generate && cd -
 	@echo "Building SDK"
 	cd ../sdk && npm ci && npm run build:solana
 
