@@ -47,7 +47,6 @@ for chain in $operating_chains; do
   export etherscan_api_key=$(jq --raw-output ".[] | select(.chainId == $chain) | .etherscan" $scanner_tokens_file)
   export evm_chain_id=$(jq ".chains[] | select(.chainId == $chain) | .evmNetworkId" $chains_file_path)
   export transceiver_structs_address=$(jq --raw-output ".TransceiverStructsLibs[] | select(.chainId == $chain) | .address" $contracts_file_path)
-  export trimmed_amount_lib_address=$(jq --raw-output ".TrimmedAmountLibs[] | select(.chainId == $chain) | .address" $contracts_file_path)
 
   # echo "implementation_address: $implementation_address"
   # echo "proxy_address: $proxy_address"
@@ -59,7 +58,6 @@ for chain in $operating_chains; do
     [ "$proxy_address" = "" ] ||
     [ "$etherscan_api_key" = "null" ] ||
     [ "$transceiver_structs_address" = "null" ] ||
-    [ "$trimmed_amount_lib_address" = "null" ] ||
     [ "$evm_chain_id" = "null" ]; then
       echo "One of the addresses is not set. Skipping...";
       continue
