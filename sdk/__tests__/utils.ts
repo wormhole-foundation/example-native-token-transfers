@@ -270,10 +270,17 @@ async function signSendWait(
 async function getNtt(
   ctx: Ctx
 ): Promise<Ntt<typeof NETWORK, typeof ctx.context.chain>> {
-  return ctx.context.getProtocol("Ntt", {
-    ...ctx.context.config.contracts!,
-    ntt: ctx.contracts,
-  });
+  const ctor = ctx.context.platform.getProtocolInitializer("Ntt");
+  // @ts-ignore
+  return new ctor(
+    ctx.context.network,
+    ctx.context.chain,
+    await ctx.context.getRpc(),
+    {
+      ...ctx.context.config.contracts!,
+      ntt: ctx.contracts,
+    }
+  );
 }
 
 function getNativeSigner(ctx: Partial<Ctx>): any {
@@ -536,6 +543,9 @@ async function deploySolana(ctx: Ctx): Promise<Ctx> {
 async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
   const target = targetCtx.context;
   const peer = peerCtx.context;
+
+  console.log(targetCtx.contracts);
+  console.log(peerCtx.contracts);
 
   const {
     manager,
