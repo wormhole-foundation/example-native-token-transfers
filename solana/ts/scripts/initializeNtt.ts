@@ -72,7 +72,9 @@ type InitConfig = {
     transceiver: new PublicKey(ntt.program.programId),
   });
 
-  await ledgerSignAndSend(registerTransceiverIxs, [wormholeMessageKeys]);
+  const signature = await ledgerSignAndSend(registerTransceiverIxs, [wormholeMessageKeys]);
+
+  await connection.confirmTransaction(signature);
   
   console.log(`Transceiver program registered: ${ntt.program.programId}`);
 
