@@ -13,6 +13,7 @@ import {
   getContractAddress,
   loadScriptConfig,
 } from "./env";
+import { BigNumber } from "ethers";
 
 const processName = "updatePeerAddresses";
 
@@ -103,7 +104,7 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]): Promise<{
           peer.chainId,
           Buffer.from(desiredPeerAddress, "hex"),
           config.decimals,
-          BigInt(config.inboundLimit)
+          BigNumber.from(config.inboundLimit),
         );
         peerUpdateTxs.push(tx.hash);
         log(
