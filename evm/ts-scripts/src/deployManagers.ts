@@ -173,8 +173,6 @@ async function deployManagerProxy(
 
   const proxy = await proxyFactory.deploy(implementationAddress, encodedCall);
 
-  console.log("Proxy deployment tx sent.")
-
   return await proxy.deployed().then((result) => {
     return { address: result.address, chainId: chain.chainId };
   });

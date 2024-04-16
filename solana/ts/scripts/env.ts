@@ -58,7 +58,7 @@ export type ManagersRegisteredPerChain = {
 // TODO: read this data from config files similarly to the evm scripts
 export const managerRegistrations = [
   {
-    tokenAddress: "EetppHswYvV1jjRWoQKC1hejdeBDHR9NNzNtCyRQfrrQ",
+    tokenAddress: "85VBFQZC9TZkfaptBWjvUw7YbZjy52A6mjtPGjstQAmQ",
     supportedManagers: [
       {
         programId: "NTtAaoDJhkeHeaVUHnyhwbPNAN6WgBpHkHBTc6d7vLK",
@@ -72,36 +72,36 @@ export const managerRegistrations = [
 
 export const evmNttDeployments: NttDeployment[] = [
   {
-    chainId: 10002,
+    chainId: 2,
     chainName: "ethereum",
-    managerAddress: "0x06413c42e913327Bc9a08B7C1E362BAE7C0b9598",
-    transceiverAddress: "0x649fF7B32C2DE771043ea105c4aAb2D724497238",
+    managerAddress: "0xc072B1AEf336eDde59A049699Ef4e8Fa9D594A48",
+    transceiverAddress: "0xDb55492d7190D1baE8ACbE03911C4E3E7426870c",
     tokenDecimals: 18,
-    limit: 100000000000000,
+    limit: 4_200_000 * 10**6,
   },
   {
-    chainId: 10003,
+    chainId: 23,
     chainName: "arbitrum",
-    managerAddress: "0xCeC6FB4F352bf3DC2b95E1c41831E4D2DBF9a35D",
-    transceiverAddress: "0xfA42603152E4f133F5F3DA610CDa91dF5821d8bc",
+    managerAddress: "0x5333d0AcA64a450Add6FeF76D6D1375F726CB484",
+    transceiverAddress: "0xD1a8AB69e00266e8B791a15BC47514153A5045a6",
     tokenDecimals: 18,
-    limit: 100000000000000,
+    limit: 1_300_000 * 10**6,
   },
   {
-    chainId: 10004,
-    chainName: "base",
-    managerAddress: "0x8b9E328bE1b1Bc7501B413d04EBF7479B110775c",
-    transceiverAddress: "0x149987472333cD48ac6D28293A338a1EEa6Be7EE",
-    tokenDecimals: 18,
-    limit: 100000000000000,
-  },
-  {
-    chainId: 10005,
+    chainId: 24,
     chainName: "optimism",
-    managerAddress: "0x27F9Fdd3eaD5aA9A5D827Ca860Be28442A1e7582",
-    transceiverAddress: "0xeCF0496DE01e9Aa4ADB50ae56dB550f52003bdB7",
+    managerAddress: "0x1a4F1a790f23Ffb9772966cB6F36dCd658033e13",
+    transceiverAddress: "0x9bD8b7b527CA4e6738cBDaBdF51C22466756073d",
     tokenDecimals: 18,
-    limit: 100000000000000,
+    limit: 100_000 * 10**6,
+  },
+  {
+    chainId: 30,
+    chainName: "base",
+    managerAddress: "0x5333d0AcA64a450Add6FeF76D6D1375F726CB484",
+    transceiverAddress: "0xD1a8AB69e00266e8B791a15BC47514153A5045a6",
+    tokenDecimals: 18,
+    limit: 100_000 * 10**6,
   },
 ];
 
@@ -117,25 +117,25 @@ export interface PeerQuotes {
 }
 
 export const peerQuotes: Partial<Record<Chain, PeerQuotes>> = {
-  [chainIdToChain(10002)]: {
+  [chainIdToChain(2)]: {
     maxGasDropoffEth: "0",
     basePriceUsd: "5000000",
     nativePriceUsd: "3500000000",
     gasPriceGwei: "50",
   },
-  [chainIdToChain(10003)]: {
+  [chainIdToChain(23)]: {
     maxGasDropoffEth: "0",
     basePriceUsd: "5000000",
     nativePriceUsd: "3500000000",
     gasPriceGwei: "50",
   },
-  [chainIdToChain(10004)]: {
+  [chainIdToChain(24)]: {
     maxGasDropoffEth: "0",
     basePriceUsd: "5000000",
     nativePriceUsd: "3500000000",
     gasPriceGwei: "50",
   },
-  [chainIdToChain(10005)]: {
+  [chainIdToChain(30)]: {
     maxGasDropoffEth: "0",
     basePriceUsd: "5000000",
     nativePriceUsd: "3500000000",

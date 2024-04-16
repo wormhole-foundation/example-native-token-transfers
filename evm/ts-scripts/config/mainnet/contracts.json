@@ -54,13 +54,93 @@
     }
   ],
   "NttManagerImplementations": [
+    {
+      "address": "0x1a4F1a790f23Ffb9772966cB6F36dCd658033e13",
+      "chainId": 2
+    },
+    {
+      "address": "0x7d0fE95426D9Ca53cdA7cfBCcFfB4F0eDfffd814",
+      "chainId": 23
+    },
+    {
+      "address": "0x169D91C797edF56100F1B765268145660503a423",
+      "chainId": 24
+    },
+    {
+      "address": "0x7d0fE95426D9Ca53cdA7cfBCcFfB4F0eDfffd814",
+      "chainId": 30
+    }
   ],
   "NttManagerProxies": [
+    {
+      "address": "0xc072B1AEf336eDde59A049699Ef4e8Fa9D594A48",
+      "chainId": 2
+    },
+    {
+      "address": "0x5333d0AcA64a450Add6FeF76D6D1375F726CB484",
+      "chainId": 23
+    },
+    {
+      "address": "0x1a4F1a790f23Ffb9772966cB6F36dCd658033e13",
+      "chainId": 24
+    },
+    {
+      "address": "0x5333d0AcA64a450Add6FeF76D6D1375F726CB484",
+      "chainId": 30
+    }
   ],
   "TransceiverStructsLibs": [
+    {
+      "chainId": 2,
+      "address": "0x169D91C797edF56100F1B765268145660503a423"
+    },
+    {
+      "chainId": 23,
+      "address": "0x3b5CE72cf76dc9866aCc20DB51E4cAD3Eb719b0E"
+    },
+    {
+      "chainId": 24,
+      "address": "0x574B7864119C9223A9870Ea614dC91A8EE09E512"
+    },
+    {
+      "chainId": 30,
+      "address": "0x3b5CE72cf76dc9866aCc20DB51E4cAD3Eb719b0E"
+    }
   ],
   "NttTransceiverImplementations": [
+    {
+      "address": "0x9bD8b7b527CA4e6738cBDaBdF51C22466756073d",
+      "chainId": 2
+    },
+    {
+      "address": "0x83F97c06dD151B0f8A8aB2629dEf30096443114E",
+      "chainId": 23
+    },
+    {
+      "address": "0xc072B1AEf336eDde59A049699Ef4e8Fa9D594A48",
+      "chainId": 24
+    },
+    {
+      "address": "0x83F97c06dD151B0f8A8aB2629dEf30096443114E",
+      "chainId": 30
+    }
   ],
   "NttTransceiverProxies": [
+    {
+      "address": "0xDb55492d7190D1baE8ACbE03911C4E3E7426870c",
+      "chainId": 2
+    },
+    {
+      "address": "0xD1a8AB69e00266e8B791a15BC47514153A5045a6",
+      "chainId": 23
+    },
+    {
+      "address": "0x9bD8b7b527CA4e6738cBDaBdF51C22466756073d",
+      "chainId": 24
+    },
+    {
+      "address": "0xD1a8AB69e00266e8B791a15BC47514153A5045a6",
+      "chainId": 30
+    }
   ]
 }

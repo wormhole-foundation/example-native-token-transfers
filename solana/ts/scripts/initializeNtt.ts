@@ -1,4 +1,4 @@
-import { TOKEN_PROGRAM_ID, createSetAuthorityInstruction, setAuthority } from '@solana/spl-token';
+import { TOKEN_PROGRAM_ID, createSetAuthorityInstruction } from '@solana/spl-token';
 import { BN } from '@coral-xyz/anchor'
 import { Keypair, PublicKey } from "@solana/web3.js";
 
