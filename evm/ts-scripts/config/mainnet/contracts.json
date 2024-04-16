@@ -1,0 +1,18 @@
+{
+  "WormholeCoreContracts": [
+  ],
+  "WormholeRelayers": [
+  ],
+  "SpecializedRelayers": [
+  ],
+  "NttManagerImplementations": [
+  ],
+  "NttManagerProxies": [
+  ],
+  "TransceiverStructsLibs": [
+  ],
+  "NttTransceiverImplementations": [
+  ],
+  "NttTransceiverProxies": [
+  ]
+}

@@ -1,0 +1,44 @@
+[
+  {
+    "chainId": 2,
+    "decimals": 18,
+    "isWormholeRelayingEnabled": true,
+    "isWormholeEvmChain": true,
+    "isSpecialRelayingEnabled": false,
+    "inboundLimit": "1000000000000000000000000000"
+  },
+  {
+    "chainId": 23,
+    "decimals": 18,
+    "isWormholeRelayingEnabled": true,
+    "isWormholeEvmChain": true,
+    "isSpecialRelayingEnabled": false,
+    "inboundLimit": "1000000000000000000000000"
+  },
+  {
+    "chainId": 24,
+    "decimals": 18,
+    "isWormholeRelayingEnabled": true,
+    "isWormholeEvmChain": true,
+    "isSpecialRelayingEnabled": false,
+    "inboundLimit": "1000000000000000000000000"
+  },
+  {
+    "chainId": 30,
+    "decimals": 18,
+    "isWormholeRelayingEnabled": true,
+    "isWormholeEvmChain": true,
+    "isSpecialRelayingEnabled": false,
+    "inboundLimit": "1000000000000000000000000"
+  },
+  {
+    "chainId": 1,
+    "decimals": 6,
+    "managerAddress": "",
+    "transceiverAddress": "",
+    "isWormholeRelayingEnabled": false,
+    "isWormholeEvmChain": false,
+    "isSpecialRelayingEnabled": true,
+    "inboundLimit": "1000000000000000000000000"
+  }
+]

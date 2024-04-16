@@ -1,0 +1,29 @@
+{
+  "guardianSetIndex": 3,
+  "chains": [
+    {
+      "description": "Ethereum",
+      "evmNetworkId": 1,
+      "chainId": 2,
+      "rpc": "https://eth.llamarpc.com"
+    },
+    {
+      "description": "Arbitrum",
+      "evmNetworkId": 42161,
+      "chainId": 23,
+      "rpc": "https://arbitrum.llamarpc.com"
+    },
+    {
+      "description": "Optimism",
+      "evmNetworkId": 10,
+      "chainId": 24,
+      "rpc": "https://optimism-rpc.publicnode.com"
+    },
+    {
+      "description": "Base",
+      "evmNetworkId": 8453,
+      "chainId": 30,
+      "rpc": "https://mainnet.base.org"
+    }
+  ]
+}
