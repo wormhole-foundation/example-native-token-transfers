@@ -104,7 +104,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     readonly chain: C,
     readonly provider: Provider,
     readonly contracts: Contracts & { ntt?: Ntt.Contracts },
-    abiBindings: NttBindings = AbiVersions["default"]
+    readonly abiVersion: AbiVersion = "default"
   ) {
     if (!contracts.ntt) throw new Error("No Ntt Contracts provided");
 
@@ -115,6 +115,9 @@ export class EvmNtt<N extends Network, C extends EvmChains>
 
     this.tokenAddress = contracts.ntt.token;
     this.managerAddress = contracts.ntt.manager;
+
+    const abiBindings = loadAbiVersion(this.abiVersion);
+
     this.manager = abiBindings.NttManager.connect(
       contracts.ntt.manager,
       this.provider
@@ -150,15 +153,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     const { ntt } = conf.contracts as { ntt: Ntt.Contracts };
 
     const version = await EvmNtt._getVersion(ntt.manager, provider);
-    const abiBindings = loadAbiVersion(version);
-
-    return new EvmNtt(
-      network as N,
-      chain,
-      provider,
-      conf.contracts,
-      abiBindings
-    );
+    return new EvmNtt(network as N, chain, provider, conf.contracts, version);
   }
 
   private encodeFlags(ixs: (any | null)[]): Ntt.TransceiverInstruction[] {
