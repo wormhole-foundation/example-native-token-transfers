@@ -1,15 +1,15 @@
 import {
   Chain,
   ChainContext,
+  Network,
   TokenId,
   VAA,
+  Wormhole,
   WormholeMessageId,
   TransferReceipt as _TransferReceipt,
   amount,
   canonicalAddress,
   routes,
-  Network,
-  Wormhole,
 } from "@wormhole-foundation/sdk-connect";
 import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
 
@@ -53,15 +53,27 @@ export namespace NttRoute {
 
   export type AttestationReceipt = {
     id: WormholeMessageId;
-    // TODO: any so we dont trip types but attestation type
-    // scheme needs thinkin
-    attestation: VAA<"Ntt:WormholeTransfer"> | any;
+    attestation: VAA<"Ntt:WormholeTransfer">;
   };
 
   export type TransferReceipt<
     SC extends Chain = Chain,
     DC extends Chain = Chain
-  > = _TransferReceipt<AttestationReceipt, SC, DC>;
+  > = _TransferReceipt<AttestationReceipt, SC, DC> & {
+    params: ValidatedParams;
+  };
+
+  export function resolveSupportedNetworks(config: Config): Network[] {
+    return ["Mainnet", "Testnet"];
+  }
+
+  export function resolveSupportedChains(
+    config: Config,
+    network: Network
+  ): Chain[] {
+    const configs = Object.values(config.tokens);
+    return configs.flatMap((cfg) => cfg.map((chainCfg) => chainCfg.chain));
+  }
 
   export function resolveSourceTokens(
     config: Config,
@@ -117,8 +129,8 @@ export namespace NttRoute {
           tc.token.toLowerCase() === address.toLowerCase() &&
           tc.chain === token.chain
       );
-      if (found) {
-        const c: Ntt.Contracts = {
+      if (found)
+        return {
           token: found.token,
           manager: found.manager,
           transceiver: {
@@ -126,8 +138,6 @@ export namespace NttRoute {
               .address,
           },
         };
-        return c;
-      }
     }
     throw new Error("Cannot find Ntt contracts in config for: " + address);
   }

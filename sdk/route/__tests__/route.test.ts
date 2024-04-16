@@ -86,6 +86,7 @@ describe("Manual Route Tests", function () {
     resolver = new routes.RouteResolver(wh, [rt]);
   });
 
+  let found: routes.Route<Network>;
   it("Should resolve a given route request", async function () {
     const request = await routes.RouteTransferRequest.create(wh, {
       from: testing.utils.makeChainAddress("Solana"),
@@ -93,9 +94,23 @@ describe("Manual Route Tests", function () {
       source: Wormhole.tokenId("Solana", SOL_TOKEN),
       destination: Wormhole.tokenId("Sepolia", SEPOLIA_TOKEN),
     });
-    const found = await resolver.findRoutes(request);
-    console.log(found);
-    expect(found).toHaveLength(1);
-    expect(found[0]!.request.from.chain).toEqual("Solana");
+    const foundRoutes = await resolver.findRoutes(request);
+    expect(foundRoutes).toHaveLength(1);
+    expect(foundRoutes[0]!.request.from.chain).toEqual("Solana");
+
+    found = foundRoutes[0]!;
+  });
+
+  let op: ReturnType<typeof found.getDefaultOptions>;
+  it("Should provide default options", async function () {
+    op = found.getDefaultOptions();
+    expect(op).toBeTruthy();
+  });
+
+  let vp;
+  it("Should validate a transfer request", async function () {
+    vp = await found.validate({ amount: "1.0", options: op });
+    expect(vp.valid).toBeTruthy();
+    expect(vp.params.amount).toEqual("1.0");
   });
 });

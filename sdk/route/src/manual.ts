@@ -6,7 +6,6 @@ import {
   Network,
   RedeemedTransferReceipt,
   Signer,
-  SourceInitiatedTransferReceipt,
   TokenId,
   TransactionId,
   TransferState,
@@ -47,25 +46,20 @@ export class NttManualRoute<N extends Network>
   override NATIVE_GAS_DROPOFF_SUPPORTED: boolean = false;
   override IS_AUTOMATIC: boolean = false;
 
-  static config: NttRoute.Config = {
-    // enable tokens by adding them to config
-    // see the factory below
-    tokens: {},
-  };
+  // @ts-ignore
+  // Since we set the config on the static class, access it with this param
+  // the NttManualRoute.config will always be empty
+  readonly staticConfig = this.constructor.config;
+  static config: NttRoute.Config = { tokens: {} };
 
-  static meta = {
-    name: "ManualNtt",
-  };
+  static meta = { name: "ManualNtt" };
 
   static supportedNetworks(): Network[] {
-    return ["Mainnet", "Testnet"];
+    return NttRoute.resolveSupportedNetworks(this.config);
   }
 
-  // TODO: move more logic from these static methods to
-  // the namespace so they can be re-used in the Auto route
   static supportedChains(network: Network): Chain[] {
-    const configs = Object.values(this.config.tokens);
-    return configs.flatMap((cfg) => cfg.map((chainCfg) => chainCfg.chain));
+    return NttRoute.resolveSupportedChains(this.config, network);
   }
 
   static async supportedSourceTokens(
@@ -74,7 +68,6 @@ export class NttManualRoute<N extends Network>
     return NttRoute.resolveSourceTokens(this.config, fromChain);
   }
 
-  // get the list of destination tokens that may be recieved on the destination chain
   static async supportedDestinationTokens<N extends Network>(
     sourceToken: TokenId,
     fromChain: ChainContext<N>,
@@ -106,11 +99,11 @@ export class NttManualRoute<N extends Network>
       normalizedParams: {
         amount: amt,
         srcNtt: NttRoute.resolveNttContracts(
-          NttManualRoute.config,
+          this.staticConfig,
           this.request.source.id
         ),
         dstNtt: NttRoute.resolveNttContracts(
-          NttManualRoute.config,
+          this.staticConfig,
           this.request.destination.id
         ),
       },
@@ -157,41 +150,41 @@ export class NttManualRoute<N extends Network>
       to: to.chain,
       state: TransferState.SourceInitiated,
       originTxs: txids,
-    } satisfies SourceInitiatedTransferReceipt;
+      params,
+    };
   }
 
   async complete(signer: Signer, receipt: R): Promise<TransactionId[]> {
-    if (!isAttested(receipt))
+    if (!isAttested(receipt)) {
+      if (isRedeemed(receipt)) return receipt.destinationTxs ?? [];
       throw new Error(
         "The source must be finalized in order to complete the transfer"
       );
+    }
 
     const { toChain } = this.request;
-    const ntt = await toChain.getProtocol("Ntt", {
-      // TODO: get the  destination NTT contracts
-    });
+    const ntt = await toChain.getProtocol(
+      "Ntt",
+      receipt.params.normalizedParams.dstNtt
+    );
     const sender = Wormhole.parseAddress(signer.chain(), signer.address());
     const completeXfer = ntt.redeem([receipt.attestation], sender);
     return await signSendWait(toChain, completeXfer, signer);
   }
 
   async finalize(signer: Signer, receipt: R): Promise<TransactionId[]> {
-    if (!isAttested(receipt))
-      throw new Error("The transfer must be attested in order to finalize");
+    if (!isRedeemed(receipt))
+      throw new Error("The transfer must be redeemed in order to finalize");
 
     const {
       attestation: { attestation: vaa },
     } = receipt;
 
-    if (!isRedeemed(receipt))
-      throw new Error(
-        "The transfer must be redeemed before it can be finalized"
-      );
-
     const { toChain } = this.request;
-    const ntt = await toChain.getProtocol("Ntt", {
-      //TODO: Get destination chain contracts...
-    });
+    const ntt = await toChain.getProtocol(
+      "Ntt",
+      receipt.params.normalizedParams.dstNtt
+    );
     const completeTransfer = ntt.completeInboundQueuedTransfer(
       toChain.chain,
       vaa.payload.nttManagerPayload,
