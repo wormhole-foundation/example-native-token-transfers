@@ -119,26 +119,26 @@ export interface PeerQuotes {
 export const peerQuotes: Partial<Record<Chain, PeerQuotes>> = {
   [chainIdToChain(2)]: {
     maxGasDropoffEth: "0",
-    basePriceUsd: "5000000",
+    basePriceUsd: "500000",
     nativePriceUsd: "3500000000",
-    gasPriceGwei: "50",
+    gasPriceGwei: "25",
   },
   [chainIdToChain(23)]: {
     maxGasDropoffEth: "0",
-    basePriceUsd: "5000000",
+    basePriceUsd: "500000",
     nativePriceUsd: "3500000000",
-    gasPriceGwei: "50",
+    gasPriceGwei: "25",
   },
   [chainIdToChain(24)]: {
     maxGasDropoffEth: "0",
-    basePriceUsd: "5000000",
+    basePriceUsd: "500000",
     nativePriceUsd: "3500000000",
-    gasPriceGwei: "50",
+    gasPriceGwei: "25",
   },
   [chainIdToChain(30)]: {
     maxGasDropoffEth: "0",
-    basePriceUsd: "5000000",
+    basePriceUsd: "500000",
     nativePriceUsd: "3500000000",
-    gasPriceGwei: "50",
+    gasPriceGwei: "25",
   },
 };

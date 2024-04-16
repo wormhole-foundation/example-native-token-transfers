@@ -31,18 +31,19 @@ type InitConfig = {
 
   const nttManagerPk = ntt.tokenAuthorityAddress();
 
-  const setAuthorityInstruction = createSetAuthorityInstruction(
-    mint,
-    signerPk,
-    0,
-    nttManagerPk,
-    undefined, // for multi-sig
-    TOKEN_PROGRAM_ID, // might also be TOKEN_2022_PROGRAM_ID
-  );
+  // this is needed on testnet, but not on mainnet
+  // const setAuthorityInstruction = createSetAuthorityInstruction(
+  //   mint,
+  //   signerPk,
+  //   0,
+  //   nttManagerPk,
+  //   undefined, // for multi-sig
+  //   TOKEN_PROGRAM_ID, // might also be TOKEN_2022_PROGRAM_ID
+  // );
 
-  await ledgerSignAndSend([setAuthorityInstruction], [])
+  // await ledgerSignAndSend([setAuthorityInstruction], [])
 
-  console.log(`Authority set to ${nttManagerPk.toBase58()}`);
+  // console.log(`Authority set to ${nttManagerPk.toBase58()}`);
   
   console.log("Manager Emitter Address:", await ntt.emitterAccountAddress().toBase58());
 
@@ -59,6 +60,8 @@ type InitConfig = {
   await ledgerSignAndSend([initializeNttIx], []);
 
   console.log("NTT initialized succesfully!");
+
+  await new Promise(resolve => setTimeout(resolve, 5000));
 
   const wormholeMessageKeys = Keypair.generate();
 

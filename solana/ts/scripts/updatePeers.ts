@@ -19,7 +19,7 @@ import { ledgerSignAndSend } from './helpers';
   for (const deployment of evmNttDeployments) {
     const { chainId, transceiverAddress, managerAddress, tokenDecimals, limit } = deployment;
     const chainName = coalesceChainName(deployment.chainId);
-    console.log("Configuring peers for chain " + chainId);
+    const log = (...args) => console.log(`[${chainId}] `, ...args);
 
     if (!transceiverAddress || !managerAddress || !tokenDecimals || !chainName || chainName === "unset") {
       console.error(`Invalid deployment configuration for chainId ${chainId}`);
@@ -36,7 +36,7 @@ import { ledgerSignAndSend } from './helpers';
       address: Buffer.from(normalizedTransceiverAddress, "hex"),
       wormholeMessage,
     });
-    console.log(`Configuring peer address for ${chainId}: ${normalizedTransceiverAddress}`);
+    log(`Configuring peer address for ${chainId}: ${normalizedTransceiverAddress}`);
 
     // // Set the evm manager as the manager peer
     const normalizedManagerAddress = tryNativeToHexString(managerAddress, chainName);
@@ -48,10 +48,12 @@ import { ledgerSignAndSend } from './helpers';
       limit: new BN(limit),
       tokenDecimals: tokenDecimals,
     });
-    console.log(`Configuring manager peer address for ${chainId}: ${normalizedManagerAddress}`);
+    log(`Configuring manager peer address for ${chainId}: ${normalizedManagerAddress}`);
 
     try {
-      await ledgerSignAndSend([...setTransceiverIxs, setPeerIx], [wormholeMessage]);
+      const txSignature = await ledgerSignAndSend([...setTransceiverIxs, setPeerIx], [wormholeMessage]);
+      log(`Transaction ${txSignature} sent.`);
+      await connection.confirmTransaction(txSignature);
     } catch (error) {
       console.error(`Failed to configure chain ${chainId}. Error: ${error}`);
       continue;

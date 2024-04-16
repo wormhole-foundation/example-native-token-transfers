@@ -144,7 +144,7 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]): Promise<{
           Buffer.from(desiredTransceiverAddr, "hex")
         );
         log(
-          `Registered transceiver peer for chain ${peer.chainId} at ${desiredTransceiverAddr}.`
+          `Registered transceiver peer for chain ${peer.chainId} at ${desiredTransceiverAddr}. Hash: ${tx.hash}`
         );
         await tx.wait();
       } catch (error) {
