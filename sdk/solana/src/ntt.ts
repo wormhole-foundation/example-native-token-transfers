@@ -28,7 +28,6 @@ import {
 } from "@wormhole-foundation/sdk-connect";
 import {
   Ntt,
-  NttTransceiver,
   WormholeNttTransceiver,
 } from "@wormhole-foundation/sdk-definitions-ntt";
 import {
@@ -75,35 +74,10 @@ function getProgram(
     { connection }
   );
 }
-
-export class SolanaNttWormholeTransceiver<
-  N extends Network,
-  C extends SolanaChains
-> implements NttTransceiver<N, C, WormholeNttTransceiver.VAA>
-{
-  constructor(readonly manager: SolanaNtt<N, C>, readonly address: string) {
-    //
-  }
-
-  async *receive(
-    attestation: WormholeNttTransceiver.VAA,
-    sender?: AccountAddress<C> | undefined
-  ): AsyncGenerator<UnsignedTransaction<N, C>, any, unknown> {
-    throw new Error("Method not implemented.");
-  }
-
-  async *setPeer(
-    peer: ChainAddress<C>
-  ): AsyncGenerator<UnsignedTransaction<N, C>, any, unknown> {
-    throw new Error("Method not implemented.");
-  }
-}
-
 export class SolanaNtt<N extends Network, C extends SolanaChains>
   implements Ntt<N, C>
 {
   core: SolanaWormholeCore<N, C>;
-  xcvrs: SolanaNttWormholeTransceiver<N, C>[];
   pdas: ReturnType<typeof nttAddresses>;
 
   program: Program<NttBindings.NativeTokenTransfer>;
@@ -113,11 +87,12 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     readonly network: N,
     readonly chain: C,
     readonly connection: Connection,
-    readonly contracts: Contracts & { ntt?: Ntt.Contracts }
+    readonly contracts: Contracts & { ntt?: Ntt.Contracts },
+    readonly idlVersion: IdlVersion = "default"
   ) {
     if (!contracts.ntt) throw new Error("Ntt contracts not found");
 
-    this.program = getProgram(connection, contracts.ntt.manager);
+    this.program = getProgram(connection, contracts.ntt.manager, idlVersion);
 
     this.core = new SolanaWormholeCore<N, C>(
       network,
@@ -126,12 +101,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       contracts
     );
     this.pdas = nttAddresses(this.program.programId);
-    this.xcvrs = [
-      new SolanaNttWormholeTransceiver<N, C>(
-        this,
-        this.contracts.ntt!.transceiver.wormhole
-      ),
-    ];
+    // this.xcvrs = [
+    //   new SolanaNttWormholeTransceiver<N, C>(this, this.contracts.ntt!.transceiver.wormhole),
+    // ];
   }
 
   static async fromRpc<N extends Network>(
@@ -145,11 +117,20 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       throw new Error(`Network mismatch: ${conf.network} != ${network}`);
 
     if (!("ntt" in conf.contracts)) throw new Error("Ntt contracts not found");
+    const ntt = conf.contracts["ntt"];
 
-    return new SolanaNtt(network as N, chain, provider, {
-      ...conf.contracts,
-      ntt: conf.contracts["ntt"]!,
-    });
+    const version = await SolanaNtt._getVersion(ntt.manager, provider);
+
+    return new SolanaNtt(
+      network as N,
+      chain,
+      provider,
+      {
+        ...conf.contracts,
+        ntt,
+      },
+      version
+    );
   }
 
   async getConfig(): Promise<NttBindings.Config> {
@@ -183,8 +164,15 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   static async _getVersion(
     programAddress: string,
     connection: Connection,
-    sender: AccountAddress<SolanaChains>
-  ): Promise<string> {
+    sender?: AccountAddress<SolanaChains>
+  ): Promise<IdlVersion> {
+    if (!sender)
+      sender = new SolanaAddress(
+        // TODO: this is just a placeholder address, funded on mainnet/devnet
+        // since we need a funded acct
+        "AzifThohBjYpwV63d1NmZf4aFjc5ma8oExPttnUvmBT5"
+      );
+
     const senderAddress = new SolanaAddress(sender).unwrap();
 
     const program = getProgram(connection, programAddress);
@@ -217,11 +205,11 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       { sigVerify: false }
     );
 
-    console.log(txSimulation);
-
     const data = encoding.b64.decode(txSimulation.value.returnData?.data[0]!);
     const parsed = deserializeLayout(programVersionLayout, data);
-    return encoding.bytes.decode(parsed.version);
+    const version = encoding.bytes.decode(parsed.version);
+    if (version in IdlVersions) return version as IdlVersion;
+    else throw new Error("Unknown IDL version: " + version);
   }
 
   async *initialize(args: {
@@ -479,8 +467,8 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");
 
-    if (attestations.length !== this.xcvrs.length) throw "No";
     // TODO: not this, we should iterate over the set of enabled xcvrs?
+    // if (attestations.length !== this.xcvrs.length) throw "No";
     const wormholeNTT = attestations[0]! as WormholeNttTransceiver.VAA;
 
     // Post the VAA that we intend to redeem
@@ -875,3 +863,27 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     );
   }
 }
+
+// Unused currently since the transceiver is part of the manager contract
+// export class SolanaNttWormholeTransceiver<
+//   N extends Network,
+//   C extends SolanaChains
+// > implements NttTransceiver<N, C, WormholeNttTransceiver.VAA>
+// {
+//   constructor(readonly manager: SolanaNtt<N, C>, readonly address: string) {
+//     //
+//   }
+//
+//   async *receive(
+//     attestation: WormholeNttTransceiver.VAA,
+//     sender?: AccountAddress<C> | undefined
+//   ): AsyncGenerator<UnsignedTransaction<N, C>, any, unknown> {
+//     throw new Error("Method not implemented.");
+//   }
+//
+//   async *setPeer(
+//     peer: ChainAddress<C>
+//   ): AsyncGenerator<UnsignedTransaction<N, C>, any, unknown> {
+//     throw new Error("Method not implemented.");
+//   }
+// }
