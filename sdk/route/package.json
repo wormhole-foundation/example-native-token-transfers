@@ -37,6 +37,7 @@
     "build:esm": "tsc -p ./tsconfig.esm.json",
     "build": "npm run build:esm && npm run build:cjs",
     "rebuild": "npm run clean && npm run build",
+    "test": "jest --config ./jest.config.ts",
     "clean": "rm -rf ./dist"
   },
   "devDependencies": {
@@ -53,7 +54,7 @@
     "@wormhole-foundation/sdk-definitions-ntt": "0.0.1-beta.1",
     "@wormhole-foundation/sdk-solana-ntt": "0.0.1-beta.1",
     "@wormhole-foundation/sdk-evm-ntt": "0.0.1-beta.1",
-    "@wormhole-foundation/sdk-connect": "0.5.3-beta.3"
+    "@wormhole-foundation/sdk-connect": "0.5.3-beta.5"
   },
   "type": "module",
   "exports": {

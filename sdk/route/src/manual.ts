@@ -2,7 +2,9 @@ import {
   AttestedTransferReceipt,
   Chain,
   ChainContext,
+  CompletedTransferReceipt,
   Network,
+  RedeemedTransferReceipt,
   Signer,
   SourceInitiatedTransferReceipt,
   TokenId,
@@ -11,8 +13,8 @@ import {
   Wormhole,
   WormholeMessageId,
   amount,
-  canonicalAddress,
   isAttested,
+  isRedeemed,
   isSourceFinalized,
   isSourceInitiated,
   routes,
@@ -31,10 +33,20 @@ type Q = routes.Quote<Op, Vp>;
 
 type R = NttRoute.TransferReceipt;
 
+export function nttRoutes(config: NttRoute.Config) {
+  class NttRouteImpl<N extends Network> extends NttManualRoute<N> {
+    static override config = config;
+  }
+  return NttRouteImpl;
+}
+
 export class NttManualRoute<N extends Network>
-  extends routes.ManualRoute<N, Op, Vp, R>
+  extends routes.FinalizableRoute<N, Op, Vp, R>
   implements routes.StaticRouteMethods<typeof NttManualRoute>
 {
+  override NATIVE_GAS_DROPOFF_SUPPORTED: boolean = false;
+  override IS_AUTOMATIC: boolean = false;
+
   static config: NttRoute.Config = {
     // enable tokens by adding them to config
     // see the factory below
@@ -59,16 +71,7 @@ export class NttManualRoute<N extends Network>
   static async supportedSourceTokens(
     fromChain: ChainContext<Network>
   ): Promise<TokenId[]> {
-    // TODO: dedupe?
-    return Object.entries(this.config.tokens)
-      .map(([, configs]) => {
-        const tokenConf = configs.find((config) => {
-          config.chain === fromChain.chain;
-        });
-        if (!tokenConf) return null;
-        return Wormhole.tokenId(fromChain.chain, tokenConf!.token);
-      })
-      .filter((x) => !!x) as TokenId[];
+    return NttRoute.resolveSourceTokens(this.config, fromChain);
   }
 
   // get the list of destination tokens that may be recieved on the destination chain
@@ -77,18 +80,12 @@ export class NttManualRoute<N extends Network>
     fromChain: ChainContext<N>,
     toChain: ChainContext<N>
   ): Promise<TokenId[]> {
-    return Object.entries(this.config.tokens)
-      .map(([, configs]) => {
-        const match = configs.find((config) => {
-          config.chain === fromChain.chain &&
-            config.token === canonicalAddress(sourceToken);
-        });
-        if (!match) return;
-        const remote = configs.find((config) => config.chain === toChain.chain);
-        if (!remote) return;
-        return Wormhole.tokenId(toChain.chain, remote.token);
-      })
-      .filter((x) => !!x) as TokenId[];
+    return NttRoute.resolveDestinationTokens(
+      this.config,
+      sourceToken,
+      fromChain,
+      toChain
+    );
   }
 
   static isProtocolSupported<N extends Network>(
@@ -170,8 +167,9 @@ export class NttManualRoute<N extends Network>
       );
 
     const { toChain } = this.request;
-    // TODO: get the ntt contracts from..somewhere?
-    const ntt = await toChain.getProtocol("Ntt");
+    const ntt = await toChain.getProtocol("Ntt", {
+      // TODO: get the  destination NTT contracts
+    });
     const sender = Wormhole.parseAddress(signer.chain(), signer.address());
     const completeXfer = ntt.redeem([receipt.attestation], sender);
     return await signSendWait(toChain, completeXfer, signer);
@@ -181,19 +179,25 @@ export class NttManualRoute<N extends Network>
     if (!isAttested(receipt))
       throw new Error("The transfer must be attested in order to finalize");
 
-    // TODO:
-    //if (!isRedeemed(receipt))
-    //  throw new Error("The transfer must be redeemed in order to finalize it");
+    const {
+      attestation: { attestation: vaa },
+    } = receipt;
+
+    if (!isRedeemed(receipt))
+      throw new Error(
+        "The transfer must be redeemed before it can be finalized"
+      );
 
     const { toChain } = this.request;
-    const ntt = await toChain.getProtocol("Ntt");
+    const ntt = await toChain.getProtocol("Ntt", {
+      //TODO: Get destination chain contracts...
+    });
     const completeTransfer = ntt.completeInboundQueuedTransfer(
       toChain.chain,
-      receipt.attestation.attestation.payload.nttManagerPayload,
+      vaa.payload.nttManagerPayload,
       this.request.destination.id.address
     );
-
-    return await signSendWait(this.request.toChain, completeTransfer, signer);
+    return await signSendWait(toChain, completeTransfer, signer);
   }
 
   public override async *track(receipt: R, timeout?: number) {
@@ -218,46 +222,37 @@ export class NttManualRoute<N extends Network>
       } satisfies AttestedTransferReceipt<NttRoute.AttestationReceipt> as R;
     }
 
-    return receipt as R;
-    // const { toChain } = this.request;
-    // const ntt = await toChain.getProtocol("Ntt");
+    const { toChain } = this.request;
+    const ntt = await toChain.getProtocol("Ntt");
 
-    // if (isAttested(receipt)) {
-    //   const {
-    //     attestation: { attestation: vaa },
-    //   } = receipt;
+    if (isAttested(receipt)) {
+      const {
+        attestation: { attestation: vaa },
+      } = receipt;
 
-    //   // fist check is redeemed so we can be done
-    //   if (await ntt.getIsApproved(vaa)) {
-    //     // TODO: check for destination event transactions?
-    //     yield {
-    //       ...receipt,
-    //       state: TransferState.DestinationFinalized,
-    //       destinationTx: "",
-    //     };
-    //   }
-    // }
+      if (await ntt.getIsApproved(vaa)) {
+        receipt = {
+          ...receipt,
+          state: TransferState.DestinationInitiated,
+          // TODO: check for destination event transactions to get dest Txids
+        } satisfies RedeemedTransferReceipt<NttRoute.AttestationReceipt>;
+        yield receipt;
+      }
+    }
 
-    //if (isRedeemed(receipt)) {
-    //  const {
-    //    attestation: { attestation: vaa },
-    //  } = receipt;
-    //  // now check to see if its approved and pending completion
-    //  if (await ntt.getIsExecuted(vaa)) {
-    //    yield {
-    //      ...receipt,
-    //      state: TransferState.Attested,
-    //    } satisfies NttRoute.TransferReceipt;
-    //  }
-    //}
-    // TODO: check for destination transactions
-    //return receipt;
+    if (isRedeemed(receipt)) {
+      const {
+        attestation: { attestation: vaa },
+      } = receipt;
+
+      if (await ntt.getIsExecuted(vaa)) {
+        receipt = {
+          ...receipt,
+          state: TransferState.DestinationFinalized,
+        } satisfies CompletedTransferReceipt<NttRoute.AttestationReceipt>;
+      }
+    }
+
+    yield receipt;
   }
-}
-
-export function nttRoutes<N extends Network>(config: NttRoute.Config) {
-  class NttRouteImpl extends NttManualRoute<N> {
-    static override config = config;
-  }
-  return NttRouteImpl;
 }
