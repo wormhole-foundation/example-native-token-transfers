@@ -1,9 +1,57 @@
 {
   "WormholeCoreContracts": [
+    {
+      "chainId": 2,
+      "address": "0x98f3c9e6E3fAce36bAAd05FE09d375Ef1464288B"
+    },
+    {
+      "chainId": 23,
+      "address": "0xa5f208e072434bC67592E4C49C1B991BA79BCA46"
+    },
+    {
+      "chainId": 24,
+      "address": "0xEe91C335eab126dF5fDB3797EA9d6aD93aeC9722"
+    },
+    {
+      "chainId": 30,
+      "address": "0xbebdb6C8ddC678FfA9f8748f85C815C556Dd8ac6"
+    }
   ],
   "WormholeRelayers": [
+    {
+      "chainId": 2,
+      "address": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911"
+    },
+    {
+      "chainId": 23,
+      "address": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911"
+    },
+    {
+      "chainId": 24,
+      "address": "0x27428DD2d3DD32A4D7f7C497eAaa23130d894911"
+    },
+    {
+      "chainId": 30,
+      "address": "0x706F82e9bb5b0813501714Ab5974216704980e31"
+    }
   ],
   "SpecializedRelayers": [
+    {
+      "address": "0x63BE47835c7D66c4aA5B2C688Dc6ed9771c94C74",
+      "chainId": 2
+    },
+    {
+      "address": "0x63BE47835c7D66c4aA5B2C688Dc6ed9771c94C74",
+      "chainId": 23
+    },
+    {
+      "address": "0x63BE47835c7D66c4aA5B2C688Dc6ed9771c94C74",
+      "chainId": 24
+    },
+    {
+      "address": "0x63BE47835c7D66c4aA5B2C688Dc6ed9771c94C74",
+      "chainId": 30
+    }
   ],
   "NttManagerImplementations": [
   ],
