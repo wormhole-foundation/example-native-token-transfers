@@ -6,7 +6,7 @@
     "rateLimitDuration": 84600,
     "skipRateLimit": false,
     "threshold": 1,
-    "outboundLimit": 100000000000000000000,
+    "outboundLimit": 4000000000000000000000000,
     "inboundLimit": [
       { "chainId": 1, "limit": 1000000000000000000000000000 },
       { "chainId": 23, "limit": 1000000000000000000000000000 },
@@ -21,7 +21,7 @@
     "rateLimitDuration": 84600,
     "skipRateLimit": false,
     "threshold": 1,
-    "outboundLimit": 100000000000000000000,
+    "outboundLimit": 2300000000000000000000000,
     "inboundLimit": [
       { "chainId": 1, "limit": 1000000000000000000000000000 },
       { "chainId": 2, "limit": 1000000000000000000000000000 },
@@ -36,7 +36,7 @@
     "rateLimitDuration": 84600,
     "skipRateLimit": false,
     "threshold": 1,
-    "outboundLimit": 100000000000000000000,
+    "outboundLimit": 544000000000000000000000,
     "inboundLimit": [
       { "chainId": 1, "limit": 1000000000000000000000000000 },
       { "chainId": 2, "limit": 1000000000000000000000000000 },
@@ -51,7 +51,7 @@
     "rateLimitDuration": 84600,
     "skipRateLimit": false,
     "threshold": 1,
-    "outboundLimit": 100000000000000000000,
+    "outboundLimit": 1700000000000000000000000,
     "inboundLimit": [
       { "chainId": 1, "limit": 1000000000000000000000000000 },
       { "chainId": 2, "limit": 1000000000000000000000000000 },
