@@ -22,11 +22,10 @@ import "@wormhole-foundation/sdk-definitions-ntt";
 import { NttRoute } from "./types.js";
 
 type Op = NttRoute.Options;
-type Vp = NttRoute.ValidatedParams;
-
 type Tp = routes.TransferParams<Op>;
 type Vr = routes.ValidationResult<Op>;
 
+type Vp = NttRoute.ValidatedParams;
 type QR = routes.QuoteResult<Op, Vp>;
 type Q = routes.Quote<Op, Vp>;
 
@@ -49,13 +48,14 @@ export class NttManualRoute<N extends Network>
   static supportedNetworks(): Network[] {
     return ["Mainnet", "Testnet"];
   }
-  // get the list of chains this route supports
+
+  // TODO: move more logic from these static methods to
+  // the namespace so they can be re-used in the Auto route
   static supportedChains(network: Network): Chain[] {
-    // TODO
-    return ["Solana", "Sepolia"];
+    const configs = Object.values(this.config.tokens);
+    return configs.flatMap((cfg) => cfg.map((chainCfg) => chainCfg.chain));
   }
 
-  // get the list of source tokens that are possible to send
   static async supportedSourceTokens(
     fromChain: ChainContext<Network>
   ): Promise<TokenId[]> {
@@ -77,7 +77,6 @@ export class NttManualRoute<N extends Network>
     fromChain: ChainContext<N>,
     toChain: ChainContext<N>
   ): Promise<TokenId[]> {
-    // TODO: memoize token address lookup for repeated lookups?
     return Object.entries(this.config.tokens)
       .map(([, configs]) => {
         const match = configs.find((config) => {
@@ -107,10 +106,19 @@ export class NttManualRoute<N extends Network>
 
     const validatedParams: Vp = {
       amount: params.amount,
-      normalizedParams: { amount: amt },
+      normalizedParams: {
+        amount: amt,
+        srcNtt: NttRoute.resolveNttContracts(
+          NttManualRoute.config,
+          this.request.source.id
+        ),
+        dstNtt: NttRoute.resolveNttContracts(
+          NttManualRoute.config,
+          this.request.destination.id
+        ),
+      },
       options: this.getDefaultOptions(),
     };
-
     return { valid: true, params: validatedParams };
   }
 
@@ -134,7 +142,11 @@ export class NttManualRoute<N extends Network>
     const { params } = quote;
     const { fromChain, from, to } = this.request;
     const sender = Wormhole.parseAddress(signer.chain(), signer.address());
-    const ntt = await fromChain.getProtocol("Ntt");
+
+    const ntt = await fromChain.getProtocol(
+      "Ntt",
+      params.normalizedParams.srcNtt
+    );
     const initXfer = ntt.transfer(
       sender,
       amount.units(params.normalizedParams.amount),
@@ -158,6 +170,7 @@ export class NttManualRoute<N extends Network>
       );
 
     const { toChain } = this.request;
+    // TODO: get the ntt contracts from..somewhere?
     const ntt = await toChain.getProtocol("Ntt");
     const sender = Wormhole.parseAddress(signer.chain(), signer.address());
     const completeXfer = ntt.redeem([receipt.attestation], sender);
@@ -176,7 +189,7 @@ export class NttManualRoute<N extends Network>
     const ntt = await toChain.getProtocol("Ntt");
     const completeTransfer = ntt.completeInboundQueuedTransfer(
       toChain.chain,
-      receipt.attestation.attestation,
+      receipt.attestation.attestation.payload.nttManagerPayload,
       this.request.destination.id.address
     );
 
