@@ -3,10 +3,8 @@ import * as spl from "@solana/spl-token";
 import {
   ChainAddress,
   ChainContext,
-  Network,
   Signer,
   UniversalAddress,
-  UnsignedTransaction,
   VAA,
   Wormhole,
   deserialize,
@@ -18,6 +16,7 @@ import {
   testing,
 } from "@wormhole-foundation/sdk-connect";
 import {
+  SolanaAddress,
   SolanaPlatform,
   SolanaSendSigner,
 } from "@wormhole-foundation/sdk-solana";
@@ -36,8 +35,8 @@ const CORE_BRIDGE_ADDRESS = "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth";
 const NTT_ADDRESS = "nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS";
 
 async function signSendWait(
-  chain: ChainContext<Network>,
-  txs: AsyncGenerator<UnsignedTransaction>,
+  chain: ChainContext<any, any, any>,
+  txs: AsyncGenerator<any>,
   signer: Signer
 ) {
   try {
@@ -281,6 +280,57 @@ describe("example-native-token-transfers", () => {
       }
 
       // expect(released).to.equal(true);
+    });
+  });
+
+  describe("Static Checks", () => {
+    const wh = new Wormhole("Testnet", [SolanaPlatform]);
+
+    const overrides = {
+      Solana: {
+        token: "EetppHswYvV1jjRWoQKC1hejdeBDHR9NNzNtCyRQfrrQ",
+        manager: "NTtAaoDJhkeHeaVUHnyhwbPNAN6WgBpHkHBTc6d7vLK",
+        transceiver: {
+          wormhole: "ExVbjD8inGXkt7Cx8jVr4GF175sQy1MeqgfaY53Ah8as",
+        },
+      },
+    };
+
+    describe("ABI Versions Test", function () {
+      const ctx = wh.getChain("Solana");
+      test("It initializes from Rpc", async function () {
+        const ntt = await SolanaNtt.fromRpc(await ctx.getRpc(), {
+          Solana: {
+            ...ctx.config,
+            contracts: {
+              ...ctx.config.contracts,
+              ...{ ntt: overrides["Solana"] },
+            },
+          },
+        });
+        expect(ntt).toBeTruthy();
+      });
+
+      test("It initializes from constructor", async function () {
+        const ntt = new SolanaNtt("Testnet", "Solana", await ctx.getRpc(), {
+          ...ctx.config.contracts,
+          //@ts-ignore
+          ...{ ntt: overrides["Solana"] },
+        });
+        expect(ntt).toBeTruthy();
+      });
+
+      test("It gets the correct version", async function () {
+        // TODO: need valida address with lamports on network
+
+        const { manager } = overrides["Solana"];
+        const version = await SolanaNtt._getVersion(
+          manager,
+          await ctx.getRpc(),
+          new SolanaAddress(payer.publicKey.toBase58())
+        );
+        expect(version).toBe("1.0.0");
+      });
     });
   });
 

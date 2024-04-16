@@ -4,6 +4,8 @@ const jestConfig: JestConfigWithTsJest = {
   verbose: true,
   testTimeout: 10000000,
   modulePathIgnorePatterns: ["mocks"],
+  roots: ["./__tests__"],
+  testMatch: ["**/*.test.ts"],
   preset: "ts-jest",
   moduleNameMapper: {
     "^(\\.{1,2}/.*)\\.js$": "$1",

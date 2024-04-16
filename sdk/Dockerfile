@@ -10,6 +10,5 @@ COPY --from=ntt-evm-contract . ../evm/out
 COPY --from=ntt-solana-contract /usr/src/solana/target/idl ../solana/target/idl
 COPY --from=ntt-solana-contract /usr/src/solana/target/types ../solana/target/types
 
-RUN npm run generate
 RUN npm run build
 RUN npm run generate:test

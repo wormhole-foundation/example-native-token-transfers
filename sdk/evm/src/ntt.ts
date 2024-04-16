@@ -35,11 +35,10 @@ import {
   NttTransceiverBindings,
 } from "./bindings.js";
 
-async function loadAbiVersion(version: string) {
+function loadAbiVersion(version: string) {
   if (!(version in AbiVersions))
     throw new Error(`Unknown ABI version: ${version}`);
-  const module = AbiVersions[version as AbiVersion];
-  return module;
+  return AbiVersions[version as AbiVersion];
 }
 
 export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
@@ -105,7 +104,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     readonly chain: C,
     readonly provider: Provider,
     readonly contracts: Contracts & { ntt?: Ntt.Contracts },
-    abiBindings: NttBindings = AbiVersions["default"]
+    readonly abiVersion: AbiVersion = "default"
   ) {
     if (!contracts.ntt) throw new Error("No Ntt Contracts provided");
 
@@ -116,6 +115,9 @@ export class EvmNtt<N extends Network, C extends EvmChains>
 
     this.tokenAddress = contracts.ntt.token;
     this.managerAddress = contracts.ntt.manager;
+
+    const abiBindings = loadAbiVersion(this.abiVersion);
+
     this.manager = abiBindings.NttManager.connect(
       contracts.ntt.manager,
       this.provider
@@ -150,16 +152,8 @@ export class EvmNtt<N extends Network, C extends EvmChains>
 
     const { ntt } = conf.contracts as { ntt: Ntt.Contracts };
 
-    const version = await EvmNtt.getVersion(ntt.manager, provider);
-    const abiBindings = await loadAbiVersion(version);
-
-    return new EvmNtt(
-      network as N,
-      chain,
-      provider,
-      conf.contracts,
-      abiBindings
-    );
+    const version = await EvmNtt._getVersion(ntt.manager, provider);
+    return new EvmNtt(network as N, chain, provider, conf.contracts, version);
   }
 
   private encodeFlags(ixs: (any | null)[]): Ntt.TransceiverInstruction[] {
@@ -172,7 +166,11 @@ export class EvmNtt<N extends Network, C extends EvmChains>
       .filter((x) => x !== null) as Ntt.TransceiverInstruction[];
   }
 
-  static async getVersion(address: string, provider: Provider) {
+  async getVersion(): Promise<string> {
+    return EvmNtt._getVersion(this.managerAddress, this.provider);
+  }
+
+  static async _getVersion(address: string, provider: Provider) {
     const contract = new Contract(
       address,
       ["function NTT_MANAGER_VERSION() public view returns (string)"],
