@@ -56,7 +56,7 @@ async function run() {
   if (instanceState.solPriceUsd !== config.solPriceUsd) {
     const solPriceInstruction = await quoter.createUpdateSolPriceInstruction(signerPk, config.solPriceUsd);
     configurationInstructions.push(solPriceInstruction);
-    console.log("Updating sol price to: ", config.solPriceUsd, configurationInstructions);
+    console.log("Updating sol price to: ", config.solPriceUsd);
   }
 
   // add any other global configs here...

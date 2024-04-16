@@ -1,9 +1,8 @@
 import { inspect } from 'util';
-import { isChainId } from "@wormhole-foundation/sdk-base";
 import { NttQuoter } from "../sdk";
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 
-import { connection, getSigner, getEnv, managerRegistrations, ManagersRegisteredPerChain } from "./env";
+import { connection, getSigner, getEnv, managerRegistrations } from "./env";
 import { ledgerSignAndSend } from "./helpers";
 
 type ScriptConfig = {
@@ -47,7 +46,7 @@ async function run() {
       try {
         await ledgerSignAndSend([instruction], []);
       } catch (error) {
-        console.error(`Failed to register or de-register manager ${managerConfig.programId} on chain ${chainId}: ${error}`);
+        console.error(`Failed to register or de-register manager ${managerConfig.programId}: ${error}`);
       }
     }
   }

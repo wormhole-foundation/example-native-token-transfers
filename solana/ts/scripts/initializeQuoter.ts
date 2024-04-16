@@ -24,7 +24,10 @@ async function run() {
 
   const initInstruction = await quoter.createInitializeInstruction(feeRecipient);
 
-  await ledgerSignAndSend([initInstruction], []);
+  const signature = await ledgerSignAndSend([initInstruction], []);
+
+  await connection.confirmTransaction(signature);
+  console.log("Sucess. Signature: ", signature);
 }
 
 run();
