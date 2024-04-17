@@ -109,19 +109,19 @@
   ],
   "NttTransceiverImplementations": [
     {
-      "address": "0xf9c3EeAec49fD5cD21cAABEE5cd61226017f157A",
+      "address": "0xc6DbF3344D40d35ce93E73A19c2AfA647F89C15f",
       "chainId": 10002
     },
     {
-      "address": "0x06376382D84188346e4C00DFae06316277bfF547",
+      "address": "0xe9580a0867Dfdcb35E23ffb40d13291417b07161",
       "chainId": 10003
     },
     {
-      "address": "0x9646530F12bD41113F834e61bEd99970f0716Abf",
+      "address": "0x2438d2934759954329aa4cA499d7fAE684d1429A",
       "chainId": 10005
     },
     {
-      "address": "0xCb435504fCB461121A7277418Aa050b0129797CD",
+      "address": "0x194ef936BB95926597dB614537B4Bd9eAA6dE22F",
       "chainId": 10004
     }
   ],
