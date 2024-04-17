@@ -37,6 +37,7 @@
     "definitions",
     "solana",
     "evm",
-    "route"
+    "route",
+    "examples"
   ]
 }
