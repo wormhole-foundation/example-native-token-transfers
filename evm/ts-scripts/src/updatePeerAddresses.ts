@@ -42,6 +42,7 @@ async function run() {
       let result: {
         chainId: ChainId;
         peerUpdateTxs: string[];
+        transceiverUpdateTxs: string[];
         error?: unknown;
       };
       try {
@@ -69,6 +70,12 @@ async function run() {
         result.chainId
       }: \n  ${result.peerUpdateTxs.join("\n  ")}`
     );
+
+    console.log(
+      `NttManager set transceiver peer txs for chain ${
+        result.chainId
+      }: \n  ${result.transceiverUpdateTxs.join("\n  ")}`
+    );
   }
 }
 
@@ -78,6 +85,7 @@ async function registerPeers(
 ): Promise<{
   chainId: ChainId;
   peerUpdateTxs: string[];
+  transceiverUpdateTxs: string[];
   error?: unknown;
 }> {
   const log = (...args: any[]) => console.log(`[${chain.chainId}]`, ...args);
@@ -86,6 +94,7 @@ async function registerPeers(
   const transceiverContract = await getTransceiverContract(chain);
 
   const peerUpdateTxs: string[] = [];
+  const transceiverUpdateTxs: string[] = [];
   const managerConfig = await getChainConfig<ManagerConfig>(
     "managers",
     chain.chainId
@@ -95,12 +104,11 @@ async function registerPeers(
 
     const config = await getChainConfig<PeerConfig>("peers", peer.chainId);
 
-    console.log("managerConfig", managerConfig);
-
     if (!config.decimals)
       return {
         chainId: chain.chainId,
         peerUpdateTxs,
+        transceiverUpdateTxs,
         error: "No 'decimals' configuration found",
       };
 
@@ -113,6 +121,7 @@ async function registerPeers(
       return {
         chainId: chain.chainId,
         peerUpdateTxs,
+        transceiverUpdateTxs,
         error: "No 'managerAddress' found",
       };
 
@@ -124,6 +133,7 @@ async function registerPeers(
       return {
         chainId: chain.chainId,
         peerUpdateTxs,
+        transceiverUpdateTxs,
         error: `No inbound limit found for chain ${peer.chainId}`,
       };
     }
@@ -158,22 +168,22 @@ async function registerPeers(
       return {
         chainId: chain.chainId,
         peerUpdateTxs,
+        transceiverUpdateTxs,
         error: "No 'transceiverAddress' found",
       };
 
     // TODO: might make sense to move the transceiver peer registration to a different script
-    if (desiredTransceiverAddr !== currentTransceiverAddr) {
-      console.log("desiredTransceiverAddr", desiredTransceiverAddr);
-      console.log("currentTransceiverAddr", currentTransceiverAddr);
+    if (`0x${desiredTransceiverAddr}` !== currentTransceiverAddr) {
       try {
         const tx = await transceiverContract.setWormholePeer(
           peer.chainId,
           Buffer.from(desiredTransceiverAddr, "hex")
         );
+        transceiverUpdateTxs.push(tx.hash);
+        await tx.wait();
         log(
           `Registered transceiver peer for chain ${peer.chainId} at ${desiredTransceiverAddr}. Hash: ${tx.hash}`
         );
-        await tx.wait();
       } catch (error) {
         log(
           `Error registering transceiver peer for chain ${peer.chainId}: ${error}`
@@ -227,7 +237,7 @@ async function registerPeers(
     }
   }
 
-  return { chainId: chain.chainId, peerUpdateTxs };
+  return { chainId: chain.chainId, peerUpdateTxs, transceiverUpdateTxs };
 }
 
 async function getTransceiverContract(chain: ChainInfo) {
