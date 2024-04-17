@@ -42,13 +42,13 @@ async function run() {
   const configurationInstructions: TransactionInstruction[] = [];
 
   if (!instanceState.feeRecipient.equals(feeRecipient)) {
-    const feeRecipientInstruction = await quoter.createSetFeeRecipientInstruction(instanceState, new PublicKey(config.feeRecipient));
+    const feeRecipientInstruction = await quoter.createSetFeeRecipientInstruction(instanceState, feeRecipient);
     configurationInstructions.push(feeRecipientInstruction);
     console.log("Updating fee recipient to: ", config.feeRecipient);
   }
 
   if (!instanceState.assistant.equals(assistant)) {
-    const assistantInstruction = await quoter.createSetAssistantInstruction(instanceState, new PublicKey(config.assistant));
+    const assistantInstruction = await quoter.createSetAssistantInstruction(instanceState, assistant);
     configurationInstructions.push(assistantInstruction);
     console.log("Updating assistant to: ", config.assistant);
   }

@@ -50,7 +50,7 @@ export type ManagersRegisteredPerChain = {
   supportedManagers: {
     programId: string;
     gasCost: number;
-    wormholeTransceiverIndex;
+    wormholeTransceiverIndex: number;
     isSupported: boolean;
   }[]
 }[];
@@ -62,7 +62,7 @@ export const managerRegistrations = [
     supportedManagers: [
       {
         programId: "NTtAaoDJhkeHeaVUHnyhwbPNAN6WgBpHkHBTc6d7vLK",
-        gasCost: 400000,
+        gasCost: 400_000,
         wormholeTransceiverIndex: 0,
         isSupported: true,
       },

@@ -113,12 +113,12 @@ export class NttQuoter {
     };
   }
 
-  async getRegisteredNtt(nttProgramId: PublicKey) {
-    const data = await this.program.account.registeredNtt.fetch(
+  async tryGetRegisteredNtt(nttProgramId: PublicKey) {
+    const data = await this.program.account.registeredNtt.fetchNullable(
       this.registeredNttPda(nttProgramId)
     );
     
-    return {
+    return data && {
       gasCost: data.gasCost,
       wormholeTransceiverIndex: data.wormholeTransceiverIndex,
     };

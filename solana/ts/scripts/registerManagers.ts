@@ -21,30 +21,34 @@ async function run() {
 
   for (const { supportedManagers } of managerRegistrations) {
     for (const managerConfig of supportedManagers) {
-      let instruction: TransactionInstruction;
-      if (!managerConfig.isSupported) {
-        instruction = await quoter.createDeregisterNttInstruction(
+      const nttKey = new PublicKey(managerConfig.programId);
+      const registration = await quoter.tryGetRegisteredNtt(nttKey);
+      const needsUpdate = registration !== null
+        && registration.gasCost !== managerConfig.gasCost
+        && registration.wormholeTransceiverIndex !== managerConfig.wormholeTransceiverIndex;
+      const instructions = [] as TransactionInstruction[];
+      if (registration !== null && (!managerConfig.isSupported || needsUpdate)) {
+        instructions.push(await quoter.createDeregisterNttInstruction(
           signerPk,
-          new PublicKey(managerConfig.programId),
-        );
+          nttKey,
+        ));
       }
 
-      else {
-        if (!managerConfig.gasCost ||
-          (!managerConfig.wormholeTransceiverIndex && managerConfig.wormholeTransceiverIndex !== 0)) {
+      if (managerConfig.isSupported && needsUpdate) {
+        if (managerConfig.gasCost === 0) {
           throw new Error(`Invalid manager configuration: ${inspect(managerConfig)}`);
         }
 
-        instruction = await quoter.createRegisterNttInstruction(
+        instructions.push(await quoter.createRegisterNttInstruction(
           signerPk,
-          new PublicKey(managerConfig.programId),
+          nttKey,
           managerConfig.gasCost,
           managerConfig.wormholeTransceiverIndex,
-        );
+        ));
       }
 
       try {
-        await ledgerSignAndSend([instruction], []);
+        await ledgerSignAndSend(instructions, []);
       } catch (error) {
         console.error(`Failed to register or de-register manager ${managerConfig.programId}: ${error}`);
       }
