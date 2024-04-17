@@ -11,6 +11,7 @@ import {
   writeOutputFiles,
   Deployment,
   getSigner,
+  getContractAddress,
 } from "./env";
 
 const processName = "deployGovernances";
@@ -78,10 +79,7 @@ async function deployGovernanceImplementation(
 ): Promise<Deployment> {
   const signer = await getSigner(chain);
 
-  const coreContract = CONTRACTS.MAINNET[coalesceChainName(chain.chainId)].core;
-  if (coreContract === undefined) {
-    throw new Error(`Failed to find core contract for chain ${chain.chainId}`);
-  }
+  const coreContract = await getContractAddress("WormholeCoreContracts", chain.chainId);
 
   const governanceFactory = new Governance__factory(signer);
   const governance = await governanceFactory.deploy(

@@ -142,5 +142,33 @@
       "address": "0x149987472333cD48ac6D28293A338a1EEa6Be7EE",
       "chainId": 10004
     }
+  ],
+  "GeneralPurposeGovernanceProxies": [
+    {
+      "address": "0x75c46915078621761f7345Ee8Ac6595245a7ACF0",
+      "chainId": 10003
+    },
+    {
+      "address": "0x738141EFf659625F2eAD4feECDfCD94155C67f18",
+      "chainId": 10004
+    },
+    {
+      "address": "0x78196733647C41be49714870247CC79154f265a9",
+      "chainId": 10005
+    }
+  ],
+  "GeneralPurposeGovernanceImplementations": [
+    {
+      "address": "0x81b65A48DCAccBA04aCa3C055C4112b0715b90c0",
+      "chainId": 10003
+    },
+    {
+      "address": "0x720A59128B96Eda6EC2940c7899406E4dc56d0DC",
+      "chainId": 10004
+    },
+    {
+      "address": "0xcE1DE1eA4b040D324a07719043A6234C94fd0b5d",
+      "chainId": 10005
+    }
   ]
 }

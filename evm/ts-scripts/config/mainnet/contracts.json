@@ -142,5 +142,9 @@
       "address": "0xD1a8AB69e00266e8B791a15BC47514153A5045a6",
       "chainId": 30
     }
+  ],
+  "GeneralPurposeGovernanceProxies": [
+  ],
+  "GeneralPurposeGovernanceImplementations": [
   ]
 }
