@@ -26,7 +26,11 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     IWormhole public immutable wormhole;
     IWormholeRelayer public immutable wormholeRelayer;
     ISpecialRelayer public immutable specialRelayer;
+    /// @dev We don't check this in `_checkImmutables` since it's set at construction
+    ///      through `block.chainid`.
     uint256 immutable wormholeTransceiver_evmChainId;
+    /// @dev We purposely avoid checking this in `_checkImmutables` to allow tweaking it
+    ///      without needing to allow modification of security critical immutables.
     uint256 public immutable gasLimit;
 
     // ==================== Constants ================================================
