@@ -86,7 +86,7 @@ describe("Manual Route Tests", function () {
     resolver = new routes.RouteResolver(wh, [rt]);
   });
 
-  let found: routes.Route<Network>;
+  let found: routes.ManualRoute<Network>;
   it("Should resolve a given route request", async function () {
     const request = await routes.RouteTransferRequest.create(wh, {
       from: testing.utils.makeChainAddress("Solana"),
@@ -98,7 +98,10 @@ describe("Manual Route Tests", function () {
     expect(foundRoutes).toHaveLength(1);
     expect(foundRoutes[0]!.request.from.chain).toEqual("Solana");
 
-    found = foundRoutes[0]!;
+    const rt = foundRoutes[0]!;
+    if (!routes.isManual(rt)) throw new Error("Expected manual route");
+
+    found = rt;
   });
 
   let op: ReturnType<typeof found.getDefaultOptions>;
@@ -107,10 +110,64 @@ describe("Manual Route Tests", function () {
     expect(op).toBeTruthy();
   });
 
-  let vp;
+  let vp: routes.ValidationResult<typeof op>;
   it("Should validate a transfer request", async function () {
     vp = await found.validate({ amount: "1.0", options: op });
     expect(vp.valid).toBeTruthy();
     expect(vp.params.amount).toEqual("1.0");
   });
+
+  let qr: Awaited<ReturnType<typeof found.quote>>;
+  it("Should fetch a quote given the validated parameters", async function () {
+    if (!vp.valid) throw new Error("Invalid transfer params used");
+    qr = await found.quote(vp.params);
+    if (!qr.success) throw new Error("Failed to fetch quote");
+
+    expect(qr.params.amount).toEqual("1.0");
+
+    const srcAddy = canonicalAddress(qr.sourceToken.token);
+    expect(srcAddy).toEqual(SOL_TOKEN);
+
+    const dstAddy = canonicalAddress(qr.destinationToken.token);
+    expect(dstAddy).toEqual(SEPOLIA_TOKEN);
+
+    // No fees or other fields
+    expect(Object.keys(qr)).toEqual([
+      "success",
+      "params",
+      "sourceToken",
+      "destinationToken",
+    ]);
+  });
+
+  // let fromSigner: Signer, toSigner: Signer;
+  // beforeAll(async function () {
+  //   fromSigner = await getSolanaSignAndSendSigner(
+  //     await fromChain.getRpc(),
+  //     "",
+  //     { debug: true }
+  //   );
+  //   toSigner = await getEvmSigner(await toChain.getRpc(), "");
+  // });
+
+  // let receipt: routes.Receipt;
+  // it("Should initiate a transfer", async function () {
+  //   if (!vp.valid) throw new Error("Invalid transfer params used");
+  //   if (!qr.success) throw new Error("Failed to fetch quote");
+
+  //   receipt = await found.initiate(fromSigner, qr);
+  //   expect(receipt).toBeTruthy();
+  //   expect(receipt.from).toEqual(fromChain.chain);
+  //   expect(receipt.state).toEqual(TransferState.SourceInitiated);
+  //   expect(receipt.to).toEqual(toChain.chain);
+
+  //   expect(isSourceInitiated(receipt)).toBeTruthy();
+  //   if (isSourceInitiated(receipt)) {
+  //     expect(receipt.originTxs.length).toBeGreaterThan(0);
+  //   }
+  // });
+
+  // it("Should Allow completion", async function () {
+  //   await found.complete(toSigner, receipt);
+  // });
 });
