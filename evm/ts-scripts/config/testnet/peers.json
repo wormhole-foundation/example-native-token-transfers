@@ -4,32 +4,28 @@
     "decimals": 18,
     "isWormholeRelayingEnabled": true,
     "isWormholeEvmChain": true,
-    "isSpecialRelayingEnabled": false,
-    "inboundLimit": "1000000000000000000000000000"
+    "isSpecialRelayingEnabled": false
   },
   {
     "chainId": 10003,
     "decimals": 18,
     "isWormholeRelayingEnabled": true,
     "isWormholeEvmChain": true,
-    "isSpecialRelayingEnabled": false,
-    "inboundLimit": "1000000000000000000000000000"
+    "isSpecialRelayingEnabled": false
   },
   {
     "chainId": 10004,
     "decimals": 18,
     "isWormholeRelayingEnabled": true,
     "isWormholeEvmChain": true,
-    "isSpecialRelayingEnabled": false,
-    "inboundLimit": "1000000000000000000000000000"
+    "isSpecialRelayingEnabled": false
   },
   {
     "chainId": 10005,
     "decimals": 18,
     "isWormholeRelayingEnabled": true,
     "isWormholeEvmChain": true,
-    "isSpecialRelayingEnabled": false,
-    "inboundLimit": "1000000000000000000000000000"
+    "isSpecialRelayingEnabled": false
   },
   {
     "chainId": 1,
@@ -38,7 +34,6 @@
     "transceiverAddress": "ExVbjD8inGXkt7Cx8jVr4GF175sQy1MeqgfaY53Ah8as",
     "isWormholeRelayingEnabled": false,
     "isWormholeEvmChain": false,
-    "isSpecialRelayingEnabled": true,
-    "inboundLimit": "1000000000000000000000000000"
+    "isSpecialRelayingEnabled": true
   }
 ]

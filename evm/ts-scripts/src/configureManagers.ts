@@ -14,11 +14,11 @@ import {
 
 const processName = "configureManagers";
 
-type ManagerConfig = {
+export type ManagerConfig = {
   chainId: ChainId;
   threshold: number;
   outboundLimit: string;
-  inboundLimit: {chainId: ChainId, limit: number }[];
+  inboundLimit: {chainId: ChainId, limit: string }[];
 };
 
 init();

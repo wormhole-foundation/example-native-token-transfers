@@ -4,6 +4,7 @@ import {
   NttManager__factory,
   WormholeTransceiver__factory,
 } from "../contract-bindings";
+
 import {
   loadOperatingChains,
   init,
@@ -13,14 +14,14 @@ import {
   getContractAddress,
   loadScriptConfig,
 } from "./env";
-import { BigNumber } from "ethers";
+import { ManagerConfig } from "./configureManagers";
+import { BigNumber, ethers } from 'ethers';
 
 const processName = "updatePeerAddresses";
 
 type PeerConfig = {
   chainId: ChainId;
   decimals: number;
-  inboundLimit: string;
   isWormholeRelayingEnabled: boolean;
   isWormholeEvmChain: boolean;
   isSpecialRelayingEnabled: boolean;
@@ -38,7 +39,11 @@ async function run() {
 
   const results = await Promise.all(
     chains.map(async (chain) => {
-      let result: { chainId: ChainId; peerUpdateTxs: string[]; error?: unknown; };
+      let result: {
+        chainId: ChainId;
+        peerUpdateTxs: string[];
+        error?: unknown;
+      };
       try {
         result = await registerPeers(chain, config);
       } catch (error: unknown) {
@@ -59,13 +64,20 @@ async function run() {
       continue;
     }
 
-    console.log(`NttManager set peer txs for chain ${result.chainId}: \n  ${result.peerUpdateTxs.join("\n  ")}`);
+    console.log(
+      `NttManager set peer txs for chain ${
+        result.chainId
+      }: \n  ${result.peerUpdateTxs.join("\n  ")}`
+    );
   }
 }
 
-async function registerPeers(chain: ChainInfo, peers: PeerConfig[]): Promise<{
+async function registerPeers(
+  chain: ChainInfo,
+  peers: PeerConfig[]
+): Promise<{
   chainId: ChainId;
-  peerUpdateTxs: string[]
+  peerUpdateTxs: string[];
   error?: unknown;
 }> {
   const log = (...args: any[]) => console.log(`[${chain.chainId}]`, ...args);
@@ -74,10 +86,16 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]): Promise<{
   const transceiverContract = await getTransceiverContract(chain);
 
   const peerUpdateTxs: string[] = [];
+  const managerConfig = await getChainConfig<ManagerConfig>(
+    "managers",
+    chain.chainId
+  );
   for (const peer of peers) {
     if (peer.chainId === chain.chainId) continue;
 
-    const config = await getChainConfig<PeerConfig>(processName, peer.chainId);
+    const config = await getChainConfig<PeerConfig>("peers", peer.chainId);
+
+    console.log("managerConfig", managerConfig);
 
     if (!config.decimals)
       return {
@@ -86,40 +104,45 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]): Promise<{
         error: "No 'decimals' configuration found",
       };
 
-    const peerCurrentConfig = await managerContract.getPeer(peer.chainId);
     const desiredPeerAddress = await getNormalizedPeerManagerAddress(
       peer,
       chain
     );
 
     if (!desiredPeerAddress)
-      return { chainId: chain.chainId, peerUpdateTxs, error: "No 'managerAddress' found" };
+      return {
+        chainId: chain.chainId,
+        peerUpdateTxs,
+        error: "No 'managerAddress' found",
+      };
 
-    if (
-      peerCurrentConfig.peerAddress !== desiredPeerAddress ||
-      peerCurrentConfig.tokenDecimals !== config.decimals
-    ) {
-      try {
-        const tx = await managerContract.setPeer(
-          peer.chainId,
-          Buffer.from(desiredPeerAddress, "hex"),
-          config.decimals,
-          BigNumber.from(config.inboundLimit),
-        );
-        peerUpdateTxs.push(tx.hash);
-        log(
-          `Registered manager peer for chain ${peer.chainId} at ${desiredPeerAddress}. Tx hash ${tx.hash}`
-        );
-        await tx.wait();
-      }
-      catch (error) {
-        log(`Error registering manager peer for chain ${peer.chainId}: ${error}`);
-      }
+    const inboundLimit = managerConfig.inboundLimit.find(
+      (x) => x.chainId === peer.chainId
+    )?.limit;
 
-    } else {
-      log(
-        `Manager peer for chain ${peer.chainId} already registered at ${peerCurrentConfig.peerAddress}.`
+    if (!inboundLimit) {
+      return {
+        chainId: chain.chainId,
+        peerUpdateTxs,
+        error: `No inbound limit found for chain ${peer.chainId}`,
+      };
+    }
+
+    try {
+      // We always override de peer
+      const tx = await managerContract.setPeer(
+        peer.chainId,
+        Buffer.from(desiredPeerAddress, "hex"),
+        config.decimals,
+        BigNumber.from(inboundLimit)
       );
+      peerUpdateTxs.push(tx.hash);
+      log(
+        `Registered manager peer for chain ${peer.chainId} at ${desiredPeerAddress}. Tx hash ${tx.hash}`
+      );
+      await tx.wait();
+    } catch (error) {
+      log(`Error registering manager peer for chain ${peer.chainId}: ${error}`);
     }
 
     const currentTransceiverAddr = await transceiverContract.getWormholePeer(
@@ -138,7 +161,10 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]): Promise<{
         error: "No 'transceiverAddress' found",
       };
 
+    // TODO: might make sense to move the transceiver peer registration to a different script
     if (desiredTransceiverAddr !== currentTransceiverAddr) {
+      console.log("desiredTransceiverAddr", desiredTransceiverAddr);
+      console.log("currentTransceiverAddr", currentTransceiverAddr);
       try {
         const tx = await transceiverContract.setWormholePeer(
           peer.chainId,
@@ -153,11 +179,10 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]): Promise<{
           `Error registering transceiver peer for chain ${peer.chainId}: ${error}`
         );
       }
-    } else {
-      log(
-        `Transceiver peer for chain ${peer.chainId} was already registered at ${currentTransceiverAddr}.`
-      );
     }
+
+    // TODO: It would make sense to move the three configurations below to a different script
+    // dedicated to transceiver configuration (configureTransceivers.ts)
 
     if (
       (await transceiverContract.isWormholeEvmChain(peer.chainId)) !==
@@ -171,8 +196,6 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]): Promise<{
         `Set ${peer.chainId} as wormhole evm chain = ${peer.isWormholeEvmChain}`
       );
       await tx.wait();
-    } else {
-      log(`Chain ${peer.chainId} is already set as wormhole evm chain.`);
     }
 
     if (
@@ -187,10 +210,6 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]): Promise<{
         `Set isSpecialRelayingEnabled for chain ${peer.chainId} to ${peer.isSpecialRelayingEnabled}.`
       );
       await tx.wait();
-    } else {
-      log(
-        `isSpecialRelayingEnabled for chain ${peer.chainId} is already set to ${peer.isSpecialRelayingEnabled}.`
-      );
     }
 
     if (
@@ -205,10 +224,6 @@ async function registerPeers(chain: ChainInfo, peers: PeerConfig[]): Promise<{
         `Set isWormholeRelayingEnabled for chain ${peer.chainId} to ${peer.isWormholeRelayingEnabled}.`
       );
       await tx.wait();
-    } else {
-      log(
-        `isWormholeRelayingEnabled for chain ${peer.chainId} is already set to ${peer.isWormholeRelayingEnabled}.`
-      );
     }
   }
 
