@@ -153,12 +153,12 @@ async function executeUpgradeTransceiver(
 ): Promise<TxResult> {
   const signer = await getSigner(chain);
 
-  const proxyAddress = await getContractAddress("GeneralPurposeGovernanceProxies", chain.chainId);
+  const proxyAddress = await getContractAddress("NttTransceiverProxies", chain.chainId);
   const proxy = WormholeTransceiver__factory.connect(proxyAddress, signer);
 
   // TODO: add overrides to facilitate customizing tx parameters per chain.
   const tx = await proxy.upgrade(implementationAddress);
-  console.log(`Upgrade tx sent, hash:${tx.hash}`);
+  console.log(`Upgrade tx sent, hash: ${tx.hash}`);
   const receipt = await tx.wait();
   if (receipt.status !== 1) {
     throw new Error(`Failed to execute upgrade on chain ${chain.chainId}, tx hash: ${receipt.transactionHash}`);
