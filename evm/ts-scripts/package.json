@@ -16,6 +16,7 @@
     "dotenv": "^16.4.5",
     "ethers": "^5.7.2",
     "typechain": "^8.3.2",
+    "tsx": "^4.7.2",
     "typescript": "^5.4.5"
   }
 }
