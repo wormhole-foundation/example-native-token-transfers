@@ -1,22 +1,22 @@
 [
   {
     "chainId": 2,
-    "consistencyLevel": 1,
+    "consistencyLevel": 200,
     "gasLimit": 300000
   },
   {
     "chainId": 23,
-    "consistencyLevel": 1,
+    "consistencyLevel": 200,
     "gasLimit": 300000
   },
   {
     "chainId": 24,
-    "consistencyLevel": 1,
+    "consistencyLevel": 200,
     "gasLimit": 300000
   },
   {
     "chainId": 30,
-    "consistencyLevel": 1,
+    "consistencyLevel": 200,
     "gasLimit": 300000
   }
 ]
