@@ -55,20 +55,15 @@ function get_env_var(env: string): string {
   return v || "";
 }
 
-let config: any;
 export function loadScriptConfig(filename: string): any {
-  if (config) {
-    return config;
-  }
   const configFile = fs.readFileSync(
     `./ts-scripts/config/${env}/${filename}.json`
   );
-  const _config = JSON.parse(configFile.toString());
-  if (!_config) {
+  const config = JSON.parse(configFile.toString());
+  if (!config) {
     throw Error("Failed to pull config file!");
   }
-  config = _config;
-  return loadScriptConfig(filename);
+  return config;
 }
 
 type ChainConfig = {
