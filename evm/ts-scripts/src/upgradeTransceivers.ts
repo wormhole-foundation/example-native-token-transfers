@@ -4,7 +4,6 @@ import { ChainId } from "@certusone/wormhole-sdk";
 
 import {
   WormholeTransceiver__factory,
-  ERC1967Proxy__factory
 } from "../contract-bindings";
 import { WormholeTransceiverLibraryAddresses } from '../contract-bindings/factories/WormholeTransceiver__factory';
 import {
@@ -18,7 +17,13 @@ import {
   getContractAddress,
 } from "./env";
 
-const processName = "deployTransceivers";
+const processName = "upgradeTransceivers";
+
+interface TxResult {
+  chainId: ChainId;
+  tx: ethers.ContractTransaction;
+  receipt: ethers.ContractReceipt;
+}
 
 type NttTransceiverConfig = {
   chainId: ChainId;
@@ -42,9 +47,9 @@ const config: NttTransceiverConfig[] = loadScriptConfig("transceivers");
 async function run() {
   console.log(`Start ${processName}!`);
 
-  const output: any = {
-    NttTransceiverImplementations: [],
-    NttTransceiverProxies: [],
+  const output= {
+    NttTransceiverImplementations: [] as Deployment[],
+    TransceiverStructsLibs: [] as Deployment[],
   };
 
   const results = await Promise.all(
@@ -57,13 +62,13 @@ async function run() {
 
       const chainContracts: NttTransceiverDependencies = await getChainContracts(chain.chainId);
 
-      const result = await deployTransceiver(chain, chainConfig, chainContracts);
+      const result = await upgradeTransceiver(chain, chainConfig, chainContracts);
       return result;
     })
   );
 
   for (const result of results) {
-    if (result.error) {
+    if ("error" in result) {
       console.error(
         `Error deploying for chain ${result.chainId}: ${inspect(
           result.error
@@ -73,23 +78,25 @@ async function run() {
     }
 
     output.NttTransceiverImplementations.push(result.implementation);
-    output.NttTransceiverProxies.push(result.proxy);
+    output.TransceiverStructsLibs.push(result.transceiverStructsLibs);
   }
 
   writeOutputFiles(output, processName);
 }
 
-async function deployTransceiver(chain: ChainInfo, config: NttTransceiverConfig, contracts: NttTransceiverDependencies) {
+async function upgradeTransceiver(chain: ChainInfo, config: NttTransceiverConfig, contracts: NttTransceiverDependencies) {
   const log = (...args) => console.log(`[${chain.chainId}]`, ...args);
 
-  let implementation, proxy, libraries;
+  let implementation: Deployment, upgradeTx: TxResult, libraries: WormholeTransceiverLibraryAddresses;
 
+  // TODO: we need to check whether we should redeploy this first
+  // It just reuses the current deployed library as it is.
   const structsLibAddress = await getContractAddress("TransceiverStructsLibs", chain.chainId);
   libraries = {
     ["src/libraries/TransceiverStructs.sol:TransceiverStructs"]: structsLibAddress,
   };
 
-  log("Deploying implementation");
+  log("Deploying new implementation");
   try {
     implementation = await deployTransceiverImplementation(chain, config, contracts, libraries);
     log("Implementation deployed at ", implementation.address);
@@ -97,10 +104,10 @@ async function deployTransceiver(chain: ChainInfo, config: NttTransceiverConfig,
     return { chainId: chain.chainId, error };
   }
 
-  log("Deploying proxy");
+  log("Executing upgrade on proxy");
   try {
-    proxy = await deployTransceiverProxy(chain, implementation.address);
-    log("Proxy deployed at ", proxy.address);
+    upgradeTx = await executeUpgradeTransceiver(chain, implementation.address);
+    log("Upgrade executed successfully");
   } catch (error) {
     return { chainId: chain.chainId, error };
   }
@@ -108,8 +115,11 @@ async function deployTransceiver(chain: ChainInfo, config: NttTransceiverConfig,
   return {
     chainId: chain.chainId,
     implementation,
-    libraries,
-    proxy,
+    transceiverStructsLibs: {
+      chainId: chain.chainId,
+      address: structsLibAddress,
+    },
+    upgradeTx,
   };
 }
 
@@ -133,28 +143,28 @@ async function deployTransceiverImplementation(
     BigInt(config.gasLimit),
   );
 
-  return await transceiver.deployed().then((result) => {
-    return { address: result.address, chainId: chain.chainId };
-  });
+  await transceiver.deployed();
+  return { address: transceiver.address, chainId: chain.chainId };
 }
 
-async function deployTransceiverProxy(
+async function executeUpgradeTransceiver(
   chain: ChainInfo,
   implementationAddress: string
-): Promise<Deployment> {
+): Promise<TxResult> {
   const signer = await getSigner(chain);
 
-  const proxyFactory = new ERC1967Proxy__factory(signer);
+  const proxyAddress = await getContractAddress("GeneralPurposeGovernanceProxies", chain.chainId);
+  const proxy = WormholeTransceiver__factory.connect(proxyAddress, signer);
 
-  const abi = ["function initialize()"];
-  const iface = new ethers.utils.Interface(abi);
-  const encodedCall = iface.encodeFunctionData("initialize");
+  // TODO: add overrides to facilitate customizing tx parameters per chain.
+  const tx = await proxy.upgrade(implementationAddress);
+  console.log(`Upgrade tx sent, hash:${tx.hash}`);
+  const receipt = await tx.wait();
+  if (receipt.status !== 1) {
+    throw new Error(`Failed to execute upgrade on chain ${chain.chainId}, tx hash: ${receipt.transactionHash}`);
+  }
 
-  const proxy = await proxyFactory.deploy(implementationAddress, encodedCall);
-
-  return await proxy.deployed().then((result) => {
-    return { address: result.address, chainId: chain.chainId };
-  });
+  return { tx, receipt, chainId: chain.chainId };
 }
 
 async function getChainContracts(chainId: ChainId): Promise<NttTransceiverDependencies> {

@@ -15,21 +15,21 @@ export type Deployment = {
 };
 
 export type ContractsJson = {
-  WormholeCoreContracts: Deployment[],
-  WormholeRelayers: Deployment[],
-  SpecializedRelayers: Deployment[],
+  WormholeCoreContracts: Deployment[];
+  WormholeRelayers: Deployment[];
+  SpecializedRelayers: Deployment[];
 
-  NttManagerProxies: Deployment[],
-  NttManagerImplementations: Deployment[],
+  NttManagerProxies: Deployment[];
+  NttManagerImplementations: Deployment[];
 
-  NttTransceiverProxies: Deployment[],
-  NttTransceiverImplementations: Deployment[],
+  NttTransceiverProxies: Deployment[];
+  NttTransceiverImplementations: Deployment[];
 
-  GeneralPurposeGovernanceProxies: Deployment[],
-  GeneralPurposeGovernanceImplementations: Deployment[],
+  TransceiverStructsLibs: Deployment[];
+  TrimmedAmountLibs: Deployment[];
 
-  TransceiverStructsLibs: Deployment[],
-  TrimmedAmountLibs: Deployment[],
+  GeneralPurposeGovernanceImplementations: Deployment[];
+  GeneralPurposeGovernanceProxies: Deployment[];
 };
 
 const DEFAULT_ENV = "testnet";
