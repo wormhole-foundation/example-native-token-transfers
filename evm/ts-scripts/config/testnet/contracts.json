@@ -145,6 +145,10 @@
   ],
   "GeneralPurposeGovernanceProxies": [
     {
+      "address": "0x61A31131A9237dC83931Ff7cb6b2322De096b0e3",
+      "chainId": 10002
+    },
+    {
       "address": "0x75c46915078621761f7345Ee8Ac6595245a7ACF0",
       "chainId": 10003
     },
@@ -158,6 +162,10 @@
     }
   ],
   "GeneralPurposeGovernanceImplementations": [
+    {
+      "address": "0x9517F0164c1d089ad72E669E57b9088790966dBd",
+      "chainId": 10002
+    },
     {
       "address": "0x81b65A48DCAccBA04aCa3C055C4112b0715b90c0",
       "chainId": 10003
