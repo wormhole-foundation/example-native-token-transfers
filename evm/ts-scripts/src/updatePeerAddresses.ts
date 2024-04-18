@@ -129,7 +129,7 @@ async function registerPeers(
       (x) => x.chainId === peer.chainId
     )?.limit;
 
-    if (!inboundLimit) {
+    if (!inboundLimit !== undefined) {
       return {
         chainId: chain.chainId,
         peerUpdateTxs,
