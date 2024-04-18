@@ -172,6 +172,24 @@ export interface Ntt<N extends Network, C extends Chain> {
    * @param fromChain the chain to check the inbound capacity for
    */
   getCurrentInboundCapacity(fromChain: Chain): Promise<bigint>;
+
+  /**
+   * getIsApproved returns whether an attestation is approved
+   * an attestation is approved when it has been validated but has not necessarily
+   * been executed
+   *
+   * @param attestation the attestation to check
+   */
+  getIsApproved(attestation: Ntt.Attestation): Promise<boolean>;
+
+  /**
+   * getIsExecuted returns whether an attestation is executed
+   * an attestation being executed means the transfer is complete
+   *
+   * @param attestation the attestation to check
+   */
+  getIsExecuted(attestation: Ntt.Attestation): Promise<boolean>;
+
   /**
    * getInboundQueuedTransfer returns the details of an inbound queued transfer
    * @param transceiverMessage the transceiver message
