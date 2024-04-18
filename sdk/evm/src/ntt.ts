@@ -133,6 +133,14 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     ];
   }
 
+  getIsExecuted(attestation: Ntt.Attestation): Promise<boolean> {
+    return this.manager.isMessageExecuted(serialize(attestation));
+  }
+
+  getIsApproved(attestation: Ntt.Attestation): Promise<boolean> {
+    return this.manager.isMessageApproved(serialize(attestation));
+  }
+
   async getTokenDecimals(): Promise<number> {
     return await EvmPlatform.getDecimals(
       this.chain,
