@@ -13,8 +13,8 @@ import {
   writeOutputFiles,
   Deployment,
   getSigner,
-  loadScriptConfig,
   getContractAddress,
+  getChainConfig,
 } from "./env";
 
 const processName = "upgradeTransceivers";
@@ -42,7 +42,6 @@ init();
 const chains = loadOperatingChains();
 
 // Warning: we assume that the script configuration file is correctly formed
-const config: NttTransceiverConfig[] = loadScriptConfig("transceivers");
 
 async function run() {
   console.log(`Start ${processName}!`);
@@ -54,15 +53,11 @@ async function run() {
 
   const results = await Promise.all(
     chains.map(async (chain) => {
-      const chainConfig = config.find((c) => c.chainId === chain.chainId);
-      if (!chainConfig) {
-        console.error(`No configuration found for chain ${chain.chainId}`);
-        return { chainId: chain.chainId, error: "No configuration found" };
-      }
+      const config = await getChainConfig<NttTransceiverConfig>("transceivers", chain.chainId);
 
       const chainContracts: NttTransceiverDependencies = await getChainContracts(chain.chainId);
 
-      const result = await upgradeTransceiver(chain, chainConfig, chainContracts);
+      const result = await upgradeTransceiver(chain, config, chainContracts);
       return result;
     })
   );
@@ -132,7 +127,6 @@ async function deployTransceiverImplementation(
   libraries: WormholeTransceiverLibraryAddresses,
 ): Promise<Deployment> {
   const signer = await getSigner(chain);
-
   const transceiverFactory = new WormholeTransceiver__factory(libraries, signer);
   const transceiver = await transceiverFactory.deploy(
     contracts.manager,
