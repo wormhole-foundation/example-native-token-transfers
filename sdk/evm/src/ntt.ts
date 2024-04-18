@@ -6,6 +6,7 @@ import {
   Contracts,
   Network,
   TokenAddress,
+  VAA,
   nativeChainIds,
   serialize,
   toChainId,
@@ -134,11 +135,19 @@ export class EvmNtt<N extends Network, C extends EvmChains>
   }
 
   getIsExecuted(attestation: Ntt.Attestation): Promise<boolean> {
-    return this.manager.isMessageExecuted(serialize(attestation));
+    const { emitterChain: chain, payload } =
+      attestation as VAA<"Ntt:WormholeTransfer">;
+    return this.manager.isMessageExecuted(
+      Ntt.messageDigest(chain, payload.nttManagerPayload)
+    );
   }
 
   getIsApproved(attestation: Ntt.Attestation): Promise<boolean> {
-    return this.manager.isMessageApproved(serialize(attestation));
+    const { emitterChain: chain, payload } =
+      attestation as VAA<"Ntt:WormholeTransfer">;
+    return this.manager.isMessageApproved(
+      Ntt.messageDigest(chain, payload.nttManagerPayload)
+    );
   }
 
   async getTokenDecimals(): Promise<number> {
