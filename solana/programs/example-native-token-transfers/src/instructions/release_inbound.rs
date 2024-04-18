@@ -62,7 +62,7 @@ pub struct ReleaseInboundMint<'info> {
     #[account(
         constraint = common.config.mode == Mode::Burning @ NTTError::InvalidMode,
     )]
-    common: ReleaseInbound<'info>,
+    pub common: ReleaseInbound<'info>,
 }
 
 /// Release an inbound transfer and mint the tokens to the recipient.
@@ -126,10 +126,11 @@ pub fn release_inbound_mint<'info>(
 
 #[derive(Accounts)]
 pub struct ReleaseInboundUnlock<'info> {
+    /// CHECK: the token program checks if this indeed the right authority for the mint
     #[account(
         constraint = common.config.mode == Mode::Locking @ NTTError::InvalidMode,
     )]
-    common: ReleaseInbound<'info>,
+    pub common: ReleaseInbound<'info>,
 }
 
 /// Release an inbound transfer and unlock the tokens to the recipient.

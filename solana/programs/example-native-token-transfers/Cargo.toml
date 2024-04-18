@@ -9,15 +9,17 @@ crate-type = ["cdylib", "lib"]
 name = "example_native_token_transfers"
 
 [features]
-default = ["mainnet"]
+default = ["owner-recovery", "mainnet"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
 idl-build = [
   "anchor-lang/idl-build",
-  "anchor-spl/idl-build"
+  "anchor-spl/idl-build",
 ]
+# whether the owner can recover transactions
+owner-recovery = []
 # cargo-test-sbf will pass this along
 test-sbf = []
 # networks

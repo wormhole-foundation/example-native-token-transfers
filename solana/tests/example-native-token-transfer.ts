@@ -50,6 +50,7 @@ describe("example-native-token-transfers", () => {
   });
   const user = anchor.web3.Keypair.generate();
   let tokenAccount: anchor.web3.PublicKey;
+  const recoveryTokenAccount = anchor.web3.Keypair.generate();
 
   const mint = anchor.web3.Keypair.generate();
 
@@ -113,6 +114,16 @@ describe("example-native-token-transfers", () => {
       spl.ASSOCIATED_TOKEN_PROGRAM_ID
     );
 
+    await spl.createAccount(
+      connection,
+      payer,
+      mint.publicKey,
+      payer.publicKey,
+      recoveryTokenAccount,
+      undefined,
+      spl.TOKEN_2022_PROGRAM_ID
+    );
+
     await spl.mintTo(
       connection,
       payer,
@@ -154,6 +165,14 @@ describe("example-native-token-transfers", () => {
   });
 
   describe("Burning", () => {
+    const guardians = new MockGuardians(0, [GUARDIAN_KEY]);
+
+    const emitter = new MockEmitter(
+      Buffer.from("transceiver".padStart(32, "\0")).toString("hex"),
+      toChainId("ethereum"),
+      Number(0) // sequence
+    );
+
     before(async () => {
       await spl.setAuthority(
         connection,
@@ -242,7 +261,7 @@ describe("example-native-token-transfers", () => {
         messageData.message.payload
       );
 
-      // assert theat amount is what we expect
+      // assert that amount is what we expect
       expect(
         transceiverMessage.nttManagerPayload.payload.trimmedAmount
       ).to.deep.equal({ amount: 10000n, decimals: 8 });
@@ -254,14 +273,6 @@ describe("example-native-token-transfers", () => {
     });
 
     it("Can receive tokens", async () => {
-      const emitter = new MockEmitter(
-        Buffer.from("transceiver".padStart(32, "\0")).toString("hex"),
-        toChainId("ethereum"),
-        Number(0) // sequence
-      );
-
-      const guardians = new MockGuardians(0, [GUARDIAN_KEY]);
-
       const sendingTransceiverMessage: WormholeTransceiverMessage<
         typeof nttMessageLayout
       > = {
@@ -276,7 +287,7 @@ describe("example-native-token-transfers", () => {
           sender: new UniversalAddress("FACE".padStart(64, "0")),
           payload: {
             trimmedAmount: {
-              amount: 10000n,
+              amount: 5000n,
               decimals: 8,
             },
             sourceToken: new UniversalAddress("FAFA".padStart(64, "0")),
@@ -310,6 +321,95 @@ describe("example-native-token-transfers", () => {
       expect(released).to.equal(true);
 
       expect((await counterValue()).toString()).to.be.eq("2")
+    });
+
+    describe("Recovery", () => {
+      it("Can initialize recovery account", async () => {
+        await ntt.initializeRecoveryAccount({
+          payer,
+          owner: payer,
+          recoveryTokenAccount: tokenAccount,
+        });
+
+        const recoveryAccount = await ntt.getRecoveryAccount();
+
+        expect(recoveryAccount?.toBase58()).to.equal(tokenAccount.toBase58());
+      });
+
+      it("Can update recovery account", async () => {
+        await ntt.updateRecoveryAddress({
+          // payer,
+          owner: payer,
+          newRecoveryAccount: recoveryTokenAccount.publicKey,
+        });
+
+        const recoveryAccount = await ntt.getRecoveryAccount();
+
+        expect(recoveryAccount?.toBase58()).to.equal(
+          recoveryTokenAccount.publicKey.toBase58()
+        );
+      });
+
+      it("Owner can recover transfers", async () => {
+        const sendingTransceiverMessage: WormholeTransceiverMessage<
+          typeof nttMessageLayout
+        > = {
+          sourceNttManager: new UniversalAddress(
+            encoding.bytes.encode("nttManager".padStart(32, "\0"))
+          ),
+          recipientNttManager: new UniversalAddress(
+            ntt.program.programId.toBytes()
+          ),
+          nttManagerPayload: {
+            id: encoding.bytes.encode("sequence2".padEnd(32, "0")),
+            sender: new UniversalAddress("FACE".padStart(64, "0")),
+            payload: {
+              trimmedAmount: {
+                amount: 5000n,
+                decimals: 8,
+              },
+              sourceToken: new UniversalAddress("FAFA".padStart(64, "0")),
+              recipientAddress: new UniversalAddress(user.publicKey.toBytes()),
+              recipientChain: "Solana",
+            },
+          },
+          transceiverPayload: { forSpecializedRelayer: false },
+        } as const;
+
+        const serialized = serializePayload(
+          "Ntt:WormholeTransfer",
+          sendingTransceiverMessage
+        );
+
+        const published = emitter.publishMessage(
+          0, // nonce
+          Buffer.from(serialized),
+          0 // consistency level
+        );
+
+        const vaaBuf = guardians.addSignatures(published, [0]);
+
+        await postVaa(connection, payer, vaaBuf, ntt.wormholeId);
+
+        const released = await ntt.redeem({
+          payer,
+          vaa: vaaBuf,
+          recover: payer,
+        });
+
+        expect(released).to.equal(true);
+
+        const account = await spl.getAccount(
+          connection,
+          recoveryTokenAccount.publicKey,
+          undefined,
+          spl.TOKEN_2022_PROGRAM_ID
+        );
+
+        expect(account.amount).to.equal(BigInt(50000));
+
+        expect((await counterValue()).toString()).to.be.eq("3")
+      });
     });
   });
 });

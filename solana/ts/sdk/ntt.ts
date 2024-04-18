@@ -118,6 +118,10 @@ export class NTT {
     return this.derivePda('lut_authority')
   }
 
+  recoveryAccountAddress(): PublicKey {
+    return this.derivePda('recovery')
+  }
+
   outboxRateLimitAccountAddress(): PublicKey {
     return this.derivePda('outbox_rate_limit')
   }
@@ -352,6 +356,48 @@ export class NTT {
     return this.getAddressLookupTable(false)
   }
 
+  async initializeRecoveryAccount(args: {
+    payer: Keypair
+    owner: Keypair
+    recoveryTokenAccount: PublicKey
+  }) {
+      const ix: TransactionInstruction = await this.program.methods
+        .initializeRecoveryAccount()
+        .accountsStrict({
+          payer: args.payer.publicKey,
+          config: this.configAccountAddress(),
+          owner: args.owner.publicKey,
+          recovery: this.recoveryAccountAddress(),
+          recoveryAccount: args.recoveryTokenAccount,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+
+      const signers = [args.payer, args.owner];
+
+      await this.sendAndConfirmTransaction(new Transaction().add(ix), signers);
+  }
+
+  async updateRecoveryAddress(args: {
+    owner: Keypair
+    newRecoveryAccount: PublicKey
+  }) {
+      const ix: TransactionInstruction = await this.program.methods
+        .updateRecoveryAddress()
+        .accountsStrict({
+          // payer: args.payer.publicKey,
+          config: this.configAccountAddress(),
+          owner: args.owner.publicKey,
+          recovery: this.recoveryAccountAddress(),
+          newRecoveryAccount: args.newRecoveryAccount,
+        })
+        .instruction();
+
+      const signers = [args.owner];
+
+      await this.sendAndConfirmTransaction(new Transaction().add(ix), signers);
+  }
+
   async transfer(args: {
     payer: Keypair
     from: PublicKey
@@ -481,6 +527,7 @@ export class NTT {
           payer: args.payer,
           config: { config: this.configAccountAddress() },
           mint,
+          tokenProgram: await this.tokenProgram(config),
           from: args.from,
           tokenProgram: await this.tokenProgram(config),
           outboxItem: args.outboxItem,
@@ -674,6 +721,7 @@ export class NTT {
     revertOnDelay: boolean
     recipient?: PublicKey
     config?: Config
+    recover?: Keypair
   }): Promise<TransactionInstruction> {
     const config = await this.getConfig(args.config)
 
@@ -686,23 +734,45 @@ export class NTT {
 
     const mint = await this.mintAccountAddress(config)
 
-    const transferIx = await this.program.methods
-      .releaseInboundMint({
+    let accounts = {
+      common: {
+        payer: args.payer,
+        config: { config: this.configAccountAddress() },
+        inboxItem: this.inboxItemAccountAddress(args.chain, args.nttMessage),
+        recipient: getAssociatedTokenAddressSync(mint, recipientAddress, true, config.tokenProgram),
+        mint,
+        tokenAuthority: this.tokenAuthorityAddress(),
+        tokenProgram: config.tokenProgram,
+        custody: await this.custodyAccountAddress(config)
+      }
+    }
+
+    var transferIx: TransactionInstruction;
+
+    if (args.recover) {
+      const recoveryAccount = await this.getRecoveryAccount()
+      if (!recoveryAccount) {
+        throw new Error('Recovery account not initialized')
+      }
+      transferIx = await this.program.methods
+      .recoverMint({
         revertOnDelay: args.revertOnDelay
       })
       .accountsStrict({
-        common: {
-          payer: args.payer,
-          config: { config: this.configAccountAddress() },
-          inboxItem: this.inboxItemAccountAddress(args.chain, args.nttMessage),
-          recipient: getAssociatedTokenAddressSync(mint, recipientAddress, true, config.tokenProgram),
-          mint,
-          tokenAuthority: this.tokenAuthorityAddress(),
-          tokenProgram: config.tokenProgram,
-          custody: await this.custodyAccountAddress(config)
-        }
+        releaseInboundMint: accounts,
+        owner: args.recover.publicKey,
+        recovery: this.recoveryAccountAddress(),
+        recoveryAccount
       })
       .instruction()
+    } else {
+      transferIx = await this.program.methods
+        .releaseInboundMint({
+          revertOnDelay: args.revertOnDelay
+        })
+        .accountsStrict(accounts)
+        .instruction()
+    }
 
     const mintInfo = await splToken.getMint(this.program.provider.connection, config.mint, undefined, config.tokenProgram)
     const transferHook = splToken.getTransferHook(mintInfo)
@@ -738,6 +808,7 @@ export class NTT {
     nttMessage: NttMessage
     revertOnDelay: boolean
     config?: Config
+    recover?: Keypair
   }): Promise<void> {
     if (await this.isPaused()) {
       throw new Error('Contract is paused')
@@ -752,6 +823,9 @@ export class NTT {
     tx.add(await this.createReleaseInboundMintInstruction(txArgs))
 
     const signers = [args.payer]
+    if (args.recover) {
+      signers.push(args.recover)
+    }
     await this.sendAndConfirmTransaction(tx, signers)
   }
 
@@ -762,6 +836,7 @@ export class NTT {
     revertOnDelay: boolean
     recipient?: PublicKey
     config?: Config
+    recover?: Keypair
   }): Promise<TransactionInstruction> {
     const config = await this.getConfig(args.config)
 
@@ -774,23 +849,47 @@ export class NTT {
 
     const mint = await this.mintAccountAddress(config)
 
-    const transferIx = await this.program.methods
-      .releaseInboundUnlock({
-        revertOnDelay: args.revertOnDelay
-      })
-      .accountsStrict({
-        common: {
-          payer: args.payer,
-          config: { config: this.configAccountAddress() },
-          inboxItem: this.inboxItemAccountAddress(args.chain, args.nttMessage),
-          recipient: getAssociatedTokenAddressSync(mint, recipientAddress, true, config.tokenProgram),
-          mint,
-          tokenAuthority: this.tokenAuthorityAddress(),
-          tokenProgram: config.tokenProgram,
-          custody: await this.custodyAccountAddress(config)
-        },
-      })
-      .instruction()
+    let accounts = {
+      common: {
+        payer: args.payer,
+        config: { config: this.configAccountAddress() },
+        inboxItem: this.inboxItemAccountAddress(args.chain, args.nttMessage),
+        recipient: getAssociatedTokenAddressSync(mint, recipientAddress, true, config.tokenProgram),
+        mint,
+        tokenAuthority: this.tokenAuthorityAddress(),
+        tokenProgram: config.tokenProgram,
+        custody: await this.custodyAccountAddress(config)
+      },
+    };
+
+    var transferIx: TransactionInstruction;
+
+    if (args.recover) {
+      const recoveryAccount = await this.getRecoveryAccount()
+      if (!recoveryAccount) {
+        throw new Error('Recovery account not initialized')
+      }
+      transferIx =
+        await this.program.methods
+        .recoverUnlock({
+          revertOnDelay: args.revertOnDelay
+        })
+        .accountsStrict({
+          releaseInboundUnlock: accounts,
+          owner: args.recover.publicKey,
+          recovery: this.recoveryAccountAddress(),
+          recoveryAccount
+        })
+        .instruction()
+    } else {
+      transferIx =
+        await this.program.methods
+        .releaseInboundUnlock({
+          revertOnDelay: args.revertOnDelay
+        })
+        .accountsStrict(accounts)
+        .instruction()
+    }
 
     const mintInfo = await splToken.getMint(this.program.provider.connection, config.mint, undefined, config.tokenProgram)
     const transferHook = splToken.getTransferHook(mintInfo)
@@ -826,6 +925,7 @@ export class NTT {
     nttMessage: NttMessage
     revertOnDelay: boolean
     config?: Config
+    recover?: Keypair
   }): Promise<void> {
     if (await this.isPaused()) {
       throw new Error('Contract is paused')
@@ -840,6 +940,9 @@ export class NTT {
     tx.add(await this.createReleaseInboundUnlockInstruction(txArgs))
 
     const signers = [args.payer]
+    if (args.recover) {
+      signers.push(args.recover)
+    }
     await this.sendAndConfirmTransaction(tx, signers)
   }
 
@@ -1051,6 +1154,7 @@ export class NTT {
     payer: Keypair
     vaa: SignedVaa
     config?: Config
+    recover?: Keypair // owner keypair if recovering
   }): Promise<boolean> {
     const config = await this.getConfig(args.config)
 
@@ -1090,7 +1194,7 @@ export class NTT {
       recipient: new PublicKey(nttMessage.payload.recipientAddress.toUint8Array()),
       chain: chainId,
       revertOnDelay: false,
-      config: config
+      config
     }
 
     if (config.mode.locking != null) {
@@ -1100,6 +1204,9 @@ export class NTT {
     }
 
     const signers = [args.payer]
+    if (args.recover) {
+      signers.push(args.recover)
+    }
     await this.sendAndConfirmTransaction(tx, signers)
 
     // Let's check if the transfer was released
@@ -1119,6 +1226,11 @@ export class NTT {
    */
   async getConfig(config?: Config): Promise<Config> {
     return config ?? await this.program.account.config.fetch(this.configAccountAddress())
+  }
+
+  async getRecoveryAccount(): Promise<PublicKey | undefined> {
+    const account = await this.program.account.recoveryAccount.fetchNullable(this.recoveryAccountAddress())
+    return account?.recoveryAddress
   }
 
   async isPaused(config?: Config): Promise<boolean> {

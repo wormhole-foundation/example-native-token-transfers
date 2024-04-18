@@ -51,6 +51,8 @@ pub enum NTTError {
     OverflowScaledAmount,
     #[msg("BitmapIndexOutOfBounds")]
     BitmapIndexOutOfBounds,
+    #[msg("FeatureNotEnabled")]
+    FeatureNotEnabled,
 }
 
 impl From<ScalingError> for NTTError {

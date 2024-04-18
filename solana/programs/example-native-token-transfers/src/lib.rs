@@ -1,3 +1,5 @@
+#![feature(type_changing_struct_update)]
+
 use anchor_lang::prelude::*;
 
 // TODO: is there a more elegant way of checking that these 3 features are mutually exclusive?
@@ -77,6 +79,16 @@ pub mod example_native_token_transfers {
         instructions::initialize_lut(ctx, recent_slot)
     }
 
+    /// Initialize the recovery account.
+    /// The recovery flow
+    pub fn initialize_recovery_account(ctx: Context<InitializeRecoveryAccount>) -> Result<()> {
+        instructions::initialize_recovery_account(ctx)
+    }
+
+    pub fn update_recovery_address(ctx: Context<UpdateRecoveryAddress>) -> Result<()> {
+        instructions::update_recovery_address(ctx)
+    }
+
     pub fn version(_ctx: Context<Version>) -> Result<String> {
         Ok(VERSION.to_string())
     }
@@ -111,6 +123,20 @@ pub mod example_native_token_transfers {
         args: ReleaseInboundArgs,
     ) -> Result<()> {
         instructions::release_inbound_unlock(ctx, args)
+    }
+
+    pub fn recover_unlock<'info>(
+        ctx: Context<'_, '_, '_, 'info, RecoverUnlock<'info>>,
+        args: ReleaseInboundArgs,
+    ) -> Result<()> {
+        instructions::recover_unlock(ctx, args)
+    }
+
+    pub fn recover_mint<'info>(
+        ctx: Context<'_, '_, '_, 'info, RecoverMint<'info>>,
+        args: ReleaseInboundArgs,
+    ) -> Result<()> {
+        instructions::recover_mint(ctx, args)
     }
 
     pub fn transfer_ownership(ctx: Context<TransferOwnership>) -> Result<()> {
