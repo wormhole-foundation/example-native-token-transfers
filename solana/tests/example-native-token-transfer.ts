@@ -153,7 +153,7 @@ describe("example-native-token-transfers", () => {
     await sendAndConfirmTransaction(connection, transaction, [payer]);
   });
 
-  describe("Locking", () => {
+  describe("Burning", () => {
     before(async () => {
       await spl.setAuthority(
         connection,
@@ -173,7 +173,7 @@ describe("example-native-token-transfers", () => {
         chain: "solana",
         mint: mint.publicKey,
         outboundLimit: new BN(1000000),
-        mode: "locking",
+        mode: "burning",
       });
 
       await ntt.registerTransceiver({
@@ -241,19 +241,6 @@ describe("example-native-token-transfers", () => {
       const balance = await connection.getTokenAccountBalance(tokenAccount);
       expect(balance.value.amount).to.equal("9900000");
 
-      // grab logs
-      // await connection.confirmTransaction(redeemTx, 'confirmed');
-      // const tx = await anchor.getProvider().connection.getParsedTransaction(redeemTx, {
-      //   commitment: "confirmed",
-      // });
-      // console.log(tx);
-
-      // const log = tx.meta.logMessages[1];
-      // const message = log.substring(log.indexOf(':') + 1);
-      // console.log(message);
-
-      // TODO: assert other stuff in the message
-      // console.log(nttManagerMessage);
       expect((await counterValue()).toString()).to.be.eq("1")
     });
 
@@ -316,17 +303,4 @@ describe("example-native-token-transfers", () => {
       expect((await counterValue()).toString()).to.be.eq("2")
     });
   });
-
-  // describe('Burning', () => {
-  //   beforeEach(async () => {
-  //     await ntt.initialize({
-  //       payer,
-  //       owner,
-  //       chain: 'solana',
-  //       mint,
-  //       outboundLimit: new BN(1000000),
-  //       mode: 'burning'
-  //     })
-  //   });
-  // });
 });
