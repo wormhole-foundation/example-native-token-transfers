@@ -69,7 +69,6 @@ export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
     yield this.manager.createUnsignedTx(tx, "WormholeTransceiver.registerPeer");
   }
   async *receive(attestation: WormholeNttTransceiver.VAA) {
-    console.log("receive", attestation);
     const tx = await this.transceiver.receiveMessage.populateTransaction(
       serialize(attestation)
     );

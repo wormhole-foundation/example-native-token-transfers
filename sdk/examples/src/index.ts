@@ -49,10 +49,7 @@ const NTT_CONTRACTS: Record<string, Ntt.Contracts> = {
 
   // Recover an in-flight transfer by setting txids here from output of previous run
   let txids: TransactionId[] = [
-    {
-      chain: "Solana",
-      txid: "hZXRs9TEvMWnSAzcgmrEuHsq1C5rbcompy63vkJ2SrXv4a7u6ZBEaJAkBMXKAfScCooDNhN36Jt4PMcDhN8yGjP",
-    },
+    // { chain: "Solana", txid: "hZXRs9TEvMWnSAzcgmrEuHsq1C5rbcompy63vkJ2SrXv4a7u6ZBEaJAkBMXKAfScCooDNhN36Jt4PMcDhN8yGjP", },
   ];
 
   if (txids.length === 0) {

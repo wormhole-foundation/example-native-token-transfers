@@ -1,7 +1,5 @@
 import {
   Chain,
-  SourceInitiatedTransferReceipt,
-  TransferState,
   canonicalAddress,
   routes,
   wormhole,
@@ -82,9 +80,7 @@ const tokens = {
   );
   //grab the first one for the example
   const destinationToken = destTokens[0]!;
-  // EXAMPLE_RESOLVER_LIST_TOKENS
 
-  // EXAMPLE_REQUEST_CREATE
   // creating a transfer request fetches token details
   // since all routes will need to know about the tokens
   const tr = await routes.RouteTransferRequest.create(wh, {
@@ -100,14 +96,12 @@ const tokens = {
     "For the transfer parameters, we found these routes: ",
     foundRoutes
   );
-  // EXAMPLE_REQUEST_CREATE
 
   // Sort the routes given some input (not required for mvp)
   // const bestRoute = (await resolver.sortRoutes(foundRoutes, "cost"))[0]!;
   const bestRoute = foundRoutes[0]!;
   console.log("Selected: ", bestRoute);
 
-  // EXAMPLE_REQUEST_VALIDATE
   console.log(
     "This route offers the following default options",
     bestRoute.getDefaultOptions()
@@ -129,31 +123,10 @@ const tokens = {
   if (!quote.success) throw quote.error;
   console.log("Best route quote: ", quote);
 
-  // // Now the transfer may be initiated
-  // // A receipt will be returned, guess what you gotta do with that?
-  //const receipt = await bestRoute.initiate(srcSigner.signer, quote);
-  //console.log("Initiated transfer with receipt: ", receipt);
-
-  const receipt = {
-    from: "Solana",
-    to: "ArbitrumSepolia",
-    state: TransferState.SourceInitiated,
-    originTxs: [
-      {
-        chain: "Solana",
-        txid: "2xGtnCKz9brbJAPVEebLeH1rFYLXeaHzcA1hBU2yEUZUySmQ6vvikPMYCtAqz8zBQiEwUsZtoKLLdZR3TAFn5g5y",
-      },
-    ],
-    params: {
-      amount: "0.00001",
-      normalizedParams: {
-        amount: {},
-        srcNtt: NTT_CONTRACTS["Solana"],
-        dstNtt: NTT_CONTRACTS["ArbitrumSepolia"],
-      },
-      options: { automatic: false },
-    },
-  } as SourceInitiatedTransferReceipt;
+  // Now the transfer may be initiated
+  // A receipt will be returned, guess what you gotta do with that?
+  const receipt = await bestRoute.initiate(srcSigner.signer, quote);
+  console.log("Initiated transfer with receipt: ", receipt);
 
   // Kick off a wait log, if there is an opportunity to complete, this function will do it
   // see the implementation for how this works
