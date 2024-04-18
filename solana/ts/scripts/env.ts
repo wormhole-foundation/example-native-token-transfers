@@ -1,3 +1,4 @@
+import { BN } from '@coral-xyz/anchor'
 import {
   Connection,
   Keypair,
@@ -69,6 +70,8 @@ export const managerRegistrations = [
     ],
   }
 ]
+
+export const outboundLimit = new BN(10_000_000);
 
 export const evmNttDeployments: NttDeployment[] = [
   {

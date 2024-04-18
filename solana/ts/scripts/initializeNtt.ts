@@ -3,7 +3,7 @@ import { BN } from '@coral-xyz/anchor'
 import { Keypair, PublicKey } from "@solana/web3.js";
 
 import { NTT } from "../sdk";
-import { connection, getSigner, getEnv } from './env';
+import { connection, getSigner, getEnv, outboundLimit } from './env';
 import { ledgerSignAndSend } from './helpers';
 
 type InitConfig = {
@@ -52,8 +52,7 @@ type InitConfig = {
     owner: signerPk,
     chain: "solana",
     mint,
-    // TODO: this two properties should also be configurable
-    outboundLimit: new BN(10000000000000),
+    outboundLimit: outboundLimit,
     mode: "locking",
   });
 
