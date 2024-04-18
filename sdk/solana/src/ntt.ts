@@ -168,9 +168,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   ): Promise<IdlVersion> {
     if (!sender)
       sender = new SolanaAddress(
-        // TODO: this is just a placeholder address, funded on mainnet/devnet
-        // since we need a funded acct
-        "AzifThohBjYpwV63d1NmZf4aFjc5ma8oExPttnUvmBT5"
+        // The default pubkey is funded on mainnet and devnet
+        // we need a funded account to simulate the transaction below
+        "Hk3SdYTJFpawrvRz4qRztuEt2SqoCG7BGj2yJfDJSFbJ"
       );
 
     const senderAddress = new SolanaAddress(sender).unwrap();
