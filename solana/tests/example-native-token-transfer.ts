@@ -61,6 +61,16 @@ describe("example-native-token-transfers", () => {
     dummyTransferHook.programId
   );
 
+  const [counterPDA] = PublicKey.findProgramAddressSync(
+    [Buffer.from("counter")],
+    dummyTransferHook.programId
+  );
+
+  async function counterValue(): Promise<anchor.BN> {
+    const counter = await dummyTransferHook.account.counter.fetch(counterPDA);
+    return counter.count
+  }
+
   it("Initialize mint", async () => {
     const extensions = [spl.ExtensionType.TransferHook];
     const mintLen = spl.getMintLen(extensions);
@@ -128,6 +138,7 @@ describe("example-native-token-transfers", () => {
         .accountsStrict({
           payer: payer.publicKey,
           mint: mint.publicKey,
+          counter: counterPDA,
           extraAccountMetaList: extraAccountMetaListPDA,
           tokenProgram: spl.TOKEN_2022_PROGRAM_ID,
           associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -243,6 +254,7 @@ describe("example-native-token-transfers", () => {
 
       // TODO: assert other stuff in the message
       // console.log(nttManagerMessage);
+      expect((await counterValue()).toString()).to.be.eq("1")
     });
 
     it("Can receive tokens", async () => {
@@ -300,6 +312,8 @@ describe("example-native-token-transfers", () => {
       });
 
       expect(released).to.equal(true);
+
+      expect((await counterValue()).toString()).to.be.eq("2")
     });
   });
 
