@@ -1,5 +1,5 @@
 {
-  "name": "@wormhole-foundation/sdk-evm-ntt",
+  "name": "@wormhole-foundation/sdk-route-ntt",
   "version": "0.0.1-beta.1",
   "repository": {
     "type": "git",
@@ -10,13 +10,13 @@
   },
   "homepage": "https://github.com/wormhole-foundation/connect-sdk#readme",
   "directories": {
-    "test": "tests"
+    "test": "__tests__"
   },
   "license": "Apache-2.0",
   "main": "./dist/cjs/index.js",
   "types": "./dist/cjs/index.d.ts",
   "module": "./dist/esm/index.js",
-  "description": "SDK for EVM chains, used in conjunction with @wormhole-foundation/sdk",
+  "description": "SDK for Solana, used in conjunction with @wormhole-foundation/sdk",
   "files": [
     "dist/esm",
     "dist/cjs"
@@ -26,7 +26,7 @@
     "sdk",
     "typescript",
     "ntt",
-    "evm"
+    "solana"
   ],
   "engines": {
     "node": ">=16"
@@ -37,24 +37,24 @@
     "build:esm": "tsc -p ./tsconfig.esm.json",
     "build": "npm run build:esm && npm run build:cjs",
     "rebuild": "npm run clean && npm run build",
-    "clean": "rm -rf ./dist",
-    "generate:test": "typechain --node16-modules --target ethers-v6 --out-dir ethers-ci-contracts '../../evm/out/**/*.json'",
-    "generate:slim": "ABI_VERSION=`tsx scripts/readVersion.ts` && typechain --node16-modules --target ethers-v6 --out-dir src/ethers-contracts/$ABI_VERSION '../../evm/out/?(WormholeTransceiver.sol|NttManager.sol)/*.json'",
-    "generate": "npm run generate:slim",
-    "build:contracts": "cd ../.. && make build-evm-prod",
-    "test": "jest --config ./jest.config.ts"
-  },
-  "dependencies": {
-    "@wormhole-foundation/sdk-connect": "0.5.3-beta.7",
-    "@wormhole-foundation/sdk-definitions-ntt": "0.0.1-beta.1",
-    "@wormhole-foundation/sdk-evm": "0.5.3-beta.7",
-    "@wormhole-foundation/sdk-evm-core": "0.5.3-beta.7",
-    "ethers": "^6.5.1"
+    "test": "jest --config ./jest.config.ts",
+    "clean": "rm -rf ./dist"
   },
   "devDependencies": {
-    "@typechain/ethers-v6": "^0.5.1",
-    "tsx": "^4.7.2",
-    "typechain": "^8.3.2"
+    "@types/bn.js": "^5.1.5",
+    "nock": "^13.3.3",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "0.29.0",
+    "@coral-xyz/borsh": "0.29.0",
+    "@solana/spl-token": "0.3.9",
+    "@solana/web3.js": "1.89.1",
+    "@wormhole-foundation/sdk-definitions-ntt": "0.0.1-beta.1",
+    "@wormhole-foundation/sdk-solana-ntt": "0.0.1-beta.1",
+    "@wormhole-foundation/sdk-evm-ntt": "0.0.1-beta.1",
+    "@wormhole-foundation/sdk-connect": "0.5.3-beta.7"
   },
   "type": "module",
   "exports": {

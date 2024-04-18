@@ -522,6 +522,33 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     return BigInt(rl.rateLimit.capacityAtLastTx.toString());
   }
 
+  async getIsExecuted(attestation: Ntt.Attestation): Promise<boolean> {
+    if (!this.getIsApproved(attestation)) return false;
+
+    const { emitterChain } = attestation as WormholeNttTransceiver.VAA;
+    const inboundQueued = await this.getInboundQueuedTransfer(
+      emitterChain,
+      attestation
+    );
+
+    return inboundQueued === null;
+  }
+
+  async getIsApproved(attestation: Ntt.Attestation): Promise<boolean> {
+    const digest = (attestation as WormholeNttTransceiver.VAA).hash;
+    const vaaAddress = utils.derivePostedVaaKey(
+      this.core.address,
+      Buffer.from(digest)
+    );
+
+    try {
+      const info = this.connection.getAccountInfo(vaaAddress);
+      return info !== null;
+    } catch (_) {}
+
+    return false;
+  }
+
   async *completeInboundQueuedTransfer(
     fromChain: Chain,
     transceiverMessage: Ntt.Message,
