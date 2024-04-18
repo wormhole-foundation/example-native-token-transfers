@@ -33,6 +33,7 @@ pub fn transfer_burn(ntt: &NTT, transfer: Transfer, args: TransferArgs) -> Instr
         inbox_rate_limit: ntt.inbox_rate_limit(chain_id),
         peer: transfer.peer,
         session_authority,
+        token_authority: ntt.token_authority(),
     };
 
     Instruction {
@@ -51,7 +52,6 @@ pub fn transfer_lock(ntt: &NTT, transfer: Transfer, args: TransferArgs) -> Instr
         common: common(ntt, &transfer),
         inbox_rate_limit: ntt.inbox_rate_limit(chain_id),
         peer: transfer.peer,
-        custody: ntt.custody(&transfer.mint),
         session_authority,
     };
     Instruction {
@@ -90,5 +90,6 @@ fn common(ntt: &NTT, transfer: &Transfer) -> example_native_token_transfers::acc
         outbox_item: transfer.outbox_item,
         outbox_rate_limit: ntt.outbox_rate_limit(),
         system_program: System::id(),
+        custody: ntt.custody(&transfer.mint),
     }
 }

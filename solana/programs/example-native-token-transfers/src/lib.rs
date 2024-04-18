@@ -77,7 +77,10 @@ pub mod example_native_token_transfers {
         Ok(VERSION.to_string())
     }
 
-    pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<()> {
+    pub fn transfer_burn<'info>(
+        ctx: Context<'_, '_, '_, 'info, TransferBurn<'info>>,
+        args: TransferArgs,
+    ) -> Result<()> {
         instructions::transfer_burn(ctx, args)
     }
 
@@ -92,8 +95,8 @@ pub mod example_native_token_transfers {
         instructions::redeem(ctx, args)
     }
 
-    pub fn release_inbound_mint(
-        ctx: Context<ReleaseInboundMint>,
+    pub fn release_inbound_mint<'info>(
+        ctx: Context<'_, '_, '_, 'info, ReleaseInboundMint<'info>>,
         args: ReleaseInboundArgs,
     ) -> Result<()> {
         instructions::release_inbound_mint(ctx, args)
