@@ -6,6 +6,7 @@ NTT needs the following contracts to be able to operate. This doc assumes that t
 
 Deployed by NTT deployment owner:
 - an ntt token
+
 Deployed by wormhole:
 - wormhole core layer
 - wormhole relayer (you can use wormhole's public one or deploy your own)
@@ -49,9 +50,10 @@ export ENV=testnet
 ```
 - Build:
 ```shell
-cd evm
-
-forge build # builds contracts to evm/out
+make build-evm-prod
+cd evm/ts-scripts
+npm install
+cd .. 
 npm --prefix ./ts-scripts run build # builds typescript bindings to evm/ts-scripts/output
 ```
 - Deploy Managers:
@@ -97,7 +99,7 @@ export NTT_PROGRAM_ID=<your-program-key>
 - Build:
 ```
 cd solana
-make build
+anchor build --arch sbf -- --features "mainnet" # if you are deploying to tesnet, you should use "solana-devnet" instead of mainnet
 ```
 - Deploy:
 ```
