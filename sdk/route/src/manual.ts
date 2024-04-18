@@ -132,10 +132,10 @@ export class NttManualRoute<N extends Network>
     const { fromChain, from, to } = this.request;
     const sender = Wormhole.parseAddress(signer.chain(), signer.address());
 
-    const ntt = await fromChain.getProtocol(
-      "Ntt",
-      params.normalizedParams.srcNtt
-    );
+    const ntt = await fromChain.getProtocol("Ntt", {
+      ...fromChain.config.contracts,
+      ntt: params.normalizedParams.srcNtt,
+    });
     const initXfer = ntt.transfer(
       sender,
       amount.units(params.normalizedParams.amount),
@@ -162,12 +162,12 @@ export class NttManualRoute<N extends Network>
     }
 
     const { toChain } = this.request;
-    const ntt = await toChain.getProtocol(
-      "Ntt",
-      receipt.params.normalizedParams.dstNtt
-    );
+    const ntt = await toChain.getProtocol("Ntt", {
+      ...toChain.config.contracts,
+      ntt: receipt.params.normalizedParams.dstNtt,
+    });
     const sender = Wormhole.parseAddress(signer.chain(), signer.address());
-    const completeXfer = ntt.redeem([receipt.attestation], sender);
+    const completeXfer = ntt.redeem([receipt.attestation.attestation], sender);
 
     const txids = await signSendWait(toChain, completeXfer, signer);
     return {
@@ -215,7 +215,7 @@ export class NttManualRoute<N extends Network>
         sequence: vaa.sequence,
       };
 
-      yield {
+      receipt = {
         ...receipt,
         state: TransferState.Attested,
         attestation: {
@@ -223,10 +223,15 @@ export class NttManualRoute<N extends Network>
           attestation: vaa,
         },
       } satisfies AttestedTransferReceipt<NttRoute.AttestationReceipt> as R;
+
+      yield receipt;
     }
 
     const { toChain } = this.request;
-    const ntt = await toChain.getProtocol("Ntt");
+    const ntt = await toChain.getProtocol("Ntt", {
+      ...toChain.config.contracts,
+      ntt: receipt.params.normalizedParams.dstNtt,
+    });
 
     if (isAttested(receipt)) {
       const {
@@ -253,6 +258,7 @@ export class NttManualRoute<N extends Network>
           ...receipt,
           state: TransferState.DestinationFinalized,
         } satisfies CompletedTransferReceipt<NttRoute.AttestationReceipt>;
+        yield receipt;
       }
     }
 
