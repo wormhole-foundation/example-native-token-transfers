@@ -47,6 +47,7 @@ anchor-spl = "0.29.0"
 solana-program = "=1.18.10"
 solana-program-runtime = "=1.18.10"
 solana-program-test = "=1.18.10"
+solana-address-lookup-table-program = "=1.18.10"
 spl-token = "4.0.0"
 spl-token-2022 = "3.0.2"
 

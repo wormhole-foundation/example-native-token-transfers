@@ -112,6 +112,8 @@ export const nttAddresses = (programId: PublicKeyInitData) => {
     derivePda(["transceiver_message", chainToBytes(chain), id], programId);
   const wormholeMessageAccount = (outboxItem: PublicKey): PublicKey =>
     derivePda(["message", outboxItem.toBytes()], programId);
+  const lutAccount = (): PublicKey => derivePda("lut", programId);
+  const lutAuthority = (): PublicKey => derivePda("lut_authority", programId);
   const sessionAuthority = (sender: PublicKey, args: TransferArgs): PublicKey =>
     derivePda(
       [
@@ -142,6 +144,8 @@ export const nttAddresses = (programId: PublicKeyInitData) => {
     transceiverPeerAccount,
     transceiverMessageAccount,
     registeredTransceiver,
+    lutAccount,
+    lutAuthority,
   };
 };
 

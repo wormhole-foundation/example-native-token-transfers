@@ -545,6 +545,15 @@ async function deploySolana(ctx: Ctx): Promise<Ctx> {
     await signSendWait(ctx.context, initTxs, signer);
     console.log("Initialized ntt at", manager.program.programId.toString());
 
+    // NOTE: this is a hack. The next instruction will fail if we don't wait
+    // here, because the address lookup table is not yet available, despite
+    // the transaction having been confirmed.
+    // Looks like a bug, but I haven't investigated further. In practice, this
+    // won't be an issue, becase the address lookup table will have been
+    // created well before anyone is trying to use it, but we might want to be
+    // mindful in the deploy script too.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
     const registrTxs = manager.registerTransceiver({
       payer: keypair,
       owner: keypair,
