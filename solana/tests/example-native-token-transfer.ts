@@ -176,6 +176,15 @@ describe("example-native-token-transfers", () => {
         mode: "burning",
       });
 
+      // NOTE: this is a hack. The next instruction will fail if we don't wait
+      // here, because the address lookup table is not yet available, despite
+      // the transaction having been confirmed.
+      // Looks like a bug, but I haven't investigated further. In practice, this
+      // won't be an issue, becase the address lookup table will have been
+      // created well before anyone is trying to use it, but we might want to be
+      // mindful in the deploy script too.
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
       await ntt.registerTransceiver({
         payer,
         owner: payer,

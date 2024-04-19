@@ -10,7 +10,7 @@ import {
   nativeTokenTransferLayout
 } from './nttLayout'
 import { derivePostedVaaKey, getWormholeDerivedAccounts } from '@certusone/wormhole-sdk/lib/cjs/solana/wormhole'
-import { BN, translateError, type IdlAccounts, Program, AnchorProvider, Wallet, } from '@coral-xyz/anchor'
+import { BN, translateError, type IdlAccounts, Program, web3, } from '@coral-xyz/anchor'
 import { getAssociatedTokenAddressSync } from '@solana/spl-token'
 import {
   PublicKey, Keypair,
@@ -23,7 +23,9 @@ import {
   TransactionMessage,
   VersionedTransaction,
   Commitment,
-  AccountMeta
+  AccountMeta,
+  AddressLookupTableProgram,
+  AddressLookupTableAccount
 } from '@solana/web3.js'
 import { Keccak } from 'sha3'
 import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from '../../target/types/example_native_token_transfers'
@@ -78,6 +80,7 @@ export class NTT {
   readonly wormholeId: PublicKey
   // mapping from error code to error message. Used for prettifying error messages
   private readonly errors: Map<number, string>
+  addressLookupTable: web3.AddressLookupTableAccount | null = null
 
   constructor(connection: Connection, args: { nttId: NttProgramId, wormholeId: WormholeProgramId }) {
     // TODO: initialise a new Program here with a passed in Connection
@@ -105,6 +108,14 @@ export class NTT {
 
   configAccountAddress(): PublicKey {
     return this.derivePda('config')
+  }
+
+  lutAccountAddress(): PublicKey {
+    return this.derivePda('lut')
+  }
+
+  lutAuthorityAddress(): PublicKey {
+    return this.derivePda('lut_authority')
   }
 
   outboxRateLimitAccountAddress(): PublicKey {
@@ -221,7 +232,7 @@ export class NTT {
     mint: PublicKey
     outboundLimit: BN
     mode: 'burning' | 'locking'
-  }) {
+  }): Promise<void> {
     const mode: any =
       args.mode === 'burning'
         ? { burning: {} }
@@ -248,7 +259,97 @@ export class NTT {
         associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       }).instruction();
-    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner]);
+    await this.sendAndConfirmTransaction(new Transaction().add(ix), [args.payer, args.owner], false);
+    await this.initializeOrUpdateLUT({ payer: args.payer })
+  }
+
+  // This function should be called after each upgrade. If there's nothing to
+  // do, it won't actually submit a transaction, so it's cheap to call.
+  async initializeOrUpdateLUT(args: {
+    payer: Keypair
+  }): Promise<AddressLookupTableAccount> {
+    // TODO: find a more robust way of fetching a recent slot
+    const slot = await this.program.provider.connection.getSlot() - 1
+
+    const [_, lutAddress] = web3.AddressLookupTableProgram.createLookupTable({
+      authority: this.lutAuthorityAddress(),
+      payer: args.payer.publicKey,
+      recentSlot: slot,
+    });
+
+    const whAccs = getWormholeDerivedAccounts(this.program.programId, this.wormholeId)
+    const config = await this.getConfig()
+
+    const entries = {
+       config: this.configAccountAddress(),
+       custody: await this.custodyAccountAddress(config),
+       tokenProgram: await this.tokenProgram(config),
+       mint: await this.mintAccountAddress(config),
+       tokenAuthority: this.tokenAuthorityAddress(),
+       outboxRateLimit: this.outboxRateLimitAccountAddress(),
+       wormhole: {
+         bridge: whAccs.wormholeBridge,
+         feeCollector: whAccs.wormholeFeeCollector,
+         sequence: whAccs.wormholeSequence,
+         program: this.wormholeId,
+         systemProgram: SystemProgram.programId,
+         clock: web3.SYSVAR_CLOCK_PUBKEY,
+         rent: web3.SYSVAR_RENT_PUBKEY,
+       }
+    };
+
+    // collect all pubkeys in entries recursively
+    const collectPubkeys = (obj: any): Array<PublicKey> => {
+      const pubkeys = new Array<PublicKey>()
+      for (const key in obj) {
+        const value = obj[key]
+        if (value instanceof PublicKey) {
+          pubkeys.push(value)
+        } else if (typeof value === 'object') {
+          pubkeys.push(...collectPubkeys(value, pubkeys))
+        }
+      }
+      return pubkeys
+    }
+    const pubkeys = collectPubkeys(entries).map(pk => pk.toBase58())
+
+    var existingLut: web3.AddressLookupTableAccount | null = null
+    try {
+      existingLut = await this.getAddressLookupTable(false)
+    } catch {
+      // swallow errors here, it just means that lut doesn't exist
+    }
+
+    if (existingLut !== null) {
+      const existingPubkeys = existingLut.state.addresses?.map(a => a.toBase58()) ?? []
+
+      // if pubkeys contains keys that are not in the existing LUT, we need to
+      // add them to the LUT
+      const missingPubkeys = pubkeys.filter(pk => !existingPubkeys.includes(pk))
+
+      if (missingPubkeys.length === 0) {
+        return existingLut
+      }
+    }
+
+    const ix = await this.program.methods
+      .initializeLut(new BN(slot))
+      .accountsStrict({
+        payer: args.payer.publicKey,
+        authority: this.lutAuthorityAddress(),
+        lutAddress,
+        lut: this.lutAccountAddress(),
+        lutProgram: AddressLookupTableProgram.programId,
+        systemProgram: SystemProgram.programId,
+        entries
+      }).instruction();
+
+    const signers = [args.payer]
+    await this.sendAndConfirmTransaction(new Transaction().add(ix), signers, false);
+
+    // NOTE: explicitly invalidate the cache. This is the only operation that
+    // modifies the LUT, so this is the only place we need to invalide.
+    return this.getAddressLookupTable(false)
   }
 
   async transfer(args: {
@@ -316,9 +417,27 @@ export class NTT {
   /**
    * Like `sendAndConfirmTransaction` but parses the anchor error code.
    */
-  private async sendAndConfirmTransaction(tx: Transaction, signers: Keypair[]): Promise<TransactionSignature> {
+  private async sendAndConfirmTransaction(tx: Transaction, signers: Keypair[], useLut = true): Promise<TransactionSignature> {
+    const blockhash = await this.program.provider.connection.getLatestBlockhash()
+    const luts: AddressLookupTableAccount[] = []
+    if (useLut) {
+      luts.push(await this.getAddressLookupTable())
+    }
+
     try {
-      return await sendAndConfirmTransaction(this.program.provider.connection, tx, signers)
+      const messageV0 = new TransactionMessage({
+        payerKey: signers[0].publicKey,
+        recentBlockhash: blockhash.blockhash,
+        instructions: tx.instructions,
+      }).compileToV0Message(luts)
+
+      const transactionV0 = new VersionedTransaction(messageV0)
+      transactionV0.sign(signers)
+
+      // The types for this function are wrong -- the type says it doesn't
+      // support version transactions, but it does 🤫
+      // @ts-ignore
+      return await sendAndConfirmTransaction(this.program.provider.connection, transactionV0)
     } catch (err) {
       throw translateError(err, this.errors)
     }
@@ -543,7 +662,7 @@ export class NTT {
     tx.add(await this.createReleaseOutboundInstruction(txArgs))
 
     const signers = [args.payer]
-    return await sendAndConfirmTransaction(this.program.provider.connection, tx, signers)
+    return await this.sendAndConfirmTransaction(tx, signers)
   }
 
   // TODO: document that if recipient is provided, then the instruction can be
@@ -746,7 +865,7 @@ export class NTT {
         peer: this.peerAccountAddress(args.chain),
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.chain)
       }).instruction()
-    return await sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner])
+    return await this.sendAndConfirmTransaction(new Transaction().add(ix), [args.payer, args.owner])
   }
 
   async setWormholeTransceiverPeer(args: {
@@ -783,7 +902,7 @@ export class NTT {
           program: this.wormholeId
         }
       }).instruction()
-    return await sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage])
+    return await this.sendAndConfirmTransaction(new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage])
   }
 
   async registerTransceiver(args: {
@@ -816,8 +935,8 @@ export class NTT {
           program: this.wormholeId
         }
       }).instruction()
-    return await sendAndConfirmTransaction(
-      this.program.provider.connection, new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage])
+    return await this.sendAndConfirmTransaction(
+      new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage])
   }
 
   async setOutboundLimit(args: {
@@ -833,7 +952,7 @@ export class NTT {
         config: this.configAccountAddress(),
         rateLimit: this.outboxRateLimitAccountAddress(),
       }).instruction();
-    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.owner]);
+    return this.sendAndConfirmTransaction(new Transaction().add(ix), [args.owner]);
   }
 
   async setInboundLimit(args: {
@@ -850,7 +969,7 @@ export class NTT {
         config: this.configAccountAddress(),
         rateLimit: this.inboxRateLimitAccountAddress(args.chain),
       }).instruction();
-    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.owner]);
+    return this.sendAndConfirmTransaction(new Transaction().add(ix), [args.owner]);
   }
 
   async createReceiveWormholeMessageInstruction(args: {
@@ -1016,6 +1135,21 @@ export class NTT {
 
   async getInboxItem(chain: ChainName | ChainId, nttMessage: NttMessage): Promise<InboxItem> {
     return await this.program.account.inboxItem.fetch(this.inboxItemAccountAddress(chain, nttMessage))
+  }
+
+  async getAddressLookupTable(useCache = true): Promise<AddressLookupTableAccount> {
+    if (!useCache || !this.addressLookupTable) {
+      const lut = await this.program.account.lut.fetchNullable(this.lutAccountAddress())
+      if (!lut) {
+        throw new Error('Address lookup table not found. Did you forget to call initializeLUT?')
+      }
+      const response = await this.program.provider.connection.getAddressLookupTable(lut.address)
+      this.addressLookupTable = response.value
+    }
+    if (!this.addressLookupTable) {
+      throw new Error('Address lookup table not found. Did you forget to call initializeLUT?')
+    }
+    return this.addressLookupTable
   }
 
   /**
