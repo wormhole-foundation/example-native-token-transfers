@@ -145,7 +145,7 @@ impl Readable for GovernanceMessage {
             ));
         }
         let action: GovernanceAction = Readable::read(reader)?;
-        if action != GovernanceAction::SolanaInstruction {
+        if action != GovernanceAction::SolanaCall {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Invalid GovernanceAction",
@@ -208,7 +208,7 @@ impl Writeable for GovernanceMessage {
         } = self;
 
         Self::MODULE.write(writer)?;
-        GovernanceAction::SolanaInstruction.write(writer)?;
+        GovernanceAction::SolanaCall.write(writer)?;
         u16::from(Chain::Solana).write(writer)?;
         program_id.to_bytes().write(writer)?;
         (accounts.len() as u16).write(writer)?;
@@ -252,10 +252,21 @@ fn test_governance_message_serde() {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// The known set of governance actions.
+///
+/// As the governance logic is expanded to more runtimes, it's important to keep
+/// them in sync, at least the newer ones should ensure they don't overlap with
+/// the existing ones.
+///
+/// Existing implementations are not strongly required to be updated to be aware
+/// of new actions (as they will never need to know the action indices higher
+/// than the one corresponding to the current runtime), but it's good practice.
+///
+/// When adding a new runtime, make sure to at least update in the README.md
 pub enum GovernanceAction {
     Undefined,
-    EvmInstruction,
-    SolanaInstruction,
+    EvmCall,
+    SolanaCall,
 }
 
 impl Readable for GovernanceAction {
@@ -268,8 +279,8 @@ impl Readable for GovernanceAction {
     {
         match Readable::read(reader)? {
             0 => Ok(GovernanceAction::Undefined),
-            1 => Ok(GovernanceAction::EvmInstruction),
-            2 => Ok(GovernanceAction::SolanaInstruction),
+            1 => Ok(GovernanceAction::EvmCall),
+            2 => Ok(GovernanceAction::SolanaCall),
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Invalid GovernanceAction",
@@ -289,8 +300,8 @@ impl Writeable for GovernanceAction {
     {
         match self {
             GovernanceAction::Undefined => Ok(()),
-            GovernanceAction::EvmInstruction => 1.write(writer),
-            GovernanceAction::SolanaInstruction => 2.write(writer),
+            GovernanceAction::EvmCall => 1.write(writer),
+            GovernanceAction::SolanaCall => 2.write(writer),
         }
     }
 }
