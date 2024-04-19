@@ -254,6 +254,7 @@ fn test_governance_message_serde() {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GovernanceAction {
     Undefined,
+    EvmInstruction,
     SolanaInstruction,
 }
 
@@ -267,7 +268,8 @@ impl Readable for GovernanceAction {
     {
         match Readable::read(reader)? {
             0 => Ok(GovernanceAction::Undefined),
-            1 => Ok(GovernanceAction::SolanaInstruction),
+            1 => Ok(GovernanceAction::EvmInstruction),
+            2 => Ok(GovernanceAction::SolanaInstruction),
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Invalid GovernanceAction",
@@ -287,7 +289,8 @@ impl Writeable for GovernanceAction {
     {
         match self {
             GovernanceAction::Undefined => Ok(()),
-            GovernanceAction::SolanaInstruction => 1.write(writer),
+            GovernanceAction::EvmInstruction => 1.write(writer),
+            GovernanceAction::SolanaInstruction => 2.write(writer),
         }
     }
 }
