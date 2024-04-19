@@ -40,6 +40,18 @@ NTT supports rate-limiting both on the sending and destination chains. If a tran
 
 If users bridge frequently between a given source chain and destination chain, the capacity could be exhausted quickly. This can leave other users rate-limited, potentially delaying their transfers. To mitigate this issue, the outbound transfer cancels the inbound rate-limit on the source chain (refills the inbound rate-limit by an amount equal to that of the outbound transfer amount) and vice-versa, the inbound transfer cancels the outbound rate-limit on the destination chain (refills the outbound rate-limit by an amount equal to the inbound transfer amount).
 
+## Wormhole Governance
+
+There are general purpose governance contracts implemented for both EVM and Solana, which allow Wormhole Guardians to govern arbitrary contracts if they choose to do so (and the governed contract chooses to as well).
+The concrete interpretation of the governance packets are runtime specific, but they both follow the same spec (as defined in https://github.com/wormhole-foundation/wormhole/blob/main/whitepapers/0002_governance_messaging.md).
+Namely, the governance messages start with a 32 byte module identifier, which is the string `"GeneralPurposeGovernance"` left padded, followed by a 1 byte action identifier, finally followed by a chain id.
+
+The action identifier specifies the runtime. Currently, these are as follows:
+
+- 0: undefined
+- 1: evm
+- 2: solana
+
 ___
 ⚠️ **WARNING:** Ensure that if the `NttManager` on the source chain is configured to be in `LOCKING` mode, the corresponding `NttManager`s on the target chains are configured to be in `BURNING` mode. If not, transfers will NOT go through and user funds may be lost! Proceed with caution!
 

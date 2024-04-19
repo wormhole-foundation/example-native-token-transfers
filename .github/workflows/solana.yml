@@ -131,6 +131,9 @@ jobs:
           uses: Swatinem/rust-cache@v2
           with:
             workspaces: "solana"
+        - name: Setup SDK
+          run: make sdk
+          shell: bash
         - name: Run tests
           run: anchor test
           shell: bash

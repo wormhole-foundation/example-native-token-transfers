@@ -11,9 +11,21 @@ contract Governance {
     bytes32 public constant MODULE =
         0x000000000000000047656E6572616C507572706F7365476F7665726E616E6365;
 
+    /// @notice The known set of governance actions.
+    /// @dev As the governance logic is expanded to more runtimes, it's
+    ///      important to keep them in sync, at least the newer ones should ensure
+    ///      they don't overlap with the existing ones.
+    ///
+    ///      Existing implementations are not strongly required to be updated
+    ///      to be aware of new actions (as they will never need to know the
+    ///      action indices higher than the one corresponding to the current
+    ///      runtime), but it's good practice.
+    ///
+    ///      When adding a new runtime, make sure to at least update in the README.md
     enum GovernanceAction {
         UNDEFINED,
-        EVM_CALL
+        EVM_CALL,
+        SOLANA_CALL
     }
 
     IWormhole immutable wormhole;

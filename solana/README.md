@@ -100,3 +100,17 @@ Depending on the mode and instruction, the following will be produced in the pro
 Program log: Instruction: ReleaseInboundMint
 Program log: Instruction: ReleaseInboundUnlock
 ```
+
+
+
+## Testing
+
+The test files are loacated in the `sdk/solana/__tests__/` directory
+
+In order to run them, the Solana programs must be built and their IDL made available to the SDK.
+
+To ensure the SDK has the generated IDL, run the tests with the make command:
+
+```sh
+make anchor-test
+```

@@ -12,9 +12,12 @@
 //! accounts. These accounts may be in any order, with two placeholder accounts:
 //! - [`OWNER`]: the program will replace this account with the governance PDA
 //! - [`PAYER`]: the program will replace this account with the payer account
+use std::io;
+
 use anchor_lang::prelude::*;
 use solana_program::instruction::Instruction;
 use wormhole_anchor_sdk::wormhole::PostedVaa;
+use wormhole_io::{Readable, Writeable};
 use wormhole_sdk::{Chain, GOVERNANCE_EMITTER};
 
 use crate::error::GovernanceError;
@@ -42,7 +45,8 @@ pub struct Governance<'info> {
         seeds = [b"governance"],
         bump,
     )]
-    /// CHECK: TODO
+    /// CHECK: governance PDA. This PDA has to be the owner assigned to the
+    /// governed program.
     pub governance: AccountInfo<'info>,
 
     #[account(
@@ -71,12 +75,235 @@ pub struct Governance<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-// TODO: adjust wire format to match the wh governance spec
+/// General purpose governance message to call arbitrary instructions on a governed program.
+///
+/// This message adheres to the Wormhole governance packet standard:
+/// https://github.com/wormhole-foundation/wormhole/blob/main/whitepapers/0002_governance_messaging.md
+///
+/// The wire format for this message is:
+/// | field           |                     size (bytes) | description                             |
+/// |-----------------+----------------------------------+-----------------------------------------|
+/// | MODULE          |                               32 | Governance module identifier            |
+/// | ACTION          |                                1 | Governance action identifier            |
+/// | CHAIN           |                                2 | Chain identifier                        |
+/// |-----------------+----------------------------------+-----------------------------------------|
+/// | program_id      |                               32 | Program ID of the program to be invoked |
+/// | accounts_length |                                2 | Number of accounts                      |
+/// | accounts        | `accounts_length` * (32 + 1 + 1) | Accounts to be passed to the program    |
+/// | data_length     |                                2 | Length of the data                      |
+/// | data            |                    `data_length` | Data to be passed to the program        |
+///
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GovernanceMessage {
     pub program_id: Pubkey,
     pub accounts: Vec<Acc>,
     pub data: Vec<u8>,
+}
+
+impl GovernanceMessage {
+    // "GeneralPurposeGovernance" (left padded)
+    const MODULE: [u8; 32] = [
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x47, 0x65, 0x6E, 0x65, 0x72, 0x61, 0x6C,
+        0x50, 0x75, 0x72, 0x70, 0x6F, 0x73, 0x65, 0x47, 0x6F, 0x76, 0x65, 0x72, 0x6E, 0x61, 0x6E,
+        0x63, 0x65,
+    ];
+}
+
+#[test]
+fn test_governance_module() {
+    let s = "GeneralPurposeGovernance";
+    let mut module = [0; 32];
+    module[32 - s.len()..].copy_from_slice(s.as_bytes());
+    assert_eq!(module, GovernanceMessage::MODULE);
+}
+
+impl AnchorDeserialize for GovernanceMessage {
+    fn deserialize_reader<R: io::Read>(reader: &mut R) -> io::Result<Self> {
+        Readable::read(reader)
+    }
+}
+
+impl AnchorSerialize for GovernanceMessage {
+    fn serialize<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
+        Writeable::write(self, writer)
+    }
+}
+
+impl Readable for GovernanceMessage {
+    const SIZE: Option<usize> = None;
+
+    fn read<R>(reader: &mut R) -> io::Result<Self>
+    where
+        Self: Sized,
+        R: io::Read,
+    {
+        let module: [u8; 32] = Readable::read(reader)?;
+        if module != Self::MODULE {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Invalid GovernanceMessage module",
+            ));
+        }
+        let action: GovernanceAction = Readable::read(reader)?;
+        if action != GovernanceAction::SolanaCall {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Invalid GovernanceAction",
+            ));
+        }
+        let chain: u16 = Readable::read(reader)?;
+        if Chain::from(chain) != Chain::Solana {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Invalid GovernanceMessage chain",
+            ));
+        }
+
+        let program_id: Pubkey = Pubkey::new_from_array(Readable::read(reader)?);
+        let accounts_len: u16 = Readable::read(reader)?;
+        let mut accounts = Vec::with_capacity(accounts_len as usize);
+        for _ in 0..accounts_len {
+            let pubkey: [u8; 32] = Readable::read(reader)?;
+            let is_signer: bool = Readable::read(reader)?;
+            let is_writable: bool = Readable::read(reader)?;
+            accounts.push(Acc {
+                pubkey: Pubkey::new_from_array(pubkey),
+                is_signer,
+                is_writable,
+            });
+        }
+        let data_len: u16 = Readable::read(reader)?;
+        let mut data = vec![0; data_len as usize];
+        reader.read_exact(&mut data)?;
+
+        Ok(GovernanceMessage {
+            program_id,
+            accounts,
+            data,
+        })
+    }
+}
+
+impl Writeable for GovernanceMessage {
+    fn written_size(&self) -> usize {
+        Self::MODULE.len()
+        + GovernanceAction::SIZE.unwrap() // action
+        + u16::SIZE.unwrap() // chain
+        + <[u8; 32]>::SIZE.unwrap() // program_id
+        + u16::SIZE.unwrap() // accounts_len
+        + self.accounts.iter()  // accounts
+          .map(|_| 32 + 1 + 1).sum::<usize>()
+        + u16::SIZE.unwrap() // data_len
+        + self.data.len() // data
+    }
+
+    fn write<W>(&self, writer: &mut W) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let GovernanceMessage {
+            program_id,
+            accounts,
+            data,
+        } = self;
+
+        Self::MODULE.write(writer)?;
+        GovernanceAction::SolanaCall.write(writer)?;
+        u16::from(Chain::Solana).write(writer)?;
+        program_id.to_bytes().write(writer)?;
+        (accounts.len() as u16).write(writer)?;
+        for acc in accounts {
+            acc.pubkey.to_bytes().write(writer)?;
+            acc.is_signer.write(writer)?;
+            acc.is_writable.write(writer)?;
+        }
+        (data.len() as u16).write(writer)?;
+        writer.write_all(data)
+    }
+}
+
+#[test]
+fn test_governance_message_serde() {
+    let program_id = Pubkey::new_unique();
+    let accounts = vec![
+        Acc {
+            pubkey: Pubkey::new_unique(),
+            is_signer: true,
+            is_writable: true,
+        },
+        Acc {
+            pubkey: Pubkey::new_unique(),
+            is_signer: false,
+            is_writable: true,
+        },
+    ];
+    let data = vec![1, 2, 3, 4, 5];
+    let msg = GovernanceMessage {
+        program_id,
+        accounts,
+        data,
+    };
+
+    let mut buf = Vec::new();
+    msg.serialize(&mut buf).unwrap();
+
+    let msg2 = GovernanceMessage::deserialize(&mut buf.as_slice()).unwrap();
+    assert_eq!(msg, msg2);
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// The known set of governance actions.
+///
+/// As the governance logic is expanded to more runtimes, it's important to keep
+/// them in sync, at least the newer ones should ensure they don't overlap with
+/// the existing ones.
+///
+/// Existing implementations are not strongly required to be updated to be aware
+/// of new actions (as they will never need to know the action indices higher
+/// than the one corresponding to the current runtime), but it's good practice.
+///
+/// When adding a new runtime, make sure to at least update in the README.md
+pub enum GovernanceAction {
+    Undefined,
+    EvmCall,
+    SolanaCall,
+}
+
+impl Readable for GovernanceAction {
+    const SIZE: Option<usize> = Some(1);
+
+    fn read<R>(reader: &mut R) -> io::Result<Self>
+    where
+        Self: Sized,
+        R: io::Read,
+    {
+        match Readable::read(reader)? {
+            0 => Ok(GovernanceAction::Undefined),
+            1 => Ok(GovernanceAction::EvmCall),
+            2 => Ok(GovernanceAction::SolanaCall),
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Invalid GovernanceAction",
+            )),
+        }
+    }
+}
+
+impl Writeable for GovernanceAction {
+    fn written_size(&self) -> usize {
+        Self::SIZE.unwrap()
+    }
+
+    fn write<W>(&self, writer: &mut W) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        match self {
+            GovernanceAction::Undefined => Ok(()),
+            GovernanceAction::EvmCall => 1.write(writer),
+            GovernanceAction::SolanaCall => 2.write(writer),
+        }
+    }
 }
 
 impl From<GovernanceMessage> for Instruction {
@@ -114,7 +341,7 @@ impl From<Instruction> for GovernanceMessage {
 /// A copy of [`solana_program::instruction::AccountMeta`] with
 /// `AccountSerialize`/`AccountDeserialize` impl.
 /// Would be nice to just use the original, but it lacks these traits.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Acc {
     pub pubkey: Pubkey,
     pub is_signer: bool,

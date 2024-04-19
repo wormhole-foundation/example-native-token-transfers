@@ -1,0 +1,72 @@
+{
+  "name": "@wormhole-foundation/sdk-evm-ntt",
+  "version": "0.0.1-beta.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wormhole-foundation/connect-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wormhole-foundation/connect-sdk/issues"
+  },
+  "homepage": "https://github.com/wormhole-foundation/connect-sdk#readme",
+  "directories": {
+    "test": "tests"
+  },
+  "license": "Apache-2.0",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "module": "./dist/esm/index.js",
+  "description": "SDK for EVM chains, used in conjunction with @wormhole-foundation/sdk",
+  "files": [
+    "dist/esm",
+    "dist/cjs"
+  ],
+  "keywords": [
+    "wormhole",
+    "sdk",
+    "typescript",
+    "ntt",
+    "evm"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "sideEffects": true,
+  "scripts": {
+    "build:cjs": "tsc -p ./tsconfig.cjs.json  && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
+    "build:esm": "tsc -p ./tsconfig.esm.json",
+    "build": "npm run build:esm && npm run build:cjs",
+    "rebuild": "npm run clean && npm run build",
+    "clean": "rm -rf ./dist",
+    "generate:test": "typechain --node16-modules --target ethers-v6 --out-dir ethers-ci-contracts '../../evm/out/**/*.json'",
+    "generate:slim": "ABI_VERSION=`tsx scripts/readVersion.ts` && typechain --node16-modules --target ethers-v6 --out-dir src/ethers-contracts/$ABI_VERSION '../../evm/out/?(WormholeTransceiver.sol|NttManager.sol)/*.json'",
+    "generate": "npm run generate:slim",
+    "build:contracts": "cd ../.. && make build-evm-prod",
+    "test": "jest --config ./jest.config.ts"
+  },
+  "dependencies": {
+    "@wormhole-foundation/sdk-connect": "0.5.3-beta.3",
+    "@wormhole-foundation/sdk-definitions-ntt": "0.0.1-beta.1",
+    "@wormhole-foundation/sdk-evm": "0.5.3-beta.3",
+    "@wormhole-foundation/sdk-evm-core": "0.5.3-beta.3",
+    "ethers": "^6.5.1"
+  },
+  "devDependencies": {
+    "@typechain/ethers-v6": "^0.5.1",
+    "tsx": "^4.7.2",
+    "typechain": "^8.3.2"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
+  }
+}

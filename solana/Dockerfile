@@ -1,6 +1,6 @@
 FROM backpackapp/build:v0.29.0@sha256:9aee169b2d8b89b4a4243419ae35c176773136e78d751b3e439eff692c9c1293 as anchor
 
-WORKDIR /usr/src/anchor-ntt/
+WORKDIR /usr/src/solana/
 
 COPY Anchor.toml Anchor.toml
 COPY Cargo.lock Cargo.lock
