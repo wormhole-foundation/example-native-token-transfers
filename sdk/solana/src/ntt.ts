@@ -1,10 +1,12 @@
-import { Program } from "@coral-xyz/anchor";
+import { Program, web3 } from "@coral-xyz/anchor";
 import * as splToken from "@solana/spl-token";
 import {
   createAssociatedTokenAccountInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import {
+  AddressLookupTableAccount,
+  AddressLookupTableProgram,
   Connection,
   Keypair,
   PublicKey,
@@ -71,6 +73,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   program: Program<NttBindings.NativeTokenTransfer>;
   config?: NttBindings.Config;
   quoter?: NttQuoter<N, C>;
+  addressLookupTable?: AddressLookupTableAccount;
 
   constructor(
     readonly network: N,
@@ -263,6 +266,100 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       { transaction: tx, signers: [] },
       "Ntt.Initialize"
     );
+
+    yield* this.initializeOrUpdateLUT({ payer: args.payer });
+  }
+
+  // This function should be called after each upgrade. If there's nothing to
+  // do, it won't actually submit a transaction, so it's cheap to call.
+  async *initializeOrUpdateLUT(args: { payer: Keypair }) {
+    // TODO: find a more robust way of fetching a recent slot
+    const slot = (await this.program.provider.connection.getSlot()) - 1;
+
+    const [_, lutAddress] = web3.AddressLookupTableProgram.createLookupTable({
+      authority: this.pdas.lutAuthority(),
+      payer: args.payer.publicKey,
+      recentSlot: slot,
+    });
+
+    const whAccs = utils.getWormholeDerivedAccounts(
+      this.program.programId,
+      this.core.address
+    );
+    const config = await this.getConfig();
+
+    const entries = {
+      config: this.pdas.configAccount(),
+      custody: config.custody,
+      tokenProgram: config.tokenProgram,
+      mint: config.mint,
+      tokenAuthority: this.pdas.tokenAuthority(),
+      outboxRateLimit: this.pdas.outboxRateLimitAccount(),
+      wormhole: {
+        bridge: whAccs.wormholeBridge,
+        feeCollector: whAccs.wormholeFeeCollector,
+        sequence: whAccs.wormholeSequence,
+        program: this.core.address,
+        systemProgram: SystemProgram.programId,
+        clock: web3.SYSVAR_CLOCK_PUBKEY,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+      },
+    };
+
+    // collect all pubkeys in entries recursively
+    const collectPubkeys = (obj: any): Array<PublicKey> => {
+      const pubkeys = new Array<PublicKey>();
+      for (const key in obj) {
+        const value = obj[key];
+        if (value instanceof PublicKey) {
+          pubkeys.push(value);
+        } else if (typeof value === "object") {
+          pubkeys.push(...collectPubkeys(value));
+        }
+      }
+      return pubkeys;
+    };
+    const pubkeys = collectPubkeys(entries).map((pk) => pk.toBase58());
+
+    var existingLut: web3.AddressLookupTableAccount | null = null;
+    try {
+      existingLut = await this.getAddressLookupTable(false);
+    } catch {
+      // swallow errors here, it just means that lut doesn't exist
+    }
+
+    if (existingLut !== null) {
+      const existingPubkeys =
+        existingLut.state.addresses?.map((a) => a.toBase58()) ?? [];
+
+      // if pubkeys contains keys that are not in the existing LUT, we need to
+      // add them to the LUT
+      const missingPubkeys = pubkeys.filter(
+        (pk) => !existingPubkeys.includes(pk)
+      );
+
+      if (missingPubkeys.length === 0) {
+        return existingLut;
+      }
+    }
+
+    const ix = await this.program.methods
+      .initializeLut(new BN(slot))
+      .accountsStrict({
+        payer: args.payer.publicKey,
+        authority: this.pdas.lutAuthority(),
+        lutAddress,
+        lut: this.pdas.lutAccount(),
+        lutProgram: AddressLookupTableProgram.programId,
+        systemProgram: SystemProgram.programId,
+        entries,
+      })
+      .instruction();
+
+    const tx = new Transaction().add(ix);
+    tx.feePayer = args.payer.publicKey;
+
+    yield this.createUnsignedTx({ transaction: tx }, "Ntt.InitializeLUT");
   }
 
   async *registerTransceiver(args: {
@@ -294,7 +391,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     );
     const broadcastIx = await this.program.methods
       .broadcastWormholeId()
-      .accounts({
+      .accountsStrict({
         payer: args.payer.publicKey,
         config: this.pdas.configAccount(),
         mint: config.mint,
@@ -306,6 +403,8 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           sequence: whAccs.wormholeSequence,
           program: this.core.address,
           systemProgram: SystemProgram.programId,
+          clock: web3.SYSVAR_CLOCK_PUBKEY,
+          rent: web3.SYSVAR_RENT_PUBKEY,
         },
       })
       .instruction();
@@ -346,7 +445,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         .instruction(),
       this.program.methods
         .broadcastWormholePeer({ chainId: toChainId(peer.chain) })
-        .accounts({
+        .accountsStrict({
           payer: sender,
           config: this.pdas.configAccount(),
           peer: this.pdas.transceiverPeerAccount(peer.chain),
@@ -357,6 +456,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
             feeCollector: whAccs.wormholeFeeCollector,
             sequence: whAccs.wormholeSequence,
             program: this.core.address,
+            clock: web3.SYSVAR_CLOCK_PUBKEY,
+            rent: web3.SYSVAR_RENT_PUBKEY,
+            systemProgram: SystemProgram.programId,
           },
         })
         .instruction(),
@@ -751,7 +853,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       .releaseWormholeOutbound({
         revertOnDelay: args.revertOnDelay,
       })
-      .accounts({
+      .accountsStrict({
         payer: args.payer,
         config: { config: this.pdas.configAccount() },
         outboxItem: args.outboxItem,
@@ -764,6 +866,8 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           sequence: whAccs.wormholeSequence,
           program: this.core.address,
           systemProgram: SystemProgram.programId,
+          clock: web3.SYSVAR_CLOCK_PUBKEY,
+          rent: web3.SYSVAR_RENT_PUBKEY,
         },
       })
       .instruction();
@@ -941,6 +1045,32 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         configOrMint.tokenProgram
       );
     }
+  }
+
+  async getAddressLookupTable(
+    useCache = true
+  ): Promise<AddressLookupTableAccount> {
+    if (!useCache || !this.addressLookupTable) {
+      const lut = await this.program.account.lut.fetchNullable(
+        this.pdas.lutAccount()
+      );
+      if (!lut)
+        throw new Error(
+          "Address lookup table not found. Did you forget to call initializeLUT?"
+        );
+
+      const response = await this.connection.getAddressLookupTable(lut.address);
+      if (response.value === null) throw new Error("Could not fetch LUT");
+
+      this.addressLookupTable = response.value;
+    }
+
+    if (!this.addressLookupTable)
+      throw new Error(
+        "Address lookup table not found. Did you forget to call initializeLUT?"
+      );
+
+    return this.addressLookupTable;
   }
 
   createUnsignedTx(

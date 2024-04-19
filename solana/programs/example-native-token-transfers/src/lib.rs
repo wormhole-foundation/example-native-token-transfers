@@ -73,6 +73,10 @@ pub mod example_native_token_transfers {
         instructions::initialize(ctx, args)
     }
 
+    pub fn initialize_lut(ctx: Context<InitializeLUT>, recent_slot: u64) -> Result<()> {
+        instructions::initialize_lut(ctx, recent_slot)
+    }
+
     pub fn version(_ctx: Context<Version>) -> Result<String> {
         Ok(VERSION.to_string())
     }
