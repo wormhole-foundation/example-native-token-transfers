@@ -57,6 +57,7 @@ import {
   NttBindings,
   getNttProgram,
 } from "./bindings.js";
+import { NttQuoter } from "./quoter.js";
 
 export class SolanaNtt<N extends Network, C extends SolanaChains>
   implements Ntt<N, C>
@@ -66,6 +67,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
   program: Program<NttBindings.NativeTokenTransfer>;
   config?: NttBindings.Config;
+  quoter?: NttQuoter<N, C>;
 
   constructor(
     readonly network: N,
@@ -77,6 +79,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     if (!contracts.ntt) throw new Error("Ntt contracts not found");
 
     this.program = getNttProgram(connection, contracts.ntt.manager, idlVersion);
+    if (this.contracts.ntt?.quoter) {
+      this.quoter = new NttQuoter(network, chain, connection, this.contracts);
+    }
 
     this.core = new SolanaWormholeCore<N, C>(
       network,
@@ -89,11 +94,14 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     //   new SolanaNttWormholeTransceiver<N, C>(this, this.contracts.ntt!.transceiver.wormhole),
     // ];
   }
-  quoteDeliveryPrice(
+  async quoteDeliveryPrice(
     destination: Chain,
     flags: Ntt.TransceiverInstruction[]
-  ): Promise<[bigint[], bigint]> {
-    throw new Error("Method not implemented.");
+  ): Promise<bigint> {
+    if (!this.quoter) throw new Error("Quoter not available");
+    if (!this.quoter.isRelayEnabled(destination))
+      throw new Error("Relay not enabled");
+    return await this.quoter.calcRelayCost(destination);
   }
 
   static async fromRpc<N extends Network>(
@@ -446,6 +454,18 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const tx = new Transaction();
     tx.feePayer = senderAddress;
     tx.add(approveIx, transferIx, releaseIx);
+
+    if (relay) {
+      if (!this.quoter) throw new Error("No quoter available");
+      const fee = await this.quoteDeliveryPrice(destination.chain, []);
+      const relayIx = await this.quoter.createRequestRelayInstruction(
+        senderAddress,
+        outboxItem.publicKey,
+        destination.chain,
+        new BN(fee.toString())
+      );
+      tx.add(relayIx);
+    }
 
     yield this.createUnsignedTx(
       { transaction: tx, signers: [outboxItem] },

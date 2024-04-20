@@ -5,36 +5,34 @@ import {
   PublicKey,
   SystemProgram,
 } from "@solana/web3.js";
-import { Chain, Contracts, toChainId } from "@wormhole-foundation/sdk";
-import { Network } from "ethers";
+import { Chain, Contracts, Network } from "@wormhole-foundation/sdk";
+import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
 import { IdlVersion, NttBindings, getQuoterProgram } from "./bindings.js";
-import { U64 } from "./utils.js";
+import { U64, quoterAddresses } from "./utils.js";
 
 //constants that must match ntt-quoter lib.rs / implementation:
 const EVM_GAS_COST = 250_000; // TODO: make sure this is right
 const USD_UNIT = 1e6;
 const WEI_PER_GWEI = 1e9;
 const GWEI_PER_ETH = 1e9;
-const SEED_PREFIX_INSTANCE = "instance";
-const SEED_PREFIX_REGISTERED_CHAIN = "registered_chain";
-const SEED_PREFIX_RELAY_REQUEST = "relay_request";
 
 export class NttQuoter<N extends Network, C extends Chain> {
   program: Program<NttBindings.Quoter>;
+  pdas: ReturnType<typeof quoterAddresses>;
   instance: PublicKey;
 
   constructor(
     readonly network: N,
     readonly chain: C,
     readonly connection: Connection,
-    readonly contracts: Contracts & { quoter: string },
+    readonly contracts: Contracts & { ntt?: Ntt.Contracts },
     readonly idlVersion: IdlVersion = "default"
   ) {
-    if (!contracts.quoter) throw new Error("No quoter program found");
+    if (!contracts.ntt?.quoter) throw new Error("No quoter program found");
+    this.program = getQuoterProgram(connection, contracts.ntt.quoter);
+    this.pdas = quoterAddresses(this.program.programId);
 
-    this.program = getQuoterProgram(connection, contracts.quoter);
-
-    this.instance = this.derivePda(Buffer.from(SEED_PREFIX_INSTANCE));
+    this.instance = this.pdas.instanceAccount();
   }
 
   async isRelayEnabled(destination: Chain) {
@@ -76,8 +74,7 @@ export class NttQuoter<N extends Network, C extends Chain> {
         instanceData.solPriceUsd;
 
     // Add 5% to account for possible price updates while the tx is in flight
-    const cost = U64.to(totalCostSol * 1.05, LAMPORTS_PER_SOL);
-    return cost;
+    return BigInt(U64.to(totalCostSol * 1.05, LAMPORTS_PER_SOL).toString());
   }
 
   async createRequestRelayInstruction(
@@ -94,9 +91,9 @@ export class NttQuoter<N extends Network, C extends Chain> {
       .accounts({
         payer,
         instance: this.instance,
-        registeredChain: this.registeredChainPda(toChainId(chain)),
+        registeredChain: this.pdas.registeredChainAccount(chain),
         outboxItem,
-        relayRequest: this.relayRequestPda(outboxItem),
+        relayRequest: this.pdas.relayRequestAccount(outboxItem),
         systemProgram: SystemProgram.programId,
       })
       .instruction();
@@ -114,7 +111,7 @@ export class NttQuoter<N extends Network, C extends Chain> {
 
   async getRegisteredChain(chain: Chain) {
     const data = await this.program.account.registeredChain.fetch(
-      this.registeredChainPda(toChainId(chain))
+      this.pdas.registeredChainAccount(chain)
     );
 
     return {
@@ -124,28 +121,5 @@ export class NttQuoter<N extends Network, C extends Chain> {
       nativePriceUsd: U64.from(data.nativePrice, USD_UNIT),
       gasPriceGwei: U64.from(data.gasPrice, WEI_PER_GWEI),
     };
-  }
-
-  private registeredChainPda(chainId: number) {
-    return this.derivePda([
-      Buffer.from(SEED_PREFIX_REGISTERED_CHAIN),
-      new BN(chainId).toBuffer("be", 2),
-    ]);
-  }
-
-  private relayRequestPda(outboxItem: PublicKey) {
-    return this.derivePda([
-      Buffer.from(SEED_PREFIX_RELAY_REQUEST),
-      outboxItem.toBytes(),
-    ]);
-  }
-
-  private derivePda(seeds: Buffer | Array<Uint8Array | Buffer>): PublicKey {
-    const seedsArray = seeds instanceof Buffer ? [seeds] : seeds;
-    const [address] = PublicKey.findProgramAddressSync(
-      seedsArray,
-      this.program.programId
-    );
-    return address;
   }
 }
