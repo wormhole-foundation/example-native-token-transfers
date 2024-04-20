@@ -40,6 +40,7 @@ export namespace Ntt {
     transceiver: {
       wormhole: string;
     };
+    quoter?: string;
   };
 
   export type Message = NttManagerMessage<typeof nativeTokenTransferLayout>;
@@ -137,7 +138,7 @@ export interface Ntt<N extends Network, C extends Chain> {
   quoteDeliveryPrice(
     destination: Chain,
     flags: Ntt.TransceiverInstruction[]
-  ): Promise<[bigint[], bigint]>;
+  ): Promise<bigint>;
 
   /**
    * transfer sends a message to the Ntt manager to initiate a transfer
