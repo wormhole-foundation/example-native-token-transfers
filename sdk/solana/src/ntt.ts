@@ -105,6 +105,12 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     //   new SolanaNttWormholeTransceiver<N, C>(this, this.contracts.ntt!.transceiver.wormhole),
     // ];
   }
+  quoteDeliveryPrice(
+    destination: Chain,
+    flags: Ntt.TransceiverInstruction[]
+  ): Promise<[bigint[], bigint]> {
+    throw new Error("Method not implemented.");
+  }
 
   static async fromRpc<N extends Network>(
     provider: Connection,

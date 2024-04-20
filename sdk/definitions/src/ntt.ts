@@ -116,8 +116,6 @@ export namespace Ntt {
  * @typeparam C the chain
  */
 export interface Ntt<N extends Network, C extends Chain> {
-  // ADMIN
-
   setPeer(
     peer: ChainAddress,
     tokenDecimals: number,
@@ -128,6 +126,18 @@ export interface Ntt<N extends Network, C extends Chain> {
     peer: ChainAddress,
     payer?: AccountAddress<C>
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
+
+  /**
+   * quoteDeliveryPrice returns the price to deliver a message to a given chain
+   * the price is quote in native gas
+   *
+   * @param destination the destination chain
+   * @param flags the flags to use for the delivery
+   */
+  quoteDeliveryPrice(
+    destination: Chain,
+    flags: Ntt.TransceiverInstruction[]
+  ): Promise<[bigint[], bigint]>;
 
   /**
    * transfer sends a message to the Ntt manager to initiate a transfer

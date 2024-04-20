@@ -217,7 +217,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     dstChain: Chain,
     ixs: Ntt.TransceiverInstruction[]
   ): Promise<[bigint[], bigint]> {
-    return this.manager.quoteDeliveryPrice.staticCall(
+    return await this.manager.quoteDeliveryPrice(
       toChainId(dstChain),
       Ntt.encodeTransceiverInstructions(ixs)
     );
