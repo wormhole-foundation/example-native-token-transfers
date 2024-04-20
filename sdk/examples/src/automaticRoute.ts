@@ -1,53 +1,14 @@
-import {
-  Chain,
-  canonicalAddress,
-  routes,
-  wormhole,
-} from "@wormhole-foundation/sdk";
+import { canonicalAddress, routes, wormhole } from "@wormhole-foundation/sdk";
 import evm from "@wormhole-foundation/sdk/evm";
 import solana from "@wormhole-foundation/sdk/solana";
 
 // register protocol implementations
-import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
 import "@wormhole-foundation/sdk-evm-ntt";
 import "@wormhole-foundation/sdk-solana-ntt";
 
-import { NttRoute, nttRoutes } from "@wormhole-foundation/sdk-route-ntt";
+import { nttAutomaticRoute } from "@wormhole-foundation/sdk-route-ntt";
 import { getSigner } from "./helpers.js";
-
-const NTT_CONTRACTS: Record<string, Ntt.Contracts> = {
-  Solana: {
-    token: "E3W7KwMH8ptaitYyWtxmfBUpqcuf2XieaFtQSn1LVXsA",
-    manager: "WZLm4bJU4BNVmzWEwEzGVMQ5XFUc4iBmMSLutFbr41f",
-    transceiver: {
-      wormhole: "WZLm4bJU4BNVmzWEwEzGVMQ5XFUc4iBmMSLutFbr41f",
-    },
-  },
-  ArbitrumSepolia: {
-    token: "0x87579Dc40781e99b870DDce46e93bd58A0e58Ae5",
-    manager: "0xdA5a8e05e276AAaF4d79AB5b937a002E5221a4D8",
-    transceiver: {
-      wormhole: "0xd2940c256a3D887833D449eF357b6D639Cb98e12",
-    },
-  },
-};
-
-// Reformat NTT contracts to fit token list list
-const tokens = {
-  Jito: Object.entries(NTT_CONTRACTS).map(([chain, contracts]) => {
-    return {
-      chain: chain as Chain,
-      token: contracts.token,
-      manager: contracts.manager,
-      transceiver: [
-        {
-          type: "wormhole",
-          address: contracts.transceiver.wormhole,
-        },
-      ],
-    } as NttRoute.TokenConfig;
-  }),
-};
+import { NttTokens } from "./consts.js";
 
 (async function () {
   const wh = await wormhole("Testnet", [solana, evm]);
@@ -58,7 +19,7 @@ const tokens = {
   const srcSigner = await getSigner(src);
   const dstSigner = await getSigner(dst);
 
-  const resolver = wh.resolver([nttRoutes({ tokens })]);
+  const resolver = wh.resolver([nttAutomaticRoute({ tokens: NttTokens })]);
 
   const srcTokens = await resolver.supportedSourceTokens(src);
   console.log(
@@ -107,13 +68,13 @@ const tokens = {
     bestRoute.getDefaultOptions()
   );
 
-  // Specify the amount as a decimal string
-  const amt = "0.00001";
-
   // validate the transfer params passed, this returns a new type of ValidatedTransferParams
   // which (believe it or not) is a validated version of the input params
   // this new var must be passed to the next step, quote
-  const validated = await bestRoute.validate({ amount: amt });
+  const validated = await bestRoute.validate({
+    amount: "0.00001",
+    options: { gasDropoff: "0.0" },
+  });
   if (!validated.valid) throw validated.error;
   console.log("Validated parameters: ", validated.params);
 

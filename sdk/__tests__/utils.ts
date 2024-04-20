@@ -234,13 +234,11 @@ export async function transferWithChecks(sourceCtx: Ctx, destinationCtx: Ctx) {
 
   console.log("Calling transfer on: ", sourceCtx.context.chain);
   const srcNtt = await getNtt(sourceCtx);
-  const transferTxs = srcNtt.transfer(
-    sender.address,
-    srcAmt,
-    receiver,
-    false,
-    useRelayer
-  );
+  const transferTxs = srcNtt.transfer(sender.address, srcAmt, receiver, {
+    queue: false,
+    automatic: useRelayer,
+    gasDropoff: 0n,
+  });
   const txids = await signSendWait(sourceCtx.context, transferTxs, srcSigner);
 
   const srcCore = await sourceCtx.context.getWormholeCore();

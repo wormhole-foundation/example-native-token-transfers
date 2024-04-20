@@ -31,19 +31,19 @@ type Q = routes.Quote<Op, Vp>;
 
 type R = NttRoute.TransferReceipt;
 
-export function nttManualRoute(config: NttRoute.Config) {
-  class NttRouteImpl<N extends Network> extends NttManualRoute<N> {
+export function nttAutomaticRoute(config: NttRoute.Config) {
+  class NttRouteImpl<N extends Network> extends NttAutomaticRoute<N> {
     static override config = config;
   }
   return NttRouteImpl;
 }
 
-export class NttManualRoute<N extends Network>
-  extends routes.FinalizableRoute<N, Op, Vp, R>
-  implements routes.StaticRouteMethods<typeof NttManualRoute>
+export class NttAutomaticRoute<N extends Network>
+  extends routes.AutomaticRoute<N, Op, Vp, R>
+  implements routes.StaticRouteMethods<typeof NttAutomaticRoute>
 {
-  override NATIVE_GAS_DROPOFF_SUPPORTED: boolean = false;
-  override IS_AUTOMATIC: boolean = false;
+  override NATIVE_GAS_DROPOFF_SUPPORTED: boolean = true;
+  override IS_AUTOMATIC: boolean = true;
 
   // @ts-ignore
   // Since we set the config on the static class, access it with this param
@@ -51,7 +51,7 @@ export class NttManualRoute<N extends Network>
   readonly staticConfig = this.constructor.config;
   static config: NttRoute.Config = { tokens: {} };
 
-  static meta = { name: "ManualNtt" };
+  static meta = { name: "AutomaticNtt" };
 
   static supportedNetworks(): Network[] {
     return NttRoute.resolveSupportedNetworks(this.config);
@@ -87,19 +87,24 @@ export class NttManualRoute<N extends Network>
   }
 
   getDefaultOptions(): Op {
-    return NttRoute.ManualOptions;
+    return NttRoute.AutomaticOptions;
+  }
+
+  async isAvailable(): Promise<boolean> {
+    // TODO: check that both src/dst are available for relayed NTT transfers
+    return true;
+    //throw new Error("Method not implemented.");
   }
 
   async validate(params: Tp): Promise<Vr> {
     const options = params.options ?? this.getDefaultOptions();
 
-    const amt = amount.parse(params.amount, this.request.source.decimals);
-    const gasDropoff = amount.units(
-      amount.parse(
-        options.gasDropoff ?? "0.0",
-        this.request.toChain.config.nativeTokenDecimals
-      )
+    const gasDropoff = amount.parse(
+      options.gasDropoff ?? "0.0",
+      this.request.toChain.config.nativeTokenDecimals
     );
+
+    const amt = amount.parse(params.amount, this.request.source.decimals);
 
     const validatedParams: Vp = {
       amount: params.amount,
@@ -115,8 +120,8 @@ export class NttManualRoute<N extends Network>
         ),
         options: {
           queue: false,
-          automatic: false,
-          gasDropoff,
+          automatic: true,
+          gasDropoff: amount.units(gasDropoff),
         },
       },
       options,
@@ -125,6 +130,16 @@ export class NttManualRoute<N extends Network>
   }
 
   async quote(params: Vp): Promise<QR> {
+    const { fromChain, toChain } = this.request;
+    const ntt = await fromChain.getProtocol("Ntt", {
+      ntt: params.normalizedParams.sourceContracts,
+    });
+
+    const deliveryPrice = await ntt.quoteDeliveryPrice(
+      toChain.chain,
+      params.normalizedParams.options
+    );
+
     return {
       success: true,
       params,
@@ -136,6 +151,17 @@ export class NttManualRoute<N extends Network>
         token: this.request.destination.id,
         amount: amount.parse(params.amount, this.request.destination.decimals),
       },
+      relayFee: {
+        token: Wormhole.tokenId(fromChain.chain, "native"),
+        amount: amount.fromBaseUnits(
+          deliveryPrice,
+          fromChain.config.nativeTokenDecimals
+        ),
+      },
+      destinationNativeGas: amount.fromBaseUnits(
+        params.normalizedParams.options.gasDropoff ?? 0n,
+        toChain.config.nativeTokenDecimals
+      ),
     };
   }
 
@@ -147,6 +173,7 @@ export class NttManualRoute<N extends Network>
     const ntt = await fromChain.getProtocol("Ntt", {
       ntt: params.normalizedParams.sourceContracts,
     });
+
     const initXfer = ntt.transfer(
       sender,
       amount.units(params.normalizedParams.amount),
@@ -161,55 +188,6 @@ export class NttManualRoute<N extends Network>
       state: TransferState.SourceInitiated,
       originTxs: txids,
       params,
-    };
-  }
-
-  async complete(signer: Signer, receipt: R): Promise<R> {
-    if (!isAttested(receipt)) {
-      if (isRedeemed(receipt)) return receipt;
-      throw new Error(
-        "The source must be finalized in order to complete the transfer"
-      );
-    }
-
-    const { toChain } = this.request;
-    const ntt = await toChain.getProtocol("Ntt", {
-      ntt: receipt.params.normalizedParams.destinationContracts,
-    });
-    const sender = Wormhole.parseAddress(signer.chain(), signer.address());
-    const completeXfer = ntt.redeem([receipt.attestation.attestation], sender);
-
-    const txids = await signSendWait(toChain, completeXfer, signer);
-    return {
-      ...receipt,
-      state: TransferState.DestinationInitiated,
-      destinationTxs: txids,
-    };
-  }
-
-  async finalize(signer: Signer, receipt: R): Promise<R> {
-    if (!isRedeemed(receipt))
-      throw new Error("The transfer must be redeemed in order to finalize");
-
-    const {
-      attestation: { attestation: vaa },
-    } = receipt;
-
-    const { toChain } = this.request;
-    const ntt = await toChain.getProtocol(
-      "Ntt",
-      receipt.params.normalizedParams.destinationContracts
-    );
-    const completeTransfer = ntt.completeInboundQueuedTransfer(
-      toChain.chain,
-      vaa.payload.nttManagerPayload,
-      this.request.destination.id.address
-    );
-    const finalizeTxids = await signSendWait(toChain, completeTransfer, signer);
-    return {
-      ...receipt,
-      state: TransferState.DestinationFinalized,
-      destinationTxs: [...(receipt.destinationTxs ?? []), ...finalizeTxids],
     };
   }
 

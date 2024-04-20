@@ -50,6 +50,15 @@ export namespace Ntt {
     typeof transceiverRegistration
   >;
 
+  export type TransferOptions = {
+    /** Whether or not to queue the transfer if the outbound capacity is exceeded */
+    queue: boolean;
+    /** Whether or not to request this transfer should be relayed, otherwise manual redemption is required */
+    automatic?: boolean;
+    /** How much native gas on the destination to send along with the transfer */
+    gasDropoff?: bigint;
+  };
+
   // TODO: what are the set of attestation types for Ntt?
   // can we know this ahead of time or does it need to be
   // flexible enough for folks to add their own somehow?
@@ -137,7 +146,7 @@ export interface Ntt<N extends Network, C extends Chain> {
    */
   quoteDeliveryPrice(
     destination: Chain,
-    flags: Ntt.TransceiverInstruction[]
+    options: Ntt.TransferOptions
   ): Promise<bigint>;
 
   /**
@@ -152,8 +161,7 @@ export interface Ntt<N extends Network, C extends Chain> {
     sender: AccountAddress<C>,
     amount: bigint,
     destination: ChainAddress,
-    queue: boolean,
-    relay?: boolean
+    options: Ntt.TransferOptions
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
 
   /**

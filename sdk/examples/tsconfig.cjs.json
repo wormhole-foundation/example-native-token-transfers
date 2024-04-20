@@ -4,6 +4,9 @@
   "compilerOptions": {
     "outDir": "dist/cjs",
     "rootDir": "src",
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "allowUnreachableCode": true,
+    "allowUnusedLabels": true,
+    "noUnusedLocals": false
   }
 }
