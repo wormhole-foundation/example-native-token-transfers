@@ -216,11 +216,12 @@ export class EvmNtt<N extends Network, C extends EvmChains>
   async quoteDeliveryPrice(
     dstChain: Chain,
     ixs: Ntt.TransceiverInstruction[]
-  ): Promise<[bigint[], bigint]> {
-    return await this.manager.quoteDeliveryPrice(
+  ): Promise<bigint> {
+    const [, totalPrice] = await this.manager.quoteDeliveryPrice(
       toChainId(dstChain),
       Ntt.encodeTransceiverInstructions(ixs)
     );
+    return totalPrice;
   }
 
   async *setPeer(
@@ -254,10 +255,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
 
     // Note: these flags are indexed by transceiver index
     const ixs = this.encodeFlags([{ skipRelay: !relay }]);
-    const [, totalPrice] = await this.quoteDeliveryPrice(
-      destination.chain,
-      ixs
-    );
+    const totalPrice = await this.quoteDeliveryPrice(destination.chain, ixs);
 
     //TODO check for ERC-2612 (permit) support on token?
     const tokenContract = EvmPlatform.getTokenImplementation(

@@ -51,29 +51,14 @@ import {
   programVersionLayout,
 } from "./utils.js";
 
-import { IdlVersion, IdlVersions, NttBindings } from "./bindings.js";
+import {
+  IdlVersion,
+  IdlVersions,
+  NttBindings,
+  getNttProgram,
+} from "./bindings.js";
+import { NttQuoter } from "./quoter.js";
 
-function loadIdlVersion(version: string) {
-  if (!(version in IdlVersions))
-    throw new Error(`Unknown IDL version: ${version}`);
-
-  return IdlVersions[version as IdlVersion];
-}
-
-function getProgram(
-  connection: Connection,
-  address: string,
-  version: string = "default"
-) {
-  const idl = loadIdlVersion(version);
-
-  return new Program<NttBindings.NativeTokenTransfer>(
-    // @ts-ignore
-    idl.idl.ntt,
-    address,
-    { connection }
-  );
-}
 export class SolanaNtt<N extends Network, C extends SolanaChains>
   implements Ntt<N, C>
 {
@@ -82,6 +67,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
   program: Program<NttBindings.NativeTokenTransfer>;
   config?: NttBindings.Config;
+  quoter?: NttQuoter<N, C>;
 
   constructor(
     readonly network: N,
@@ -92,7 +78,10 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   ) {
     if (!contracts.ntt) throw new Error("Ntt contracts not found");
 
-    this.program = getProgram(connection, contracts.ntt.manager, idlVersion);
+    this.program = getNttProgram(connection, contracts.ntt.manager, idlVersion);
+    if (this.contracts.ntt?.quoter) {
+      this.quoter = new NttQuoter(network, chain, connection, this.contracts);
+    }
 
     this.core = new SolanaWormholeCore<N, C>(
       network,
@@ -105,11 +94,14 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     //   new SolanaNttWormholeTransceiver<N, C>(this, this.contracts.ntt!.transceiver.wormhole),
     // ];
   }
-  quoteDeliveryPrice(
+  async quoteDeliveryPrice(
     destination: Chain,
     flags: Ntt.TransceiverInstruction[]
-  ): Promise<[bigint[], bigint]> {
-    throw new Error("Method not implemented.");
+  ): Promise<bigint> {
+    if (!this.quoter) throw new Error("Quoter not available");
+    if (!this.quoter.isRelayEnabled(destination))
+      throw new Error("Relay not enabled");
+    return await this.quoter.calcRelayCost(destination);
   }
 
   static async fromRpc<N extends Network>(
@@ -181,7 +173,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     const senderAddress = new SolanaAddress(sender).unwrap();
 
-    const program = getProgram(connection, programAddress);
+    const program = getNttProgram(connection, programAddress);
 
     // the anchor library has a built-in method to read view functions. However,
     // it requires a signer, which would trigger a wallet prompt on the frontend.
@@ -462,6 +454,18 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const tx = new Transaction();
     tx.feePayer = senderAddress;
     tx.add(approveIx, transferIx, releaseIx);
+
+    if (relay) {
+      if (!this.quoter) throw new Error("No quoter available");
+      const fee = await this.quoteDeliveryPrice(destination.chain, []);
+      const relayIx = await this.quoter.createRequestRelayInstruction(
+        senderAddress,
+        outboxItem.publicKey,
+        destination.chain,
+        new BN(fee.toString())
+      );
+      tx.add(relayIx);
+    }
 
     yield this.createUnsignedTx(
       { transaction: tx, signers: [outboxItem] },

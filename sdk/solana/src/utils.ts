@@ -62,11 +62,8 @@ export const U64 = {
   MAX: new BN((2n ** 64n - 1n).toString()),
   to: (amount: number, unit: number) => {
     const ret = new BN(Math.round(amount * unit));
-
     if (ret.isNeg()) throw new Error("Value negative");
-
     if (ret.bitLength() > 64) throw new Error("Value too large");
-
     return ret;
   },
   from: (amount: BN, unit: number) => amount.toNumber() / unit,
@@ -94,7 +91,6 @@ export function derivePda(
 const chainToBytes = (chain: Chain | ChainId) =>
   encoding.bignum.toBytes(toChainId(chain), 2);
 
-// TODO: memoize?
 export const nttAddresses = (programId: PublicKeyInitData) => {
   const configAccount = (): PublicKey => derivePda("config", programId);
   const emitterAccount = (): PublicKey => derivePda("emitter", programId);
@@ -146,5 +142,33 @@ export const nttAddresses = (programId: PublicKeyInitData) => {
     transceiverPeerAccount,
     transceiverMessageAccount,
     registeredTransceiver,
+  };
+};
+
+export const quoterAddresses = (programId: PublicKeyInitData) => {
+  const SEED_PREFIX_INSTANCE = "instance";
+  const SEED_PREFIX_REGISTERED_CHAIN = "registered_chain";
+  const SEED_PREFIX_RELAY_REQUEST = "relay_request";
+
+  const relayRequestAccount = (outboxItem: PublicKey) =>
+    derivePda(
+      [encoding.bytes.encode(SEED_PREFIX_RELAY_REQUEST), outboxItem.toBytes()],
+      programId
+    );
+  const instanceAccount = () =>
+    derivePda(encoding.bytes.encode(SEED_PREFIX_INSTANCE), programId);
+  const registeredChainAccount = (chain: Chain) =>
+    derivePda(
+      [
+        encoding.bytes.encode(SEED_PREFIX_REGISTERED_CHAIN),
+        chainToBytes(chain),
+      ],
+      programId
+    );
+
+  return {
+    relayRequestAccount,
+    instanceAccount,
+    registeredChainAccount,
   };
 };
