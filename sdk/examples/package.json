@@ -36,7 +36,8 @@
     "build:cjs": "tsc -p ./tsconfig.cjs.json  && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
     "build:esm": "tsc -p ./tsconfig.esm.json",
     "build": "npm run build:esm && npm run build:cjs",
-    "rebuild": "npm run clean && npm run build",
+    "route":"tsx src/route.ts",
+    "demo":"tsx src/index.ts",
     "clean": "rm -rf ./dist"
   },
   "devDependencies": {

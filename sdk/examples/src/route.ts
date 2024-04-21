@@ -6,9 +6,12 @@ import solana from "@wormhole-foundation/sdk/solana";
 import "@wormhole-foundation/sdk-evm-ntt";
 import "@wormhole-foundation/sdk-solana-ntt";
 
-import { nttAutomaticRoute } from "@wormhole-foundation/sdk-route-ntt";
-import { getSigner } from "./helpers.js";
+import {
+  nttAutomaticRoute,
+  nttManualRoute,
+} from "@wormhole-foundation/sdk-route-ntt";
 import { NttTokens } from "./consts.js";
+import { getSigner } from "./helpers.js";
 
 (async function () {
   const wh = await wormhole("Testnet", [solana, evm]);
@@ -19,7 +22,10 @@ import { NttTokens } from "./consts.js";
   const srcSigner = await getSigner(src);
   const dstSigner = await getSigner(dst);
 
-  const resolver = wh.resolver([nttAutomaticRoute({ tokens: NttTokens })]);
+  const resolver = wh.resolver([
+    nttManualRoute({ tokens: NttTokens }),
+    nttAutomaticRoute({ tokens: NttTokens }),
+  ]);
 
   const srcTokens = await resolver.supportedSourceTokens(src);
   console.log(
@@ -58,38 +64,37 @@ import { NttTokens } from "./consts.js";
     foundRoutes
   );
 
-  // Sort the routes given some input (not required for mvp)
-  // const bestRoute = (await resolver.sortRoutes(foundRoutes, "cost"))[0]!;
+  // Taking the first route here, they'll be sorted by output amount
+  // but you can chose any of them
   const bestRoute = foundRoutes[0]!;
   console.log("Selected: ", bestRoute);
 
-  console.log(
-    "This route offers the following default options",
-    bestRoute.getDefaultOptions()
-  );
+  // Figure out what options are availiable
+  const options = bestRoute.getDefaultOptions();
+  console.log("This route offers the following default options", options);
 
-  // validate the transfer params passed, this returns a new type of ValidatedTransferParams
-  // which (believe it or not) is a validated version of the input params
-  // this new var must be passed to the next step, quote
-  const validated = await bestRoute.validate({
-    amount: "0.00001",
-    options: { gasDropoff: "0.0" },
-  });
+  // Validate the transfer params passed
+  // This fetches the next bits of data necessary and parses amounts or other values
+  // it returns a new type: `ValidatedTransferParams`.
+  // This is a validated version of the input params which must be passed to the next step
+  const validated = await bestRoute.validate({ amount: "0.00001", options });
   if (!validated.valid) throw validated.error;
   console.log("Validated parameters: ", validated.params);
 
-  // get a quote for the transfer, this too returns a new type that must
-  // be passed to the next step, execute (if you like the quote)
+  // Fetch quote for the transfer
+  // this, too, returns a new type that must be passed to the next step (if you like the quote)
   const quote = await bestRoute.quote(validated.params);
   if (!quote.success) throw quote.error;
-  console.log("Best route quote: ", quote);
+  console.log("Quote for transfer: ", quote);
 
   // Now the transfer may be initiated
   // A receipt will be returned, guess what you gotta do with that?
   const receipt = await bestRoute.initiate(srcSigner.signer, quote);
   console.log("Initiated transfer with receipt: ", receipt);
 
-  // Kick off a wait log, if there is an opportunity to complete, this function will do it
+  // Kick off a wait log and executor
+  // If there is an opportunity to advance it to the next step, it will take it
+  // ie complete or finalize
   // see the implementation for how this works
   await routes.checkAndCompleteTransfer(bestRoute, receipt, dstSigner.signer);
 })();
