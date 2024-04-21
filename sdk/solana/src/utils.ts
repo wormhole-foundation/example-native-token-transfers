@@ -146,34 +146,13 @@ export const nttAddresses = (programId: PublicKeyInitData) => {
 };
 
 export const quoterAddresses = (programId: PublicKeyInitData) => {
-  const SEED_PREFIX_INSTANCE = "instance";
-  const SEED_PREFIX_REGISTERED_CHAIN = "registered_chain";
-  const SEED_PREFIX_RELAY_REQUEST = "relay_request";
-  const SEED_PREFIX_REGISTERED_NTT = "registered_ntt";
-
-  const registeredNttAccount = (nttProgramId: PublicKey) => {
-    return derivePda(
-      [Buffer.from(SEED_PREFIX_REGISTERED_NTT), nttProgramId.toBytes()],
-      programId
-    );
-  };
-
+  const instanceAccount = () => derivePda("instance", programId);
+  const registeredNttAccount = (nttProgramId: PublicKey) =>
+    derivePda(["registered_ntt", nttProgramId.toBytes()], programId);
   const relayRequestAccount = (outboxItem: PublicKey) =>
-    derivePda(
-      [encoding.bytes.encode(SEED_PREFIX_RELAY_REQUEST), outboxItem.toBytes()],
-      programId
-    );
-  const instanceAccount = () =>
-    derivePda(encoding.bytes.encode(SEED_PREFIX_INSTANCE), programId);
+    derivePda(["relay_request", outboxItem.toBytes()], programId);
   const registeredChainAccount = (chain: Chain) =>
-    derivePda(
-      [
-        encoding.bytes.encode(SEED_PREFIX_REGISTERED_CHAIN),
-        chainToBytes(chain),
-      ],
-      programId
-    );
-
+    derivePda(["registered_chain", chainToBytes(chain)], programId);
   return {
     relayRequestAccount,
     instanceAccount,
