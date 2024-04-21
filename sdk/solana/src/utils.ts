@@ -149,6 +149,14 @@ export const quoterAddresses = (programId: PublicKeyInitData) => {
   const SEED_PREFIX_INSTANCE = "instance";
   const SEED_PREFIX_REGISTERED_CHAIN = "registered_chain";
   const SEED_PREFIX_RELAY_REQUEST = "relay_request";
+  const SEED_PREFIX_REGISTERED_NTT = "registered_ntt";
+
+  const registeredNttAccount = (nttProgramId: PublicKey) => {
+    return derivePda(
+      [Buffer.from(SEED_PREFIX_REGISTERED_NTT), nttProgramId.toBytes()],
+      programId
+    );
+  };
 
   const relayRequestAccount = (outboxItem: PublicKey) =>
     derivePda(
@@ -170,5 +178,6 @@ export const quoterAddresses = (programId: PublicKeyInitData) => {
     relayRequestAccount,
     instanceAccount,
     registeredChainAccount,
+    registeredNttAccount,
   };
 };

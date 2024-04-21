@@ -17,16 +17,17 @@ export namespace NttRoute {
   // Currently only wormhole attestations supported
   export type TransceiverType = "wormhole";
 
+  export type TransceiverConfig = {
+    type: TransceiverType;
+    address: string;
+  };
+
   export type TokenConfig = {
     chain: Chain;
     token: string;
     manager: string;
-    transceiver: [
-      {
-        type: TransceiverType;
-        address: string;
-      }
-    ];
+    transceiver: TransceiverConfig[];
+    quoter?: string;
   };
 
   export type Config = {
@@ -35,15 +36,25 @@ export namespace NttRoute {
   };
 
   /** Options for Per-TransferRequest settings */
-  export type Options = {
-    /** Whether or not to relay the transfer */
+  export interface Options {
     automatic: boolean;
+    gasDropoff?: string;
+  }
+
+  export const ManualOptions: Options = {
+    automatic: false,
+  };
+
+  export const AutomaticOptions: Options = {
+    automatic: true,
+    gasDropoff: "0.0",
   };
 
   export type NormalizedParams = {
     amount: amount.Amount;
-    srcNtt: Ntt.Contracts;
-    dstNtt: Ntt.Contracts;
+    options: Ntt.TransferOptions;
+    sourceContracts: Ntt.Contracts;
+    destinationContracts: Ntt.Contracts;
   };
 
   export interface ValidatedParams
@@ -137,6 +148,7 @@ export namespace NttRoute {
             wormhole: found.transceiver.find((v) => v.type === "wormhole")!
               .address,
           },
+          quoter: found.quoter,
         };
     }
     throw new Error("Cannot find Ntt contracts in config for: " + address);
