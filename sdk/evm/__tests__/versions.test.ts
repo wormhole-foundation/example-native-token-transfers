@@ -20,7 +20,6 @@ describe("ABI Versions Test", function () {
     const ntt = await EvmNtt.fromRpc(await ctx.getRpc(), {
       Sepolia: {
         ...ctx.config,
-        //@ts-ignore
         contracts: { ...{ ntt: overrides["Sepolia"] } },
       },
     });
@@ -30,7 +29,6 @@ describe("ABI Versions Test", function () {
   test("It initializes from constructor", async function () {
     const ntt = new EvmNtt("Testnet", "Sepolia", await ctx.getRpc(), {
       ...ctx.config.contracts,
-      //@ts-ignore
       ...{ ntt: overrides["Sepolia"] },
     });
     expect(ntt).toBeTruthy();

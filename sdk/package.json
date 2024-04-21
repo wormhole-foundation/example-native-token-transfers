@@ -20,7 +20,7 @@
     "sync": "tsx syncVersion.ts && npm install && npm run build"
   },
   "dependencies": {
-    "@wormhole-foundation/sdk": "0.5.3-beta.8"
+    "@wormhole-foundation/sdk": "0.5.3-beta.9"
   },
   "devDependencies": {
     "@solana/spl-token": "0.3.9",

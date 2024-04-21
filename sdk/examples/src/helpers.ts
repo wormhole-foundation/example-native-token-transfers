@@ -26,7 +26,6 @@ export async function getSigner<N extends Network, C extends Chain>(
   const platform = chain.platform.utils()._platform;
   switch (platform) {
     case "Solana":
-      // @ts-ignore
       signer = await solana.getSigner(
         await chain.getRpc(),
         getEnv("OTHER_SOL_PRIVATE_KEY"),
@@ -34,7 +33,6 @@ export async function getSigner<N extends Network, C extends Chain>(
       );
       break;
     case "Evm":
-      // @ts-ignore
       signer = await evm.getSigner(
         await chain.getRpc(),
         getEnv("ETH_PRIVATE_KEY")

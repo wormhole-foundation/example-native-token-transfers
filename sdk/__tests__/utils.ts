@@ -74,25 +74,14 @@ export interface Ctx extends StartingCtx {
   contracts?: Ntt.Contracts;
 }
 
-const EVM_CONTRACTS = {
-  contracts: {
-    relayer: "0x53855d4b64E9A3CF59A84bc768adA716B5536BC5",
-  },
-};
-
 export const wh = new Wormhole(NETWORK, [evm.Platform, solana.Platform], {
   ...(process.env["CI"]
-    ? {
-        chains: {
-          Ethereum: { ...EVM_CONTRACTS },
-          Bsc: { ...EVM_CONTRACTS },
-        },
-      }
+    ? {}
     : {
         api: "http://localhost:7071",
         chains: {
-          Ethereum: { rpc: "http://localhost:8545", ...EVM_CONTRACTS },
-          Bsc: { rpc: "http://localhost:8546", ...EVM_CONTRACTS },
+          Ethereum: { rpc: "http://localhost:8545" },
+          Bsc: { rpc: "http://localhost:8546" },
           Solana: { rpc: "http://localhost:8899" },
         },
       }),

@@ -313,7 +313,6 @@ describe("example-native-token-transfers", () => {
       test("It initializes from constructor", async function () {
         const ntt = new SolanaNtt("Testnet", "Solana", await ctx.getRpc(), {
           ...ctx.config.contracts,
-          //@ts-ignore
           ...{ ntt: overrides["Solana"] },
         });
         expect(ntt).toBeTruthy();
