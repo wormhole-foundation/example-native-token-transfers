@@ -1,9 +1,8 @@
 import fs from "fs";
-import { BN } from "@coral-xyz/anchor";
 import { Connection, Keypair, Commitment } from "@solana/web3.js";
 import { ChainId } from "@certusone/wormhole-sdk";
 import { SolanaLedgerSigner } from "@xlabs-xyz/ledger-signer-solana";
-import { Chain, chainIdToChain } from "@wormhole-foundation/sdk-base";
+import { Chain } from "@wormhole-foundation/sdk-base";
 
 if (!process.env.LEDGER_DERIVATION_PATH) {
   throw new Error("LEDGER_DERIVATION_PATH is not set");
@@ -79,7 +78,13 @@ export type QuoterConfig = {
   managerRegistrations: QuoterManagerRegistrations;
 }
 
-export const outboundLimit = new BN(10_000_000);
+export type NttConfig = {
+  mintAddress: string;
+  programId: string;
+  wormholeProgramId: string;
+  outboundLimit: string;
+  mode: "locking" | "burning";
+}
 
 export function getEvmNttDeployments(): NttDeployment[] {
   return loadScriptConfig("evm-peers");
@@ -87,6 +92,10 @@ export function getEvmNttDeployments(): NttDeployment[] {
 
 export function getQuoterConfiguration(): QuoterConfig  {
   return loadScriptConfig("quoter-config");
+}
+
+export function getNttConfiguration(): NttConfig {
+  return loadScriptConfig("ntt-config");
 }
 
 function loadScriptConfig(filename: string): any {

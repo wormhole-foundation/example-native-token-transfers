@@ -4,7 +4,7 @@
     "managerAddress": "0x06413c42e913327Bc9a08B7C1E362BAE7C0b9598",
     "transceiverAddress": "0x649fF7B32C2DE771043ea105c4aAb2D724497238",
     "tokenDecimals": 18,
-    "limit": 4200000000000
+    "limit": 100000000
   },
   {
     "chainId": 10003,

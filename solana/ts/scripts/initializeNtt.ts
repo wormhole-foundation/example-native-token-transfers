@@ -3,21 +3,11 @@ import { BN } from '@coral-xyz/anchor'
 import { Keypair, PublicKey } from "@solana/web3.js";
 
 import { NTT } from "../sdk";
-import { connection, getSigner, getEnv, outboundLimit } from './env';
+import { connection, getSigner, getNttConfiguration } from './env';
 import { ledgerSignAndSend } from './helpers';
 
-type InitConfig = {
-  mintAddress: string,
-  wormholeProgramId: string,
-  nttProgramId: string,
-}
-
 (async () => {
-  const config: InitConfig = {
-    mintAddress: getEnv("MINT_ADDRESS"),
-    wormholeProgramId: getEnv("WORMHOLE_PROGRAM_ID"),
-    nttProgramId: getEnv("NTT_PROGRAM_ID"),
-  };
+  const config = getNttConfiguration();
 
   const signer = await getSigner();
   const signerPk = new PublicKey(await signer.getAddress());
@@ -25,7 +15,7 @@ type InitConfig = {
   const mint = new PublicKey(config.mintAddress);
 
   const ntt = new NTT(connection, {
-    nttId: config.nttProgramId as any,
+    nttId: config.programId as any,
     wormholeId: config.wormholeProgramId as any,
   });
 
@@ -52,8 +42,8 @@ type InitConfig = {
     owner: signerPk,
     chain: "solana",
     mint,
-    outboundLimit: outboundLimit,
-    mode: "locking",
+    outboundLimit: new BN(config.outboundLimit),
+    mode: config.mode,
   });
 
   await ledgerSignAndSend([initializeNttIx], []);

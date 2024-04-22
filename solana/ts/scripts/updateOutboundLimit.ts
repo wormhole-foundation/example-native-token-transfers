@@ -1,15 +1,17 @@
 
 
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey,  } from "@solana/web3.js";
+import { BN } from "@coral-xyz/anchor";
 
-import { connection, outboundLimit, getEnv, getSigner } from "./env";
+import { connection, getSigner, getNttConfiguration } from "./env";
 import { NTT } from "../sdk";
 import { ledgerSignAndSend } from "./helpers";
 
 (async () => {
+  const nttConfig = getNttConfiguration();
   const ntt = new NTT(connection, {
-    nttId: getEnv("NTT_PROGRAM_ID") as any,
-    wormholeId: getEnv("WORMHOLE_PROGRAM_ID") as any,
+    nttId: nttConfig.programId as any,
+    wormholeId: nttConfig.wormholeProgramId as any,
   });
 
   const signer = await getSigner();
@@ -17,12 +19,12 @@ import { ledgerSignAndSend } from "./helpers";
 
   const setOutboundLimitIx = await ntt.createSetoutboundLimitInstruction({
     owner: signerPk,
-    limit: outboundLimit,
+    limit: new BN(nttConfig.outboundLimit),
   });
 
   const signature = await ledgerSignAndSend([setOutboundLimitIx], []);
 
-  console.log(`Outbound limit set to ${outboundLimit} with tx ${signature}`);
+  console.log(`Outbound limit set to ${nttConfig.outboundLimit} with tx ${signature}`);
   await connection.confirmTransaction(signature);
   console.log("Success.");
 })();

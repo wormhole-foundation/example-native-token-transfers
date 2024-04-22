@@ -1,0 +1,7 @@
+{
+  "mintAddress": "EetppHswYvV1jjRWoQKC1hejdeBDHR9NNzNtCyRQfrrQ",
+  "programId": "NTtAaoDJhkeHeaVUHnyhwbPNAN6WgBpHkHBTc6d7vLK",
+  "wormholeProgramId": "3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5",
+  "outboundLimit": "10000000",
+  "mode": "locking"
+}

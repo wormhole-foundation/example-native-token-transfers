@@ -3,14 +3,15 @@ import { BN } from '@coral-xyz/anchor'
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { ChainName, coalesceChainName, tryNativeToHexString } from "@certusone/wormhole-sdk";
 
-import { connection, getEnv, getEvmNttDeployments, getSigner } from "./env";
+import { connection, getEnv, getEvmNttDeployments, getNttConfiguration, getSigner } from "./env";
 import { NTT } from "../sdk";
 import { ledgerSignAndSend } from './helpers';
 
 (async () => {
+  const nttConfig = getNttConfiguration();
   const ntt = new NTT(connection, {
-    nttId: getEnv("NTT_PROGRAM_ID") as any,
-    wormholeId: getEnv("WORMHOLE_PROGRAM_ID") as any,
+    nttId: nttConfig.programId as any,
+    wormholeId: nttConfig.wormholeProgramId as any,
   });
 
   const signer = await getSigner();
@@ -55,7 +56,7 @@ import { ledgerSignAndSend } from './helpers';
       log(`Transaction ${txSignature} sent.`);
       await connection.confirmTransaction(txSignature);
     } catch (error) {
-      console.error(`Failed to configure chain ${chainId}. Error: ${error}`);
+      console.error(`Failed to configure chain ${chainId}. Error: ${error.toString()}`);
       continue;
     }
 
