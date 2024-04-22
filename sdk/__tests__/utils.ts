@@ -603,28 +603,21 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
     chainToPlatform(target.chain) === "Evm" &&
     chainToPlatform(peer.chain) === "Evm"
   ) {
-    const nativeSigner = (
-      signer as NativeSigner
-    ).unwrap() as ethers.NonceManager;
+    const nativeSigner = (signer as NativeSigner).unwrap();
     const xcvr = WormholeTransceiver__factory.connect(
       targetCtx.contracts!.transceiver.wormhole,
       nativeSigner.signer
     );
-
     const peerChainId = toChainId(peer.chain);
 
     console.log("Setting isEvmChain for: ", peer.chain);
-    const expectedNonce = await nativeSigner.getNonce();
     await tryAndWaitThrice(() =>
-      xcvr.setIsWormholeEvmChain.send(peerChainId, true, {
-        nonce: expectedNonce,
-      })
+      xcvr.setIsWormholeEvmChain.send(peerChainId, true)
     );
+
     console.log("Setting wormhole relaying for: ", peer.chain);
     await tryAndWaitThrice(() =>
-      xcvr.setIsWormholeRelayingEnabled.send(peerChainId, true, {
-        nonce: expectedNonce + 1,
-      })
+      xcvr.setIsWormholeRelayingEnabled.send(peerChainId, true)
     );
   }
 
