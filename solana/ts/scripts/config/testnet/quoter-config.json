@@ -10,6 +10,13 @@
       "gasCost": 400000,
       "wormholeTransceiverIndex": 0,
       "isSupported": true
+    },
+    {
+      "programId": "Hxk4UDrSgf3e5xpQg1giYaYtR5dvzhdkY2cMeNDPhMi8",
+      "tokenAddress": "2JZQnfjQTjzmmTGosK6Hhr3dJokeQdwRhQ1UtxsYQGdX",
+      "gasCost": 400000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
     }
   ],
   "peerQuotes": {

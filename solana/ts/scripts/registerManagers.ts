@@ -22,6 +22,7 @@ async function run() {
         managerConfig.wormholeTransceiverIndex;
     const instructions = [] as TransactionInstruction[];
     if (registration !== null && (!managerConfig.isSupported || needsUpdate)) {
+      console.log(`De-registering manager ${managerConfig.programId}`);
       instructions.push(
         await quoter.createDeregisterNttInstruction(signerPk, nttKey)
       );
@@ -34,6 +35,8 @@ async function run() {
         );
       }
 
+      console.log(`Registering manager ${managerConfig.programId}`);
+
       instructions.push(
         await quoter.createRegisterNttInstruction(
           signerPk,
@@ -44,11 +47,11 @@ async function run() {
       );
     }
 
-    console.log("instructions", instructions);
-
     try {
+      
       const signature = await ledgerSignAndSend(instructions, []);
       await connection.confirmTransaction(signature, "confirmed");
+      console.log("Success.");
     } catch (error) {
       console.error(
         `Failed to register or de-register manager ${managerConfig.programId}: ${error}`
