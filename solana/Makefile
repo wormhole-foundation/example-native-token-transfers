@@ -25,7 +25,13 @@ node_modules: package-lock.json
 .PHONY: artifacts-mainnet
 artifacts-mainnet:
 	rm -rf $@
-	DOCKER_BUILDKIT=1 docker build -t export -o $@ .
+	DOCKER_BUILDKIT=1 docker build -t export -o $@ --build-arg network=mainnet .
+	@cd $@ && ls | xargs sha256sum > checksums.txt
+	@cat $@/checksums.txt
+
+artifacts-devnet:
+	rm -rf $@
+	DOCKER_BUILDKIT=1 docker build -t export -o $@ --build-arg network="solana-devnet" .
 	@cd $@ && ls | xargs sha256sum > checksums.txt
 	@cat $@/checksums.txt
 

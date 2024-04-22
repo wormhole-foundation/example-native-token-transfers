@@ -47,7 +47,7 @@ FROM anchor as mainnet-builder
 RUN --mount=type=cache,target=/opt/solana/deps/target,id=build_anchor_ntt_target \
     --mount=type=cache,target=/usr/local/cargo/registry,id=cargo_registry \
     --mount=type=cache,target=.anchor,id=anchor_cache \
-    anchor build --arch sbf -- --no-default-features --features "mainnet"
+    anchor build --arch sbf -- --no-default-features --features "$network"
 
 FROM scratch as export
-COPY --from=mainnet-builder /usr/src/anchor-ntt/target/deploy /
+COPY --from=mainnet-builder /usr/src/solana/target/deploy /
