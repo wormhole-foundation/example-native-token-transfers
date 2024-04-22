@@ -903,18 +903,31 @@ export class NTT {
     );
   }
 
-  async setInboundLimit(args: { owner: Keypair; chain: ChainName; limit: BN }) {
-    const ix = await this.program.methods
+  async createSetInboundLimitInstruction(args: {
+    owner: PublicKey;
+    chain: ChainName;
+    limit: BN;
+  }) {
+    return this.program.methods
       .setInboundLimit({
         chainId: { id: toChainId(args.chain) },
         limit: args.limit,
       })
       .accounts({
-        owner: args.owner.publicKey,
+        owner: args.owner,
         config: this.configAccountAddress(),
         rateLimit: this.inboxRateLimitAccountAddress(args.chain),
       })
       .instruction();
+  }
+
+  async setInboundLimit(args: { owner: Keypair; chain: ChainName; limit: BN }) {
+    const ix = await this.createSetInboundLimitInstruction({
+      owner: args.owner.publicKey,
+      chain: args.chain,
+      limit: args.limit,
+    });
+    
     return sendAndConfirmTransaction(
       this.program.provider.connection,
       new Transaction().add(ix),

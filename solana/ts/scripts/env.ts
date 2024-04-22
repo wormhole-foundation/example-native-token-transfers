@@ -1,5 +1,5 @@
 import fs from "fs";
-import { Connection, Keypair, Commitment } from "@solana/web3.js";
+import { Connection, Commitment } from "@solana/web3.js";
 import { ChainId } from "@certusone/wormhole-sdk";
 import { SolanaLedgerSigner } from "@xlabs-xyz/ledger-signer-solana";
 import { Chain } from "@wormhole-foundation/sdk-base";
