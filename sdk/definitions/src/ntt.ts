@@ -137,6 +137,9 @@ export interface Ntt<N extends Network, C extends Chain> {
     payer?: AccountAddress<C>
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
 
+  /** Check to see if relaying service is available for automatic transfers */
+  isRelayingAvailable(destination: Chain): Promise<boolean>;
+
   /**
    * quoteDeliveryPrice returns the price to deliver a message to a given chain
    * the price is quote in native gas

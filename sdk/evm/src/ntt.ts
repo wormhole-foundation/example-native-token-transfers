@@ -128,6 +128,20 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     ];
   }
 
+  async isRelayingAvailable(destination: Chain): Promise<boolean> {
+    const enabled = await Promise.all(
+      this.xcvrs.map(async (x) => {
+        const [wh, special] = await Promise.all([
+          x.isWormholeRelayingEnabled(destination),
+          x.isSpecialRelayingEnabled(destination),
+        ]);
+        return wh || special;
+      })
+    );
+
+    return enabled.filter((x) => x).length > 0;
+  }
+
   getIsExecuted(attestation: Ntt.Attestation): Promise<boolean> {
     const { emitterChain: chain, payload } =
       attestation as VAA<"Ntt:WormholeTransfer">;

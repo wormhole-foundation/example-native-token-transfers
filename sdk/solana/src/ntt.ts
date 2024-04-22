@@ -94,6 +94,11 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     this.pdas = nttAddresses(this.program.programId);
   }
 
+  async isRelayingAvailable(destination: Chain): Promise<boolean> {
+    if (!this.quoter) return false;
+    return await this.quoter.isRelayEnabled(destination);
+  }
+
   async quoteDeliveryPrice(
     destination: Chain,
     options: Ntt.TransferOptions

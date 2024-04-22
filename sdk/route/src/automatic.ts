@@ -91,9 +91,16 @@ export class NttAutomaticRoute<N extends Network>
   }
 
   async isAvailable(): Promise<boolean> {
-    // TODO: check that both src/dst are available for relayed NTT transfers
-    return true;
-    //throw new Error("Method not implemented.");
+    const nttContracts = NttRoute.resolveNttContracts(
+      this.staticConfig,
+      this.request.source.id
+    );
+
+    const ntt = await this.request.fromChain.getProtocol("Ntt", {
+      ntt: nttContracts,
+    });
+
+    return ntt.isRelayingAvailable(this.request.to.chain);
   }
 
   async validate(params: Tp): Promise<Vr> {
