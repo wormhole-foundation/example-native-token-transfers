@@ -14,8 +14,8 @@ no-idl = []
 no-log-ix-name = []
 cpi = ["no-entrypoint"]
 
-mainnet = []
-solana-devnet = []
+mainnet = [ "wormhole-anchor-sdk/mainnet" ]
+solana-devnet = [ "wormhole-anchor-sdk/solana-devnet" ]
 tilt-devnet = []
 tilt-devnet2 = ["tilt-devnet"]
 
@@ -28,5 +28,6 @@ solana-program.workspace = true
 cfg-if.workspace = true
 wormhole-io.workspace = true
 wormhole-solana-utils.workspace = true
+wormhole-anchor-sdk = { version = "0.29.0-alpha.1", default-features = false }
 
 example-native-token-transfers = { path = "../example-native-token-transfers", features = ["no-entrypoint"] }
