@@ -311,7 +311,7 @@ export class NTT {
     outboundLimit: BN;
     mode: "burning" | "locking";
   }) {
-    const initializeInstruction = this.createInitializeInstruction({
+    const initializeInstruction = await this.createInitializeInstruction({
       ...args,
       payer: args.payer.publicKey,
       owner: args.owner.publicKey,
@@ -319,7 +319,7 @@ export class NTT {
 
     return sendAndConfirmTransaction(
       this.program.provider.connection,
-      new Transaction().add(ix),
+      new Transaction().add(initializeInstruction),
       [args.payer, args.owner]
     );
   }
@@ -927,7 +927,7 @@ export class NTT {
       chain: args.chain,
       limit: args.limit,
     });
-    
+
     return sendAndConfirmTransaction(
       this.program.provider.connection,
       new Transaction().add(ix),
