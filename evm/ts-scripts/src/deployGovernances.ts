@@ -1,7 +1,5 @@
 import { inspect } from "util";
-import { CONTRACTS, coalesceChainName } from "@certusone/wormhole-sdk";
 import {
-  ERC1967Proxy__factory,
   Governance__factory,
 } from "../contract-bindings";
 import {
@@ -23,8 +21,7 @@ async function run() {
   console.log(`Start ${processName}!`);
 
   const output = {
-    GeneralPurposeGovernanceImplementations: [] as Deployment[],
-    GeneralPurposeGovernanceProxies: [] as Deployment[],
+    GeneralPurposeGovernances: [] as Deployment[],
   };
 
   const results = await Promise.all(
@@ -40,35 +37,26 @@ async function run() {
     }
 
     console.log(`Deployed succeded for chain ${result.chainId}`);
-    output.GeneralPurposeGovernanceImplementations.push(result.implementation);
-    output.GeneralPurposeGovernanceProxies.push(result.proxy);
+    output.GeneralPurposeGovernances.push(result.governance);
   }
 
   writeOutputFiles(output, processName);
 }
 
 async function deployGovernance(chain: ChainInfo) {
-  let implementation: Deployment, proxy: Deployment;
+  let governance: Deployment;
   const log = (...args: any[]) => console.log(`[${chain.chainId}]`, ...args);
 
   try {
-    implementation = await deployGovernanceImplementation(chain);
-    log("Implementation deployed at ", implementation.address);
-  } catch (error) {
-    return { chainId: chain.chainId, error };
-  }
-
-  try {
-    proxy = await deployGovernanceProxy(chain, implementation.address);
-    log("Proxy deployed at ", proxy.address);
+    governance = await deployGovernanceImplementation(chain);
+    log("Implementation deployed at ", governance.address);
   } catch (error) {
     return { chainId: chain.chainId, error };
   }
 
   return {
     chainId: chain.chainId,
-    implementation,
-    proxy,
+    governance,
   };
 }
 
@@ -89,18 +77,4 @@ async function deployGovernanceImplementation(
 
   await governance.deployed();
   return { address: governance.address, chainId: chain.chainId };
-}
-
-async function deployGovernanceProxy(
-  chain: ChainInfo,
-  implementationAddress: string
-): Promise<Deployment> {
-  const signer = await getSigner(chain);
-
-  const proxyFactory = new ERC1967Proxy__factory(signer);
-
-  const proxy = await proxyFactory.deploy(implementationAddress, []);
-
-  await proxy.deployed();
-  return { address: proxy.address, chainId: chain.chainId };
 }

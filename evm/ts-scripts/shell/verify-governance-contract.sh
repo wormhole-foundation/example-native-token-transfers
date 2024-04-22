@@ -35,19 +35,17 @@ export FOUNDRY_PROFILE=prod
 for chain in $operating_chains; do
   echo "Operating on chain $chain:"
 
-  export governance_implementation_address=$(jq --raw-output ".GeneralPurposeGovernanceImplementations[] | select(.chainId == $chain) | .address" $contracts_file_path)
-  export governance_proxy_address=$(jq --raw-output ".GeneralPurposeGovernanceProxies[] | select(.chainId == $chain) | .address" $contracts_file_path)
+  export governance_address=$(jq --raw-output ".GeneralPurposeGovernances[] | select(.chainId == $chain) | .address" $contracts_file_path)
   export core_wormhole_address=$(jq --raw-output ".WormholeCoreContracts[] | select(.chainId == $chain) | .address" $contracts_file_path)
   export etherscan_api_key=$(jq --raw-output ".[] | select(.chainId == $chain) | .etherscan" $scanner_tokens_file)
   export evm_chain_id=$(jq ".chains[] | select(.chainId == $chain) | .evmNetworkId" $chains_file_path)
 
-  # echo "governance_implementation_address: $governance_implementation_address"
-  # echo "governance_proxy_address: $governance_proxy_address"
+  # echo "governance_address: $governance_address"
   # echo "etherscan_api_key: $etherscan_api_key"
   # echo "evm_chain_id: $evm_chain_id"
 
-  if [ "$governance_implementation_address" = "" ] ||
-    [ "$governance_implementation_address" = "" ] ||
+  if [ "$governance_address" = "" ] ||
+    [ "$governance_address" = "" ] ||
     [ "$etherscan_api_key" = "null" ] ||
     [ "$evm_chain_id" = "null" ]; then
       echo "One of the addresses is not set. Skipping...";
@@ -56,13 +54,7 @@ for chain in $operating_chains; do
   
   forge verify-contract --chain "$evm_chain_id" \
     --etherscan-api-key "$etherscan_api_key" \
-    "$governance_implementation_address" \
+    "$governance_address" \
     src/wormhole/Governance.sol:Governance --watch \
     --constructor-args $(cast abi-encode "constructor(address)" "$core_wormhole_address")
-
-  forge verify-contract --chain "$evm_chain_id" \
-    --etherscan-api-key "$etherscan_api_key" \
-    "$governance_proxy_address" \
-    lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy --watch \
-    --constructor-args $(cast abi-encode "constructor(address,bytes)" "$governance_implementation_address" "0x")
 done
