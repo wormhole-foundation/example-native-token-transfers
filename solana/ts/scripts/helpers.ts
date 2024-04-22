@@ -24,7 +24,10 @@ export async function ledgerSignAndSend(instructions: TransactionInstruction[], 
 
   await addLedgerSignature(tx, deployerSigner, deployerPk);
 
-  return connection.sendRawTransaction(tx.serialize());
+  return connection.sendRawTransaction(tx.serialize(), {
+    skipPreflight: true,
+  
+  });
 }
 
 export async function addLedgerSignature(tx: Transaction, signer: SolanaLedgerSigner, signerPk: PublicKey) {

@@ -1,0 +1,41 @@
+{
+  "feeRecipient": "AdAVF5KmmGmpNQhjY7FL96wZLEynD6Mx3VXJTZf2yFps",
+  "assistant": "HmnUyU4rS6Bd3cFh5tC5Ttax9Qfa1k9V6XZBHtjy8cCW",
+  "nttQuoterProgramId": "Nqd6XqA8LbsCuG8MLWWuP865NV6jR1MbXeKxD4HLKDJ",
+  "solPriceUsd": "150000000",
+  "managerRegistrations": [
+    {
+      "programId": "NTtAaoDJhkeHeaVUHnyhwbPNAN6WgBpHkHBTc6d7vLK",
+      "tokenAddress": "85VBFQZC9TZkfaptBWjvUw7YbZjy52A6mjtPGjstQAmQ",
+      "gasCost": 400000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
+    }
+  ],
+  "peerQuotes": {
+    "Ethereum": {
+      "maxGasDropoffEth": "0",
+      "basePriceUsd": "500000",
+      "nativePriceUsd": "3500000000",
+      "gasPriceGwei": "25"
+    },
+    "Arbitrum": {
+      "maxGasDropoffEth": "0",
+      "basePriceUsd": "500000",
+      "nativePriceUsd": "3500000000",
+      "gasPriceGwei": "25"
+    },
+    "Optimism": {
+      "maxGasDropoffEth": "0",
+      "basePriceUsd": "500000",
+      "nativePriceUsd": "3500000000",
+      "gasPriceGwei": "25"
+    },
+    "Base": {
+      "maxGasDropoffEth": "0",
+      "basePriceUsd": "500000",
+      "nativePriceUsd": "3500000000",
+      "gasPriceGwei": "25"
+    }
+  }
+}

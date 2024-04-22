@@ -1,0 +1,30 @@
+[
+  {
+    "chainId": 10002,
+    "managerAddress": "0x06413c42e913327Bc9a08B7C1E362BAE7C0b9598",
+    "transceiverAddress": "0x649fF7B32C2DE771043ea105c4aAb2D724497238",
+    "tokenDecimals": 18,
+    "limit": 4200000000000
+  },
+  {
+    "chainId": 10003,
+    "managerAddress": "0xCeC6FB4F352bf3DC2b95E1c41831E4D2DBF9a35D",
+    "transceiverAddress": "0xfA42603152E4f133F5F3DA610CDa91dF5821d8bc",
+    "tokenDecimals": 18,
+    "limit": 1300000000000
+  },
+  {
+    "chainId": 10004,
+    "managerAddress": "0x8b9E328bE1b1Bc7501B413d04EBF7479B110775c",
+    "transceiverAddress": "0x149987472333cD48ac6D28293A338a1EEa6Be7EE",
+    "tokenDecimals": 18,
+    "limit": 100000000000
+  },
+  {
+    "chainId": 10005,
+    "managerAddress": "0x27F9Fdd3eaD5aA9A5D827Ca860Be28442A1e7582",
+    "transceiverAddress": "0xeCF0496DE01e9Aa4ADB50ae56dB550f52003bdB7",
+    "tokenDecimals": 18,
+    "limit": 100000000000
+  }
+]

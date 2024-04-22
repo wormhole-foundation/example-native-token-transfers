@@ -3,7 +3,7 @@ import { BN } from '@coral-xyz/anchor'
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { ChainName, coalesceChainName, tryNativeToHexString } from "@certusone/wormhole-sdk";
 
-import { connection, evmNttDeployments, getEnv, getSigner } from "./env";
+import { connection, getEnv, getEvmNttDeployments, getSigner } from "./env";
 import { NTT } from "../sdk";
 import { ledgerSignAndSend } from './helpers';
 
@@ -16,7 +16,7 @@ import { ledgerSignAndSend } from './helpers';
   const signer = await getSigner();
   const signerPk = new PublicKey(await signer.getAddress());
 
-  for (const deployment of evmNttDeployments) {
+  for (const deployment of getEvmNttDeployments()) {
     const { chainId, transceiverAddress, managerAddress, tokenDecimals, limit } = deployment;
     const chainName = coalesceChainName(deployment.chainId);
     const log = (...args) => console.log(`[${chainId}] `, ...args);
