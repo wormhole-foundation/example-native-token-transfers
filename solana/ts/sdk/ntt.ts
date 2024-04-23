@@ -105,6 +105,10 @@ export class NTT {
     return this.derivePda('config')
   }
 
+  upgradeLockAccountAddress(): PublicKey {
+    return this.derivePda('upgrade_lock')
+  }
+
   outboxRateLimitAccountAddress(): PublicKey {
     return this.derivePda('outbox_rate_limit')
   }
@@ -305,6 +309,66 @@ export class NTT {
     await this.sendAndConfirmTransaction(tx, signers)
 
     return outboxItem.publicKey
+  }
+
+  async transferOwnership(args: {
+    payer: Keypair
+    owner: Keypair,
+    newOwner: PublicKey
+  }) {
+    const ix = await this.createTransferOwnershipInstruction({
+      owner: args.owner.publicKey,
+      newOwner: args.newOwner
+    })
+    return await this.sendAndConfirmTransaction(
+      new Transaction().add(ix),
+      [args.payer, args.owner]
+    )
+  }
+
+  async createTransferOwnershipInstruction(args: {
+    owner: PublicKey;
+    newOwner: PublicKey;
+  }) {
+    return this.program.methods
+      .transferOwnership()
+      .accountsStrict({
+        config: this.configAccountAddress(),
+        owner: args.owner,
+        newOwner: args.newOwner,
+        upgradeLock: this.upgradeLockAccountAddress(),
+        programData: programDataAddress(this.program.programId),
+        bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
+      })
+      .instruction();
+  }
+
+  async claimOwnership(args: {
+    payer: Keypair
+    owner: Keypair
+  }) {
+    const ix = await this.createClaimOwnershipInstruction({
+      newOwner: args.owner.publicKey
+    })
+    return await this.sendAndConfirmTransaction(
+      new Transaction().add(ix),
+      [args.payer, args.owner]
+    )
+  }
+
+  async createClaimOwnershipInstruction(args: {
+    newOwner: PublicKey;
+  }) {
+    return this.program.methods
+      .claimOwnership()
+      .accountsStrict({
+        config: this.configAccountAddress(),
+        upgradeLock: this.upgradeLockAccountAddress(),
+        newOwner: args.newOwner,
+        programData: programDataAddress(this.program.programId),
+        bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
+      })
+      .instruction();
   }
 
   /**
