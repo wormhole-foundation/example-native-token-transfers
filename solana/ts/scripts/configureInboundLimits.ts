@@ -1,17 +1,17 @@
 
 import { BN } from '@coral-xyz/anchor'
-import { Keypair, PublicKey } from "@solana/web3.js";
-import { ChainName, coalesceChainName, tryNativeToHexString } from "@certusone/wormhole-sdk";
+import { PublicKey } from "@solana/web3.js";
+import { coalesceChainName } from "@certusone/wormhole-sdk";
 
-import { connection, getEvmNttDeployments, getNttConfiguration, getSigner } from "./env";
+import { connection, getEvmNttDeployments, getSigner, getProgramAddresses } from "./env";
 import { NTT } from "../sdk";
 import { ledgerSignAndSend } from './helpers';
 
 (async () => {
-  const nttConfig = getNttConfiguration();
+  const programs = getProgramAddresses();
   const ntt = new NTT(connection, {
-    nttId: nttConfig.programId as any,
-    wormholeId: nttConfig.wormholeProgramId as any,
+    nttId: programs.nttProgramId as any,
+    wormholeId: programs.wormholeProgramId as any,
   });
 
   const signer = await getSigner();

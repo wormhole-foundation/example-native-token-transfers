@@ -1,7 +1,7 @@
 import { getAssociatedTokenAddressSync, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, mintTo, createMintToCheckedInstruction, createMintToInstruction } from "@solana/spl-token";
 import { PublicKey } from "@solana/web3.js";
 
-import { connection, getEnv, getSigner } from "./env";
+import { connection, getEnv, getProgramAddresses, getSigner } from "./env";
 import { ledgerSignAndSend } from "./helpers";
 
 
@@ -11,9 +11,10 @@ type MintTokensConfig = {
 }
 
 (async () => {
+  const programs = getProgramAddresses();
   const config: MintTokensConfig = {
     mintRecipientAddress: getEnv("MINT_RECIPIENT_ADDRESS"),
-    mintAddress: getEnv("MINT_ADDRESS"),
+    mintAddress: programs.mintProgramId as any,
   }
   const signer = await getSigner();
   const signerPk = new PublicKey(await signer.getAddress());
@@ -39,7 +40,7 @@ type MintTokensConfig = {
   );
 
   try {
-    await ledgerSignAndSend([createATAIx], []);
+    await connection.confirmTransaction(await ledgerSignAndSend([createATAIx], []));
     console.log("ATA created successfully.");
   } catch (err) {
     console.error("Failed to create ATA");

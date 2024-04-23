@@ -39,6 +39,8 @@ console.log("Creating mint account with keypair:", mintKeypair.publicKey.toBase5
     TOKEN_PROGRAM_ID,
   );
 
-  return ledgerSignAndSend([createAccountIx, initMintIx], [mintKeypair]);
+  const signature = await ledgerSignAndSend([createAccountIx, initMintIx], [mintKeypair]);
+  await connection.confirmTransaction(signature);
+  console.log("Success. Mint address:", mintKeypair.publicKey.toBase58());
 })();
 

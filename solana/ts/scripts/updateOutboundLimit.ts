@@ -3,15 +3,16 @@
 import { PublicKey,  } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 
-import { connection, getSigner, getNttConfiguration } from "./env";
+import { connection, getSigner, getNttConfiguration, getProgramAddresses } from "./env";
 import { NTT } from "../sdk";
 import { ledgerSignAndSend } from "./helpers";
 
 (async () => {
+  const programs = getProgramAddresses();
   const nttConfig = getNttConfiguration();
   const ntt = new NTT(connection, {
-    nttId: nttConfig.programId as any,
-    wormholeId: nttConfig.wormholeProgramId as any,
+    nttId: programs.nttProgramId as any,
+    wormholeId: programs.wormholeProgramId as any,
   });
 
   const signer = await getSigner();

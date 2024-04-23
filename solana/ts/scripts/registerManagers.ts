@@ -2,15 +2,16 @@ import { inspect } from "util";
 import { NttQuoter } from "../sdk";
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 
-import { connection, getSigner, getEnv, getQuoterConfiguration } from "./env";
+import { connection, getSigner, getEnv, getQuoterConfiguration, getProgramAddresses } from "./env";
 import { ledgerSignAndSend } from "./helpers";
 
 async function run() {
+  const programs = getProgramAddresses();
   const config = getQuoterConfiguration();
   const signer = await getSigner();
   const signerPk = new PublicKey(await signer.getAddress());
 
-  const quoter = new NttQuoter(connection, config.nttQuoterProgramId);
+  const quoter = new NttQuoter(connection, programs.quoterProgramId);
 
   for (const managerConfig of config.managerRegistrations) {
     const nttKey = new PublicKey(managerConfig.programId);

@@ -3,20 +3,21 @@ import { BN } from '@coral-xyz/anchor'
 import { Keypair, PublicKey } from "@solana/web3.js";
 
 import { NTT } from "../sdk";
-import { connection, getSigner, getNttConfiguration } from './env';
+import { connection, getSigner, getNttConfiguration, getProgramAddresses } from './env';
 import { ledgerSignAndSend } from './helpers';
 
 (async () => {
+  const programs = getProgramAddresses();
   const config = getNttConfiguration();
 
   const signer = await getSigner();
   const signerPk = new PublicKey(await signer.getAddress());
 
-  const mint = new PublicKey(config.mintAddress);
+  const mint = new PublicKey(programs.mintProgramId);
 
   const ntt = new NTT(connection, {
-    nttId: config.programId as any,
-    wormholeId: config.wormholeProgramId as any,
+    nttId: programs.nttProgramId as any,
+    wormholeId: programs.wormholeProgramId as any,
   });
 
   const nttManagerPk = ntt.tokenAuthorityAddress();

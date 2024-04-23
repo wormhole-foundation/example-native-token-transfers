@@ -3,14 +3,13 @@
 import { PublicKey,  } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 
-import { connection, getSigner, getNttConfiguration, getGovernanceConfiguration } from "./env";
+import { connection, getSigner, getProgramAddresses } from "./env";
 import { NTT } from "../sdk";
 import { ledgerSignAndSend } from "./helpers";
 import { NTTGovernance } from "../sdk/governance";
 
 (async () => {
-  const { programId: govProgramId } = getGovernanceConfiguration();
-  const { wormholeProgramId, programId: nttProgramId } = getNttConfiguration();
+  const { nttProgramId, wormholeProgramId, governanceProgramId } = getProgramAddresses();
 
   const ntt = new NTT(connection, {
     nttId: nttProgramId as any,
@@ -18,7 +17,7 @@ import { NTTGovernance } from "../sdk/governance";
   });
 
   const governance = new NTTGovernance(connection, {
-    programId: govProgramId as any,
+    programId: governanceProgramId as any,
   });
 
   const signer = await getSigner();
@@ -31,7 +30,7 @@ import { NTTGovernance } from "../sdk/governance";
     newOwner: governancePda,
   });
 
-  console.log(`Transferring NTT Program ${nttProgramId} ownership to ${governancePda.toBase58()} derived from(${govProgramId}).`);
+  console.log(`Transferring NTT Program ${nttProgramId} ownership to ${governancePda.toBase58()} derived from(${governanceProgramId}).`);
 
   const signature = await ledgerSignAndSend([transferOwnershipIx], []);
 

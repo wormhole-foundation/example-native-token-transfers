@@ -72,22 +72,22 @@ export interface QuoterPeerQuote {
 export type QuoterConfig = {
   feeRecipient: string;
   assistant: string;
-  nttQuoterProgramId: string;
   solPriceUsd: number;
   peerQuotes: QuoterPeerQuotes;
   managerRegistrations: QuoterManagerRegistrations;
 }
 
 export type NttConfig = {
-  mintAddress: string;
-  programId: string;
-  wormholeProgramId: string;
   outboundLimit: string;
   mode: "locking" | "burning";
 }
 
-export type GovernanceConfig = {
-  programId: string;
+export type Programs = {
+  mintProgramId: string;
+  nttProgramId: string;
+  wormholeProgramId: string;
+  quoterProgramId: string;
+  governanceProgramId: string;
 }
 
 export function getEvmNttDeployments(): NttDeployment[] {
@@ -95,15 +95,15 @@ export function getEvmNttDeployments(): NttDeployment[] {
 }
 
 export function getQuoterConfiguration(): QuoterConfig  {
-  return loadScriptConfig("quoter-config");
+  return loadScriptConfig("quoter");
 }
 
 export function getNttConfiguration(): NttConfig {
-  return loadScriptConfig("ntt-config");
+  return loadScriptConfig("ntt");
 }
 
-export function getGovernanceConfiguration(): GovernanceConfig {
-  return loadScriptConfig("governance-config");
+export function getProgramAddresses(): Programs {
+  return loadScriptConfig("programs");
 }
 
 function loadScriptConfig(filename: string): any {

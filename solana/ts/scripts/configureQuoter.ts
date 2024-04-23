@@ -2,19 +2,20 @@ import { Chain, isChain } from "@wormhole-foundation/sdk-base";
 import { NttQuoter } from "../sdk";
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 
-import { connection, getSigner, QuoterPeerQuote, getQuoterConfiguration } from "./env";
+import { connection, getSigner, QuoterPeerQuote, getQuoterConfiguration, getProgramAddresses } from "./env";
 import { ledgerSignAndSend } from "./helpers";
 import { inspect } from 'util';
 
 async function run() {
   const signer = await getSigner();
   const signerPk = new PublicKey(await signer.getAddress());
+  const programs = getProgramAddresses();
   const quoterConfig = getQuoterConfiguration();
 
   const feeRecipient = new PublicKey(quoterConfig.feeRecipient);
   const assistant = new PublicKey(quoterConfig.assistant);
 
-  const quoter = new NttQuoter(connection, quoterConfig.nttQuoterProgramId);
+  const quoter = new NttQuoter(connection, programs.quoterProgramId);
 
   let instanceState = await quoter.tryGetInstance();
 
