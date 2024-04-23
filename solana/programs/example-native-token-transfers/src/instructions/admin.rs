@@ -42,7 +42,7 @@ pub struct TransferOwnership<'info> {
     upgrade_lock: AccountInfo<'info>,
 
     #[account(
-        mut,
+        // mut,
         seeds = [crate::ID.as_ref()],
         bump,
         seeds::program = bpf_loader_upgradeable_program,
@@ -55,21 +55,7 @@ pub struct TransferOwnership<'info> {
 pub fn transfer_ownership(ctx: Context<TransferOwnership>) -> Result<()> {
     ctx.accounts.config.pending_owner = Some(ctx.accounts.new_owner.key());
 
-    // TODO: only transfer authority when the authority is not already the upgrade lock
-    bpf_loader_upgradeable::set_upgrade_authority_checked(
-        CpiContext::new_with_signer(
-            ctx.accounts
-                .bpf_loader_upgradeable_program
-                .to_account_info(),
-            bpf_loader_upgradeable::SetUpgradeAuthorityChecked {
-                program_data: ctx.accounts.program_data.to_account_info(),
-                current_authority: ctx.accounts.owner.to_account_info(),
-                new_authority: ctx.accounts.upgrade_lock.to_account_info(),
-            },
-            &[&[b"upgrade_lock", &[ctx.bumps.upgrade_lock]]],
-        ),
-        &crate::ID,
-    )
+    Ok(())
 }
 
 // * Claim ownership
@@ -107,21 +93,7 @@ pub struct ClaimOwnership<'info> {
 pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
     ctx.accounts.config.pending_owner = None;
     ctx.accounts.config.owner = ctx.accounts.new_owner.key();
-
-    bpf_loader_upgradeable::set_upgrade_authority_checked(
-        CpiContext::new_with_signer(
-            ctx.accounts
-                .bpf_loader_upgradeable_program
-                .to_account_info(),
-            bpf_loader_upgradeable::SetUpgradeAuthorityChecked {
-                program_data: ctx.accounts.program_data.to_account_info(),
-                current_authority: ctx.accounts.upgrade_lock.to_account_info(),
-                new_authority: ctx.accounts.new_owner.to_account_info(),
-            },
-            &[&[b"upgrade_lock", &[ctx.bumps.upgrade_lock]]],
-        ),
-        &crate::ID,
-    )
+    Ok(())
 }
 
 // * Set peers

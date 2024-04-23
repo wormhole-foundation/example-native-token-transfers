@@ -19,7 +19,7 @@ cluster = "Localnet"
 wallet = "keys/test.json"
 
 [scripts]
-test = "yarn --cwd ../sdk/solana test:ci"
+test = "./scripts/run-ts-tests"
 
 [test]
 startup_wait = 5000

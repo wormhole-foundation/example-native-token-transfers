@@ -4,7 +4,7 @@ import {
   encoding,
 } from "@wormhole-foundation/sdk-base";
 
-import { PublicKey, PublicKeyInitData, TransactionInstruction } from "@solana/web3.js";
+import { AccountMeta, PublicKey, PublicKeyInitData, TransactionInstruction } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 
 const CHAIN_ID_BYTE_SIZE = 2;
@@ -82,6 +82,28 @@ export function serializeInstruction(ix: TransactionInstruction): Buffer {
     return Buffer.concat([programId, accountsLen, accounts, dataLen, ix.data]);
 }
 
+export function deserializeInstruction(data: Buffer): TransactionInstruction {
+    let offset = 0;
+    const programId = new PublicKey(data.subarray(offset, offset + 32));
+    offset += 32;
+    const accountsLen = data.readUInt16BE(offset);
+    offset += 2;
+    const keys: Array<AccountMeta> = [];
+    for (let i = 0; i < accountsLen; i++) {
+        const pubkey = new PublicKey(data.subarray(offset, offset + 32));
+        offset += 32;
+        const isSigner = data.readUInt8(offset) === 1;
+        offset += 1;
+        const isWritable = data.readUInt8(offset) === 1;
+        offset += 1;
+        keys.push({ pubkey, isSigner, isWritable });
+    }
+    const dataLen = data.readUInt16BE(offset);
+    offset += 2;
+    const instructionData = data.subarray(offset, offset + dataLen);
+    return new TransactionInstruction({ keys, programId, data: instructionData });
+}
+
 export function appendGovernanceHeader(data: Buffer, governanceProgramId: PublicKey): Buffer {
     const module = Buffer.from("GeneralPurposeGovernance".padStart(32, "\0"));
     const action = Buffer.alloc(1);
@@ -90,6 +112,28 @@ export function appendGovernanceHeader(data: Buffer, governanceProgramId: Public
     chainId.writeUInt16BE(1); // solana
     const programId = governanceProgramId.toBuffer();
     return Buffer.concat([module, action, chainId, programId, data]);
+}
+
+export function verifyGovernanceHeader(data: Buffer): [PublicKey, Buffer] {
+    let offset = 0;
+    const module = data.subarray(offset, offset + 32);
+    offset += 32;
+    const action = data.readUInt8(offset);
+    offset += 1;
+    const chainId = data.readUInt16BE(offset);
+    offset += 2;
+    const governanceProgramId = new PublicKey(data.subarray(offset, offset + 32));
+    offset += 32;
+    if (!module.equals(Buffer.from("GeneralPurposeGovernance".padStart(32, "\0")))) {
+        throw new Error("Invalid module");
+    }
+    if (action !== 2) {
+        throw new Error("Invalid action");
+    }
+    if (chainId !== 1) {
+        throw new Error("Invalid chainId");
+    }
+    return [governanceProgramId, data.subarray(offset)];
 }
 
 // sentinel values used in governance
