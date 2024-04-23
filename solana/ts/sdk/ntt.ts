@@ -201,6 +201,10 @@ export class NTT {
     return this.derivePda(["transceiver_peer", chainIdToBeBytes(chainId)]);
   }
 
+  upgradeLockAccountAddress(): PublicKey {
+    return this.derivePda("upgrade_lock");
+  }
+
   transceiverMessageAccountAddress(
     chain: ChainName | ChainId,
     id: Uint8Array
@@ -933,6 +937,23 @@ export class NTT {
       new Transaction().add(ix),
       [args.owner]
     );
+  }
+
+  async createTransferOwnershipInstruction(args: {
+    owner: PublicKey;
+    newOwner: PublicKey;
+  }) {
+    return this.program.methods
+      .transferOwnership()
+      .accounts({
+        owner: args.owner,
+        newOwner: args.newOwner,
+        config: this.configAccountAddress(),
+        upgradeLock: this.upgradeLockAccountAddress(),
+        programData: programDataAddress(this.program.programId),
+        bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
+      })
+      .instruction();
   }
 
   async createReceiveWormholeMessageInstruction(args: {
