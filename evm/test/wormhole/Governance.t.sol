@@ -41,6 +41,34 @@ contract GovernanceTest is Test {
         myContract.transferOwnership(address(governance));
     }
 
+    function test_parseGuardian() public {
+        // these bytes were dumped from the guardian command with prototxt
+        // ```
+        //   current_set_index: 4
+        //   # generic evm call
+        //   messages: {
+        //     sequence: 4513077582118919631
+        //     nonce: 2809988562
+        //     evm_call: {
+        //       chain_id: 3
+        //       governance_contract: "0xD8E4C2DbDd2e2bd8F1336EA691dBFF6952B1a6eB"
+        //       target_contract: "0xF890982f9310df57d00f659cf4fd87e65adEd8d7"
+        //       abi_encoded_call: "BEEFFACE"
+        //     }
+        //   }
+        // ```
+        bytes memory foo =
+            hex"000000000000000047656e6572616c507572706f7365476f7665726e616e6365010003d8e4c2dbdd2e2bd8f1336ea691dbff6952b1a6ebf890982f9310df57d00f659cf4fd87e65aded8d70004beefface";
+        Governance.GeneralPurposeGovernanceMessage memory message =
+            governance.parseGeneralPurposeGovernanceMessage(foo);
+        assertEq(message.action, uint8(Governance.GovernanceAction.EVM_CALL));
+        assertEq(message.chain, uint16(3));
+        assertEq(message.governanceContract, address(0xD8E4C2DbDd2e2bd8F1336EA691dBFF6952B1a6eB));
+        assertEq(message.governedContract, address(0xF890982f9310df57d00f659cf4fd87e65adEd8d7));
+        console.logBytes(message.callData);
+        assertEq(message.callData, hex"beefface");
+    }
+
     function buildGovernanceVaa(
         uint8 action,
         uint16 chainId,
