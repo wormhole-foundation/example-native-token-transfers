@@ -28,6 +28,7 @@ docker_build(
     context = "./",
     only = ["./sdk", "./solana"],
     ignore=["./sdk/__tests__", "./sdk/Dockerfile", "./sdk/ci.yaml", "./sdk/**/dist", "./sdk/node_modules", "./sdk/**/node_modules"],
+    target = "builder",
     dockerfile = "./solana/Dockerfile",
 )
 k8s_yaml_with_ns("./solana/solana-devnet.yaml")
