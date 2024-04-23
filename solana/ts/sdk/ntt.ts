@@ -956,6 +956,21 @@ export class NTT {
       .instruction();
   }
 
+  async createClaimOwnershipInstruction(args: {
+    owner: PublicKey;
+  }) {
+    return this.program.methods
+      .claimOwnership()
+      .accounts({
+        newOwner: args.owner,
+        config: this.configAccountAddress(),
+        upgradeLock: this.upgradeLockAccountAddress(),
+        programData: programDataAddress(this.program.programId),
+        bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
+      })
+      .instruction();
+  }
+
   async createReceiveWormholeMessageInstruction(args: {
     payer: PublicKey;
     vaa: SignedVaa;
