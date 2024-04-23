@@ -209,7 +209,7 @@ describe("example-native-token-transfers", () => {
 
       // assert theat amount is what we expect
       expect(
-        transceiverMessage.nttManagerPayload.payload.trimmedAmount
+        transceiverMessage["nttManagerPayload"].payload.trimmedAmount
       ).toMatchObject({ amount: 10000n, decimals: 8 });
 
       // get from balance

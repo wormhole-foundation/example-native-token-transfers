@@ -1,6 +1,6 @@
 {
   "name": "ntt-sdk",
-  "version": "0.0.1-beta.3",
+  "version": "0.0.1-beta.4",
   "type": "module",
   "license": "Apache-2.0",
   "scripts": {
@@ -20,7 +20,7 @@
     "sync": "tsx syncVersion.ts && npm install && npm run build"
   },
   "dependencies": {
-    "@wormhole-foundation/sdk": ">=0.6.0-beta.0"
+    "@wormhole-foundation/sdk": "^0.6"
   },
   "devDependencies": {
     "@solana/spl-token": "0.3.9",
