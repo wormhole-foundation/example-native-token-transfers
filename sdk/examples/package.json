@@ -1,6 +1,6 @@
 {
   "name": "@wormhole-foundation/sdk-examples-ntt",
-  "version": "0.0.1-beta.3",
+  "version": "0.0.1-beta.4",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/wormhole-foundation/connect-sdk.git"
@@ -49,11 +49,11 @@
     "tsx": "^4.7.2"
   },
   "dependencies": {
-    "@wormhole-foundation/sdk": ">=0.6.0-beta.0",
-    "@wormhole-foundation/sdk-definitions-ntt": "0.0.1-beta.3",
-    "@wormhole-foundation/sdk-evm-ntt": "0.0.1-beta.3",
-    "@wormhole-foundation/sdk-solana-ntt": "0.0.1-beta.3",
-    "@wormhole-foundation/sdk-route-ntt": "0.0.1-beta.3"
+    "@wormhole-foundation/sdk": "^0.6",
+    "@wormhole-foundation/sdk-definitions-ntt": "0.0.1-beta.4",
+    "@wormhole-foundation/sdk-evm-ntt": "0.0.1-beta.4",
+    "@wormhole-foundation/sdk-solana-ntt": "0.0.1-beta.4",
+    "@wormhole-foundation/sdk-route-ntt": "0.0.1-beta.4"
   },
   "type": "module",
   "exports": {

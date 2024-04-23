@@ -146,7 +146,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     const { emitterChain: chain, payload } =
       attestation as VAA<"Ntt:WormholeTransfer">;
     return this.manager.isMessageExecuted(
-      Ntt.messageDigest(chain, payload.nttManagerPayload)
+      Ntt.messageDigest(chain, payload["nttManagerPayload"])
     );
   }
 
@@ -154,7 +154,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     const { emitterChain: chain, payload } =
       attestation as VAA<"Ntt:WormholeTransfer">;
     return this.manager.isMessageApproved(
-      Ntt.messageDigest(chain, payload.nttManagerPayload)
+      Ntt.messageDigest(chain, payload["nttManagerPayload"])
     );
   }
 

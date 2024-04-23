@@ -516,7 +516,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     yield* this.core.postVaa(payer, wormholeNTT);
 
     const senderAddress = new SolanaAddress(payer).unwrap();
-    const nttMessage = wormholeNTT.payload.nttManagerPayload;
+    const nttMessage = wormholeNTT.payload["nttManagerPayload"];
     const emitterChain = wormholeNTT.emitterChain;
 
     const releaseArgs = {
@@ -769,7 +769,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");
 
-    const nttMessage = wormholeNTT.payload.nttManagerPayload;
+    const nttMessage = wormholeNTT.payload["nttManagerPayload"];
     const emitterChain = wormholeNTT.emitterChain;
     return await this.program.methods
       .receiveWormholeMessage()
@@ -796,7 +796,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");
 
-    const nttMessage = wormholeNTT.payload.nttManagerPayload;
+    const nttMessage = wormholeNTT.payload["nttManagerPayload"];
     const emitterChain = wormholeNTT.emitterChain;
 
     const nttManagerPeer = this.pdas.peerAccount(emitterChain);
