@@ -109,6 +109,7 @@ async fn test_governance() {
         inner_ix,
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -119,6 +120,7 @@ async fn test_governance() {
         &test_data.governance,
         &test_data.ntt.wormhole,
         set_paused(&test_data.ntt, SetPaused { owner: OWNER }, true),
+        None,
         None,
         None,
     )
@@ -140,6 +142,7 @@ async fn test_governance_bad_emitter() {
         set_paused(&test_data.ntt, SetPaused { owner: OWNER }, true),
         Some(Address::default()),
         None,
+        None,
     )
     .await
     .unwrap_err();
@@ -149,6 +152,70 @@ async fn test_governance_bad_emitter() {
         TransactionError::InstructionError(
             0,
             InstructionError::Custom(GovernanceError::InvalidGovernanceEmitter.into())
+        )
+    );
+}
+
+#[tokio::test]
+async fn test_governance_bad_governance_contract() {
+    let (mut ctx, test_data) = setup(Mode::Locking).await;
+
+    let governance_pda = test_data.governance.governance();
+
+    // step 1. transfer ownership to governance
+    let ix = example_native_token_transfers::instruction::TransferOwnership;
+
+    let accs = example_native_token_transfers::accounts::TransferOwnership {
+        config: test_data.ntt.config(),
+        owner: test_data.program_owner.pubkey(),
+        new_owner: governance_pda,
+        upgrade_lock: test_data.ntt.upgrade_lock(),
+        program_data: test_data.ntt.program_data(),
+        bpf_loader_upgradeable_program: bpf_loader_upgradeable::id(),
+    };
+
+    Instruction {
+        program_id: test_data.ntt.program,
+        accounts: accs.to_account_metas(None),
+        data: ix.data(),
+    }
+    .submit_with_signers(&[&test_data.program_owner], &mut ctx)
+    .await
+    .unwrap();
+
+    // step 2. claim ownership
+    let inner_ix_data = example_native_token_transfers::instruction::ClaimOwnership {};
+    let inner_ix_accs = example_native_token_transfers::accounts::ClaimOwnership {
+        new_owner: OWNER,
+        config: test_data.ntt.config(),
+        upgrade_lock: test_data.ntt.upgrade_lock(),
+        program_data: test_data.ntt.program_data(),
+        bpf_loader_upgradeable_program: bpf_loader_upgradeable::id(),
+    };
+
+    let inner_ix: Instruction = Instruction {
+        program_id: test_data.ntt.program,
+        accounts: inner_ix_accs.to_account_metas(None),
+        data: inner_ix_data.data(),
+    };
+
+    let err = wrap_governance(
+        &mut ctx,
+        &test_data.governance,
+        &test_data.ntt.wormhole,
+        inner_ix.clone(),
+        None,
+        Some(Pubkey::new_unique()),
+        None,
+    )
+    .await
+    .unwrap_err();
+
+    assert_eq!(
+        err.unwrap(),
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(GovernanceError::InvalidGovernanceProgram.into())
         )
     );
 }
@@ -203,6 +270,7 @@ async fn test_governance_replay() {
         inner_ix.clone(),
         None,
         None,
+        None,
     )
     .await
     .unwrap();
@@ -213,6 +281,7 @@ async fn test_governance_replay() {
         &test_data.governance,
         &test_data.ntt.wormhole,
         inner_ix,
+        None,
         None,
         Some(vaa),
     )
@@ -235,14 +304,17 @@ async fn wrap_governance(
     wormhole: &Wormhole,
     ix: Instruction,
     emitter_override: Option<Address>,
+    governance_program_override: Option<Pubkey>,
     vaa: Option<Vaa<GovernanceMessage>>,
 ) -> core::result::Result<Vaa<GovernanceMessage>, BanksClientError> {
     let program = ix.program_id;
-    // TODO: LUTs?
-
     let data = wormhole_governance::instruction::Governance {};
 
-    let gov_message: GovernanceMessage = ix.clone().into();
+    let mut gov_message: GovernanceMessage = ix.clone().into();
+
+    if let Some(gov_program) = governance_program_override {
+        gov_message.governance_program_id = gov_program;
+    }
 
     let (vaa_key, vaa) =
         post_governance_vaa(ctx, wormhole, gov_message, emitter_override, vaa).await;

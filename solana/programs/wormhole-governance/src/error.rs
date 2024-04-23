@@ -6,4 +6,6 @@ pub enum GovernanceError {
     InvalidGovernanceChain,
     #[msg("InvalidGovernanceEmitter")]
     InvalidGovernanceEmitter,
+    #[msg("InvalidGovernanceProgram")]
+    InvalidGovernanceProgram,
 }
