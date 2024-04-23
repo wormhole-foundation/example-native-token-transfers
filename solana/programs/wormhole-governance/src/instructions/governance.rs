@@ -52,6 +52,7 @@ pub struct Governance<'info> {
     #[account(
         constraint = vaa.emitter_chain() == Into::<u16>::into(Chain::Solana) @ GovernanceError::InvalidGovernanceChain,
         constraint = *vaa.emitter_address() == GOVERNANCE_EMITTER.0 @ GovernanceError::InvalidGovernanceEmitter,
+        constraint = vaa.payload.1.governance_program_id == crate::ID @ GovernanceError::InvalidGovernanceProgram,
     )]
     pub vaa: Account<'info, PostedVaa<GovernanceMessage>>,
 
@@ -95,6 +96,7 @@ pub struct Governance<'info> {
 ///
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GovernanceMessage {
+    pub governance_program_id: Pubkey,
     pub program_id: Pubkey,
     pub accounts: Vec<Acc>,
     pub data: Vec<u8>,
@@ -159,6 +161,7 @@ impl Readable for GovernanceMessage {
             ));
         }
 
+        let governance_program_id: Pubkey = Pubkey::new_from_array(Readable::read(reader)?);
         let program_id: Pubkey = Pubkey::new_from_array(Readable::read(reader)?);
         let accounts_len: u16 = Readable::read(reader)?;
         let mut accounts = Vec::with_capacity(accounts_len as usize);
@@ -177,6 +180,7 @@ impl Readable for GovernanceMessage {
         reader.read_exact(&mut data)?;
 
         Ok(GovernanceMessage {
+            governance_program_id,
             program_id,
             accounts,
             data,
@@ -202,6 +206,7 @@ impl Writeable for GovernanceMessage {
         W: io::Write,
     {
         let GovernanceMessage {
+            governance_program_id,
             program_id,
             accounts,
             data,
@@ -210,6 +215,7 @@ impl Writeable for GovernanceMessage {
         Self::MODULE.write(writer)?;
         GovernanceAction::SolanaCall.write(writer)?;
         u16::from(Chain::Solana).write(writer)?;
+        governance_program_id.to_bytes().write(writer)?;
         program_id.to_bytes().write(writer)?;
         (accounts.len() as u16).write(writer)?;
         for acc in accounts {
@@ -239,6 +245,7 @@ fn test_governance_message_serde() {
     ];
     let data = vec![1, 2, 3, 4, 5];
     let msg = GovernanceMessage {
+        governance_program_id: crate::ID,
         program_id,
         accounts,
         data,
@@ -309,10 +316,12 @@ impl Writeable for GovernanceAction {
 impl From<GovernanceMessage> for Instruction {
     fn from(val: GovernanceMessage) -> Self {
         let GovernanceMessage {
+            governance_program_id,
             program_id,
             accounts,
             data,
         } = val;
+        assert_eq!(governance_program_id, crate::ID);
         let accounts: Vec<AccountMeta> = accounts.into_iter().map(|a| a.into()).collect();
         Instruction {
             program_id,
@@ -331,6 +340,7 @@ impl From<Instruction> for GovernanceMessage {
         } = instruction;
         let accounts: Vec<Acc> = accounts.into_iter().map(|a| a.into()).collect();
         GovernanceMessage {
+            governance_program_id: crate::ID,
             program_id,
             accounts,
             data,
