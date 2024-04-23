@@ -1,4 +1,4 @@
-import { registerPayloadTypes } from "@wormhole-foundation/sdk";
+import { registerPayloadTypes } from "@wormhole-foundation/sdk-definitions";
 import { nttNamedPayloads } from "./layouts/index.js";
 
 registerPayloadTypes("Ntt", nttNamedPayloads);

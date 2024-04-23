@@ -53,7 +53,7 @@ const recoverTxids: TransactionId[] = [
 
   const dstTxids = await signSendWait(
     dst,
-    dstNtt.redeem([vaa!]),
+    dstNtt.redeem([vaa!], dstSigner.address.address),
     dstSigner.signer
   );
   console.log("dstTxids", dstTxids);

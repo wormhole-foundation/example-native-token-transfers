@@ -11,7 +11,7 @@ import {
   Network,
   amount,
   chainToPlatform,
-} from "@wormhole-foundation/sdk";
+} from "@wormhole-foundation/sdk-connect";
 import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
 import { IdlVersion, NttBindings, getQuoterProgram } from "./bindings.js";
 import { U64, quoterAddresses } from "./utils.js";
@@ -62,7 +62,11 @@ export class NttQuoter<N extends Network, C extends Chain> {
    */
   async quoteDeliveryPrice(chain: Chain, gasDropoff?: bigint) {
     if (chainToPlatform(chain) !== "Evm")
-      throw new Error("Only EVM chains are supported");
+      throw new Error(
+        `Only Evm chains are supported for automatic delivery: ${chainToPlatform(
+          chain
+        )} != 'Evm'`
+      );
 
     // Convert to decimal number since we're multiplying other numbers
     const gasDropoffEth = amount.whole(
@@ -81,7 +85,9 @@ export class NttQuoter<N extends Network, C extends Chain> {
     if (chainData.nativePriceUsd === 0) throw new Error("Native price is 0");
     if (instanceData.solPriceUsd === 0) throw new Error("SOL price is 0");
     if (gasDropoffEth > chainData.maxGasDropoffEth)
-      throw new Error("Requested gas dropoff exceeds allowed maximum");
+      throw new Error(
+        `Requested gas dropoff exceeds allowed maximum: ${gasDropoffEth} > ${chainData.maxGasDropoffEth}`
+      );
 
     const totalNativeGasCostUsd =
       chainData.nativePriceUsd *
