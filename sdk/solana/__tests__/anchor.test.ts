@@ -189,8 +189,7 @@ describe("example-native-token-transfers", () => {
         sender,
         amount,
         receiver,
-        false, // Dont queue
-        false, // Dont relay
+        { queue: false, automatic: false, gasDropoff: 0n },
         outboxItem
       );
       await signSendWait(ctx, xferTxs, signer);
@@ -314,7 +313,6 @@ describe("example-native-token-transfers", () => {
       test("It initializes from constructor", async function () {
         const ntt = new SolanaNtt("Testnet", "Solana", await ctx.getRpc(), {
           ...ctx.config.contracts,
-          //@ts-ignore
           ...{ ntt: overrides["Solana"] },
         });
         expect(ntt).toBeTruthy();

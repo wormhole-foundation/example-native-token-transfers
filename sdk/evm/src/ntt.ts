@@ -6,6 +6,7 @@ import {
   Contracts,
   Network,
   TokenAddress,
+  VAA,
   nativeChainIds,
   serialize,
   toChainId,
@@ -29,17 +30,11 @@ import {
 import { Contract, type Provider, type TransactionRequest } from "ethers";
 import {
   AbiVersion,
-  AbiVersions,
   NttBindings,
   NttManagerBindings,
   NttTransceiverBindings,
+  loadAbiVersion,
 } from "./bindings.js";
-
-function loadAbiVersion(version: string) {
-  if (!(version in AbiVersions))
-    throw new Error(`Unknown ABI version: ${version}`);
-  return AbiVersions[version as AbiVersion];
-}
 
 export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
   implements NttTransceiver<N, C, WormholeNttTransceiver.VAA>
@@ -133,6 +128,36 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     ];
   }
 
+  async isRelayingAvailable(destination: Chain): Promise<boolean> {
+    const enabled = await Promise.all(
+      this.xcvrs.map(async (x) => {
+        const [wh, special] = await Promise.all([
+          x.isWormholeRelayingEnabled(destination),
+          x.isSpecialRelayingEnabled(destination),
+        ]);
+        return wh || special;
+      })
+    );
+
+    return enabled.filter((x) => x).length > 0;
+  }
+
+  getIsExecuted(attestation: Ntt.Attestation): Promise<boolean> {
+    const { emitterChain: chain, payload } =
+      attestation as VAA<"Ntt:WormholeTransfer">;
+    return this.manager.isMessageExecuted(
+      Ntt.messageDigest(chain, payload.nttManagerPayload)
+    );
+  }
+
+  getIsApproved(attestation: Ntt.Attestation): Promise<boolean> {
+    const { emitterChain: chain, payload } =
+      attestation as VAA<"Ntt:WormholeTransfer">;
+    return this.manager.isMessageApproved(
+      Ntt.messageDigest(chain, payload.nttManagerPayload)
+    );
+  }
+
   async getTokenDecimals(): Promise<number> {
     return await EvmPlatform.getDecimals(
       this.chain,
@@ -156,14 +181,15 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     return new EvmNtt(network as N, chain, provider, conf.contracts, version);
   }
 
-  private encodeFlags(ixs: (any | null)[]): Ntt.TransceiverInstruction[] {
-    return this.xcvrs
-      .map((xcvr, idx) => {
-        if (ixs[idx])
-          return { index: idx, payload: xcvr.encodeFlags(ixs[idx]) };
-        return null;
-      })
-      .filter((x) => x !== null) as Ntt.TransceiverInstruction[];
+  encodeOptions(options: Ntt.TransferOptions): Ntt.TransceiverInstruction[] {
+    const ixs: Ntt.TransceiverInstruction[] = [];
+
+    ixs.push({
+      index: 0,
+      payload: this.xcvrs[0]!.encodeFlags({ skipRelay: !options.automatic }),
+    });
+
+    return ixs;
   }
 
   async getVersion(): Promise<string> {
@@ -198,12 +224,13 @@ export class EvmNtt<N extends Network, C extends EvmChains>
 
   async quoteDeliveryPrice(
     dstChain: Chain,
-    ixs: Ntt.TransceiverInstruction[]
-  ): Promise<[bigint[], bigint]> {
-    return this.manager.quoteDeliveryPrice.staticCall(
+    options: Ntt.TransferOptions
+  ): Promise<bigint> {
+    const [, totalPrice] = await this.manager.quoteDeliveryPrice(
       toChainId(dstChain),
-      Ntt.encodeTransceiverInstructions(ixs)
+      Ntt.encodeTransceiverInstructions(this.encodeOptions(options))
     );
+    return totalPrice;
   }
 
   async *setPeer(
@@ -230,16 +257,14 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     sender: AccountAddress<C>,
     amount: bigint,
     destination: ChainAddress,
-    queue: boolean,
-    relay?: boolean
+    options: Ntt.TransferOptions
   ): AsyncGenerator<EvmUnsignedTransaction<N, C>> {
     const senderAddress = new EvmAddress(sender).toString();
 
     // Note: these flags are indexed by transceiver index
-    const ixs = this.encodeFlags([{ skipRelay: !relay }]);
-    const [, totalPrice] = await this.quoteDeliveryPrice(
+    const totalPrice = await this.quoteDeliveryPrice(
       destination.chain,
-      ixs
+      options
     );
 
     //TODO check for ERC-2612 (permit) support on token?
@@ -271,8 +296,8 @@ export class EvmNtt<N extends Network, C extends EvmChains>
         toChainId(destination.chain),
         receiver,
         receiver,
-        queue,
-        Ntt.encodeTransceiverInstructions(ixs),
+        options.queue,
+        Ntt.encodeTransceiverInstructions(this.encodeOptions(options)),
         { value: totalPrice }
       );
 

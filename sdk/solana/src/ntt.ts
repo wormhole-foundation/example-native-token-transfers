@@ -1,7 +1,10 @@
 import { Program } from "@coral-xyz/anchor";
 import { associatedAddress } from "@coral-xyz/anchor/dist/cjs/utils/token.js";
 import * as splToken from "@solana/spl-token";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import {
+  createAssociatedTokenAccountInstruction,
+  getAssociatedTokenAddressSync,
+} from "@solana/spl-token";
 import {
   Connection,
   Keypair,
@@ -51,29 +54,14 @@ import {
   programVersionLayout,
 } from "./utils.js";
 
-import { IdlVersion, IdlVersions, NttBindings } from "./bindings.js";
+import {
+  IdlVersion,
+  IdlVersions,
+  NttBindings,
+  getNttProgram,
+} from "./bindings.js";
+import { NttQuoter } from "./quoter.js";
 
-function loadIdlVersion(version: string) {
-  if (!(version in IdlVersions))
-    throw new Error(`Unknown IDL version: ${version}`);
-
-  return IdlVersions[version as IdlVersion];
-}
-
-function getProgram(
-  connection: Connection,
-  address: string,
-  version: string = "default"
-) {
-  const idl = loadIdlVersion(version);
-
-  return new Program<NttBindings.NativeTokenTransfer>(
-    // @ts-ignore
-    idl.idl.ntt,
-    address,
-    { connection }
-  );
-}
 export class SolanaNtt<N extends Network, C extends SolanaChains>
   implements Ntt<N, C>
 {
@@ -82,6 +70,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
   program: Program<NttBindings.NativeTokenTransfer>;
   config?: NttBindings.Config;
+  quoter?: NttQuoter<N, C>;
 
   constructor(
     readonly network: N,
@@ -92,7 +81,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   ) {
     if (!contracts.ntt) throw new Error("Ntt contracts not found");
 
-    this.program = getProgram(connection, contracts.ntt.manager, idlVersion);
+    this.program = getNttProgram(connection, contracts.ntt.manager, idlVersion);
+    if (this.contracts.ntt?.quoter)
+      this.quoter = new NttQuoter(network, chain, connection, this.contracts);
 
     this.core = new SolanaWormholeCore<N, C>(
       network,
@@ -101,9 +92,25 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       contracts
     );
     this.pdas = nttAddresses(this.program.programId);
-    // this.xcvrs = [
-    //   new SolanaNttWormholeTransceiver<N, C>(this, this.contracts.ntt!.transceiver.wormhole),
-    // ];
+  }
+
+  async isRelayingAvailable(destination: Chain): Promise<boolean> {
+    if (!this.quoter) return false;
+    return await this.quoter.isRelayEnabled(destination);
+  }
+
+  async quoteDeliveryPrice(
+    destination: Chain,
+    options: Ntt.TransferOptions
+  ): Promise<bigint> {
+    if (!this.quoter) throw new Error("Quoter not available");
+    if (!this.quoter.isRelayEnabled(destination))
+      throw new Error("Relay not enabled");
+
+    return await this.quoter.quoteDeliveryPrice(
+      destination,
+      options.gasDropoff
+    );
   }
 
   static async fromRpc<N extends Network>(
@@ -125,10 +132,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       network as N,
       chain,
       provider,
-      {
-        ...conf.contracts,
-        ntt,
-      },
+      { ...conf.contracts, ntt },
       version
     );
   }
@@ -166,17 +170,6 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     connection: Connection,
     sender?: AccountAddress<SolanaChains>
   ): Promise<IdlVersion> {
-    if (!sender)
-      sender = new SolanaAddress(
-        // TODO: this is just a placeholder address, funded on mainnet/devnet
-        // since we need a funded acct
-        "AzifThohBjYpwV63d1NmZf4aFjc5ma8oExPttnUvmBT5"
-      );
-
-    const senderAddress = new SolanaAddress(sender).unwrap();
-
-    const program = getProgram(connection, programAddress);
-
     // the anchor library has a built-in method to read view functions. However,
     // it requires a signer, which would trigger a wallet prompt on the frontend.
     // Instead, we manually construct a versioned transaction and call the
@@ -187,6 +180,17 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     // simulation checks if the account has enough money to pay for the transaction).
     //
     // It's a little unfortunate but it's the best we can do.
+
+    if (!sender)
+      sender = new SolanaAddress(
+        // The default pubkey is funded on mainnet and devnet
+        // we need a funded account to simulate the transaction below
+        "Hk3SdYTJFpawrvRz4qRztuEt2SqoCG7BGj2yJfDJSFbJ"
+      );
+
+    const senderAddress = new SolanaAddress(sender).unwrap();
+
+    const program = getNttProgram(connection, programAddress);
 
     const ix = await program.methods.version().accountsStrict({}).instruction();
     const latestBlockHash =
@@ -321,45 +325,46 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     payer: AccountAddress<C>
   ) {
     const sender = new SolanaAddress(payer).unwrap();
-
-    const ix = await this.program.methods
-      .setWormholePeer({
-        chainId: { id: toChainId(peer.chain) },
-        address: Array.from(peer.address.toUniversalAddress().toUint8Array()),
-      })
-      .accounts({
-        payer: sender,
-        owner: sender,
-        config: this.pdas.configAccount(),
-        peer: this.pdas.transceiverPeerAccount(peer.chain),
-      })
-      .instruction();
-
     const wormholeMessage = Keypair.generate();
     const whAccs = utils.getWormholeDerivedAccounts(
       this.program.programId,
       this.core.address
     );
-    const broadcastIx = await this.program.methods
-      .broadcastWormholePeer({ chainId: toChainId(peer.chain) })
-      .accounts({
-        payer: sender,
-        config: this.pdas.configAccount(),
-        peer: this.pdas.transceiverPeerAccount(peer.chain),
-        wormholeMessage: wormholeMessage.publicKey,
-        emitter: this.pdas.emitterAccount(),
-        wormhole: {
-          bridge: whAccs.wormholeBridge,
-          feeCollector: whAccs.wormholeFeeCollector,
-          sequence: whAccs.wormholeSequence,
-          program: this.core.address,
-        },
-      })
-      .instruction();
+
+    const [setPeerIx, broadcastIx] = await Promise.all([
+      this.program.methods
+        .setWormholePeer({
+          chainId: { id: toChainId(peer.chain) },
+          address: Array.from(peer.address.toUniversalAddress().toUint8Array()),
+        })
+        .accounts({
+          payer: sender,
+          owner: sender,
+          config: this.pdas.configAccount(),
+          peer: this.pdas.transceiverPeerAccount(peer.chain),
+        })
+        .instruction(),
+      this.program.methods
+        .broadcastWormholePeer({ chainId: toChainId(peer.chain) })
+        .accounts({
+          payer: sender,
+          config: this.pdas.configAccount(),
+          peer: this.pdas.transceiverPeerAccount(peer.chain),
+          wormholeMessage: wormholeMessage.publicKey,
+          emitter: this.pdas.emitterAccount(),
+          wormhole: {
+            bridge: whAccs.wormholeBridge,
+            feeCollector: whAccs.wormholeFeeCollector,
+            sequence: whAccs.wormholeSequence,
+            program: this.core.address,
+          },
+        })
+        .instruction(),
+    ]);
 
     const tx = new Transaction();
     tx.feePayer = sender;
-    tx.add(ix, broadcastIx);
+    tx.add(setPeerIx, broadcastIx);
 
     yield this.createUnsignedTx(
       {
@@ -404,13 +409,10 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     sender: AccountAddress<C>,
     amount: bigint,
     destination: ChainAddress,
-    queue: boolean,
-    relay?: boolean,
+    options: Ntt.TransferOptions,
     outboxItem?: Keypair
   ): AsyncGenerator<UnsignedTransaction<N, C>, any, unknown> {
-    if (relay) throw new Error("Relayer not available on solana");
-
-    const config: NttBindings.Config = await this.getConfig();
+    const config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");
 
     outboxItem = outboxItem ?? Keypair.generate();
@@ -422,7 +424,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const transferArgs: TransferArgs = {
       amount: amount,
       recipient: destination,
-      shouldQueue: queue,
+      shouldQueue: options.queue,
     };
 
     const txArgs = {
@@ -434,33 +436,69 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       config,
     };
 
-    const transferIx: TransactionInstruction = await (config.mode.locking !=
-    null
-      ? this.createTransferLockInstruction(txArgs)
-      : this.createTransferBurnInstruction(txArgs));
-
-    const releaseIx: TransactionInstruction =
-      await this.createReleaseOutboundInstruction({
+    const [approveIx, transferIx, releaseIx] = await Promise.all([
+      splToken.createApproveInstruction(
+        from,
+        this.pdas.sessionAuthority(fromAuthority, transferArgs),
+        fromAuthority,
+        amount
+      ),
+      config.mode.locking != null
+        ? this.createTransferLockInstruction(txArgs)
+        : this.createTransferBurnInstruction(txArgs),
+      this.createReleaseOutboundInstruction({
         payer: senderAddress,
         outboxItem: outboxItem.publicKey,
-        revertOnDelay: !queue,
-      });
-
-    const approveIx = splToken.createApproveInstruction(
-      from,
-      this.pdas.sessionAuthority(fromAuthority, transferArgs),
-      fromAuthority,
-      amount
-    );
+        revertOnDelay: !options.queue,
+      }),
+    ]);
 
     const tx = new Transaction();
     tx.feePayer = senderAddress;
     tx.add(approveIx, transferIx, releaseIx);
 
+    if (options.automatic) {
+      if (!this.quoter)
+        throw new Error(
+          "No quoter available, cannot initiate an automatic transfer."
+        );
+
+      const fee = await this.quoteDeliveryPrice(destination.chain, options);
+      const relayIx = await this.quoter.createRequestRelayInstruction(
+        senderAddress,
+        outboxItem.publicKey,
+        this.program.programId,
+        destination.chain,
+        new BN(fee.toString()),
+        new BN((options.gasDropoff ?? 0n).toString())
+      );
+      tx.add(relayIx);
+    }
+
     yield this.createUnsignedTx(
       { transaction: tx, signers: [outboxItem] },
       "Ntt.Transfer"
     );
+  }
+
+  private async *createAta(sender: AccountAddress<C>, mint: PublicKey) {
+    const senderAddress = new SolanaAddress(sender).unwrap();
+    const ata = getAssociatedTokenAddressSync(mint, senderAddress);
+
+    // If the ata doesn't exist yet, create it
+    const acctInfo = await this.connection.getAccountInfo(ata);
+    if (acctInfo === null) {
+      const transaction = new Transaction().add(
+        createAssociatedTokenAccountInstruction(
+          senderAddress,
+          ata,
+          senderAddress,
+          mint
+        )
+      );
+      transaction.feePayer = senderAddress;
+      yield this.createUnsignedTx({ transaction }, "Redeem.CreateATA");
+    }
   }
 
   async *redeem(attestations: Ntt.Attestation[], payer: AccountAddress<C>) {
@@ -470,6 +508,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     // TODO: not this, we should iterate over the set of enabled xcvrs?
     // if (attestations.length !== this.xcvrs.length) throw "No";
     const wormholeNTT = attestations[0]! as WormholeNttTransceiver.VAA;
+
+    // Create the vaa if necessary
+    yield* this.createAta(payer, config.mint);
 
     // Post the VAA that we intend to redeem
     yield* this.core.postVaa(payer, wormholeNTT);
@@ -489,22 +530,17 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       revertOnDelay: false,
     };
 
+    const [receiveMessageIx, redeemIx, releaseIx] = await Promise.all([
+      this.createReceiveWormholeMessageInstruction(senderAddress, wormholeNTT),
+      this.createRedeemInstruction(senderAddress, wormholeNTT),
+      config.mode.locking != null
+        ? this.createReleaseInboundUnlockInstruction(releaseArgs)
+        : this.createReleaseInboundMintInstruction(releaseArgs),
+    ]);
+
     const tx = new Transaction();
     tx.feePayer = senderAddress;
-    tx.add(
-      await this.createReceiveWormholeMessageInstruction(
-        senderAddress,
-        wormholeNTT
-      )
-    );
-    tx.add(await this.createRedeemInstruction(senderAddress, wormholeNTT));
-
-    tx.add(
-      await (config.mode.locking != null
-        ? this.createReleaseInboundUnlockInstruction(releaseArgs)
-        : this.createReleaseInboundMintInstruction(releaseArgs))
-    );
-
+    tx.add(receiveMessageIx, redeemIx, releaseIx);
     yield this.createUnsignedTx({ transaction: tx }, "Ntt.Redeem");
   }
 
@@ -520,6 +556,33 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       this.pdas.inboxRateLimitAccount(fromChain)
     );
     return BigInt(rl.rateLimit.capacityAtLastTx.toString());
+  }
+
+  async getIsExecuted(attestation: Ntt.Attestation): Promise<boolean> {
+    if (!this.getIsApproved(attestation)) return false;
+
+    const { emitterChain } = attestation as WormholeNttTransceiver.VAA;
+    const inboundQueued = await this.getInboundQueuedTransfer(
+      emitterChain,
+      attestation
+    );
+
+    return inboundQueued === null;
+  }
+
+  async getIsApproved(attestation: Ntt.Attestation): Promise<boolean> {
+    const digest = (attestation as WormholeNttTransceiver.VAA).hash;
+    const vaaAddress = utils.derivePostedVaaKey(
+      this.core.address,
+      Buffer.from(digest)
+    );
+
+    try {
+      const info = this.connection.getAccountInfo(vaaAddress);
+      return info !== null;
+    } catch (_) {}
+
+    return false;
   }
 
   async *completeInboundQueuedTransfer(
@@ -863,27 +926,3 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     );
   }
 }
-
-// Unused currently since the transceiver is part of the manager contract
-// export class SolanaNttWormholeTransceiver<
-//   N extends Network,
-//   C extends SolanaChains
-// > implements NttTransceiver<N, C, WormholeNttTransceiver.VAA>
-// {
-//   constructor(readonly manager: SolanaNtt<N, C>, readonly address: string) {
-//     //
-//   }
-//
-//   async *receive(
-//     attestation: WormholeNttTransceiver.VAA,
-//     sender?: AccountAddress<C> | undefined
-//   ): AsyncGenerator<UnsignedTransaction<N, C>, any, unknown> {
-//     throw new Error("Method not implemented.");
-//   }
-//
-//   async *setPeer(
-//     peer: ChainAddress<C>
-//   ): AsyncGenerator<UnsignedTransaction<N, C>, any, unknown> {
-//     throw new Error("Method not implemented.");
-//   }
-// }

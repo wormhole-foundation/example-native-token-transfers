@@ -34,3 +34,9 @@ export namespace NttManagerBindings {
 export interface NttManagerBindings {
   connect(address: string, provider: Provider): NttManagerBindings.NttManager;
 }
+
+export function loadAbiVersion(version: string) {
+  if (!(version in AbiVersions))
+    throw new Error(`Unknown ABI version: ${version}`);
+  return AbiVersions[version as AbiVersion];
+}

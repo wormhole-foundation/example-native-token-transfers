@@ -5,6 +5,7 @@ import {
   ChainAddress,
   ChainContext,
   NativeSigner,
+  Platform,
   Signer,
   VAA,
   Wormhole,
@@ -12,6 +13,7 @@ import {
   amount,
   chainToPlatform,
   encoding,
+  keccak256,
   serialize,
   signSendWait as ssw,
   toChainId,
@@ -24,6 +26,7 @@ import { ethers } from "ethers";
 import { DummyTokenMintAndBurn__factory } from "../evm/ethers-ci-contracts/factories/DummyToken.sol/DummyTokenMintAndBurn__factory.js";
 import { DummyToken__factory } from "../evm/ethers-ci-contracts/factories/DummyToken.sol/DummyToken__factory.js";
 import { ERC1967Proxy__factory } from "../evm/ethers-ci-contracts/factories/ERC1967Proxy__factory.js";
+import { IWormholeRelayer__factory } from "../evm/ethers-ci-contracts/factories/IWormholeRelayer.sol/IWormholeRelayer__factory.js";
 import { NttManager__factory } from "../evm/ethers-ci-contracts/factories/NttManager__factory.js";
 import { TransceiverStructs__factory } from "../evm/ethers-ci-contracts/factories/TransceiverStructs__factory.js";
 import { TrimmedAmountLib__factory } from "../evm/ethers-ci-contracts/factories/TrimmedAmount.sol/TrimmedAmountLib__factory.js";
@@ -44,14 +47,21 @@ export const NETWORK: "Devnet" = "Devnet";
 
 const ETH_PRIVATE_KEY =
   "0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"; // Ganache default private key
+
 const SOL_PRIVATE_KEY = web3.Keypair.fromSecretKey(
   new Uint8Array(solanaTiltKey)
 );
 
-interface Signers {
+type NativeSdkSigner<P extends Platform> = P extends "Evm"
+  ? ethers.Wallet
+  : P extends "Solana"
+  ? web3.Keypair
+  : never;
+
+interface Signers<P extends Platform = Platform> {
   address: ChainAddress;
   signer: Signer;
-  nativeSigner: any;
+  nativeSigner: NativeSdkSigner<P>;
 }
 
 interface StartingCtx {
@@ -98,8 +108,19 @@ export async function link(chainInfos: Ctx[]) {
 
   // first submit hub init to accountant
   const hub = chainInfos[0]!;
-  await submitAccountantVAA(serialize(await getVaa(hub, 0n)));
   const hubChain = hub.context.chain;
+
+  const msgId: WormholeMessageId = {
+    chain: hubChain,
+    emitter: Wormhole.chainAddress(
+      hubChain,
+      hub.contracts!.transceiver.wormhole
+    ).address.toUniversalAddress(),
+    sequence: 0n,
+  };
+
+  const vaa = await wh.getVaa(msgId, "Ntt:TransceiverInfo");
+  await submitAccountantVAA(serialize(vaa!));
 
   // [target, peer, vaa]
   const registrations: [string, string, VAA<"Ntt:TransceiverRegistration">][] =
@@ -172,32 +193,7 @@ export async function link(chainInfos: Ctx[]) {
   }
 }
 
-async function getVaa(ctx: Ctx, sequence: bigint): Promise<VAA> {
-  const chain = ctx.context.chain;
-  const msgId = {
-    chain,
-    emitter: Wormhole.chainAddress(
-      chain,
-      ctx.contracts!.transceiver.wormhole
-    ).address.toUniversalAddress(),
-    sequence,
-  };
-
-  const vaa = await wh.getVaa(
-    msgId,
-    sequence === 0n ? "Ntt:TransceiverInfo" : "Ntt:TransceiverRegistration"
-  );
-  if (!vaa)
-    throw new Error(`Failed to get VAA for: ${msgId.chain}: ${msgId.sequence}`);
-
-  return vaa;
-}
-
-export async function transferWithChecks(
-  sourceCtx: Ctx,
-  destinationCtx: Ctx,
-  useRelayer: boolean = false
-) {
+export async function transferWithChecks(sourceCtx: Ctx, destinationCtx: Ctx) {
   const sendAmt = "0.01";
 
   const srcAmt = amount.units(
@@ -221,9 +217,17 @@ export async function transferWithChecks(
     dstSigner.address()
   );
 
+  const useRelayer =
+    chainToPlatform(sourceCtx.context.chain) === "Evm" &&
+    chainToPlatform(destinationCtx.context.chain) === "Evm";
+
   console.log("Calling transfer on: ", sourceCtx.context.chain);
   const srcNtt = await getNtt(sourceCtx);
-  const transferTxs = srcNtt.transfer(sender.address, srcAmt, receiver, false);
+  const transferTxs = srcNtt.transfer(sender.address, srcAmt, receiver, {
+    queue: false,
+    automatic: useRelayer,
+    gasDropoff: 0n,
+  });
   const txids = await signSendWait(sourceCtx.context, transferTxs, srcSigner);
 
   const srcCore = await sourceCtx.context.getWormholeCore();
@@ -232,6 +236,7 @@ export async function transferWithChecks(
   )[0]!;
 
   if (!useRelayer) await receive(msgId, destinationCtx);
+  else await waitForRelay(msgId, destinationCtx);
 
   const [managerBalanceAfterSend, userBalanceAfterSend] =
     await getManagerAndUserBalance(sourceCtx);
@@ -253,6 +258,38 @@ export async function transferWithChecks(
   );
 }
 
+async function waitForRelay(
+  msgId: WormholeMessageId,
+  dst: Ctx,
+  retryTime: number = 2000
+) {
+  console.log("Sleeping for 1 min to allow signing of VAA");
+  await new Promise((resolve) => setTimeout(resolve, 60 * 1000));
+
+  // long timeout because the relayer has consistency level set to 15
+  const vaa = await wh.getVaa(msgId, "Uint8Array", 2 * 60 * 1000);
+  const deliveryHash = keccak256(vaa!.hash);
+
+  const wormholeRelayer = IWormholeRelayer__factory.connect(
+    dst.context.config.contracts.relayer!,
+    await dst.context.getRpc()
+  );
+
+  let success = false;
+  while (!success) {
+    try {
+      const successBlock = await wormholeRelayer.deliverySuccessBlock(
+        deliveryHash
+      );
+      if (successBlock > 0) success = true;
+      console.log("Relayer delivery: ", success);
+    } catch (e) {
+      console.error(e);
+    }
+    await new Promise((resolve) => setTimeout(resolve, retryTime));
+  }
+}
+
 // Wrap signSendWait from sdk to provide full error message
 async function signSendWait(
   ctx: ChainContext<typeof NETWORK>,
@@ -270,17 +307,7 @@ async function signSendWait(
 async function getNtt(
   ctx: Ctx
 ): Promise<Ntt<typeof NETWORK, typeof ctx.context.chain>> {
-  const ctor = ctx.context.platform.getProtocolInitializer("Ntt");
-  // @ts-ignore
-  return new ctor(
-    ctx.context.network,
-    ctx.context.chain,
-    await ctx.context.getRpc(),
-    {
-      ...ctx.context.config.contracts!,
-      ntt: ctx.contracts,
-    }
-  );
+  return ctx.context.getProtocol("Ntt", { ntt: ctx.contracts });
 }
 
 function getNativeSigner(ctx: Partial<Ctx>): any {
@@ -304,7 +331,7 @@ async function getSigners(ctx: Partial<Ctx>): Promise<Signers> {
   switch (platform) {
     case "Evm":
       signer = await evm.getSigner(rpc, nativeSigner);
-      nativeSigner = (signer as NativeSigner).unwrap() as ethers.Wallet;
+      nativeSigner = (signer as NativeSigner).unwrap();
       break;
     case "Solana":
       signer = await solana.getSigner(rpc, nativeSigner);
@@ -323,7 +350,7 @@ async function getSigners(ctx: Partial<Ctx>): Promise<Signers> {
 }
 
 async function deployEvm(ctx: Ctx): Promise<Ctx> {
-  const { signer, nativeSigner: wallet } = ctx.signers;
+  const { signer, nativeSigner: wallet } = ctx.signers as Signers<"Evm">;
 
   // Deploy libraries used by various things
   console.log("Deploying transceiverStructs");
@@ -412,14 +439,15 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
   // // Setup with the proxy
   console.log("Deploy transceiver proxy");
   const transceiverProxyFactory = new ERC1967Proxy__factory(wallet);
-  const transceiverProxyAddress = await transceiverProxyFactory.deploy(
+  const transceiverProxyDeployment = await transceiverProxyFactory.deploy(
     await WormholeTransceiverAddress.getAddress(),
     "0x"
   );
-  await transceiverProxyAddress.waitForDeployment();
+  await transceiverProxyDeployment.waitForDeployment();
 
+  const transceiverProxyAddress = await transceiverProxyDeployment.getAddress();
   const transceiver = WormholeTransceiver__factory.connect(
-    await transceiverProxyAddress.getAddress(),
+    transceiverProxyAddress,
     wallet
   );
 
@@ -431,9 +459,7 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
 
   // Setup the initial calls, like transceivers for the manager
   console.log("Set transceiver for manager");
-  await tryAndWaitThrice(() =>
-    transceiver.getAddress().then((addr) => manager.setTransceiver(addr))
-  );
+  await tryAndWaitThrice(() => manager.setTransceiver(transceiverProxyAddress));
 
   console.log("Set outbound limit for manager");
   await tryAndWaitThrice(() =>
@@ -444,7 +470,7 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
     ...ctx,
     contracts: {
       transceiver: {
-        wormhole: await transceiverProxyAddress.getAddress(),
+        wormhole: transceiverProxyAddress,
       },
       manager: await managerProxyAddress.getAddress(),
       token: ERC20NTTAddress,
@@ -453,7 +479,7 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
 }
 
 async function deploySolana(ctx: Ctx): Promise<Ctx> {
-  const { signer, nativeSigner: keypair } = ctx.signers;
+  const { signer, nativeSigner: keypair } = ctx.signers as Signers<"Solana">;
   const connection = (await ctx.context.getRpc()) as Connection;
   const address = new PublicKey(signer.address());
   console.log(`Using public key: ${address}`);
@@ -543,32 +569,22 @@ async function deploySolana(ctx: Ctx): Promise<Ctx> {
 async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
   const target = targetCtx.context;
   const peer = peerCtx.context;
-
-  console.log(targetCtx.contracts);
-  console.log(peerCtx.contracts);
-
   const {
     manager,
     transceiver: { wormhole: transceiver },
   } = peerCtx.contracts!;
 
-  const managerAddress = Wormhole.chainAddress(peer.chain, manager);
-  const transceiverEmitter = Wormhole.chainAddress(peer.chain, transceiver);
+  const peerManager = Wormhole.chainAddress(peer.chain, manager);
+  const peerTransceiver = Wormhole.chainAddress(peer.chain, transceiver);
 
   const tokenDecimals = target.config.nativeTokenDecimals;
   const inboundLimit = amount.units(amount.parse("1000", tokenDecimals));
 
   const { signer, address: sender } = targetCtx.signers;
 
-  // TODO:
-  // const expectedXcvrAddress = manager.pdas.transceiverPeerAccount(peer.chain);
-  // console.log("Check me", expectedXcvrAddress);
-  // const expectedMgrAddress = manager.pdas.peerAccount(peer.chain);
-  // console.log("Check me", expectedMgrAddress);
-
   const nttManager = await getNtt(targetCtx);
   const setPeerTxs = nttManager.setPeer(
-    managerAddress,
+    peerManager,
     tokenDecimals,
     inboundLimit,
     sender.address
@@ -576,22 +592,36 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
   await signSendWait(target, setPeerTxs, signer);
 
   const setXcvrPeerTxs = nttManager.setWormholeTransceiverPeer(
-    transceiverEmitter,
+    peerTransceiver,
     sender.address
   );
   const xcvrPeerTxids = await signSendWait(target, setXcvrPeerTxs, signer);
   const [whm] = await target.parseTransaction(xcvrPeerTxids[0]!.txid);
-  return await wh.getVaa(whm!, "Ntt:TransceiverRegistration");
+  console.log("Set peers for: ", target.chain, peer.chain);
 
-  // TODO:
-  // if (targetPlatform === "Evm" && peerPlatform === "Evm") {
-  //   await tryAndWaitThrice(() =>
-  //     transceiver.setIsWormholeEvmChain(peerChainId, true)
-  //   );
-  //   await tryAndWaitThrice(() =>
-  //     transceiver.setIsWormholeRelayingEnabled(peerChainId, true)
-  //   );
-  // }
+  if (
+    chainToPlatform(target.chain) === "Evm" &&
+    chainToPlatform(peer.chain) === "Evm"
+  ) {
+    const nativeSigner = (signer as NativeSigner).unwrap();
+    const xcvr = WormholeTransceiver__factory.connect(
+      targetCtx.contracts!.transceiver.wormhole,
+      nativeSigner.signer
+    );
+    const peerChainId = toChainId(peer.chain);
+
+    console.log("Setting isEvmChain for: ", peer.chain);
+    await tryAndWaitThrice(() =>
+      xcvr.setIsWormholeEvmChain.send(peerChainId, true)
+    );
+
+    console.log("Setting wormhole relaying for: ", peer.chain);
+    await tryAndWaitThrice(() =>
+      xcvr.setIsWormholeRelayingEnabled.send(peerChainId, true)
+    );
+  }
+
+  return await wh.getVaa(whm!, "Ntt:TransceiverRegistration");
 }
 
 async function receive(msgId: WormholeMessageId, destination: Ctx) {
@@ -665,6 +695,7 @@ async function tryAndWaitThrice(
     try {
       return await (await txGen()).wait();
     } catch (e) {
+      console.error(e);
       attempts++;
       if (attempts < 3) {
         console.log(`retry ${attempts}...`);
