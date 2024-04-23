@@ -29,7 +29,7 @@ export async function getSigner<N extends Network, C extends Chain>(
       signer = await solana.getSigner(
         await chain.getRpc(),
         getEnv("OTHER_SOL_PRIVATE_KEY"),
-        { priorityFeePercentile: 0.9, debug: true }
+        { priorityFeePercentile: 0.9 }
       );
       break;
     case "Evm":

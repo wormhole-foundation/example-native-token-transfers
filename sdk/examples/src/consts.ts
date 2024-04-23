@@ -19,6 +19,19 @@ export const JITO_NTT_CONTRACTS: NttContracts = {
   },
 };
 
+export const YUKA_NTT_CONTRACTS: NttContracts = {
+  Solana: {
+    token: "2JZQnfjQTjzmmTGosK6Hhr3dJokeQdwRhQ1UtxsYQGdX",
+    manager: "nTtPcmsVY4f86cSREmnio5tUyiK58HBqBeDwaUYQt6t",
+    transceiver: { wormhole: "nTtPcmsVY4f86cSREmnio5tUyiK58HBqBeDwaUYQt6t" },
+  },
+  Sepolia: {
+    token: "0xB00eaEDB98F1e30ad545703d8Ff14b24D109514f",
+    manager: "0x76C001f6a282aD2b86F4Cc3c6fbf3EE9202c1EC5",
+    transceiver: { wormhole: "0x780c95de8e98cf15ad10bcb9969c65d7e2653bc6" },
+  },
+};
+
 export const TEST_NTT_TOKENS: NttContracts = {
   Sepolia: {
     token: "0x738141EFf659625F2eAD4feECDfCD94155C67f18",
@@ -60,5 +73,5 @@ function reformat(contracts: NttContracts) {
 }
 
 export const NttTokens = {
-  Test: reformat(TEST_NTT_TOKENS),
+  Yuka: reformat(YUKA_NTT_CONTRACTS),
 };
