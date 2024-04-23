@@ -68,8 +68,11 @@ async function executeGovernance(
   
   const governanceContract = await getGovernanceContract(chain);
 
+  const vaaHex = Buffer.from(vaa, "base64").toString("hex");
+  log("Executing governance with VAA: ", vaaHex);
+
   const tx = await governanceContract.performGovernance(
-    vaa,
+    `0x${vaaHex}`,
   );
 
   log(`Submitted governance transaction: ${tx.hash}`);
