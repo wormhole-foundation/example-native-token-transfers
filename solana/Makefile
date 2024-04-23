@@ -29,9 +29,10 @@ artifacts-mainnet:
 	@cd $@ && ls | xargs sha256sum > checksums.txt
 	@cat $@/checksums.txt
 
+.PHONY: artifacts-devnet
 artifacts-devnet:
 	rm -rf $@
-	DOCKER_BUILDKIT=1 docker build -t export -o $@ --build-arg network="solana-devnet" .
+	DOCKER_BUILDKIT=1 docker build -t export -o $@ --build-arg network=solana-devnet .
 	@cd $@ && ls | xargs sha256sum > checksums.txt
 	@cat $@/checksums.txt
 
