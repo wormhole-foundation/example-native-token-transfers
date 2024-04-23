@@ -10,7 +10,7 @@ import {
   getContractAddress,
 } from "./env";
 
-const processName = "deployGovernances";
+const processName = "transferManagerOwnership";
 
 init();
 const chains = loadOperatingChains();
