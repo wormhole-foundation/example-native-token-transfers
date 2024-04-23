@@ -28,8 +28,7 @@ export type ContractsJson = {
   TransceiverStructsLibs: Deployment[];
   TrimmedAmountLibs: Deployment[];
 
-  GeneralPurposeGovernanceImplementations: Deployment[];
-  GeneralPurposeGovernanceProxies: Deployment[];
+  GeneralPurposeGovernances: Deployment[];
 };
 
 const DEFAULT_ENV = "testnet";

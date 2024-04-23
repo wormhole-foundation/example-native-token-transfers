@@ -39,7 +39,7 @@ async function transferOwnership(chain: ChainInfo) {
   const signer = await getSigner(chain);
 
   const managerContractAddress = await getContractAddress("NttManagerProxies", chain.chainId);
-  const governanceContractAddress = await getContractAddress("GeneralPurposeGovernanceProxies", chain.chainId);
+  const governanceContractAddress = await getContractAddress("GeneralPurposeGovernances", chain.chainId);
 
   const managerContract = NttManager__factory.connect(
     managerContractAddress,
