@@ -15,6 +15,7 @@ import {
 const processName = "configureManagers";
 
 export type ManagerConfig = {
+  token: string;
   chainId: ChainId;
   threshold: number;
   outboundLimit: string;

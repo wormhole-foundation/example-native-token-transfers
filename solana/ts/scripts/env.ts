@@ -116,3 +116,5 @@ function loadScriptConfig(filename: string): any {
   }
   return config;
 }
+
+export const guardianKey = getEnv("GUARDIAN_KEY");
