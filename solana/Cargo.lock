@@ -6383,6 +6383,7 @@ name = "wormhole-governance"
 version = "1.0.0"
 dependencies = [
  "anchor-lang",
+ "hex",
  "solana-program",
  "wormhole-anchor-sdk",
  "wormhole-io",

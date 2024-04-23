@@ -33,3 +33,6 @@ solana-program.workspace = true
 wormhole-anchor-sdk.workspace = true
 wormhole-io.workspace = true
 wormhole-sdk.workspace = true
+
+[dev-dependencies]
+hex.workspace = true

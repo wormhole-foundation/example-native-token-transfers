@@ -109,6 +109,62 @@ impl GovernanceMessage {
         0x50, 0x75, 0x72, 0x70, 0x6F, 0x73, 0x65, 0x47, 0x6F, 0x76, 0x65, 0x72, 0x6E, 0x61, 0x6E,
         0x63, 0x65,
     ];
+
+    pub fn read_body<R>(reader: &mut R, governance_program_id: Pubkey) -> io::Result<Self>
+    where
+        R: io::Read,
+    {
+        let program_id: Pubkey = Pubkey::new_from_array(Readable::read(reader)?);
+        let accounts_len: u16 = Readable::read(reader)?;
+        let mut accounts = Vec::with_capacity(accounts_len as usize);
+        for _ in 0..accounts_len {
+            let pubkey: [u8; 32] = Readable::read(reader)?;
+            let is_signer: bool = Readable::read(reader)?;
+            let is_writable: bool = Readable::read(reader)?;
+            accounts.push(Acc {
+                pubkey: Pubkey::new_from_array(pubkey),
+                is_signer,
+                is_writable,
+            });
+        }
+        let data_len: u16 = Readable::read(reader)?;
+        let mut data = vec![0; data_len as usize];
+        reader.read_exact(&mut data)?;
+
+        Ok(GovernanceMessage {
+            governance_program_id,
+            program_id,
+            accounts,
+            data,
+        })
+    }
+
+    /// Serialises the governance packet's body. This is the part of the packet
+    /// that will be fed into the guardian node (the header part is populated by
+    /// the node itself).
+    pub fn write_body<W>(&self, writer: &mut W) -> io::Result<()>
+    where
+        W: io::Write,
+    {
+        let GovernanceMessage {
+            governance_program_id: _,
+            program_id,
+            accounts,
+            data,
+        } = self;
+
+        program_id.to_bytes().write(writer)?;
+        u16::try_from(accounts.len())
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "accounts length overflow"))?
+            .write(writer)?;
+        for acc in accounts {
+            acc.pubkey.to_bytes().write(writer)?;
+            acc.is_signer.write(writer)?;
+            acc.is_writable.write(writer)?;
+        }
+        (data.len() as u16).write(writer)?;
+        writer.write_all(data)
+    }
 }
 
 #[test]
@@ -160,31 +216,8 @@ impl Readable for GovernanceMessage {
                 "Invalid GovernanceMessage chain",
             ));
         }
-
-        let governance_program_id: Pubkey = Pubkey::new_from_array(Readable::read(reader)?);
-        let program_id: Pubkey = Pubkey::new_from_array(Readable::read(reader)?);
-        let accounts_len: u16 = Readable::read(reader)?;
-        let mut accounts = Vec::with_capacity(accounts_len as usize);
-        for _ in 0..accounts_len {
-            let pubkey: [u8; 32] = Readable::read(reader)?;
-            let is_signer: bool = Readable::read(reader)?;
-            let is_writable: bool = Readable::read(reader)?;
-            accounts.push(Acc {
-                pubkey: Pubkey::new_from_array(pubkey),
-                is_signer,
-                is_writable,
-            });
-        }
-        let data_len: u16 = Readable::read(reader)?;
-        let mut data = vec![0; data_len as usize];
-        reader.read_exact(&mut data)?;
-
-        Ok(GovernanceMessage {
-            governance_program_id,
-            program_id,
-            accounts,
-            data,
-        })
+        let governance_program_id = Pubkey::new_from_array(Readable::read(reader)?);
+        Self::read_body(reader, governance_program_id)
     }
 }
 
@@ -205,26 +238,11 @@ impl Writeable for GovernanceMessage {
     where
         W: io::Write,
     {
-        let GovernanceMessage {
-            governance_program_id,
-            program_id,
-            accounts,
-            data,
-        } = self;
-
         Self::MODULE.write(writer)?;
         GovernanceAction::SolanaCall.write(writer)?;
         u16::from(Chain::Solana).write(writer)?;
-        governance_program_id.to_bytes().write(writer)?;
-        program_id.to_bytes().write(writer)?;
-        (accounts.len() as u16).write(writer)?;
-        for acc in accounts {
-            acc.pubkey.to_bytes().write(writer)?;
-            acc.is_signer.write(writer)?;
-            acc.is_writable.write(writer)?;
-        }
-        (data.len() as u16).write(writer)?;
-        writer.write_all(data)
+        self.governance_program_id.to_bytes().write(writer)?;
+        self.write_body(writer)
     }
 }
 
@@ -258,6 +276,49 @@ fn test_governance_message_serde() {
     assert_eq!(msg, msg2);
 }
 
+#[test]
+fn test_governance_message_parse_guardian() {
+    // hex dumped from guardian node with the following protoxt:
+    // ```
+    // current_set_index: 4
+    // # generic solana call
+    // messages: {
+    //   sequence: 4513077582118919631
+    //   nonce: 2809988562
+    //   solana_call: {
+    //     chain_id: 1
+    //     governance_contract: "wgvEiKVzX9yyEoh41jZAdC6JqGUTS4CFXbFGBV5TKdZ"
+    //     encoded_instruction: "00000000000000010000000000000000000000000000000000000000000000000002000000000000000200000000000000000000000000000000000000000000000001010000000000000003000000000000000000000000000000000000000000000000000100050102030405"
+    //   }
+    // }
+    // ```
+    // TODO: once this program is moved into the monorepo, do an e2e integration test
+    let h = hex::decode("000000000000000047656e6572616c507572706f7365476f7665726e616e63650200010e027fbc6b1e61365d4b0680a3179f791b15796f93e24e9b441e3fa04ccda4a000000000000000010000000000000000000000000000000000000000000000000002000000000000000200000000000000000000000000000000000000000000000001010000000000000003000000000000000000000000000000000000000000000000000100050102030405").unwrap();
+    let actual = GovernanceMessage::deserialize(&mut h.as_slice()).unwrap();
+
+    let accounts = vec![
+        Acc {
+            pubkey: Pubkey::try_from("1111111ogCyDbaRMvkdsHB3qfdyFYaG1WtRUAfdh").unwrap(),
+            is_signer: true,
+            is_writable: true,
+        },
+        Acc {
+            pubkey: Pubkey::try_from("11111112D1oxKts8YPdTJRG5FzxTNpMtWmq8hkVx3").unwrap(),
+            is_signer: false,
+            is_writable: true,
+        },
+    ];
+    let data = vec![1, 2, 3, 4, 5];
+    let expected = GovernanceMessage {
+        governance_program_id: crate::ID,
+        program_id: Pubkey::try_from("1111111QLbz7JHiBTspS962RLKV8GndWFwiEaqKM").unwrap(),
+        accounts,
+        data,
+    };
+
+    assert_eq!(actual, expected)
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// The known set of governance actions.
 ///
@@ -285,12 +346,12 @@ impl Readable for GovernanceAction {
         R: io::Read,
     {
         match Readable::read(reader)? {
-            0 => Ok(GovernanceAction::Undefined),
+            0u8 => Ok(GovernanceAction::Undefined),
             1 => Ok(GovernanceAction::EvmCall),
             2 => Ok(GovernanceAction::SolanaCall),
-            _ => Err(io::Error::new(
+            n => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                "Invalid GovernanceAction",
+                format!("invalid action {}", n),
             )),
         }
     }
@@ -307,8 +368,8 @@ impl Writeable for GovernanceAction {
     {
         match self {
             GovernanceAction::Undefined => Ok(()),
-            GovernanceAction::EvmCall => 1.write(writer),
-            GovernanceAction::SolanaCall => 2.write(writer),
+            GovernanceAction::EvmCall => 1u8.write(writer),
+            GovernanceAction::SolanaCall => 2u8.write(writer),
         }
     }
 }
