@@ -24,10 +24,10 @@ import {
   VersionedTransaction
 } from '@solana/web3.js'
 import { Keccak } from 'sha3'
-import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from '../../target/types/example_native_token_transfers'
+import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from '../../idl/ts/example_native_token_transfers'
 import { BPF_LOADER_UPGRADEABLE_PROGRAM_ID, programDataAddress, chainIdToBeBytes, derivePda } from './utils'
 import * as splToken from '@solana/spl-token';
-import IDL from '../../target/idl/example_native_token_transfers.json';
+import IDL from '../../idl/json/example_native_token_transfers.json';
 
 export * from './utils/wormhole'
 

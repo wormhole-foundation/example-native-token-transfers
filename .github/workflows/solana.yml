@@ -134,6 +134,9 @@ jobs:
         - name: Setup SDK
           run: make sdk
           shell: bash
+        - name: Check idl
+          run: |
+            git diff --exit-code idl
         - name: Run tests
           run: anchor test
           shell: bash
