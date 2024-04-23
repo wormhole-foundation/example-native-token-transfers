@@ -86,6 +86,10 @@ export type NttConfig = {
   mode: "locking" | "burning";
 }
 
+export type GovernanceConfig = {
+  programId: string;
+}
+
 export function getEvmNttDeployments(): NttDeployment[] {
   return loadScriptConfig("evm-peers");
 }
@@ -96,6 +100,10 @@ export function getQuoterConfiguration(): QuoterConfig  {
 
 export function getNttConfiguration(): NttConfig {
   return loadScriptConfig("ntt-config");
+}
+
+export function getGovernanceConfiguration(): GovernanceConfig {
+  return loadScriptConfig("governance-config");
 }
 
 function loadScriptConfig(filename: string): any {
