@@ -40,6 +40,7 @@ export namespace Ntt {
     transceiver: {
       wormhole: string;
     };
+    quoter?: string;
   };
 
   export type Message = NttManagerMessage<typeof nativeTokenTransferLayout>;
@@ -48,6 +49,15 @@ export namespace Ntt {
   export type TransceiverRegistration = NttManagerMessage<
     typeof transceiverRegistration
   >;
+
+  export type TransferOptions = {
+    /** Whether or not to queue the transfer if the outbound capacity is exceeded */
+    queue: boolean;
+    /** Whether or not to request this transfer should be relayed, otherwise manual redemption is required */
+    automatic?: boolean;
+    /** How much native gas on the destination to send along with the transfer */
+    gasDropoff?: bigint;
+  };
 
   // TODO: what are the set of attestation types for Ntt?
   // can we know this ahead of time or does it need to be
@@ -116,8 +126,6 @@ export namespace Ntt {
  * @typeparam C the chain
  */
 export interface Ntt<N extends Network, C extends Chain> {
-  // ADMIN
-
   setPeer(
     peer: ChainAddress,
     tokenDecimals: number,
@@ -128,6 +136,21 @@ export interface Ntt<N extends Network, C extends Chain> {
     peer: ChainAddress,
     payer?: AccountAddress<C>
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
+
+  /** Check to see if relaying service is available for automatic transfers */
+  isRelayingAvailable(destination: Chain): Promise<boolean>;
+
+  /**
+   * quoteDeliveryPrice returns the price to deliver a message to a given chain
+   * the price is quote in native gas
+   *
+   * @param destination the destination chain
+   * @param flags the flags to use for the delivery
+   */
+  quoteDeliveryPrice(
+    destination: Chain,
+    options: Ntt.TransferOptions
+  ): Promise<bigint>;
 
   /**
    * transfer sends a message to the Ntt manager to initiate a transfer
@@ -141,8 +164,7 @@ export interface Ntt<N extends Network, C extends Chain> {
     sender: AccountAddress<C>,
     amount: bigint,
     destination: ChainAddress,
-    queue: boolean,
-    relay?: boolean
+    options: Ntt.TransferOptions
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
 
   /**
@@ -172,6 +194,24 @@ export interface Ntt<N extends Network, C extends Chain> {
    * @param fromChain the chain to check the inbound capacity for
    */
   getCurrentInboundCapacity(fromChain: Chain): Promise<bigint>;
+
+  /**
+   * getIsApproved returns whether an attestation is approved
+   * an attestation is approved when it has been validated but has not necessarily
+   * been executed
+   *
+   * @param attestation the attestation to check
+   */
+  getIsApproved(attestation: Ntt.Attestation): Promise<boolean>;
+
+  /**
+   * getIsExecuted returns whether an attestation is executed
+   * an attestation being executed means the transfer is complete
+   *
+   * @param attestation the attestation to check
+   */
+  getIsExecuted(attestation: Ntt.Attestation): Promise<boolean>;
+
   /**
    * getInboundQueuedTransfer returns the details of an inbound queued transfer
    * @param transceiverMessage the transceiver message

@@ -62,11 +62,8 @@ export const U64 = {
   MAX: new BN((2n ** 64n - 1n).toString()),
   to: (amount: number, unit: number) => {
     const ret = new BN(Math.round(amount * unit));
-
     if (ret.isNeg()) throw new Error("Value negative");
-
     if (ret.bitLength() > 64) throw new Error("Value too large");
-
     return ret;
   },
   from: (amount: BN, unit: number) => amount.toNumber() / unit,
@@ -94,7 +91,6 @@ export function derivePda(
 const chainToBytes = (chain: Chain | ChainId) =>
   encoding.bignum.toBytes(toChainId(chain), 2);
 
-// TODO: memoize?
 export const nttAddresses = (programId: PublicKeyInitData) => {
   const configAccount = (): PublicKey => derivePda("config", programId);
   const emitterAccount = (): PublicKey => derivePda("emitter", programId);
@@ -146,5 +142,21 @@ export const nttAddresses = (programId: PublicKeyInitData) => {
     transceiverPeerAccount,
     transceiverMessageAccount,
     registeredTransceiver,
+  };
+};
+
+export const quoterAddresses = (programId: PublicKeyInitData) => {
+  const instanceAccount = () => derivePda("instance", programId);
+  const registeredNttAccount = (nttProgramId: PublicKey) =>
+    derivePda(["registered_ntt", nttProgramId.toBytes()], programId);
+  const relayRequestAccount = (outboxItem: PublicKey) =>
+    derivePda(["relay_request", outboxItem.toBytes()], programId);
+  const registeredChainAccount = (chain: Chain) =>
+    derivePda(["registered_chain", chainToBytes(chain)], programId);
+  return {
+    relayRequestAccount,
+    instanceAccount,
+    registeredChainAccount,
+    registeredNttAccount,
   };
 };
