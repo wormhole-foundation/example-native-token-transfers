@@ -4,7 +4,7 @@ import {
   encoding,
 } from "@wormhole-foundation/sdk-base";
 
-import { PublicKey, PublicKeyInitData } from "@solana/web3.js";
+import { PublicKey, PublicKeyInitData, TransactionInstruction } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 
 const CHAIN_ID_BYTE_SIZE = 2;
@@ -39,13 +39,13 @@ export const U64 = {
   MAX: new BN((2n**64n - 1n).toString()),
   to: (amount: number, unit: number) => {
     const ret = new BN(Math.round(amount * unit));
-  
+
     if (ret.isNeg())
       throw new Error("Value negative");
-  
+
     if (ret.bitLength() > 64)
-      throw new Error("Value too large");  
-  
+      throw new Error("Value too large");
+
     return ret;
   },
   from: (amount: BN, unit: number) => amount.toNumber() / unit,
@@ -57,8 +57,41 @@ export function derivePda(
   programId: PublicKeyInitData
 ) {
   const toBytes = (s: string | Uint8Array) => typeof s === "string" ? encoding.bytes.encode(s) : s;
-  return PublicKey.findProgramAddressSync(    
+  return PublicKey.findProgramAddressSync(
     Array.isArray(seeds) ? seeds.map(toBytes) : [toBytes(seeds as Seed)],
     new PublicKey(programId),
   )[0];
 }
+
+// governance utils
+
+export function serializeInstruction(ix: TransactionInstruction): Buffer {
+    const programId = ix.programId.toBuffer();
+    const accountsLen = Buffer.alloc(2);
+    accountsLen.writeUInt16BE(ix.keys.length);
+    const accounts = Buffer.concat(ix.keys.map((account) => {
+        const isSigner = Buffer.alloc(1);
+        isSigner.writeUInt8(account.isSigner ? 1 : 0);
+        const isWritable = Buffer.alloc(1);
+        isWritable.writeUInt8(account.isWritable ? 1 : 0);
+        const pubkey = account.pubkey.toBuffer();
+        return Buffer.concat([pubkey, isSigner, isWritable]);
+    }))
+    const dataLen = Buffer.alloc(2);
+    dataLen.writeUInt16BE(ix.data.length);
+    return Buffer.concat([programId, accountsLen, accounts, dataLen, ix.data]);
+}
+
+export function appendGovernanceHeader(data: Buffer, governanceProgramId: PublicKey): Buffer {
+    const module = Buffer.from("GeneralPurposeGovernance".padStart(32, "\0"));
+    const action = Buffer.alloc(1);
+    action.writeUInt8(2); // SolanaCall
+    const chainId = Buffer.alloc(2);
+    chainId.writeUInt16BE(1); // solana
+    const programId = governanceProgramId.toBuffer();
+    return Buffer.concat([module, action, chainId, programId, data]);
+}
+
+// sentinel values used in governance
+export const OWNER = new PublicKey(Buffer.from("owner".padEnd(32, "\0")));
+export const PAYER = new PublicKey(Buffer.from("payer".padEnd(32, "\0")));
