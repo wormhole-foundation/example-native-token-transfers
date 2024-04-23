@@ -1,6 +1,6 @@
 
 
-import { PublicKey,  } from "@solana/web3.js";
+import { PublicKey, ComputeBudgetProgram } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 
 import { connection, getSigner, getNttConfiguration, getProgramAddresses } from "./env";
@@ -23,7 +23,11 @@ import { ledgerSignAndSend } from "./helpers";
     limit: new BN(nttConfig.outboundLimit),
   });
 
-  const signature = await ledgerSignAndSend([setOutboundLimitIx], []);
+  const setComputePriceIx = ComputeBudgetProgram.setComputeUnitPrice({
+    microLamports: 1_000_000,
+  });
+
+  const signature = await ledgerSignAndSend([setComputePriceIx, setOutboundLimitIx], []);
 
   console.log(`Outbound limit set to ${nttConfig.outboundLimit} with tx ${signature}`);
   await connection.confirmTransaction(signature);
