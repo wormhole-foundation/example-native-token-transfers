@@ -27,8 +27,8 @@ export type ExampleNativeTokenTransfers =
 
 export const GOV_PROGRAM_IDS = [
   "NTTManager111111111111111111111111111111111",
-  "nGoBXaR89hiCMaGtUmBdqQA2B21LwNTLsv4ZJnWNppj",
-  "nGoBXaR89hiCMaGtUmBdqQA2B21LwNTLsv4ZJnWNppj",
+  "NGoD1yTeq5KaURrZo7MnCTFzTA4g62ygakJCnzMLCfm",
+  "NGoD1yTeq5KaURrZo7MnCTFzTA4g62ygakJCnzMLCfm",
 ] as const;
 
 export type GovProgramId = (typeof GOV_PROGRAM_IDS)[number];
