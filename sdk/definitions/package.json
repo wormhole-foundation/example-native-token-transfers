@@ -19,6 +19,10 @@
     "dist/esm",
     "dist/cjs"
   ],
+  "sideEffects":[
+    "./dist/cjs/index.js",
+    "./dist/esm/index.js"
+  ],
   "exports": {
     ".": {
       "require": {
