@@ -90,6 +90,10 @@ export type Programs = {
   governanceProgramId: string;
 }
 
+export type GovernanceVaa = {
+  vaa: string;
+}
+
 export function getEvmNttDeployments(): NttDeployment[] {
   return loadScriptConfig("evm-peers");
 }
@@ -104,6 +108,10 @@ export function getNttConfiguration(): NttConfig {
 
 export function getProgramAddresses(): Programs {
   return loadScriptConfig("programs");
+}
+
+export function getGovernanceVaa(): GovernanceVaa {
+  return loadScriptConfig("governance-vaa");
 }
 
 function loadScriptConfig(filename: string): any {

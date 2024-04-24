@@ -1,0 +1,66 @@
+import {
+  PublicKey,
+  AccountMeta,
+  TransactionInstruction,
+  Transaction,
+} from "@solana/web3.js";
+import { BN } from "@coral-xyz/anchor";
+import { parseVaa } from "@certusone/wormhole-sdk";
+import {
+  connection,
+  getSigner,
+  getProgramAddresses,
+  getGovernanceVaa,
+} from "./env";
+import { NTT } from "../sdk";
+import { addLedgerSignature, ledgerSignAndSend } from "./helpers";
+import { postVaaSolana } from "@certusone/wormhole-sdk";
+import { NTTGovernance } from "../sdk/governance";
+
+(async () => {
+  const { vaa } = getGovernanceVaa();
+
+  const { nttProgramId, wormholeProgramId, governanceProgramId } =
+    getProgramAddresses();
+
+  const governance = new NTTGovernance(connection, {
+    programId: governanceProgramId as any,
+  });
+
+  const signer = await getSigner();
+  const signerPk = new PublicKey(await signer.getAddress());
+
+  const vaaBuff = Buffer.from(vaa, "hex");
+  async function sign(tx: Transaction) {
+    await addLedgerSignature(tx, signer, signerPk);
+    return tx;
+  }
+
+  console.log("Posting VAA to Solana...");
+
+  await postVaaSolana(
+    connection,
+    sign,
+    new PublicKey(wormholeProgramId),
+    signerPk,
+    vaaBuff,
+  );
+
+  console.log("VAA posted to Solana.");
+
+  const parsedVaa = parseVaa(vaaBuff);
+
+  const governanceIx = await governance.createGovernanceVaaInstruction({
+    payer: signerPk,
+    vaa: parsedVaa,
+    wormholeId: new PublicKey(wormholeProgramId),
+  });
+
+  const signature = await ledgerSignAndSend([governanceIx], []);
+
+  console.log("Waiting for confirmation... Signature: ", signature);
+
+  await connection.confirmTransaction(signature);
+
+  console.log("success.");
+})();

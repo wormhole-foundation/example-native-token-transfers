@@ -34,6 +34,7 @@ import { NTTGovernance } from "../sdk/governance";
 
   const signature = await ledgerSignAndSend([transferOwnershipIx], []);
 
+  console.log("Waiting for confirmation... Signature: ", signature);
   await connection.confirmTransaction(signature);
   console.log("Success.");
 })();
