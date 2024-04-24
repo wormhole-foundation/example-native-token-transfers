@@ -96,7 +96,7 @@ if [[ $run_anvil = true ]]; then
     ps | grep "$ANVIL_PID"
 fi
 
-ANVIL_RPC=http://localhost:8545
+# ANVIL_RPC=http://localhost:8545
 
 GOV_CONTRACT=""
 ACCEPT_ADMIN_VAA=""
@@ -132,10 +132,10 @@ esac
 # Step 0) the VAAs are not compatible with the guardian
 # set on mainnet (since that corresponds to a mainnet guardian network). We need
 # to thus locally replace the guardian set with the local guardian key.
-echo "STEP 0:"
-echo "💂 Overriding guardian set with $GUARDIAN_ADDRESS"
-worm evm hijack -g "$GUARDIAN_ADDRESS" -i 0 -a "$CORE" --rpc "$ANVIL_RPC"> /dev/null
-printf "\n\n"
+# echo "STEP 0:"
+# echo "💂 Overriding guardian set with $GUARDIAN_ADDRESS"
+# worm evm hijack -g "$GUARDIAN_ADDRESS" -i 0 -a "$CORE" --rpc "$RPC"> /dev/null
+# printf "\n\n"
 
 # Step 0.5) override the pauser and owner to be our devnet address
 # echo "STEP 0.5:"
@@ -151,9 +151,9 @@ printf "\n\n"
 # Step 1) Query owner and pauser for the current W token contract (should not be the governance contract)
 echo "STEP 1:"
 echo "Getting owner and checking admin roles for W token..."
-owner=$(cast call "$TOKEN_CONTRACT" "owner()(address)" --rpc-url "$ANVIL_RPC")
-minterBurnerAdminRoleUser=$(cast call "$TOKEN_CONTRACT" "hasRole(bytes32,address)(bool)" "$MINTER_AND_BURNER_ADMIN_ROLE" "$USER_ADDRESS" --rpc-url "$ANVIL_RPC")
-setDelegateRoleUser=$(cast call "$TOKEN_CONTRACT" "hasRole(bytes32,address)(bool)" "$SET_DELEGATE_ROLE" "$USER_ADDRESS" --rpc-url "$ANVIL_RPC")
+owner=$(cast call "$TOKEN_CONTRACT" "owner()(address)" --rpc-url "$RPC")
+minterBurnerAdminRoleUser=$(cast call "$TOKEN_CONTRACT" "hasRole(bytes32,address)(bool)" "$MINTER_AND_BURNER_ADMIN_ROLE" "$USER_ADDRESS" --rpc-url "$RPC")
+setDelegateRoleUser=$(cast call "$TOKEN_CONTRACT" "hasRole(bytes32,address)(bool)" "$SET_DELEGATE_ROLE" "$USER_ADDRESS" --rpc-url "$RPC")
 if [[ $owner != "$USER_ADDRESS" ]] || [[ $minterBurnerAdminRoleUser != true ]] || [[ $setDelegateRoleUser != true ]]; then
   echo "ERROR! Owner is $owner , minter and burner admin role is $minterBurnerAdminRoleUser , set delegate role is $setDelegateRoleUser which is unexpected! Exiting..."
   clean_up
@@ -164,17 +164,17 @@ fi
 # Step 2) Transfer pauser of the W token contract to the Governance contract
 echo "STEP 2:"
 echo "Transferring pauser to Governance Contract..."
-cast send --ledger --mnemonic-derivation-path "m/44'/60'/0'/0/10" "$TOKEN_CONTRACT" "grantRole(bytes32,address)" "$MINTER_AND_BURNER_ADMIN_ROLE" "$GOV_CONTRACT" --rpc-url "$ANVIL_RPC"
+cast send --ledger --mnemonic-derivation-path "m/44'/60'/0'/0/10" "$TOKEN_CONTRACT" "grantRole(bytes32,address)" "$MINTER_AND_BURNER_ADMIN_ROLE" "$GOV_CONTRACT" --rpc-url "$RPC"
 sleep 10
-cast send --ledger --mnemonic-derivation-path "m/44'/60'/0'/0/10" "$TOKEN_CONTRACT" "renounceRole(bytes32,address)" "$MINTER_AND_BURNER_ADMIN_ROLE" "$USER_ADDRESS" --rpc-url "$ANVIL_RPC"
+cast send --ledger --mnemonic-derivation-path "m/44'/60'/0'/0/10" "$TOKEN_CONTRACT" "renounceRole(bytes32,address)" "$MINTER_AND_BURNER_ADMIN_ROLE" "$USER_ADDRESS" --rpc-url "$RPC"
 sleep 10
-cast send --ledger --mnemonic-derivation-path "m/44'/60'/0'/0/10" "$TOKEN_CONTRACT" "grantRole(bytes32,address)" "$SET_DELEGATE_ROLE" "$GOV_CONTRACT" --rpc-url "$ANVIL_RPC"
+cast send --ledger --mnemonic-derivation-path "m/44'/60'/0'/0/10" "$TOKEN_CONTRACT" "grantRole(bytes32,address)" "$SET_DELEGATE_ROLE" "$GOV_CONTRACT" --rpc-url "$RPC"
 sleep 10
-cast send --ledger --mnemonic-derivation-path "m/44'/60'/0'/0/10" "$TOKEN_CONTRACT" "renounceRole(bytes32,address)" "$SET_DELEGATE_ROLE" "$USER_ADDRESS" --rpc-url "$ANVIL_RPC"
+cast send --ledger --mnemonic-derivation-path "m/44'/60'/0'/0/10" "$TOKEN_CONTRACT" "renounceRole(bytes32,address)" "$SET_DELEGATE_ROLE" "$USER_ADDRESS" --rpc-url "$RPC"
 sleep 10
-cast send --ledger --mnemonic-derivation-path "m/44'/60'/0'/0/10" "$TOKEN_CONTRACT" "beginDefaultAdminTransfer(address)" "$GOV_CONTRACT" --rpc-url "$ANVIL_RPC"
+cast send --ledger --mnemonic-derivation-path "m/44'/60'/0'/0/10" "$TOKEN_CONTRACT" "beginDefaultAdminTransfer(address)" "$GOV_CONTRACT" --rpc-url "$RPC"
 sleep 10
-cast send --ledger --mnemonic-derivation-path "m/44'/60'/0'/0/10" "$GOV_CONTRACT" "performGovernance(bytes)" "$ACCEPT_ADMIN_VAA" --rpc-url "$ANVIL_RPC"
+cast send --ledger --mnemonic-derivation-path "m/44'/60'/0'/0/10" "$GOV_CONTRACT" "performGovernance(bytes)" "$ACCEPT_ADMIN_VAA" --rpc-url "$RPC"
 printf "Done\n\n"
 
 
@@ -182,11 +182,11 @@ printf "Done\n\n"
 echo "STEP 3:"
 echo "Getting owner and checking admin roles for W token (should both be granted to "$GOV_CONTRACT")..."
 sleep 10
-owner=$(cast call "$TOKEN_CONTRACT" "owner()(address)" --rpc-url "$ANVIL_RPC")
-minterBurnerAdminRoleUser=$(cast call "$TOKEN_CONTRACT" "hasRole(bytes32,address)(bool)" "$MINTER_AND_BURNER_ADMIN_ROLE" "$USER_ADDRESS" --rpc-url "$ANVIL_RPC")
-setDelegateRoleUser=$(cast call "$TOKEN_CONTRACT" "hasRole(bytes32,address)(bool)" "$SET_DELEGATE_ROLE" "$USER_ADDRESS" --rpc-url "$ANVIL_RPC")
-minterBurnerAdminRoleGov=$(cast call "$TOKEN_CONTRACT" "hasRole(bytes32,address)(bool)" "$MINTER_AND_BURNER_ADMIN_ROLE" "$GOV_CONTRACT" --rpc-url "$ANVIL_RPC")
-setDelegateRoleGov=$(cast call "$TOKEN_CONTRACT" "hasRole(bytes32,address)(bool)" "$SET_DELEGATE_ROLE" "$GOV_CONTRACT" --rpc-url "$ANVIL_RPC")
+owner=$(cast call "$TOKEN_CONTRACT" "owner()(address)" --rpc-url "$RPC")
+minterBurnerAdminRoleUser=$(cast call "$TOKEN_CONTRACT" "hasRole(bytes32,address)(bool)" "$MINTER_AND_BURNER_ADMIN_ROLE" "$USER_ADDRESS" --rpc-url "$RPC")
+setDelegateRoleUser=$(cast call "$TOKEN_CONTRACT" "hasRole(bytes32,address)(bool)" "$SET_DELEGATE_ROLE" "$USER_ADDRESS" --rpc-url "$RPC")
+minterBurnerAdminRoleGov=$(cast call "$TOKEN_CONTRACT" "hasRole(bytes32,address)(bool)" "$MINTER_AND_BURNER_ADMIN_ROLE" "$GOV_CONTRACT" --rpc-url "$RPC")
+setDelegateRoleGov=$(cast call "$TOKEN_CONTRACT" "hasRole(bytes32,address)(bool)" "$SET_DELEGATE_ROLE" "$GOV_CONTRACT" --rpc-url "$RPC")
 if [[ $owner != $GOV_CONTRACT ]] || [[ $minterBurnerAdminRoleUser != false ]] || [[ $setDelegateRoleUser != false ]] || [[ $minterBurnerAdminRoleGov != true ]] || [[ $setDelegateRoleGov != true ]]; then
   echo "ERROR! Both owner and admin roles should be granted to governance contract! Exiting..."
   clean_up
@@ -244,7 +244,7 @@ echo "Congratulations! You've verified that the ownership and admin transfer to 
 # Anvil can be kept alive by setting the -k flag. This is useful for interacting
 # with the contract after it has been upgraded.
 if [[ $keepalive_anvil = true ]]; then
-    echo "Listening on $ANVIL_RPC"
+    echo "Listening on $RPC"
     # tail -f "$anvil_out"
     wait "$ANVIL_PID"
 fi
