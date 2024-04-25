@@ -16,8 +16,8 @@ import {
   serializePayload,
   deserializePayload,
 } from "@wormhole-foundation/sdk-definitions";
-import { postVaa, NTT, nttMessageLayout } from "../ts/sdk";
-import { WormholeTransceiverMessage } from "../ts/sdk/nttLayout";
+import { postVaa, NTT, nttMessageLayout } from "../ts/lib";
+import { WormholeTransceiverMessage } from "../ts/lib/nttLayout";
 
 import {
   PublicKey,

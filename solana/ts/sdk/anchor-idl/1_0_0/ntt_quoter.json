@@ -584,8 +584,5 @@
       "name": "PriceCannotBeZero",
       "msg": "The price cannot be zero"
     }
-  ],
-  "metadata": {
-    "address": "9jFBLvMZZERVmeY4tbq5MejbXRE18paGEuoB6xVJZgGe"
-  }
+  ]
 }

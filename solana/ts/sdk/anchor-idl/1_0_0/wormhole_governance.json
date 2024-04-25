@@ -72,8 +72,5 @@
       "name": "InvalidGovernanceProgram",
       "msg": "InvalidGovernanceProgram"
     }
-  ],
-  "metadata": {
-    "address": "wgvEiKVzX9yyEoh41jZAdC6JqGUTS4CFXbFGBV5TKdZ"
-  }
+  ]
 }

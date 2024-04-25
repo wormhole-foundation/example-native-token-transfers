@@ -33,7 +33,6 @@
   },
   "workspaces": [
     "sdk/definitions",
-    "sdk/solana",
     "sdk/evm",
     "sdk/route",
     "sdk/examples",
