@@ -1,4 +1,5 @@
 
+import util from "util";
 import fs from "fs";
 import { NttManager__factory } from "../../ci_tests/evm_binding/factories/NttManager__factory"
 import { WormholeTransceiver__factory } from "../../ci_tests/evm_binding/factories/WormholeTransceiver__factory"
@@ -92,7 +93,7 @@ async function configureChains(){
                 return [null, `ERROR: Not supported networkType ${chain['networkType']}`];
             }
         }catch(e){
-            console.log(`Error: ${e}`);
+            console.log(`Error: ${stringifyError(e)}`);
             console.log("Exiting...");
             return [null, e];
         }
@@ -298,7 +299,7 @@ async function checkWormholeTranseivers(chainData){
                     targetPeerAddress = BigNumber.from("0x" + bufferToHex( targetPeerAddress['address']));
                 }
                 catch(err){
-                    //console.log("Error in checkWormholeTransceiver Solana:", err);
+                    console.log(`Error in checkWormholeTransceiver Solana: ${stringifyError(err)}`);
                     targetPeerAddress = BigNumber.from(0x000000000000000000000000000000000000000000000); // Can't find the addresss, since it doesn't exist
                 }
             }else{
@@ -401,7 +402,7 @@ async function checkManagers(chainData){
                         }
                     }
                     catch(e){
-                        console.log(`ERROR: ${e}. Please check that the chain id is the WORMHOLE chain id and not the regular chain id`)
+                        console.log(`ERROR: ${stringifyError(e)}. Please check that the chain id is the WORMHOLE chain id and not the regular chain id`)
                     }
                 }
                 continue; 
@@ -518,3 +519,8 @@ async function run(){
 }
 
 run();
+
+
+function stringifyError(error: any) {
+    return error?.stack || util.inspect(error);
+}
