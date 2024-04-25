@@ -51,6 +51,7 @@ async function run() {
       
       const signature = await ledgerSignAndSend(instructions, []);
       await connection.confirmTransaction(signature, "confirmed");
+      console.log(`Tx id: ${signature}`);
       console.log("Success.");
     } catch (error) {
       console.error(
