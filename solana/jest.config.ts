@@ -11,7 +11,7 @@ const jestConfig: JestConfigWithTsJest = {
     "^(\\.{1,2}/.*)\\.js$": "$1",
   },
   transform: {
-    "^.+\\.tsx?$": ["ts-jest", { tsconfig: "tsconfig.esm.json" }],
+    "^.+\\.tsx?$": ["ts-jest", { tsconfig: "tsconfig.anchor.json" }],
   },
 };
 

@@ -23,9 +23,10 @@ import {
 import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 import * as fs from "fs";
 
-import { SystemProgram, Transaction } from "@solana/web3.js";
+import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { DummyTransferHook } from "../ts/sdk/anchor-idl/1_0_0/dummy_transfer_hook.js";
 import { SolanaNtt } from "../ts/sdk/index.js";
+import { before } from "node:test";
 
 const solanaRootDir = `${__dirname}/../`;
 
@@ -75,55 +76,58 @@ const remoteMgr: ChainAddress = {
 //  "BgabMDLaxsyB7eGMBt9L22MSk9KMrL4zY2iNe14kyFP5"
 //);
 
+const payerSecretKey = Uint8Array.from(
+  JSON.parse(
+    fs.readFileSync(`${solanaRootDir}/keys/test.json`, {
+      encoding: "utf-8",
+    })
+  )
+);
+const payer = anchor.web3.Keypair.fromSecretKey(payerSecretKey);
+
+const owner = anchor.web3.Keypair.generate();
+const connection = new anchor.web3.Connection(
+  "http://localhost:8899",
+  "confirmed"
+);
+
+// Make sure we're using the exact same Connection obj for rpc
+const ctx: ChainContext<"Devnet", "Solana"> = w
+  .getPlatform("Solana")
+  .getChain("Solana", connection);
+
+let tokenAccount: anchor.web3.PublicKey;
+
+const mint = anchor.web3.Keypair.generate();
+
 const dummyTransferHook = anchor.workspace
   .DummyTransferHook as anchor.Program<DummyTransferHook>;
 
-const mintKey = anchor.web3.Keypair.generate();
+console.log(dummyTransferHook);
 
-// const [extraAccountMetaListPDA] = PublicKey.findProgramAddressSync(
-//   [Buffer.from("extra-account-metas"), mintKey.publicKey.toBuffer()],
-//   dummyTransferHook.programId
-// );
-//
-// const [counterPDA] = PublicKey.findProgramAddressSync(
-//   [Buffer.from("counter")],
-//   dummyTransferHook.programId
-// );
+const [extraAccountMetaListPDA] = PublicKey.findProgramAddressSync(
+  [Buffer.from("extra-account-metas"), mint.publicKey.toBuffer()],
+  dummyTransferHook.programId
+);
 
-// async function counterValue(): Promise<anchor.BN> {
-//   const counter = await dummyTransferHook.account.counter.fetch(counterPDA);
-//   return counter.count;
-// }
+const [counterPDA] = PublicKey.findProgramAddressSync(
+  [Buffer.from("counter")],
+  dummyTransferHook.programId
+);
+
+async function counterValue(): Promise<anchor.BN> {
+  const counter = await dummyTransferHook.account.counter.fetch(counterPDA);
+  return counter.count;
+}
+
+const signer = new SolanaSendSigner(connection, "Solana", payer);
+const sender = Wormhole.parseAddress(signer.chain(), signer.address());
+
+const coreBridge = new SolanaWormholeCore("Devnet", "Solana", connection, {
+  coreBridge: CORE_BRIDGE_ADDRESS,
+});
 
 describe("example-native-token-transfers", () => {
-  const payerSecretKey = Uint8Array.from(
-    JSON.parse(
-      fs.readFileSync(`${solanaRootDir}/keys/test.json`, {
-        encoding: "utf-8",
-      })
-    )
-  );
-  const payer = anchor.web3.Keypair.fromSecretKey(payerSecretKey);
-  const owner = anchor.web3.Keypair.generate();
-
-  const connection = new anchor.web3.Connection(
-    "http://localhost:8899",
-    "confirmed"
-  );
-
-  // Make sure we're using the exact same Connection obj for rpc
-  const ctx: ChainContext<"Devnet", "Solana"> = w
-    .getPlatform("Solana")
-    .getChain("Solana", connection);
-
-  const signer = new SolanaSendSigner(connection, "Solana", payer);
-  const sender = Wormhole.parseAddress(signer.chain(), signer.address());
-
-  const coreBridge = new SolanaWormholeCore("Devnet", "Solana", connection, {
-    coreBridge: CORE_BRIDGE_ADDRESS,
-  });
-
-  let tokenAccount: anchor.web3.PublicKey;
   let ntt: SolanaNtt<"Devnet", "Solana">;
 
   beforeAll(async () => {
@@ -137,19 +141,19 @@ describe("example-native-token-transfers", () => {
       const transaction = new Transaction().add(
         SystemProgram.createAccount({
           fromPubkey: payer.publicKey,
-          newAccountPubkey: mintKey.publicKey,
+          newAccountPubkey: mint.publicKey,
           space: mintLen,
           lamports,
           programId: spl.TOKEN_2022_PROGRAM_ID,
         }),
         spl.createInitializeTransferHookInstruction(
-          mintKey.publicKey,
+          mint.publicKey,
           owner.publicKey,
           dummyTransferHook.programId,
           spl.TOKEN_2022_PROGRAM_ID
         ),
         spl.createInitializeMintInstruction(
-          mintKey.publicKey,
+          mint.publicKey,
           9,
           owner.publicKey,
           null,
@@ -163,16 +167,13 @@ describe("example-native-token-transfers", () => {
       transaction.recentBlockhash = blockhash;
       console.log(transaction);
 
-      const txid = await connection.sendTransaction(transaction, [
-        payer,
-        mintKey,
-      ]);
+      const txid = await connection.sendTransaction(transaction, [payer, mint]);
       await connection.confirmTransaction(txid, "confirmed");
 
       tokenAccount = await spl.createAssociatedTokenAccount(
         connection,
         payer,
-        mintKey.publicKey,
+        mint.publicKey,
         payer.publicKey,
         undefined,
         spl.TOKEN_2022_PROGRAM_ID,
@@ -182,7 +183,7 @@ describe("example-native-token-transfers", () => {
       await spl.mintTo(
         connection,
         payer,
-        mintKey.publicKey,
+        mint.publicKey,
         tokenAccount,
         owner,
         BigInt(10000000),
@@ -195,29 +196,13 @@ describe("example-native-token-transfers", () => {
       ntt = new SolanaNtt("Devnet", "Solana", connection, {
         ...ctx.config.contracts,
         ntt: {
-          token: mintKey.publicKey.toBase58(),
+          token: mint.publicKey.toBase58(),
           manager: NTT_ADDRESS,
           transceiver: {
             wormhole: NTT_ADDRESS,
           },
         },
       });
-
-      tokenAccount = await spl.createAssociatedTokenAccount(
-        connection,
-        payer,
-        mintKey.publicKey,
-        payer.publicKey
-      );
-
-      await spl.mintTo(
-        connection,
-        payer,
-        mintKey.publicKey,
-        tokenAccount,
-        owner,
-        BigInt(10000000)
-      );
     } catch (e) {
       console.error(e);
       throw e;
@@ -226,50 +211,79 @@ describe("example-native-token-transfers", () => {
 
   describe("Locking", () => {
     beforeAll(async () => {
-      await spl.setAuthority(
-        connection,
-        payer,
-        mintKey.publicKey,
-        owner,
-        0, // mint
-        ntt.pdas.tokenAuthority()
-      );
+      try {
+        await spl.setAuthority(
+          connection,
+          payer,
+          mint.publicKey,
+          owner,
+          spl.AuthorityType.MintTokens,
+          ntt.pdas.tokenAuthority(),
+          [],
+          undefined,
+          spl.TOKEN_2022_PROGRAM_ID
+        );
 
-      // init
-      const initTxs = ntt.initialize({
-        payer,
-        owner: payer,
-        chain: "Solana",
-        mint: mintKey.publicKey,
-        outboundLimit: 1000000n,
-        mode: "locking",
-      });
-      await signSendWait(ctx, initTxs, signer);
+        // init
+        const initTxs = ntt.initialize({
+          payer,
+          owner: payer,
+          chain: "Solana",
+          mint: mint.publicKey,
+          outboundLimit: 1000000n,
+          mode: "locking",
+        });
+        await signSendWait(ctx, initTxs, signer);
 
-      // register
-      const registerTxs = ntt.registerTransceiver({
-        payer,
-        owner: payer,
-        transceiver: ntt.program.programId,
-      });
-      await signSendWait(ctx, registerTxs, signer);
+        // register
+        const registerTxs = ntt.registerTransceiver({
+          payer,
+          owner: payer,
+          transceiver: ntt.program.programId,
+        });
+        await signSendWait(ctx, registerTxs, signer);
 
-      // Set Wormhole xcvr peer
-      const setXcvrPeerTxs = ntt.setWormholeTransceiverPeer(remoteXcvr, sender);
-      await signSendWait(ctx, setXcvrPeerTxs, signer);
+        // Set Wormhole xcvr peer
+        const setXcvrPeerTxs = ntt.setWormholeTransceiverPeer(
+          remoteXcvr,
+          sender
+        );
+        await signSendWait(ctx, setXcvrPeerTxs, signer);
 
-      // Set manager peer
-      const setPeerTxs = ntt.setPeer(remoteMgr, 18, 1000000n, sender);
-      await signSendWait(ctx, setPeerTxs, signer);
+        // Set manager peer
+        const setPeerTxs = ntt.setPeer(remoteMgr, 18, 1000000n, sender);
+        await signSendWait(ctx, setPeerTxs, signer);
+      } catch (e) {
+        console.error(e);
+        throw e;
+      }
     });
 
+    // it("Create ExtraAccountMetaList Account", async () => {
+    //   const initializeExtraAccountMetaListInstruction =
+    //     await dummyTransferHook.methods
+    //       .initializeExtraAccountMetaList()
+    //       .accountsStrict({
+    //         payer: payer.publicKey,
+    //         mint: mint.publicKey,
+    //         counter: counterPDA,
+    //         extraAccountMetaList: extraAccountMetaListPDA,
+    //         tokenProgram: spl.TOKEN_2022_PROGRAM_ID,
+    //         associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+    //         systemProgram: SystemProgram.programId,
+    //       })
+    //       .instruction();
+
+    //   const transaction = new Transaction().add(
+    //     initializeExtraAccountMetaListInstruction
+    //   );
+    //   await sendAndConfirmTransaction(connection, transaction, [payer]);
+    // });
+
     test("Can send tokens", async () => {
-      // TODO: factor out this test so it can be reused for burn&mint
-      // transfer some tokens
       const amount = 100000n;
       const sender = Wormhole.parseAddress("Solana", signer.address());
 
-      // made up receiver
       const receiver = testing.utils.makeUniversalChainAddress("Ethereum");
 
       // TODO: keep or remove the `outboxItem` param?
@@ -288,9 +302,9 @@ describe("example-native-token-transfers", () => {
         outboxItem.publicKey
       );
 
-      const unsignedVaa = (await coreBridge.parsePostMessageAccount(
+      const unsignedVaa = await coreBridge.parsePostMessageAccount(
         wormholeMessage
-      )) as VAA<"Uint8Array">; // TODO: remove `as` when next version sdk is out
+      );
 
       const transceiverMessage = deserializePayload(
         "Ntt:WormholeTransfer",
@@ -365,7 +379,7 @@ describe("example-native-token-transfers", () => {
         await signSendWait(ctx, redeemTxs, signer);
       } catch (e) {
         console.error(e);
-        return;
+        throw e;
       }
 
       // expect(released).to.equal(true);

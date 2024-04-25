@@ -12,15 +12,12 @@ target/idl/example_native_token_transfers.json:
 _anchor-build:
 	@anchor build --arch sbf
 
-anchor-test: node_modules build target/idl/example_native_token_transfers.json sdk
+anchor-test: build target/idl/example_native_token_transfers.json sdk
 	anchor test --skip-build
 
 sdk: build target/idl/example_native_token_transfers.json
 	@echo "Building SDK"
 	cd .. && npm ci && npm run build:solana
-
-node_modules: package-lock.json
-	npm ci
 
 .PHONY: clean
 clean:

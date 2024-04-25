@@ -544,7 +544,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         from,
         this.pdas.sessionAuthority(fromAuthority, transferArgs),
         fromAuthority,
-        amount
+        amount,
+        [],
+        config.tokenProgram
       ),
       config.mode.locking != null
         ? this.createTransferLockInstruction(txArgs)
