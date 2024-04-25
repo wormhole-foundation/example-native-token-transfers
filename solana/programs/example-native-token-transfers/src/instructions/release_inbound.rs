@@ -21,7 +21,8 @@ pub struct ReleaseInbound<'info> {
     #[account(
         mut,
         associated_token::authority = inbox_item.recipient_address,
-        associated_token::mint = mint
+        associated_token::mint = mint,
+        associated_token::token_program = token_program,
     )]
     pub recipient: InterfaceAccount<'info, token_interface::TokenAccount>,
 
