@@ -17,7 +17,7 @@ anchor-test: node_modules build target/idl/example_native_token_transfers.json s
 
 sdk: build target/idl/example_native_token_transfers.json
 	@echo "Building SDK"
-	cd ../sdk && npm ci && npm run build:solana
+	cd .. && npm ci && npm run build:solana
 
 node_modules: package-lock.json
 	npm ci
