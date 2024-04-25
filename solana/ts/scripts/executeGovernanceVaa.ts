@@ -1,10 +1,7 @@
 import {
   PublicKey,
-  AccountMeta,
-  TransactionInstruction,
   Transaction,
 } from "@solana/web3.js";
-import { BN } from "@coral-xyz/anchor";
 import { parseVaa } from "@certusone/wormhole-sdk";
 import {
   connection,
@@ -12,7 +9,6 @@ import {
   getProgramAddresses,
   getGovernanceVaa,
 } from "./env";
-import { NTT } from "../sdk";
 import { addLedgerSignature, ledgerSignAndSend } from "./helpers";
 import { postVaaSolana } from "@certusone/wormhole-sdk";
 import { NTTGovernance } from "../sdk/governance";
@@ -55,6 +51,8 @@ import { NTTGovernance } from "../sdk/governance";
     vaa: parsedVaa,
     wormholeId: new PublicKey(wormholeProgramId),
   });
+
+  console.log(`Account ${signerPk.toBase58()} is claiming ownership of NTT Program ${nttProgramId}.`);
 
   const signature = await ledgerSignAndSend([governanceIx], []);
 
