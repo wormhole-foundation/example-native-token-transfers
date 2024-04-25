@@ -23,6 +23,8 @@ import {
 import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 import * as fs from "fs";
 
+import { SystemProgram, Transaction } from "@solana/web3.js";
+import { DummyTransferHook } from "../src/anchor-idl/1_0_0/dummy_transfer_hook.js";
 import { SolanaNtt } from "../src/index.js";
 
 const solanaRootDir = `${__dirname}/../../../solana`;
@@ -69,6 +71,30 @@ const remoteMgr: ChainAddress = {
   ),
 };
 
+//const dummyTransferHook = new PublicKey(
+//  "BgabMDLaxsyB7eGMBt9L22MSk9KMrL4zY2iNe14kyFP5"
+//);
+
+const dummyTransferHook = anchor.workspace
+  .DummyTransferHook as anchor.Program<DummyTransferHook>;
+
+const mintKey = anchor.web3.Keypair.generate();
+
+// const [extraAccountMetaListPDA] = PublicKey.findProgramAddressSync(
+//   [Buffer.from("extra-account-metas"), mintKey.publicKey.toBuffer()],
+//   dummyTransferHook.programId
+// );
+//
+// const [counterPDA] = PublicKey.findProgramAddressSync(
+//   [Buffer.from("counter")],
+//   dummyTransferHook.programId
+// );
+
+// async function counterValue(): Promise<anchor.BN> {
+//   const counter = await dummyTransferHook.account.counter.fetch(counterPDA);
+//   return counter.count;
+// }
+
 describe("example-native-token-transfers", () => {
   const payerSecretKey = Uint8Array.from(
     JSON.parse(
@@ -98,40 +124,104 @@ describe("example-native-token-transfers", () => {
   });
 
   let tokenAccount: anchor.web3.PublicKey;
-  let mint: anchor.web3.PublicKey;
   let ntt: SolanaNtt<"Devnet", "Solana">;
 
   beforeAll(async () => {
-    // airdrop some tokens to payer
-    mint = await spl.createMint(connection, payer, owner.publicKey, null, 9);
+    try {
+      const extensions = [spl.ExtensionType.TransferHook];
+      const mintLen = spl.getMintLen(extensions);
+      const lamports = await connection.getMinimumBalanceForRentExemption(
+        mintLen
+      );
 
-    // Create our contract client
-    ntt = new SolanaNtt("Devnet", "Solana", connection, {
-      ...ctx.config.contracts,
-      ntt: {
-        token: mint.toBase58(),
-        manager: NTT_ADDRESS,
-        transceiver: {
-          wormhole: NTT_ADDRESS,
+      const transaction = new Transaction().add(
+        SystemProgram.createAccount({
+          fromPubkey: payer.publicKey,
+          newAccountPubkey: mintKey.publicKey,
+          space: mintLen,
+          lamports,
+          programId: spl.TOKEN_2022_PROGRAM_ID,
+        }),
+        spl.createInitializeTransferHookInstruction(
+          mintKey.publicKey,
+          owner.publicKey,
+          dummyTransferHook.programId,
+          spl.TOKEN_2022_PROGRAM_ID
+        ),
+        spl.createInitializeMintInstruction(
+          mintKey.publicKey,
+          9,
+          owner.publicKey,
+          null,
+          spl.TOKEN_2022_PROGRAM_ID
+        )
+      );
+
+      const { blockhash } = await connection.getRecentBlockhash();
+
+      transaction.feePayer = payer.publicKey;
+      transaction.recentBlockhash = blockhash;
+      console.log(transaction);
+
+      const txid = await connection.sendTransaction(transaction, [
+        payer,
+        mintKey,
+      ]);
+      await connection.confirmTransaction(txid, "confirmed");
+
+      tokenAccount = await spl.createAssociatedTokenAccount(
+        connection,
+        payer,
+        mintKey.publicKey,
+        payer.publicKey,
+        undefined,
+        spl.TOKEN_2022_PROGRAM_ID,
+        spl.ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+
+      await spl.mintTo(
+        connection,
+        payer,
+        mintKey.publicKey,
+        tokenAccount,
+        owner,
+        BigInt(10000000),
+        undefined,
+        undefined,
+        spl.TOKEN_2022_PROGRAM_ID
+      );
+
+      // Create our contract client
+      ntt = new SolanaNtt("Devnet", "Solana", connection, {
+        ...ctx.config.contracts,
+        ntt: {
+          token: mintKey.publicKey.toBase58(),
+          manager: NTT_ADDRESS,
+          transceiver: {
+            wormhole: NTT_ADDRESS,
+          },
         },
-      },
-    });
+      });
 
-    tokenAccount = await spl.createAssociatedTokenAccount(
-      connection,
-      payer,
-      mint,
-      payer.publicKey
-    );
+      tokenAccount = await spl.createAssociatedTokenAccount(
+        connection,
+        payer,
+        mintKey.publicKey,
+        payer.publicKey
+      );
 
-    await spl.mintTo(
-      connection,
-      payer,
-      mint,
-      tokenAccount,
-      owner,
-      BigInt(10000000)
-    );
+      await spl.mintTo(
+        connection,
+        payer,
+        mintKey.publicKey,
+        tokenAccount,
+        owner,
+        BigInt(10000000)
+      );
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
   });
 
   describe("Locking", () => {
@@ -139,7 +229,7 @@ describe("example-native-token-transfers", () => {
       await spl.setAuthority(
         connection,
         payer,
-        mint,
+        mintKey.publicKey,
         owner,
         0, // mint
         ntt.pdas.tokenAuthority()
@@ -150,7 +240,7 @@ describe("example-native-token-transfers", () => {
         payer,
         owner: payer,
         chain: "Solana",
-        mint,
+        mint: mintKey.publicKey,
         outboundLimit: 1000000n,
         mode: "locking",
       });
@@ -331,17 +421,4 @@ describe("example-native-token-transfers", () => {
       });
     });
   });
-
-  // describe('Burning', () => {
-  //   beforeEach(async () => {
-  //     await ntt.initialize({
-  //       payer,
-  //       owner,
-  //       chain: 'solana',
-  //       mint,
-  //       outboundLimit: new BN(1000000),
-  //       mode: 'burning'
-  //     })
-  //   });
-  // });
 });
