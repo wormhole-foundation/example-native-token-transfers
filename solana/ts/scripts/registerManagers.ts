@@ -18,8 +18,8 @@ async function run() {
     const registration = await quoter.tryGetRegisteredNtt(nttKey);
     const needsUpdate =
       registration !== null &&
-      registration.gasCost !== managerConfig.gasCost &&
-      registration.wormholeTransceiverIndex !== managerConfig.wormholeTransceiverIndex;
+      (registration.gasCost !== managerConfig.gasCost ||
+      registration.wormholeTransceiverIndex !== managerConfig.wormholeTransceiverIndex);
     const instructions = [] as TransactionInstruction[];
     if (registration !== null && (!managerConfig.isSupported || needsUpdate)) {
       console.log(`De-registering manager ${managerConfig.programId}`);
