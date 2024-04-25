@@ -24,10 +24,10 @@ import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 import * as fs from "fs";
 
 import { SystemProgram, Transaction } from "@solana/web3.js";
-import { DummyTransferHook } from "../src/anchor-idl/1_0_0/dummy_transfer_hook.js";
-import { SolanaNtt } from "../src/index.js";
+import { DummyTransferHook } from "../ts/sdk/anchor-idl/1_0_0/dummy_transfer_hook.js";
+import { SolanaNtt } from "../ts/sdk/index.js";
 
-const solanaRootDir = `${__dirname}/../../../solana`;
+const solanaRootDir = `${__dirname}/../`;
 
 const GUARDIAN_KEY =
   "cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0";
