@@ -118,16 +118,16 @@ async function configureSolana(rpc, managerAddress){
     );
 
     // Devnet configuration....
-    const fromHexString = (hexString) => Uint8Array.from(hexString.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
+    // const fromHexString = (hexString) => Uint8Array.from(hexString.match(/.{1,2}/g).map((byte) => parseInt(byte, 16)));
     managerData['managerAddress'] = managerAddress;
     const manager = new NTT(SOL_CONNECTION, {
-        nttId: base58.encode(fromHexString(managerAddress.substring(2))),
+        nttId: managerAddress,
         wormholeId: "3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5",
       });
 
 
     var to_public_key = new web3.PublicKey(
-        base58.encode(fromHexString(managerAddress.substring(2)))
+        managerAddress
     );
     // var accounts = await SOL_CONNECTION.getProgramAccounts(to_public_key, {filters: [{
     //     memcmp: {
