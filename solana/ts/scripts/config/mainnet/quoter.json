@@ -6,7 +6,7 @@
     {
       "programId": "NTtAaoDJhkeHeaVUHnyhwbPNAN6WgBpHkHBTc6d7vLK",
       "tokenAddress": "85VBFQZC9TZkfaptBWjvUw7YbZjy52A6mjtPGjstQAmQ",
-      "gasCost": 400000,
+      "gasCost": 500000,
       "wormholeTransceiverIndex": 0,
       "isSupported": true
     }
