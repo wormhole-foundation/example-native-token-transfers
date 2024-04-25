@@ -2,7 +2,7 @@ import { inspect } from "util";
 import { NttQuoter } from "../sdk";
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 
-import { connection, getSigner, getEnv, getQuoterConfiguration, getProgramAddresses } from "./env";
+import { connection, getSigner, getQuoterConfiguration, getProgramAddresses } from "./env";
 import { ledgerSignAndSend } from "./helpers";
 
 async function run() {
@@ -19,8 +19,7 @@ async function run() {
     const needsUpdate =
       registration !== null &&
       registration.gasCost !== managerConfig.gasCost &&
-      registration.wormholeTransceiverIndex !==
-        managerConfig.wormholeTransceiverIndex;
+      registration.wormholeTransceiverIndex !== managerConfig.wormholeTransceiverIndex;
     const instructions = [] as TransactionInstruction[];
     if (registration !== null && (!managerConfig.isSupported || needsUpdate)) {
       console.log(`De-registering manager ${managerConfig.programId}`);
@@ -29,7 +28,7 @@ async function run() {
       );
     }
 
-    if (managerConfig.isSupported) {
+    if (managerConfig.isSupported && (registration === null || needsUpdate)) {
       if (managerConfig.gasCost === 0) {
         throw new Error(
           `Invalid manager configuration: ${inspect(managerConfig)}`
