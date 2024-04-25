@@ -13,7 +13,10 @@
         {
           "name": "governance",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "governed program."
+          ]
         },
         {
           "name": "vaa",
@@ -63,6 +66,14 @@
       "code": 6001,
       "name": "InvalidGovernanceEmitter",
       "msg": "InvalidGovernanceEmitter"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidGovernanceProgram",
+      "msg": "InvalidGovernanceProgram"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "wgvEiKVzX9yyEoh41jZAdC6JqGUTS4CFXbFGBV5TKdZ"
+  }
 }

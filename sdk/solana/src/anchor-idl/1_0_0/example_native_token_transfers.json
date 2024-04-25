@@ -85,6 +85,122 @@
       ]
     },
     {
+      "name": "initializeLut",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "lutAddress",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lut",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lutProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "entries",
+          "accounts": [
+            {
+              "name": "config",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "tokenProgram",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "mint",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "tokenAuthority",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "outboxRateLimit",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "wormhole",
+              "accounts": [
+                {
+                  "name": "bridge",
+                  "isMut": true,
+                  "isSigner": false
+                },
+                {
+                  "name": "feeCollector",
+                  "isMut": true,
+                  "isSigner": false
+                },
+                {
+                  "name": "sequence",
+                  "isMut": true,
+                  "isSigner": false
+                },
+                {
+                  "name": "program",
+                  "isMut": false,
+                  "isSigner": false
+                },
+                {
+                  "name": "systemProgram",
+                  "isMut": false,
+                  "isSigner": false
+                },
+                {
+                  "name": "clock",
+                  "isMut": false,
+                  "isSigner": false
+                },
+                {
+                  "name": "rent",
+                  "isMut": false,
+                  "isSigner": false
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "recentSlot",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "version",
       "accounts": [],
       "args": [],
@@ -140,6 +256,11 @@
               "isSigner": false
             },
             {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
               "name": "systemProgram",
               "isMut": false,
               "isSigner": false
@@ -158,6 +279,11 @@
         },
         {
           "name": "sessionAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAuthority",
           "isMut": false,
           "isSigner": false
         }
@@ -221,6 +347,11 @@
               "isSigner": false
             },
             {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
               "name": "systemProgram",
               "isMut": false,
               "isSigner": false
@@ -240,11 +371,6 @@
         {
           "name": "sessionAuthority",
           "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "custody",
-          "isMut": true,
           "isSigner": false
         }
       ],
@@ -378,6 +504,11 @@
               "name": "tokenProgram",
               "isMut": false,
               "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
             }
           ]
         }
@@ -436,13 +567,13 @@
               "name": "tokenProgram",
               "isMut": false,
               "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
             }
           ]
-        },
-        {
-          "name": "custody",
-          "isMut": true,
-          "isSigner": false
         }
       ],
       "args": [
@@ -1094,6 +1225,22 @@
             "docs": [
               "The custody account that holds tokens in locking mode."
             ],
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LUT",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "address",
             "type": "publicKey"
           }
         ]
@@ -1766,5 +1913,8 @@
       "name": "BitmapIndexOutOfBounds",
       "msg": "BitmapIndexOutOfBounds"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS"
+  }
 }

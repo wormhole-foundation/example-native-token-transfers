@@ -85,6 +85,122 @@ export type ExampleNativeTokenTransfers = {
       ]
     },
     {
+      "name": "initializeLut",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "lutAddress",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lut",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lutProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "entries",
+          "accounts": [
+            {
+              "name": "config",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "tokenProgram",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "mint",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "tokenAuthority",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "outboxRateLimit",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "wormhole",
+              "accounts": [
+                {
+                  "name": "bridge",
+                  "isMut": true,
+                  "isSigner": false
+                },
+                {
+                  "name": "feeCollector",
+                  "isMut": true,
+                  "isSigner": false
+                },
+                {
+                  "name": "sequence",
+                  "isMut": true,
+                  "isSigner": false
+                },
+                {
+                  "name": "program",
+                  "isMut": false,
+                  "isSigner": false
+                },
+                {
+                  "name": "systemProgram",
+                  "isMut": false,
+                  "isSigner": false
+                },
+                {
+                  "name": "clock",
+                  "isMut": false,
+                  "isSigner": false
+                },
+                {
+                  "name": "rent",
+                  "isMut": false,
+                  "isSigner": false
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "recentSlot",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "version",
       "accounts": [],
       "args": [],
@@ -140,6 +256,11 @@ export type ExampleNativeTokenTransfers = {
               "isSigner": false
             },
             {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
               "name": "systemProgram",
               "isMut": false,
               "isSigner": false
@@ -158,6 +279,11 @@ export type ExampleNativeTokenTransfers = {
         },
         {
           "name": "sessionAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAuthority",
           "isMut": false,
           "isSigner": false
         }
@@ -221,6 +347,11 @@ export type ExampleNativeTokenTransfers = {
               "isSigner": false
             },
             {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
               "name": "systemProgram",
               "isMut": false,
               "isSigner": false
@@ -240,11 +371,6 @@ export type ExampleNativeTokenTransfers = {
         {
           "name": "sessionAuthority",
           "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "custody",
-          "isMut": true,
           "isSigner": false
         }
       ],
@@ -378,6 +504,11 @@ export type ExampleNativeTokenTransfers = {
               "name": "tokenProgram",
               "isMut": false,
               "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
             }
           ]
         }
@@ -436,13 +567,13 @@ export type ExampleNativeTokenTransfers = {
               "name": "tokenProgram",
               "isMut": false,
               "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
             }
           ]
-        },
-        {
-          "name": "custody",
-          "isMut": true,
-          "isSigner": false
         }
       ],
       "args": [
@@ -1094,6 +1225,22 @@ export type ExampleNativeTokenTransfers = {
             "docs": [
               "The custody account that holds tokens in locking mode."
             ],
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "lut",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "address",
             "type": "publicKey"
           }
         ]
@@ -1967,6 +2114,122 @@ export const IDL: ExampleNativeTokenTransfers = {
       ]
     },
     {
+      "name": "initializeLut",
+      "accounts": [
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "lutAddress",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lut",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "lutProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "entries",
+          "accounts": [
+            {
+              "name": "config",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "tokenProgram",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "mint",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "tokenAuthority",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "outboxRateLimit",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "wormhole",
+              "accounts": [
+                {
+                  "name": "bridge",
+                  "isMut": true,
+                  "isSigner": false
+                },
+                {
+                  "name": "feeCollector",
+                  "isMut": true,
+                  "isSigner": false
+                },
+                {
+                  "name": "sequence",
+                  "isMut": true,
+                  "isSigner": false
+                },
+                {
+                  "name": "program",
+                  "isMut": false,
+                  "isSigner": false
+                },
+                {
+                  "name": "systemProgram",
+                  "isMut": false,
+                  "isSigner": false
+                },
+                {
+                  "name": "clock",
+                  "isMut": false,
+                  "isSigner": false
+                },
+                {
+                  "name": "rent",
+                  "isMut": false,
+                  "isSigner": false
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "recentSlot",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "version",
       "accounts": [],
       "args": [],
@@ -2022,6 +2285,11 @@ export const IDL: ExampleNativeTokenTransfers = {
               "isSigner": false
             },
             {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
               "name": "systemProgram",
               "isMut": false,
               "isSigner": false
@@ -2040,6 +2308,11 @@ export const IDL: ExampleNativeTokenTransfers = {
         },
         {
           "name": "sessionAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAuthority",
           "isMut": false,
           "isSigner": false
         }
@@ -2103,6 +2376,11 @@ export const IDL: ExampleNativeTokenTransfers = {
               "isSigner": false
             },
             {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
               "name": "systemProgram",
               "isMut": false,
               "isSigner": false
@@ -2122,11 +2400,6 @@ export const IDL: ExampleNativeTokenTransfers = {
         {
           "name": "sessionAuthority",
           "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "custody",
-          "isMut": true,
           "isSigner": false
         }
       ],
@@ -2260,6 +2533,11 @@ export const IDL: ExampleNativeTokenTransfers = {
               "name": "tokenProgram",
               "isMut": false,
               "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
             }
           ]
         }
@@ -2318,13 +2596,13 @@ export const IDL: ExampleNativeTokenTransfers = {
               "name": "tokenProgram",
               "isMut": false,
               "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
             }
           ]
-        },
-        {
-          "name": "custody",
-          "isMut": true,
-          "isSigner": false
         }
       ],
       "args": [
@@ -2976,6 +3254,22 @@ export const IDL: ExampleNativeTokenTransfers = {
             "docs": [
               "The custody account that holds tokens in locking mode."
             ],
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "lut",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "address",
             "type": "publicKey"
           }
         ]
