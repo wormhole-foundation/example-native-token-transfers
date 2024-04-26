@@ -41,6 +41,7 @@ COPY sdk ../sdk
 COPY solana/ts ts 
 COPY solana/package.json package.json
 COPY solana/tsconfig.esm.json tsconfig.esm.json
+COPY solana/tsconfig.cjs.json tsconfig.cjs.json
 COPY solana/tsconfig.anchor.json tsconfig.anchor.json
 COPY solana/Makefile Makefile
 COPY solana/scripts scripts
