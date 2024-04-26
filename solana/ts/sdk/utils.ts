@@ -1,4 +1,12 @@
-import { PublicKey, PublicKeyInitData } from "@solana/web3.js";
+import * as splToken from "@solana/spl-token";
+import {
+  AccountMeta,
+  Commitment,
+  Connection,
+  PublicKey,
+  PublicKeyInitData,
+  TransactionInstruction,
+} from "@solana/web3.js";
 import {
   Chain,
   ChainId,
@@ -164,3 +172,113 @@ export const quoterAddresses = (programId: PublicKeyInitData) => {
     registeredNttAccount,
   };
 };
+
+/**
+ * TODO: this is copied from @solana/spl-token, because the most recent released
+ * version (0.4.3) is broken (does object equality instead of structural on the pubkey)
+ *
+ * this version fixes that error, looks like it's also fixed on main:
+ * https://github.com/solana-labs/solana-program-library/blob/ad4eb6914c5e4288ad845f29f0003cd3b16243e7/token/js/src/extensions/transferHook/instructions.ts#L208
+ */
+export async function addExtraAccountMetasForExecute(
+  connection: Connection,
+  instruction: TransactionInstruction,
+  programId: PublicKey,
+  source: PublicKey,
+  mint: PublicKey,
+  destination: PublicKey,
+  owner: PublicKey,
+  amount: number | bigint,
+  commitment?: Commitment
+) {
+  const validateStatePubkey = splToken.getExtraAccountMetaAddress(
+    mint,
+    programId
+  );
+  const validateStateAccount = await connection.getAccountInfo(
+    validateStatePubkey,
+    commitment
+  );
+  if (validateStateAccount == null) {
+    return instruction;
+  }
+  const validateStateData = splToken.getExtraAccountMetas(validateStateAccount);
+
+  // Check to make sure the provided keys are in the instruction
+  if (
+    ![source, mint, destination, owner].every((key) =>
+      instruction.keys.some((meta) => meta.pubkey.equals(key))
+    )
+  ) {
+    throw new Error("Missing required account in instruction");
+  }
+
+  const executeInstruction = splToken.createExecuteInstruction(
+    programId,
+    source,
+    mint,
+    destination,
+    owner,
+    validateStatePubkey,
+    BigInt(amount)
+  );
+
+  for (const extraAccountMeta of validateStateData) {
+    executeInstruction.keys.push(
+      deEscalateAccountMeta(
+        await splToken.resolveExtraAccountMeta(
+          connection,
+          extraAccountMeta,
+          executeInstruction.keys,
+          executeInstruction.data,
+          executeInstruction.programId
+        ),
+        executeInstruction.keys
+      )
+    );
+  }
+
+  // Add only the extra accounts resolved from the validation state
+  instruction.keys.push(...executeInstruction.keys.slice(5));
+
+  // Add the transfer hook program ID and the validation state account
+  instruction.keys.push({
+    pubkey: programId,
+    isSigner: false,
+    isWritable: false,
+  });
+  instruction.keys.push({
+    pubkey: validateStatePubkey,
+    isSigner: false,
+    isWritable: false,
+  });
+}
+
+// TODO: delete (see above)
+function deEscalateAccountMeta(
+  accountMeta: AccountMeta,
+  accountMetas: AccountMeta[]
+): AccountMeta {
+  const maybeHighestPrivileges = accountMetas
+    .filter((x) => x.pubkey.equals(accountMeta.pubkey))
+    .reduce<{ isSigner: boolean; isWritable: boolean } | undefined>(
+      (acc, x) => {
+        if (!acc) return { isSigner: x.isSigner, isWritable: x.isWritable };
+        return {
+          isSigner: acc.isSigner || x.isSigner,
+          isWritable: acc.isWritable || x.isWritable,
+        };
+      },
+      undefined
+    );
+  if (maybeHighestPrivileges) {
+    const { isSigner, isWritable } = maybeHighestPrivileges;
+    if (!isSigner && isSigner !== accountMeta.isSigner) {
+      accountMeta.isSigner = false;
+    }
+    if (!isWritable && isWritable !== accountMeta.isWritable) {
+      accountMeta.isWritable = false;
+    }
+  }
+  return accountMeta;
+}

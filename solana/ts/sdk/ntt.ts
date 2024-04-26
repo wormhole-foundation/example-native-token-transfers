@@ -1,9 +1,6 @@
 import { Program, web3 } from "@coral-xyz/anchor";
 import * as splToken from "@solana/spl-token";
-import {
-  createAssociatedTokenAccountInstruction,
-  getAssociatedTokenAddressSync,
-} from "@solana/spl-token";
+import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import {
   AddressLookupTableAccount,
   AddressLookupTableProgram,
@@ -51,6 +48,7 @@ import BN from "bn.js";
 import {
   BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
   TransferArgs,
+  addExtraAccountMetasForExecute,
   nttAddresses,
   programDataAddress,
   programVersionLayout,
@@ -230,9 +228,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const mode: any =
       args.mode === "burning" ? { burning: {} } : { locking: {} };
     const chainId = toChainId(args.chain);
-    const mintInfo = await this.program.provider.connection.getAccountInfo(
-      args.mint
-    );
+    const mintInfo = await this.connection.getAccountInfo(args.mint);
     if (mintInfo === null) {
       throw new Error(
         "Couldn't determine token program. Mint account is null."
@@ -274,7 +270,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   // do, it won't actually submit a transaction, so it's cheap to call.
   async *initializeOrUpdateLUT(args: { payer: Keypair }) {
     // TODO: find a more robust way of fetching a recent slot
-    const slot = (await this.program.provider.connection.getSlot()) - 1;
+    const slot = (await this.connection.getSlot()) - 1;
 
     const [_, lutAddress] = web3.AddressLookupTableProgram.createLookupTable({
       authority: this.pdas.lutAuthority(),
@@ -513,16 +509,17 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     amount: bigint,
     destination: ChainAddress,
     options: Ntt.TransferOptions,
-    outboxItem?: Keypair
+    outboxItem?: Keypair,
+    payer?: AccountAddress<C>
   ): AsyncGenerator<UnsignedTransaction<N, C>, any, unknown> {
     const config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");
 
     outboxItem = outboxItem ?? Keypair.generate();
 
-    const senderAddress = new SolanaAddress(sender).unwrap();
-    const fromAuthority = senderAddress;
-    const from = getAssociatedTokenAddressSync(config.mint, fromAuthority);
+    const payerAddress = new SolanaAddress(payer!).unwrap();
+    const fromAuthority = payerAddress;
+    const from = new SolanaAddress(sender).unwrap();
 
     const transferArgs: TransferArgs = {
       amount: amount,
@@ -532,13 +529,23 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     const txArgs = {
       transferArgs,
-      payer: senderAddress,
+      payer: payerAddress,
       from,
       fromAuthority,
       outboxItem: outboxItem.publicKey,
       config,
     };
 
+    [
+      from,
+      this.pdas.sessionAuthority(fromAuthority, transferArgs),
+      fromAuthority,
+      config.tokenProgram,
+    ].map(async (pk) => {
+      console.log(pk, await this.connection.getAccountInfo(pk));
+    });
+
+    console.log(config, fromAuthority);
     const [approveIx, transferIx, releaseIx] = await Promise.all([
       splToken.createApproveInstruction(
         from,
@@ -552,14 +559,14 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         ? this.createTransferLockInstruction(txArgs)
         : this.createTransferBurnInstruction(txArgs),
       this.createReleaseOutboundInstruction({
-        payer: senderAddress,
+        payer: payerAddress,
         outboxItem: outboxItem.publicKey,
         revertOnDelay: !options.queue,
       }),
     ]);
 
     const tx = new Transaction();
-    tx.feePayer = senderAddress;
+    tx.feePayer = payerAddress;
     tx.add(approveIx, transferIx, releaseIx);
 
     if (options.automatic) {
@@ -570,7 +577,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
       const fee = await this.quoteDeliveryPrice(destination.chain, options);
       const relayIx = await this.quoter.createRequestRelayInstruction(
-        senderAddress,
+        payerAddress,
         outboxItem.publicKey,
         this.program.programId,
         destination.chain,
@@ -580,15 +587,43 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       tx.add(relayIx);
     }
 
+    const luts: AddressLookupTableAccount[] = [];
+    luts.push(await this.getAddressLookupTable());
+
+    const messageV0 = new TransactionMessage({
+      payerKey: payerAddress,
+      instructions: tx.instructions,
+      recentBlockhash: (await this.connection.getRecentBlockhash()).blockhash,
+    }).compileToV0Message(luts);
+
+    const vtx = new VersionedTransaction(messageV0);
     yield this.createUnsignedTx(
-      { transaction: tx, signers: [outboxItem] },
+      { transaction: vtx, signers: [outboxItem] },
       "Ntt.Transfer"
     );
+
+    // yield this.createUnsignedTx(
+    //   { transaction: tx, signers: [outboxItem] },
+    //   "Ntt.Transfer"
+    // );
   }
 
-  private async *createAta(sender: AccountAddress<C>, mint: PublicKey) {
+  private async getTokenAccount(sender: PublicKey): Promise<PublicKey> {
+    const config = await this.getConfig();
+    const tokenAccount = await splToken.getAssociatedTokenAddress(
+      config.mint,
+      sender,
+      true,
+      config.tokenProgram
+    );
+    return tokenAccount;
+  }
+
+  private async *createAta(sender: AccountAddress<C>) {
+    const config = await this.getConfig();
     const senderAddress = new SolanaAddress(sender).unwrap();
-    const ata = getAssociatedTokenAddressSync(mint, senderAddress);
+
+    const ata = await this.getTokenAccount(senderAddress);
 
     // If the ata doesn't exist yet, create it
     const acctInfo = await this.connection.getAccountInfo(ata);
@@ -598,7 +633,8 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           senderAddress,
           ata,
           senderAddress,
-          mint
+          config.mint,
+          config.tokenProgram
         )
       );
       transaction.feePayer = senderAddress;
@@ -615,13 +651,13 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const wormholeNTT = attestations[0]! as WormholeNttTransceiver.VAA;
 
     // Create the vaa if necessary
-    yield* this.createAta(payer, config.mint);
+    yield* this.createAta(payer);
 
     // Post the VAA that we intend to redeem
     yield* this.core.postVaa(payer, wormholeNTT);
 
     const senderAddress = new SolanaAddress(payer).unwrap();
-    const nttMessage = wormholeNTT.payload.nttManagerPayload;
+    const nttMessage = wormholeNTT.payload["nttManagerPayload"];
     const emitterChain = wormholeNTT.emitterChain;
 
     const releaseArgs = {
@@ -646,7 +682,19 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const tx = new Transaction();
     tx.feePayer = senderAddress;
     tx.add(receiveMessageIx, redeemIx, releaseIx);
-    yield this.createUnsignedTx({ transaction: tx }, "Ntt.Redeem");
+
+    const luts: AddressLookupTableAccount[] = [];
+    luts.push(await this.getAddressLookupTable());
+
+    const messageV0 = new TransactionMessage({
+      payerKey: senderAddress,
+      instructions: tx.instructions,
+      recentBlockhash: (await this.connection.getRecentBlockhash()).blockhash,
+    }).compileToV0Message(luts);
+
+    const vtx = new VersionedTransaction(messageV0);
+
+    yield this.createUnsignedTx({ transaction: vtx }, "Ntt.Redeem");
   }
 
   async getCurrentOutboundCapacity(): Promise<bigint> {
@@ -765,7 +813,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     );
 
     const recipientChain = args.transferArgs.recipient.chain;
-    return await this.program.methods
+    const transferIx = await this.program.methods
       .transferLock({
         recipientChain: { id: toChainId(recipientChain) },
         amount: new BN(args.transferArgs.amount.toString()),
@@ -793,6 +841,41 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         sessionAuthority: sessionAuthority,
       })
       .instruction();
+
+    const mintInfo = await splToken.getMint(
+      this.connection,
+      config.mint,
+      undefined,
+      config.tokenProgram
+    );
+    try {
+      const transferHook = splToken.getTransferHook(mintInfo);
+
+      if (transferHook) {
+        const owner = this.pdas.sessionAuthority(
+          args.fromAuthority,
+          args.transferArgs
+        );
+        await addExtraAccountMetasForExecute(
+          this.connection,
+          transferIx,
+          transferHook.programId,
+          args.from,
+          config.mint,
+          config.custody,
+          owner,
+          // TODO(csongor): compute the amount that's passed into transfer.
+          // Leaving this 0 is fine unless the transfer hook accounts addresses
+          // depend on the amount (which is unlikely).
+          // If this turns out to be the case, the amount to put here is the
+          // untrimmed amount after removing dust.
+          0
+        );
+      }
+    } catch (e) {
+      console.log(e);
+    }
+    return transferIx;
   }
 
   async createTransferBurnInstruction(args: {
@@ -807,7 +890,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     if (config.paused) throw new Error("Contract is paused");
 
     const recipientChain = toChain(args.transferArgs.recipient.chain);
-    return await this.program.methods
+    const transferIx = await this.program.methods
       .transferBurn({
         recipientChain: { id: toChainId(recipientChain) },
         amount: new BN(args.transferArgs.amount.toString()),
@@ -839,6 +922,39 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         tokenAuthority: this.pdas.tokenAuthority(),
       })
       .instruction();
+
+    const mintInfo = await splToken.getMint(
+      this.connection,
+      config.mint,
+      undefined,
+      config.tokenProgram
+    );
+
+    const transferHook = splToken.getTransferHook(mintInfo);
+
+    if (transferHook) {
+      const owner = this.pdas.sessionAuthority(
+        args.fromAuthority,
+        args.transferArgs
+      );
+      await addExtraAccountMetasForExecute(
+        this.connection,
+        transferIx,
+        transferHook.programId,
+        args.from,
+        config.mint,
+        config.custody,
+        owner,
+        // TODO(csongor): compute the amount that's passed into transfer.
+        // Leaving this 0 is fine unless the transfer hook accounts addresses
+        // depend on the amount (which is unlikely).
+        // If this turns out to be the case, the amount to put here is the
+        // untrimmed amount after removing dust.
+        0
+      );
+    }
+
+    return transferIx;
   }
 
   async createReleaseOutboundInstruction(args: {
@@ -882,7 +998,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");
 
-    const nttMessage = wormholeNTT.payload.nttManagerPayload;
+    const nttMessage = wormholeNTT.payload["nttManagerPayload"];
     const emitterChain = wormholeNTT.emitterChain;
     return await this.program.methods
       .receiveWormholeMessage()
@@ -910,7 +1026,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");
 
-    const nttMessage = wormholeNTT.payload.nttManagerPayload;
+    const nttMessage = wormholeNTT.payload["nttManagerPayload"];
     const emitterChain = wormholeNTT.emitterChain;
 
     const nttManagerPeer = this.pdas.peerAccount(emitterChain);
@@ -958,6 +1074,8 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         .toNative(this.chain)
         .unwrap();
 
+    console.log(recipientAddress);
+
     return await this.program.methods
       .releaseInboundMint({
         revertOnDelay: args.revertOnDelay,
@@ -967,10 +1085,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           payer: args.payer,
           config: { config: this.pdas.configAccount() },
           inboxItem,
-          recipient: getAssociatedTokenAddressSync(
-            config.mint,
-            recipientAddress
-          ),
+          recipient: await this.getTokenAccount(recipientAddress),
           mint: config.mint,
           tokenAuthority: this.pdas.tokenAuthority(),
           custody: config.custody,
@@ -1010,10 +1125,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           payer: args.payer,
           config: { config: this.pdas.configAccount() },
           inboxItem: inboxItem,
-          recipient: getAssociatedTokenAddressSync(
-            config.mint,
-            recipientAddress
-          ),
+          recipient: await this.getTokenAccount(recipientAddress),
           mint: config.mint,
           tokenAuthority: this.pdas.tokenAuthority(),
           custody: config.custody,

@@ -5,7 +5,6 @@ import {
   ChainContext,
   Signer,
   UniversalAddress,
-  VAA,
   Wormhole,
   deserialize,
   deserializePayload,
@@ -18,15 +17,18 @@ import {
 import {
   SolanaAddress,
   SolanaPlatform,
-  SolanaSendSigner,
+  getSolanaSignAndSendSigner,
 } from "@wormhole-foundation/sdk-solana";
 import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 import * as fs from "fs";
 
 import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import { AccountAddress } from "@wormhole-foundation/sdk";
 import { DummyTransferHook } from "../ts/sdk/anchor-idl/1_0_0/dummy_transfer_hook.js";
 import { SolanaNtt } from "../ts/sdk/index.js";
-import { before } from "node:test";
+
+import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
+console.log(Ntt);
 
 const solanaRootDir = `${__dirname}/../`;
 
@@ -120,18 +122,24 @@ async function counterValue(): Promise<anchor.BN> {
   return counter.count;
 }
 
-const signer = new SolanaSendSigner(connection, "Solana", payer);
-const sender = Wormhole.parseAddress(signer.chain(), signer.address());
-
 const coreBridge = new SolanaWormholeCore("Devnet", "Solana", connection, {
   coreBridge: CORE_BRIDGE_ADDRESS,
 });
 
+const TOKEN_PROGRAM = spl.TOKEN_2022_PROGRAM_ID;
+
 describe("example-native-token-transfers", () => {
   let ntt: SolanaNtt<"Devnet", "Solana">;
+  let signer: Signer;
+  let sender: AccountAddress<"Solana">;
 
   beforeAll(async () => {
     try {
+      signer = await getSolanaSignAndSendSigner(connection, payer, {
+        //debug: true,
+      });
+      sender = Wormhole.parseAddress("Solana", signer.address());
+
       const extensions = [spl.ExtensionType.TransferHook];
       const mintLen = spl.getMintLen(extensions);
       const lamports = await connection.getMinimumBalanceForRentExemption(
@@ -144,20 +152,20 @@ describe("example-native-token-transfers", () => {
           newAccountPubkey: mint.publicKey,
           space: mintLen,
           lamports,
-          programId: spl.TOKEN_2022_PROGRAM_ID,
+          programId: TOKEN_PROGRAM,
         }),
         spl.createInitializeTransferHookInstruction(
           mint.publicKey,
           owner.publicKey,
           dummyTransferHook.programId,
-          spl.TOKEN_2022_PROGRAM_ID
+          TOKEN_PROGRAM
         ),
         spl.createInitializeMintInstruction(
           mint.publicKey,
           9,
           owner.publicKey,
           null,
-          spl.TOKEN_2022_PROGRAM_ID
+          TOKEN_PROGRAM
         )
       );
 
@@ -176,7 +184,7 @@ describe("example-native-token-transfers", () => {
         mint.publicKey,
         payer.publicKey,
         undefined,
-        spl.TOKEN_2022_PROGRAM_ID,
+        TOKEN_PROGRAM,
         spl.ASSOCIATED_TOKEN_PROGRAM_ID
       );
 
@@ -189,7 +197,7 @@ describe("example-native-token-transfers", () => {
         BigInt(10000000),
         undefined,
         undefined,
-        spl.TOKEN_2022_PROGRAM_ID
+        TOKEN_PROGRAM
       );
 
       // Create our contract client
@@ -221,7 +229,7 @@ describe("example-native-token-transfers", () => {
           ntt.pdas.tokenAuthority(),
           [],
           undefined,
-          spl.TOKEN_2022_PROGRAM_ID
+          TOKEN_PROGRAM
         );
 
         // init
@@ -231,7 +239,7 @@ describe("example-native-token-transfers", () => {
           chain: "Solana",
           mint: mint.publicKey,
           outboundLimit: 1000000n,
-          mode: "locking",
+          mode: "burning",
         });
         await signSendWait(ctx, initTxs, signer);
 
@@ -259,26 +267,32 @@ describe("example-native-token-transfers", () => {
       }
     });
 
-    // it("Create ExtraAccountMetaList Account", async () => {
-    //   const initializeExtraAccountMetaListInstruction =
-    //     await dummyTransferHook.methods
-    //       .initializeExtraAccountMetaList()
-    //       .accountsStrict({
-    //         payer: payer.publicKey,
-    //         mint: mint.publicKey,
-    //         counter: counterPDA,
-    //         extraAccountMetaList: extraAccountMetaListPDA,
-    //         tokenProgram: spl.TOKEN_2022_PROGRAM_ID,
-    //         associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
-    //         systemProgram: SystemProgram.programId,
-    //       })
-    //       .instruction();
+    it("Create ExtraAccountMetaList Account", async () => {
+      const initializeExtraAccountMetaListInstruction =
+        await dummyTransferHook.methods
+          .initializeExtraAccountMetaList()
+          .accountsStrict({
+            payer: payer.publicKey,
+            mint: mint.publicKey,
+            counter: counterPDA,
+            extraAccountMetaList: extraAccountMetaListPDA,
+            tokenProgram: TOKEN_PROGRAM,
+            associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+          })
+          .instruction();
 
-    //   const transaction = new Transaction().add(
-    //     initializeExtraAccountMetaListInstruction
-    //   );
-    //   await sendAndConfirmTransaction(connection, transaction, [payer]);
-    // });
+      const transaction = new Transaction().add(
+        initializeExtraAccountMetaListInstruction
+      );
+      transaction.feePayer = payer.publicKey;
+      const { blockhash } = await connection.getRecentBlockhash();
+      transaction.recentBlockhash = blockhash;
+
+      transaction.sign(payer);
+      const txid = await connection.sendTransaction(transaction, [payer]);
+      console.log(await connection.confirmTransaction(txid, "confirmed"));
+    });
 
     test("Can send tokens", async () => {
       const amount = 100000n;
@@ -290,11 +304,12 @@ describe("example-native-token-transfers", () => {
       // added as a way to keep tests the same but it technically breaks the Ntt interface
       const outboxItem = anchor.web3.Keypair.generate();
       const xferTxs = ntt.transfer(
-        sender,
+        Wormhole.parseAddress("Solana", tokenAccount.toBase58()),
         amount,
         receiver,
         { queue: false, automatic: false, gasDropoff: 0n },
-        outboxItem
+        outboxItem,
+        sender
       );
       await signSendWait(ctx, xferTxs, signer);
 
@@ -313,7 +328,7 @@ describe("example-native-token-transfers", () => {
 
       // assert theat amount is what we expect
       expect(
-        transceiverMessage.nttManagerPayload.payload.trimmedAmount
+        transceiverMessage["nttManagerPayload"].payload.trimmedAmount
       ).toMatchObject({ amount: 10000n, decimals: 8 });
 
       // get from balance
