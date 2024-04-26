@@ -71,10 +71,6 @@ const remoteMgr: ChainAddress = {
   ),
 };
 
-//const dummyTransferHook = new PublicKey(
-//  "BgabMDLaxsyB7eGMBt9L22MSk9KMrL4zY2iNe14kyFP5"
-//);
-
 const payerSecretKey = Uint8Array.from(
   JSON.parse(
     fs.readFileSync(`${solanaRootDir}/keys/test.json`, {

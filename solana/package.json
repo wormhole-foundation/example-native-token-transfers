@@ -10,7 +10,7 @@
   },
   "homepage": "https://github.com/wormhole-foundation/connect-sdk#readme",
   "directories": {
-    "test": "__tests__"
+    "test": "tests"
   },
   "license": "Apache-2.0",
   "main": "./dist/cjs/index.js",
@@ -56,20 +56,21 @@
     "@coral-xyz/borsh": "0.29.0",
     "@solana/spl-token": "0.4.0",
     "@solana/web3.js": "1.91.7",
-    "@wormhole-foundation/sdk-connect": "0.6.2-beta.0",
-    "@wormhole-foundation/sdk-solana": "0.6.2-beta.0",
-    "@wormhole-foundation/sdk-solana-core": "0.6.2-beta.0"
+    "bn.js":"5.2.1",
+    "@wormhole-foundation/sdk-connect": "0.6.2",
+    "@wormhole-foundation/sdk-solana": "0.6.2",
+    "@wormhole-foundation/sdk-solana-core": "0.6.2"
   },
   "type": "module",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/esm/index.d.ts",
-        "default": "./dist/esm/index.js"
+        "types": "./dist/esm/ts/index.d.ts",
+        "default": "./dist/esm/ts/index.js"
       },
       "require": {
-        "types": "./dist/cjs/index.d.ts",
-        "default": "./dist/cjs/index.js"
+        "types": "./dist/cjs/ts/index.d.ts",
+        "default": "./dist/cjs/ts/index.js"
       }
     }
   }

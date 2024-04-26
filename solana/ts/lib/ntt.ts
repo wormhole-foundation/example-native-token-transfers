@@ -5,13 +5,8 @@ import {
   toChainId,
 } from "@wormhole-foundation/sdk-connect";
 
-import {
-  BN,
-  Program,
-  translateError,
-  web3,
-  type IdlAccounts,
-} from "@coral-xyz/anchor";
+import { BN, Program, translateError, web3 } from "@coral-xyz/anchor";
+import type { IdlAccounts } from "@coral-xyz/anchor";
 import * as splToken from "@solana/spl-token";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import {
