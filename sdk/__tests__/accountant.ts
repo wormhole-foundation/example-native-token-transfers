@@ -13,13 +13,17 @@ export const ZERO_FEE = {
 let client: Awaited<ReturnType<typeof getWormchainSigningClient>>;
 let signer: string;
 
+const privateKey =
+  "quality vacuum heart guard buzz spike sight swarm shove special gym robust assume sudden deposit grid alcohol choice devote leader tilt noodle tide penalty";
+const url = process.env["CI"]
+  ? "http://wormchain:26657"
+  : "http://localhost:26659";
+
 export async function submitAccountantVAA(vaa: Uint8Array) {
   if (!signer) {
     // NttAccountantTest = wormhole18s5lynnmx37hq4wlrw9gdn68sg2uxp5rwf5k3u
-    const wallet = await getWallet(
-      "quality vacuum heart guard buzz spike sight swarm shove special gym robust assume sudden deposit grid alcohol choice devote leader tilt noodle tide penalty"
-    );
-    client = await getWormchainSigningClient("http://wormchain:26657", wallet);
+    const wallet = await getWallet(privateKey);
+    client = await getWormchainSigningClient(url, wallet);
     const signers = await wallet.getAccounts();
     signer = signers[0]!.address;
   }

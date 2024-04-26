@@ -301,12 +301,11 @@ describe("example-native-token-transfers", () => {
       // added as a way to keep tests the same but it technically breaks the Ntt interface
       const outboxItem = anchor.web3.Keypair.generate();
       const xferTxs = ntt.transfer(
-        Wormhole.parseAddress("Solana", tokenAccount.toBase58()),
+        sender,
         amount,
         receiver,
         { queue: false, automatic: false, gasDropoff: 0n },
-        outboxItem,
-        sender
+        outboxItem
       );
       await signSendWait(ctx, xferTxs, signer);
 

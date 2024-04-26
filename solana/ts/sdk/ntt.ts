@@ -514,17 +514,16 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     amount: bigint,
     destination: ChainAddress,
     options: Ntt.TransferOptions,
-    outboxItem?: Keypair,
-    payer?: AccountAddress<C>
+    outboxItem?: Keypair
   ): AsyncGenerator<UnsignedTransaction<N, C>, any, unknown> {
     const config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");
 
     outboxItem = outboxItem ?? Keypair.generate();
 
-    const payerAddress = new SolanaAddress(payer!).unwrap();
+    const payerAddress = new SolanaAddress(sender).unwrap();
     const fromAuthority = payerAddress;
-    const from = new SolanaAddress(sender).unwrap();
+    const from = await this.getTokenAccount(fromAuthority);
 
     const transferArgs: TransferArgs = {
       amount: amount,
@@ -570,7 +569,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           "No quoter available, cannot initiate an automatic transfer."
         );
 
-      const fee = await this.quoteDeliveryPrice(destination.chain, options);
+      //const fee = await this.quoteDeliveryPrice(destination.chain, options);
       const relayIx = await this.quoter.createRequestRelayInstruction(
         payerAddress,
         outboxItem.publicKey,
