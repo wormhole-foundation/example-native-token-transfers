@@ -3,9 +3,6 @@ import {
   CustomizableBytes,
   Layout,
   LayoutToType,
-  Platform,
-} from "@wormhole-foundation/sdk-base";
-import {
   customizableBytes,
   deserializeLayout,
   serializeLayout,
@@ -158,7 +155,7 @@ export type NttProtocol = "Ntt";
 declare module "@wormhole-foundation/sdk-definitions" {
   export namespace WormholeRegistry {
     interface ProtocolToPlatformMapping {
-      Ntt: EmptyPlatformMap<Platform, NttProtocol>;
+      Ntt: EmptyPlatformMap<"Ntt">;
     }
   }
 }

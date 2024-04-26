@@ -536,16 +536,6 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       config,
     };
 
-    [
-      from,
-      this.pdas.sessionAuthority(fromAuthority, transferArgs),
-      fromAuthority,
-      config.tokenProgram,
-    ].map(async (pk) => {
-      console.log(pk, await this.connection.getAccountInfo(pk));
-    });
-
-    console.log(config, fromAuthority);
     const [approveIx, transferIx, releaseIx] = await Promise.all([
       splToken.createApproveInstruction(
         from,
@@ -1069,8 +1059,6 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       ))!.recipient
         .toNative(this.chain)
         .unwrap();
-
-    console.log(recipientAddress);
 
     const tokenAddress = await this.getTokenAccount(recipientAddress);
     const transferIx = await this.program.methods

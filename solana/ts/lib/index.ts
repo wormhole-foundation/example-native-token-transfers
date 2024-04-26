@@ -1,2 +1,2 @@
-export * from "./ntt";
-export * from "./quoter";
+export * from "./ntt.js";
+export * from "./quoter.js";
