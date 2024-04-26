@@ -1,9 +1,12 @@
 {
   "extends": "../tsconfig.json",
-  "include": ["ts/sdk/**/*.ts", "ts/sdk/**/*.json"],
+  "include": ["ts/sdk/**/*.ts", "ts/sdk/**/*.json", "ts/lib/**/*.ts", "target/**/*.ts", "target/**/*.json"],
+  "exclude": ["jest.config.ts"],
   "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
     "outDir": "dist/cjs",
-    "rootDir": "ts/sdk",
+    "rootDir": ".",
     "resolveJsonModule": true
   }
 }

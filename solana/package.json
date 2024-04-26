@@ -35,7 +35,7 @@
   "scripts": {
     "build:cjs": "tsc -p ./tsconfig.cjs.json  && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
     "build:esm": "tsc -p ./tsconfig.esm.json",
-    "build": "npm run build:esm ",
+    "build": "npm run build:esm && npm run build:cjs",
     "rebuild": "npm run clean && npm run build",
     "clean": "rm -rf ./dist",
     "test:ci": "jest --config ./jest.config.ts",
@@ -56,9 +56,9 @@
     "@coral-xyz/borsh": "0.29.0",
     "@solana/spl-token": "0.4.0",
     "@solana/web3.js": "1.91.7",
-    "@wormhole-foundation/sdk-connect": "0.6.1",
-    "@wormhole-foundation/sdk-solana": "0.6.1",
-    "@wormhole-foundation/sdk-solana-core": "0.6.1"
+    "@wormhole-foundation/sdk-connect": "0.6.2-beta.0",
+    "@wormhole-foundation/sdk-solana": "0.6.2-beta.0",
+    "@wormhole-foundation/sdk-solana-core": "0.6.2-beta.0"
   },
   "type": "module",
   "exports": {

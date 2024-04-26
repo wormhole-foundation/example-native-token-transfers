@@ -19,8 +19,8 @@ import {
 } from "@solana/web3.js";
 
 import { serialize, testing } from "@wormhole-foundation/sdk-connect";
+import { deserializePostMessage } from "@wormhole-foundation/sdk-solana-core";
 import { DummyTransferHook } from "../target/types/dummy_transfer_hook.js";
-import { deserializePostMessage } from "./tmp.js";
 
 export const GUARDIAN_KEY =
   "cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0";
