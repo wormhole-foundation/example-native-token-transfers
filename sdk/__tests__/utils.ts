@@ -36,8 +36,7 @@ import solanaTiltKey from "./solana-tilt.json"; // from https://github.com/wormh
 
 import { Ntt } from "../definitions/src/index.js";
 import "../evm/src/index.js";
-import "../solana/src/index.js";
-import { SolanaNtt } from "../solana/src/index.js";
+import { SolanaNtt } from "../../solana/ts/sdk/index.js";
 import { submitAccountantVAA } from "./accountant.js";
 
 // Note: Currently, in order for this to run, the evm bindings with extra contracts must be build
