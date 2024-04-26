@@ -11,8 +11,8 @@ import {
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 import { Program } from "@coral-xyz/anchor";
-import { NttQuoter as Idl } from '../../target/types/ntt_quoter'
-import IDL from "../../target/idl/ntt_quoter.json";
+import { NttQuoter as Idl } from '../../idl/ts/ntt_quoter'
+import IDL from "../../idl/json/ntt_quoter.json";
 import { U64, programDataLayout, programDataAddress, chainIdToBeBytes, derivePda } from "./utils";
 
 //constants that must match ntt-quoter lib.rs / implementation:
@@ -27,7 +27,7 @@ const SEED_PREFIX_RELAY_REQUEST    = "relay_request";
 export class NttQuoter {
   readonly instance: PublicKey;
   private readonly program: Program<Idl>;
-  
+
   constructor(connection: Connection, programId: PublicKeyInitData) {
     this.program  = new Program<Idl>(IDL as Idl, new PublicKey(programId), {connection});
     this.instance = derivePda([SEED_PREFIX_INSTANCE], this.program.programId);
@@ -53,7 +53,7 @@ export class NttQuoter {
 
     const totalCostSol = rentCost / LAMPORTS_PER_SOL +
       (chainData.basePriceUsd + totalNativeGasCostUsd) / instanceData.solPriceUsd;
-    
+
     return totalCostSol;
   }
 
@@ -93,7 +93,7 @@ export class NttQuoter {
     const data = await this.program.account.registeredChain.fetch(
       this.registeredChainPda(toChainId(chain))
     );
-    
+
     return {
       paused:           data.basePrice.eq(U64.MAX),
       maxGasDropoffEth: U64.from(data.maxGasDropoff, GWEI_PER_ETH),
@@ -107,7 +107,7 @@ export class NttQuoter {
     const data = await this.program.account.registeredNtt.fetch(
       this.registeredNttPda(nttProgramId)
     );
-    
+
     return {
       gasCost: data.gasCost,
       wormholeTransceiverIndex: data.wormholeTransceiverIndex,
