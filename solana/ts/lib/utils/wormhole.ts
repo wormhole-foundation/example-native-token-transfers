@@ -6,8 +6,8 @@ import {
   TransactionId,
   TxHash,
   UnsignedTransaction,
+  VAA,
   Wormhole,
-  deserialize,
   isSigner,
 } from "@wormhole-foundation/sdk-connect";
 import { getSolanaSignAndSendSigner } from "@wormhole-foundation/sdk-solana";
@@ -16,7 +16,7 @@ import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 export async function postVaa(
   connection: anchor.web3.Connection,
   payer: anchor.web3.Keypair,
-  vaaBuf: Buffer,
+  vaa: VAA,
   coreBridgeAddress: anchor.web3.PublicKey
 ) {
   const core = new SolanaWormholeCore("Devnet", "Solana", connection, {
@@ -30,7 +30,6 @@ export async function postVaa(
 
   const sender = Wormhole.parseAddress(signer.chain(), signer.address());
 
-  const vaa = deserialize("Uint8Array", vaaBuf);
   const txs = core.postVaa(sender, vaa);
   await signSendWait(txs, signer);
 }

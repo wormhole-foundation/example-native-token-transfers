@@ -2,8 +2,6 @@ import {
   Chain,
   ChainId,
   deserialize,
-  encoding,
-  serializeLayout,
   toChainId,
 } from "@wormhole-foundation/sdk-connect";
 
@@ -33,7 +31,6 @@ import {
   type TransactionSignature,
 } from "@solana/web3.js";
 import { utils } from "@wormhole-foundation/sdk-solana-core";
-import { keccak256 } from "ethers";
 import IDL from "../../target/idl/example_native_token_transfers.json";
 import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from "../../target/types/example_native_token_transfers.js";
 import {
@@ -43,8 +40,7 @@ import {
 } from "./nttLayout.js";
 import {
   BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
-  chainToBytes,
-  derivePda,
+  nttAddresses,
   programDataAddress,
 } from "./utils.js";
 
@@ -98,6 +94,8 @@ export class NTT {
   readonly wormholeId: PublicKey;
   // mapping from error code to error message. Used for prettifying error messages
   private readonly errors: Map<number, string>;
+
+  pdas: ReturnType<typeof nttAddresses>;
   addressLookupTable: web3.AddressLookupTableAccount | null = null;
 
   constructor(
@@ -109,6 +107,7 @@ export class NTT {
       connection,
     });
     this.wormholeId = new PublicKey(args.wormholeId);
+    this.pdas = nttAddresses(this.program.programId);
     this.errors = this.processErrors();
   }
 
@@ -122,91 +121,6 @@ export class NTT {
     errors.forEach((entry) => result.set(entry.code, entry.msg));
     return result;
   }
-
-  // Account addresses
-
-  private derivePda(seeds: Parameters<typeof derivePda>[0]): PublicKey {
-    return derivePda(seeds, this.program.programId);
-  }
-
-  configAccountAddress(): PublicKey {
-    return this.derivePda("config");
-  }
-
-  lutAccountAddress(): PublicKey {
-    return this.derivePda("lut");
-  }
-
-  lutAuthorityAddress(): PublicKey {
-    return this.derivePda("lut_authority");
-  }
-
-  outboxRateLimitAccountAddress(): PublicKey {
-    return this.derivePda("outbox_rate_limit");
-  }
-
-  inboxRateLimitAccountAddress(chain: Chain): PublicKey {
-    const chainId = toChainId(chain);
-    return this.derivePda(["inbox_rate_limit", chainToBytes(chainId)]);
-  }
-
-  inboxItemAccountAddress(chain: Chain, nttMessage: NttMessage): PublicKey {
-    const serialized = serializeLayout(
-      nttManagerMessageLayout(nativeTokenTransferLayout),
-      nttMessage
-    );
-
-    const digest = keccak256(
-      encoding.bytes.concat(chainToBytes(chain), serialized)
-    );
-
-    return this.derivePda(["inbox_item", digest]);
-  }
-
-  sessionAuthorityAddress(sender: PublicKey, args: TransferArgs): PublicKey {
-    const { amount, recipientChain, recipientAddress, shouldQueue } = args;
-    const serialized = Buffer.concat([
-      amount.toArrayLike(Buffer, "be", 8),
-      Buffer.from(new BN(recipientChain.id).toArrayLike(Buffer, "be", 2)),
-      Buffer.from(new Uint8Array(recipientAddress)),
-      Buffer.from([shouldQueue ? 1 : 0]),
-    ]);
-
-    const digest = keccak256(new Uint8Array(serialized));
-    return this.derivePda(["session_authority", sender.toBytes(), digest]);
-  }
-
-  tokenAuthorityAddress(): PublicKey {
-    return this.derivePda("token_authority");
-  }
-
-  emitterAccountAddress(): PublicKey {
-    return this.derivePda("emitter");
-  }
-
-  wormholeMessageAccountAddress(outboxItem: PublicKey): PublicKey {
-    return this.derivePda(["message", outboxItem.toBytes()]);
-  }
-
-  peerAccountAddress(chain: Chain): PublicKey {
-    return this.derivePda(["peer", chainToBytes(chain)]);
-  }
-
-  transceiverPeerAccountAddress(chain: Chain): PublicKey {
-    return this.derivePda(["transceiver_peer", chainToBytes(chain)]);
-  }
-
-  transceiverMessageAccountAddress(chain: Chain, id: Uint8Array): PublicKey {
-    if (id.length != 32) {
-      throw new Error("id must be 32 bytes");
-    }
-    return this.derivePda(["transceiver_message", chainToBytes(chain), id]);
-  }
-
-  registeredTransceiverAddress(transceiver: PublicKey): PublicKey {
-    return this.derivePda(["registered_transceiver", transceiver.toBytes()]);
-  }
-
   // View functions
 
   async version(pubkey: PublicKey): Promise<string> {
@@ -278,11 +192,11 @@ export class NTT {
         payer: args.payer.publicKey,
         deployer: args.owner.publicKey,
         programData: programDataAddress(this.program.programId),
-        config: this.configAccountAddress(),
+        config: this.pdas.configAccount(),
         mint: args.mint,
-        rateLimit: this.outboxRateLimitAccountAddress(),
+        rateLimit: this.pdas.outboxRateLimitAccount(),
         tokenProgram,
-        tokenAuthority: this.tokenAuthorityAddress(),
+        tokenAuthority: this.pdas.tokenAuthority(),
         custody: await this.custodyAccountAddress(args.mint, tokenProgram),
         bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
         associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -306,7 +220,7 @@ export class NTT {
     const slot = (await this.program.provider.connection.getSlot()) - 1;
 
     const [_, lutAddress] = web3.AddressLookupTableProgram.createLookupTable({
-      authority: this.lutAuthorityAddress(),
+      authority: this.pdas.lutAuthority(),
       payer: args.payer.publicKey,
       recentSlot: slot,
     });
@@ -318,12 +232,12 @@ export class NTT {
     const config = await this.getConfig();
 
     const entries = {
-      config: this.configAccountAddress(),
+      config: this.pdas.configAccount(),
       custody: await this.custodyAccountAddress(config),
       tokenProgram: await this.tokenProgram(config),
       mint: await this.mintAccountAddress(config),
-      tokenAuthority: this.tokenAuthorityAddress(),
-      outboxRateLimit: this.outboxRateLimitAccountAddress(),
+      tokenAuthority: this.pdas.tokenAuthority(),
+      outboxRateLimit: this.pdas.outboxRateLimitAccount(),
       wormhole: {
         bridge: whAccs.wormholeBridge,
         feeCollector: whAccs.wormholeFeeCollector,
@@ -376,9 +290,9 @@ export class NTT {
       .initializeLut(new BN(slot))
       .accountsStrict({
         payer: args.payer.publicKey,
-        authority: this.lutAuthorityAddress(),
+        authority: this.pdas.lutAuthority(),
         lutAddress,
-        lut: this.lutAccountAddress(),
+        lut: this.pdas.lutAccount(),
         lutProgram: AddressLookupTableProgram.programId,
         systemProgram: SystemProgram.programId,
         entries,
@@ -447,7 +361,7 @@ export class NTT {
     };
     const approveIx = splToken.createApproveInstruction(
       args.from,
-      this.sessionAuthorityAddress(args.fromAuthority.publicKey, transferArgs),
+      this.pdas.sessionAuthority(args.fromAuthority.publicKey, transferArgs),
       args.fromAuthority.publicKey,
       BigInt(args.amount.toString()),
       [],
@@ -533,22 +447,22 @@ export class NTT {
       .accountsStrict({
         common: {
           payer: args.payer,
-          config: { config: this.configAccountAddress() },
+          config: { config: this.pdas.configAccount() },
           mint,
           from: args.from,
           tokenProgram: await this.tokenProgram(config),
           outboxItem: args.outboxItem,
-          outboxRateLimit: this.outboxRateLimitAccountAddress(),
+          outboxRateLimit: this.pdas.outboxRateLimitAccount(),
           custody: await this.custodyAccountAddress(config),
           systemProgram: SystemProgram.programId,
         },
-        peer: this.peerAccountAddress(args.recipientChain),
-        inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain),
-        sessionAuthority: this.sessionAuthorityAddress(
+        peer: this.pdas.peerAccount(args.recipientChain),
+        inboxRateLimit: this.pdas.inboxRateLimitAccount(args.recipientChain),
+        sessionAuthority: this.pdas.sessionAuthority(
           args.fromAuthority,
           transferArgs
         ),
-        tokenAuthority: this.tokenAuthorityAddress(),
+        tokenAuthority: this.pdas.tokenAuthority(),
       })
       .instruction();
 
@@ -564,7 +478,7 @@ export class NTT {
       const source = args.from;
       const mint = config.mint;
       const destination = await this.custodyAccountAddress(config);
-      const owner = this.sessionAuthorityAddress(
+      const owner = this.pdas.sessionAuthority(
         args.fromAuthority,
         transferArgs
       );
@@ -624,17 +538,17 @@ export class NTT {
       .accounts({
         common: {
           payer: args.payer,
-          config: { config: this.configAccountAddress() },
+          config: { config: this.pdas.configAccount() },
           mint,
           from: args.from,
           tokenProgram: await this.tokenProgram(config),
           outboxItem: args.outboxItem,
-          outboxRateLimit: this.outboxRateLimitAccountAddress(),
+          outboxRateLimit: this.pdas.outboxRateLimitAccount(),
           custody: await this.custodyAccountAddress(config),
         },
-        peer: this.peerAccountAddress(args.recipientChain),
-        inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain),
-        sessionAuthority: this.sessionAuthorityAddress(
+        peer: this.pdas.peerAccount(args.recipientChain),
+        inboxRateLimit: this.pdas.inboxRateLimitAccount(args.recipientChain),
+        sessionAuthority: this.pdas.sessionAuthority(
           args.fromAuthority,
           transferArgs
         ),
@@ -653,7 +567,7 @@ export class NTT {
       const source = args.from;
       const mint = config.mint;
       const destination = await this.custodyAccountAddress(config);
-      const owner = this.sessionAuthorityAddress(
+      const owner = this.pdas.sessionAuthority(
         args.fromAuthority,
         transferArgs
       );
@@ -696,11 +610,11 @@ export class NTT {
       })
       .accounts({
         payer: args.payer,
-        config: { config: this.configAccountAddress() },
+        config: { config: this.pdas.configAccount() },
         outboxItem: args.outboxItem,
-        wormholeMessage: this.wormholeMessageAccountAddress(args.outboxItem),
+        wormholeMessage: this.pdas.wormholeMessageAccount(args.outboxItem),
         emitter: whAccs.wormholeEmitter,
-        transceiver: this.registeredTransceiverAddress(this.program.programId),
+        transceiver: this.pdas.registeredTransceiver(this.program.programId),
         wormhole: {
           bridge: whAccs.wormholeBridge,
           feeCollector: whAccs.wormholeFeeCollector,
@@ -762,8 +676,8 @@ export class NTT {
       .accountsStrict({
         common: {
           payer: args.payer,
-          config: { config: this.configAccountAddress() },
-          inboxItem: this.inboxItemAccountAddress(args.chain, args.nttMessage),
+          config: { config: this.pdas.configAccount() },
+          inboxItem: this.pdas.inboxItemAccount(args.chain, args.nttMessage),
           recipient: getAssociatedTokenAddressSync(
             mint,
             recipientAddress,
@@ -771,7 +685,7 @@ export class NTT {
             config.tokenProgram
           ),
           mint,
-          tokenAuthority: this.tokenAuthorityAddress(),
+          tokenAuthority: this.pdas.tokenAuthority(),
           tokenProgram: config.tokenProgram,
           custody: await this.custodyAccountAddress(config),
         },
@@ -795,7 +709,7 @@ export class NTT {
         true,
         config.tokenProgram
       );
-      const owner = this.tokenAuthorityAddress();
+      const owner = this.pdas.tokenAuthority();
       await addExtraAccountMetasForExecute(
         this.program.provider.connection,
         transferIx,
@@ -866,8 +780,8 @@ export class NTT {
       .accountsStrict({
         common: {
           payer: args.payer,
-          config: { config: this.configAccountAddress() },
-          inboxItem: this.inboxItemAccountAddress(args.chain, args.nttMessage),
+          config: { config: this.pdas.configAccount() },
+          inboxItem: this.pdas.inboxItemAccount(args.chain, args.nttMessage),
           recipient: getAssociatedTokenAddressSync(
             mint,
             recipientAddress,
@@ -875,7 +789,7 @@ export class NTT {
             config.tokenProgram
           ),
           mint,
-          tokenAuthority: this.tokenAuthorityAddress(),
+          tokenAuthority: this.pdas.tokenAuthority(),
           tokenProgram: config.tokenProgram,
           custody: await this.custodyAccountAddress(config),
         },
@@ -899,7 +813,7 @@ export class NTT {
         true,
         config.tokenProgram
       );
-      const owner = this.tokenAuthorityAddress();
+      const owner = this.pdas.tokenAuthority();
       await addExtraAccountMetasForExecute(
         this.program.provider.connection,
         transferIx,
@@ -962,9 +876,9 @@ export class NTT {
       .accounts({
         payer: args.payer.publicKey,
         owner: args.owner.publicKey,
-        config: this.configAccountAddress(),
-        peer: this.peerAccountAddress(args.chain),
-        inboxRateLimit: this.inboxRateLimitAccountAddress(args.chain),
+        config: this.pdas.configAccount(),
+        peer: this.pdas.peerAccount(args.chain),
+        inboxRateLimit: this.pdas.inboxRateLimitAccount(args.chain),
       })
       .instruction();
     return await this.sendAndConfirmTransaction(new Transaction().add(ix), [
@@ -988,8 +902,8 @@ export class NTT {
       .accounts({
         payer: args.payer.publicKey,
         owner: args.owner.publicKey,
-        config: this.configAccountAddress(),
-        peer: this.transceiverPeerAccountAddress(args.chain),
+        config: this.pdas.configAccount(),
+        peer: this.pdas.transceiverPeerAccount(args.chain),
       })
       .instruction();
 
@@ -1002,10 +916,10 @@ export class NTT {
       .broadcastWormholePeer({ chainId: toChainId(args.chain) })
       .accounts({
         payer: args.payer.publicKey,
-        config: this.configAccountAddress(),
-        peer: this.transceiverPeerAccountAddress(args.chain),
+        config: this.pdas.configAccount(),
+        peer: this.pdas.transceiverPeerAccount(args.chain),
         wormholeMessage: wormholeMessage.publicKey,
-        emitter: this.emitterAccountAddress(),
+        emitter: this.pdas.emitterAccount(),
         wormhole: {
           bridge: whAccs.wormholeBridge,
           feeCollector: whAccs.wormholeFeeCollector,
@@ -1030,9 +944,9 @@ export class NTT {
       .accounts({
         payer: args.payer.publicKey,
         owner: args.owner.publicKey,
-        config: this.configAccountAddress(),
+        config: this.pdas.configAccount(),
         transceiver: args.transceiver,
-        registeredTransceiver: this.registeredTransceiverAddress(
+        registeredTransceiver: this.pdas.registeredTransceiver(
           args.transceiver
         ),
       })
@@ -1047,10 +961,10 @@ export class NTT {
       .broadcastWormholeId()
       .accounts({
         payer: args.payer.publicKey,
-        config: this.configAccountAddress(),
+        config: this.pdas.configAccount(),
         mint: await this.mintAccountAddress(),
         wormholeMessage: wormholeMessage.publicKey,
-        emitter: this.emitterAccountAddress(),
+        emitter: this.pdas.emitterAccount(),
         wormhole: {
           bridge: whAccs.wormholeBridge,
           feeCollector: whAccs.wormholeFeeCollector,
@@ -1072,8 +986,8 @@ export class NTT {
       })
       .accounts({
         owner: args.owner.publicKey,
-        config: this.configAccountAddress(),
-        rateLimit: this.outboxRateLimitAccountAddress(),
+        config: this.pdas.configAccount(),
+        rateLimit: this.pdas.outboxRateLimitAccount(),
       })
       .instruction();
     return this.sendAndConfirmTransaction(new Transaction().add(ix), [
@@ -1089,8 +1003,8 @@ export class NTT {
       })
       .accounts({
         owner: args.owner.publicKey,
-        config: this.configAccountAddress(),
-        rateLimit: this.inboxRateLimitAccountAddress(args.chain),
+        config: this.pdas.configAccount(),
+        rateLimit: this.pdas.inboxRateLimitAccount(args.chain),
       })
       .instruction();
     return this.sendAndConfirmTransaction(new Transaction().add(ix), [
@@ -1113,19 +1027,19 @@ export class NTT {
     const nttMessage = wormholeNTT.payload.nttManagerPayload;
     const chain = wormholeNTT.emitterChain;
 
-    const transceiverPeer = this.transceiverPeerAccountAddress(chain);
+    const transceiverPeer = this.pdas.transceiverPeerAccount(chain);
 
     return await this.program.methods
       .receiveWormholeMessage()
       .accounts({
         payer: args.payer,
-        config: { config: this.configAccountAddress() },
+        config: { config: this.pdas.configAccount() },
         peer: transceiverPeer,
         vaa: utils.derivePostedVaaKey(
           this.wormholeId,
           Buffer.from(wormholeNTT.hash)
         ),
-        transceiverMessage: this.transceiverMessageAccountAddress(
+        transceiverMessage: this.pdas.transceiverMessageAccount(
           chain,
           nttMessage.id
         ),
@@ -1150,24 +1064,24 @@ export class NTT {
     // TODO: explain why this is fine here
     const chain = wormholeNTT.emitterChain;
 
-    const nttManagerPeer = this.peerAccountAddress(chain);
-    const inboxRateLimit = this.inboxRateLimitAccountAddress(chain);
+    const nttManagerPeer = this.pdas.peerAccount(chain);
+    const inboxRateLimit = this.pdas.inboxRateLimitAccount(chain);
 
     return await this.program.methods
       .redeem({})
       .accounts({
         payer: args.payer,
-        config: this.configAccountAddress(),
+        config: this.pdas.configAccount(),
         peer: nttManagerPeer,
-        transceiverMessage: this.transceiverMessageAccountAddress(
+        transceiverMessage: this.pdas.transceiverMessageAccount(
           chain,
           nttMessage.id
         ),
-        transceiver: this.registeredTransceiverAddress(this.program.programId),
+        transceiver: this.pdas.registeredTransceiver(this.program.programId),
         mint: await this.mintAccountAddress(config),
-        inboxItem: this.inboxItemAccountAddress(chain, nttMessage),
+        inboxItem: this.pdas.inboxItemAccount(chain, nttMessage),
         inboxRateLimit,
-        outboxRateLimit: this.outboxRateLimitAccountAddress(),
+        outboxRateLimit: this.pdas.outboxRateLimitAccount(),
       })
       .instruction();
   }
@@ -1255,7 +1169,7 @@ export class NTT {
   async getConfig(config?: Config): Promise<Config> {
     return (
       config ??
-      (await this.program.account.config.fetch(this.configAccountAddress()))
+      (await this.program.account.config.fetch(this.pdas.configAccount()))
     );
   }
 
@@ -1273,7 +1187,7 @@ export class NTT {
 
   async getInboxItem(chain: Chain, nttMessage: NttMessage): Promise<InboxItem> {
     return await this.program.account.inboxItem.fetch(
-      this.inboxItemAccountAddress(chain, nttMessage)
+      this.pdas.inboxItemAccount(chain, nttMessage)
     );
   }
 
@@ -1282,7 +1196,7 @@ export class NTT {
   ): Promise<AddressLookupTableAccount> {
     if (!useCache || !this.addressLookupTable) {
       const lut = await this.program.account.lut.fetchNullable(
-        this.lutAccountAddress()
+        this.pdas.lutAccount()
       );
       if (!lut) {
         throw new Error(
@@ -1315,14 +1229,14 @@ export class NTT {
     if (configOrMint instanceof PublicKey) {
       return splToken.getAssociatedTokenAddress(
         configOrMint,
-        this.tokenAuthorityAddress(),
+        this.pdas.tokenAuthority(),
         true,
         tokenProgram
       );
     } else {
       return splToken.getAssociatedTokenAddress(
         configOrMint.mint,
-        this.tokenAuthorityAddress(),
+        this.pdas.tokenAuthority(),
         true,
         configOrMint.tokenProgram
       );
