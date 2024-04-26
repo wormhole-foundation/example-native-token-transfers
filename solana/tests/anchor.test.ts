@@ -27,9 +27,6 @@ import { AccountAddress } from "@wormhole-foundation/sdk";
 import { DummyTransferHook } from "../ts/sdk/anchor-idl/1_0_0/dummy_transfer_hook.js";
 import { SolanaNtt } from "../ts/sdk/index.js";
 
-import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
-console.log(Ntt);
-
 const solanaRootDir = `${__dirname}/../`;
 
 const GUARDIAN_KEY =

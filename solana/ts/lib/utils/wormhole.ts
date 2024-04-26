@@ -31,7 +31,7 @@ export async function postVaa(
   const sender = Wormhole.parseAddress(signer.chain(), signer.address());
 
   const txs = core.postVaa(sender, vaa);
-  await signSendWait(txs, signer);
+  return await signSendWait(txs, signer);
 }
 
 export async function signSendWait<N extends Network, C extends Chain>(
@@ -55,10 +55,8 @@ export async function signSendWait<N extends Network, C extends Chain>(
       txHashes.push(...(await signer.signAndSend([tx])));
     }
   }
-
   if (txbuff.length > 0) {
     txHashes.push(...(await signer.signAndSend(txbuff)));
   }
-
   return txHashes.map((txid) => ({ chain: signer.chain(), txid }));
 }

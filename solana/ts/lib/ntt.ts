@@ -30,14 +30,14 @@ import {
   type TransactionInstruction,
   type TransactionSignature,
 } from "@solana/web3.js";
-import { utils } from "@wormhole-foundation/sdk-solana-core";
-import IDL from "../../target/idl/example_native_token_transfers.json";
-import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from "../../target/types/example_native_token_transfers.js";
 import {
   nativeTokenTransferLayout,
   nttManagerMessageLayout,
   type NttManagerMessage,
-} from "./nttLayout.js";
+} from "@wormhole-foundation/sdk-definitions-ntt";
+import { utils } from "@wormhole-foundation/sdk-solana-core";
+import IDL from "../../target/idl/example_native_token_transfers.json";
+import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from "../../target/types/example_native_token_transfers.js";
 import {
   BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
   nttAddresses,
