@@ -45,6 +45,7 @@ import {
   utils,
 } from "@wormhole-foundation/sdk-solana-core";
 import BN from "bn.js";
+import { NttQuoter } from "../lib/index.js";
 import {
   BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
   TransferArgs,
@@ -60,7 +61,6 @@ import {
   NttBindings,
   getNttProgram,
 } from "./bindings.js";
-import { NttQuoter } from "./quoter.js";
 
 export class SolanaNtt<N extends Network, C extends SolanaChains>
   implements Ntt<N, C>
@@ -69,8 +69,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   pdas: ReturnType<typeof nttAddresses>;
 
   program: Program<NttBindings.NativeTokenTransfer>;
+
   config?: NttBindings.Config;
-  quoter?: NttQuoter<N, C>;
+  quoter?: NttQuoter;
   addressLookupTable?: AddressLookupTableAccount;
 
   constructor(
@@ -84,7 +85,11 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     this.program = getNttProgram(connection, contracts.ntt.manager, idlVersion);
     if (this.contracts.ntt?.quoter)
-      this.quoter = new NttQuoter(network, chain, connection, this.contracts);
+      this.quoter = new NttQuoter(
+        connection,
+        this.contracts.ntt.quoter!,
+        this.contracts.ntt.manager
+      );
 
     this.core = new SolanaWormholeCore<N, C>(
       network,
@@ -569,10 +574,12 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       const relayIx = await this.quoter.createRequestRelayInstruction(
         payerAddress,
         outboxItem.publicKey,
-        this.program.programId,
         destination.chain,
-        new BN(fee.toString()),
-        new BN((options.gasDropoff ?? 0n).toString())
+        // TODO: do not merge until this is fixed
+        0,
+        //fee,
+        0
+        // new BN((options.gasDropoff ?? 0n).toString())
       );
       tx.add(relayIx);
     }

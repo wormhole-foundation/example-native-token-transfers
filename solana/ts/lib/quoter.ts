@@ -6,6 +6,7 @@ import {
   PublicKeyInitData,
   SystemProgram,
 } from "@solana/web3.js";
+import { amount, chainToPlatform } from "@wormhole-foundation/sdk";
 import {
   Chain,
   deserializeLayout,
@@ -19,6 +20,7 @@ import {
   derivePda,
   programDataAddress,
   programDataLayout,
+  quoterAddresses,
 } from "./utils.js";
 
 //constants that must match ntt-quoter lib.rs / implementation:
@@ -33,16 +35,36 @@ const SEED_PREFIX_RELAY_REQUEST = "relay_request";
 export class NttQuoter {
   readonly instance: PublicKey;
   private readonly program: Program<Idl>;
+  nttProgramId: PublicKey;
+  pdas: ReturnType<typeof quoterAddresses>;
 
-  constructor(connection: Connection, programId: PublicKeyInitData) {
+  constructor(
+    connection: Connection,
+    programId: PublicKeyInitData,
+    nttProgramId: PublicKeyInitData
+  ) {
     // @ts-ignore
     this.program = new Program<Idl>(IDL as Idl, new PublicKey(programId), {
       connection,
     });
+    this.nttProgramId = new PublicKey(nttProgramId);
+    this.pdas = quoterAddresses(this.program.programId);
     this.instance = derivePda([SEED_PREFIX_INSTANCE], this.program.programId);
   }
 
   // ---- user relevant functions ----
+
+  async isRelayEnabled(destination: Chain) {
+    try {
+      const { paused } = await this.getRegisteredChain(destination);
+      return !paused;
+    } catch (e: any) {
+      if (e.message?.includes("Account does not exist")) {
+        return false;
+      }
+      throw e;
+    }
+  }
 
   async calcRelayCostInSol(
     nttProgramId: PublicKey,
@@ -74,6 +96,49 @@ export class NttQuoter {
     return totalCostSol;
   }
 
+  /**
+   * Estimate the cost of a relay request
+   * @param chain The destination chain
+   * @param gasDropoff The amount of native gas to end up with on the destination chain
+   * @returns The estimated cost in lamports
+   */
+  async quoteDeliveryPrice(chain: Chain, gasDropoff?: bigint) {
+    if (chainToPlatform(chain) !== "Evm")
+      throw new Error("Only EVM chains are supported");
+
+    // Convert to decimal number since we're multiplying other numbers
+    const gasDropoffEth = amount.whole(
+      amount.fromBaseUnits(gasDropoff ?? 0n, 18)
+    );
+
+    const [chainData, instanceData, nttData, rentCost] = await Promise.all([
+      this.getRegisteredChain(chain),
+      this.getInstance(),
+      this.getRegisteredNtt(this.nttProgramId),
+      this.program.provider.connection.getMinimumBalanceForRentExemption(
+        this.program.account.relayRequest.size
+      ),
+    ]);
+
+    if (chainData.nativePriceUsd === 0) throw new Error("Native price is 0");
+    if (instanceData.solPriceUsd === 0) throw new Error("SOL price is 0");
+    if (gasDropoffEth > chainData.maxGasDropoffEth)
+      throw new Error("Requested gas dropoff exceeds allowed maximum");
+
+    const totalNativeGasCostUsd =
+      chainData.nativePriceUsd *
+      (gasDropoffEth +
+        (chainData.gasPriceGwei * nttData.gasCost) / GWEI_PER_ETH);
+
+    const totalCostSol =
+      rentCost / LAMPORTS_PER_SOL +
+      (chainData.basePriceUsd + totalNativeGasCostUsd) /
+        instanceData.solPriceUsd;
+
+    // Add 5% to account for possible price updates while the tx is in flight
+    return BigInt(U64.to(totalCostSol * 1.05, LAMPORTS_PER_SOL).toString());
+  }
+
   async createRequestRelayInstruction(
     payer: PublicKey,
     outboxItem: PublicKey,
@@ -86,13 +151,14 @@ export class NttQuoter {
         maxFee: U64.to(maxFeeSol, LAMPORTS_PER_SOL),
         gasDropoff: U64.to(gasDropoffEth, GWEI_PER_ETH),
       })
-      .accounts({
+      .accountsStrict({
         payer,
         instance: this.instance,
         registeredChain: this.registeredChainPda(chain),
         outboxItem,
         relayRequest: this.relayRequestPda(outboxItem),
         systemProgram: SystemProgram.programId,
+        registeredNtt: this.pdas.registeredNttAccount(this.nttProgramId),
       })
       .instruction();
   }

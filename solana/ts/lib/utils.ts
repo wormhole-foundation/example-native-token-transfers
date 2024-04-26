@@ -143,3 +143,19 @@ export const nttAddresses = (programId: PublicKeyInitData) => {
     lutAuthority,
   };
 };
+
+export const quoterAddresses = (programId: PublicKeyInitData) => {
+  const instanceAccount = () => derivePda("instance", programId);
+  const registeredNttAccount = (nttProgramId: PublicKey) =>
+    derivePda(["registered_ntt", nttProgramId.toBytes()], programId);
+  const relayRequestAccount = (outboxItem: PublicKey) =>
+    derivePda(["relay_request", outboxItem.toBytes()], programId);
+  const registeredChainAccount = (chain: Chain) =>
+    derivePda(["registered_chain", chainToBytes(chain)], programId);
+  return {
+    relayRequestAccount,
+    instanceAccount,
+    registeredChainAccount,
+    registeredNttAccount,
+  };
+};
