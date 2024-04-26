@@ -848,32 +848,28 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       undefined,
       config.tokenProgram
     );
-    try {
-      const transferHook = splToken.getTransferHook(mintInfo);
+    const transferHook = splToken.getTransferHook(mintInfo);
 
-      if (transferHook) {
-        const owner = this.pdas.sessionAuthority(
-          args.fromAuthority,
-          args.transferArgs
-        );
-        await addExtraAccountMetasForExecute(
-          this.connection,
-          transferIx,
-          transferHook.programId,
-          args.from,
-          config.mint,
-          config.custody,
-          owner,
-          // TODO(csongor): compute the amount that's passed into transfer.
-          // Leaving this 0 is fine unless the transfer hook accounts addresses
-          // depend on the amount (which is unlikely).
-          // If this turns out to be the case, the amount to put here is the
-          // untrimmed amount after removing dust.
-          0
-        );
-      }
-    } catch (e) {
-      console.log(e);
+    if (transferHook) {
+      const owner = this.pdas.sessionAuthority(
+        args.fromAuthority,
+        args.transferArgs
+      );
+      await addExtraAccountMetasForExecute(
+        this.connection,
+        transferIx,
+        transferHook.programId,
+        args.from,
+        config.mint,
+        config.custody,
+        owner,
+        // TODO(csongor): compute the amount that's passed into transfer.
+        // Leaving this 0 is fine unless the transfer hook accounts addresses
+        // depend on the amount (which is unlikely).
+        // If this turns out to be the case, the amount to put here is the
+        // untrimmed amount after removing dust.
+        0
+      );
     }
     return transferIx;
   }
@@ -1076,7 +1072,8 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     console.log(recipientAddress);
 
-    return await this.program.methods
+    const tokenAddress = await this.getTokenAccount(recipientAddress);
+    const transferIx = await this.program.methods
       .releaseInboundMint({
         revertOnDelay: args.revertOnDelay,
       })
@@ -1085,7 +1082,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           payer: args.payer,
           config: { config: this.pdas.configAccount() },
           inboxItem,
-          recipient: await this.getTokenAccount(recipientAddress),
+          recipient: tokenAddress,
           mint: config.mint,
           tokenAuthority: this.pdas.tokenAuthority(),
           custody: config.custody,
@@ -1093,6 +1090,35 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         },
       })
       .instruction();
+
+    const mintInfo = await splToken.getMint(
+      this.connection,
+      config.mint,
+      undefined,
+      config.tokenProgram
+    );
+
+    const transferHook = splToken.getTransferHook(mintInfo);
+
+    if (transferHook) {
+      await addExtraAccountMetasForExecute(
+        this.connection,
+        transferIx,
+        transferHook.programId,
+        config.custody,
+        config.mint,
+        tokenAddress,
+        this.pdas.tokenAuthority(),
+        // TODO(csongor): compute the amount that's passed into transfer.
+        // Leaving this 0 is fine unless the transfer hook accounts addresses
+        // depend on the amount (which is unlikely).
+        // If this turns out to be the case, the amount to put here is the
+        // untrimmed amount after removing dust.
+        0
+      );
+    }
+
+    return transferIx;
   }
 
   async createReleaseInboundUnlockInstruction(args: {
@@ -1115,8 +1141,8 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         .unwrap();
 
     const inboxItem = this.pdas.inboxItemAccount(args.chain, args.nttMessage);
-
-    return await this.program.methods
+    const tokenAddress = await this.getTokenAccount(recipientAddress);
+    const transferIx = await this.program.methods
       .releaseInboundUnlock({
         revertOnDelay: args.revertOnDelay,
       })
@@ -1125,7 +1151,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           payer: args.payer,
           config: { config: this.pdas.configAccount() },
           inboxItem: inboxItem,
-          recipient: await this.getTokenAccount(recipientAddress),
+          recipient: tokenAddress,
           mint: config.mint,
           tokenAuthority: this.pdas.tokenAuthority(),
           custody: config.custody,
@@ -1133,6 +1159,34 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         },
       })
       .instruction();
+
+    const mintInfo = await splToken.getMint(
+      this.connection,
+      config.mint,
+      undefined,
+      config.tokenProgram
+    );
+
+    const transferHook = splToken.getTransferHook(mintInfo);
+
+    if (transferHook) {
+      await addExtraAccountMetasForExecute(
+        this.connection,
+        transferIx,
+        transferHook.programId,
+        config.custody,
+        config.mint,
+        tokenAddress,
+        this.pdas.tokenAuthority(),
+        // TODO(csongor): compute the amount that's passed into transfer.
+        // Leaving this 0 is fine unless the transfer hook accounts addresses
+        // depend on the amount (which is unlikely).
+        // If this turns out to be the case, the amount to put here is the
+        // untrimmed amount after removing dust.
+        0
+      );
+    }
+    return transferIx;
   }
 
   /**
