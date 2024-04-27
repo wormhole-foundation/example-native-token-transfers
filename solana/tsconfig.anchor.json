@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.json",
+  "include": ["ts/sdk/**/*.ts", "ts/sdk/**/*.json"],
+  "exclude": ["jest.config.js"],
+  "compilerOptions": {
+    "outDir": "dist/esm",
+    "rootDir": "ts/sdk",
+    "resolveJsonModule": true,
+    "noUnusedLocals": false,
+    "allowUnreachableCode": true,
+    "allowUnusedLabels": true,
+  }
+}

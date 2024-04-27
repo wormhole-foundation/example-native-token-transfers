@@ -1,10 +1,10 @@
 import {
   TransactionId,
+  Wormhole,
   signSendWait,
-  wormhole,
 } from "@wormhole-foundation/sdk";
-import evm from "@wormhole-foundation/sdk/evm";
-import solana from "@wormhole-foundation/sdk/solana";
+import evm from "@wormhole-foundation/sdk/platforms/evm";
+import solana from "@wormhole-foundation/sdk/platforms/solana";
 
 // register protocol implementations
 import "@wormhole-foundation/sdk-evm-ntt";
@@ -19,7 +19,7 @@ const recoverTxids: TransactionId[] = [
 ];
 
 (async function () {
-  const wh = await wormhole("Testnet", [solana, evm]);
+  const wh = new Wormhole("Testnet", [solana.Platform, evm.Platform]);
   const src = wh.getChain("Solana");
   const dst = wh.getChain("ArbitrumSepolia");
 
@@ -33,18 +33,19 @@ const recoverTxids: TransactionId[] = [
     ntt: TEST_NTT_TOKENS[dst.chain],
   });
 
+  console.log("Source signer", srcSigner.address.address);
+
+  const xfer = () =>
+    srcNtt.transfer(srcSigner.address.address, 1000n, dstSigner.address, {
+      queue: false,
+      automatic: false,
+      gasDropoff: 0n,
+    });
+
   // Initiate the transfer (or set to recoverTxids to complete transfer)
   const txids: TransactionId[] =
     recoverTxids.length === 0
-      ? await signSendWait(
-          src,
-          srcNtt.transfer(srcSigner.address.address, 1000n, dstSigner.address, {
-            queue: false,
-            automatic: false,
-            gasDropoff: 0n,
-          }),
-          srcSigner.signer
-        )
+      ? await signSendWait(src, xfer(), srcSigner.signer)
       : recoverTxids;
   console.log("Source txs", txids);
 

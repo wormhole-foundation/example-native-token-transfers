@@ -5,6 +5,8 @@ import {
   Network,
   Signer,
   Wormhole,
+  chainToPlatform,
+  encoding,
 } from "@wormhole-foundation/sdk";
 
 import evm from "@wormhole-foundation/sdk/platforms/evm";
@@ -16,6 +18,17 @@ export interface SignerStuff<N extends Network, C extends Chain> {
   address: ChainAddress<C>;
 }
 
+const DEVNET_SOL_PRIVATE_KEY = encoding.b58.encode(
+  new Uint8Array([
+    14, 173, 153, 4, 176, 224, 201, 111, 32, 237, 183, 185, 159, 247, 22, 161,
+    89, 84, 215, 209, 212, 137, 10, 92, 157, 49, 29, 192, 101, 164, 152, 70, 87,
+    65, 8, 174, 214, 157, 175, 126, 98, 90, 54, 24, 100, 177, 247, 77, 19, 112,
+    47, 44, 165, 109, 233, 102, 14, 86, 109, 29, 134, 145, 132, 141,
+  ])
+);
+const DEVNET_ETH_PRIVATE_KEY =
+  "0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"; // Ganache default private key
+
 export async function getSigner<N extends Network, C extends Chain>(
   chain: ChainContext<N, C>
 ): Promise<SignerStuff<N, C>> {
@@ -23,19 +36,19 @@ export async function getSigner<N extends Network, C extends Chain>(
   (await import("dotenv")).config();
 
   let signer: Signer;
-  const platform = chain.platform.utils()._platform;
+  const platform = chainToPlatform(chain.chain);
   switch (platform) {
     case "Solana":
       signer = await solana.getSigner(
         await chain.getRpc(),
-        getEnv("OTHER_SOL_PRIVATE_KEY"),
-        { priorityFeePercentile: 0.9, debug: true }
+        getEnv("SOL_PRIVATE_KEY", DEVNET_SOL_PRIVATE_KEY),
+        { debug: true }
       );
       break;
     case "Evm":
       signer = await evm.getSigner(
         await chain.getRpc(),
-        getEnv("ETH_PRIVATE_KEY")
+        getEnv("ETH_PRIVATE_KEY", DEVNET_ETH_PRIVATE_KEY)
       );
       break;
     default:
@@ -51,15 +64,17 @@ export async function getSigner<N extends Network, C extends Chain>(
 
 // Use .env.example as a template for your .env file and populate it with secrets
 // for funded accounts on the relevant chain+network combos to run the example
-function getEnv(key: string): string {
+function getEnv(key: string, dev?: string): string {
   // If we're in the browser, return empty string
   if (typeof process === undefined) return "";
   // Otherwise, return the env var or error
   const val = process.env[key];
-  if (!val)
+  if (!val) {
+    if (dev) return dev;
     throw new Error(
       `Missing env var ${key}, did you forget to set values in '.env'?`
     );
+  }
 
   return val;
 }

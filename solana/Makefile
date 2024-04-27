@@ -12,12 +12,8 @@ target/idl/example_native_token_transfers.json: _anchor-build
 _anchor-build:
 	@anchor build --arch sbf
 
-anchor-test: node_modules build target/idl/example_native_token_transfers.json sdk
+anchor-test: build target/idl/example_native_token_transfers.json sdk
 	anchor test --skip-build
-
-sdk: build
-	@echo "Building SDK"
-	cd ../sdk && npm ci && npm run build:solana
 
 .PHONY: idl
 idl: target/idl/example_native_token_transfers.json
@@ -27,8 +23,9 @@ idl: target/idl/example_native_token_transfers.json
 	@ cp -r target/types/* $@/ts/
 	@ cd ../sdk/solana && npm run generate
 
-node_modules: package-lock.json
-	npm ci
+sdk: build
+	@echo "Building SDK"
+	cd .. && npm ci && npm run build:solana
 
 .PHONY: clean
 clean:
