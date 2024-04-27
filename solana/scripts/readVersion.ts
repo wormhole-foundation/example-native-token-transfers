@@ -1,8 +1,9 @@
 import * as fs from "fs";
 
 // From the persp of `sdk/solana`
-const projectRoot = "../../";
-const versionFile = "solana/programs/example-native-token-transfers/src/lib.rs";
+//const projectRoot = "../../solana/";
+const projectRoot = "./";
+const versionFile = "programs/example-native-token-transfers/src/lib.rs";
 const versionRegex = /pub const VERSION/;
 (function () {
   const contents = fs.readFileSync(projectRoot + versionFile, "utf8");

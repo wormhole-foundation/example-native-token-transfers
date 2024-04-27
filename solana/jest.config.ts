@@ -4,14 +4,14 @@ const jestConfig: JestConfigWithTsJest = {
   verbose: true,
   testTimeout: 10000000,
   modulePathIgnorePatterns: ["mocks"],
-  roots: ["./__tests__"],
+  roots: ["./tests"],
   testMatch: ["**/*.test.ts"],
   preset: "ts-jest",
   moduleNameMapper: {
     "^(\\.{1,2}/.*)\\.js$": "$1",
   },
   transform: {
-    "^.+\\.tsx?$": ["ts-jest", { tsconfig: "tsconfig.esm.json" }],
+    "^.+\\.tsx?$": ["ts-jest", { tsconfig: "tsconfig.anchor.json" }],
   },
 };
 

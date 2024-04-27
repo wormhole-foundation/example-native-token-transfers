@@ -1,23 +1,15 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
-import { PostedMessageData } from "@certusone/wormhole-sdk/lib/cjs/solana/wormhole";
-import { expect } from "chai";
-import { toChainId } from "@certusone/wormhole-sdk";
-import {
-  MockEmitter,
-  MockGuardians,
-} from "@certusone/wormhole-sdk/lib/cjs/mock";
 import * as fs from "fs";
 
 import { encoding } from "@wormhole-foundation/sdk-base";
 import {
   UniversalAddress,
-  serializePayload,
   deserializePayload,
+  serializePayload,
 } from "@wormhole-foundation/sdk-definitions";
-import { postVaa, NTT, nttMessageLayout } from "../ts/sdk";
-import { WormholeTransceiverMessage } from "../ts/sdk/nttLayout";
+import { NTT, postVaa } from "../ts/lib/index.js";
 
 import {
   PublicKey,
@@ -26,7 +18,9 @@ import {
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 
-import { DummyTransferHook } from "../target/types/dummy_transfer_hook";
+import { serialize, testing } from "@wormhole-foundation/sdk-connect";
+import { deserializePostMessage } from "@wormhole-foundation/sdk-solana-core";
+import { DummyTransferHook } from "../target/types/dummy_transfer_hook.js";
 
 export const GUARDIAN_KEY =
   "cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0";
@@ -68,7 +62,7 @@ describe("example-native-token-transfers", () => {
 
   async function counterValue(): Promise<anchor.BN> {
     const counter = await dummyTransferHook.account.counter.fetch(counterPDA);
-    return counter.count
+    return counter.count;
   }
 
   it("Initialize mint", async () => {
@@ -128,7 +122,7 @@ describe("example-native-token-transfers", () => {
 
   it("Can check version", async () => {
     const version = await ntt.version(payer.publicKey);
-    expect(version).to.equal("1.0.0");
+    expect(version).toEqual("1.0.0");
   });
 
   it("Create ExtraAccountMetaList Account", async () => {
@@ -154,14 +148,14 @@ describe("example-native-token-transfers", () => {
   });
 
   describe("Burning", () => {
-    before(async () => {
+    beforeAll(async () => {
       await spl.setAuthority(
         connection,
         payer,
         mint.publicKey,
         owner,
         spl.AuthorityType.MintTokens,
-        ntt.tokenAuthorityAddress(),
+        ntt.pdas.tokenAuthority(),
         [],
         undefined,
         spl.TOKEN_2022_PROGRAM_ID
@@ -170,7 +164,7 @@ describe("example-native-token-transfers", () => {
       await ntt.initialize({
         payer,
         owner: payer,
-        chain: "solana",
+        chain: "Solana",
         mint: mint.publicKey,
         outboundLimit: new BN(1000000),
         mode: "burning",
@@ -194,14 +188,14 @@ describe("example-native-token-transfers", () => {
       await ntt.setWormholeTransceiverPeer({
         payer,
         owner: payer,
-        chain: "ethereum",
+        chain: "Ethereum",
         address: Buffer.from("transceiver".padStart(32, "\0")),
       });
 
       await ntt.setPeer({
         payer,
         owner: payer,
-        chain: "ethereum",
+        chain: "Ethereum",
         address: Buffer.from("nttManager".padStart(32, "\0")),
         limit: new BN(1000000),
         tokenDecimals: 18,
@@ -220,12 +214,12 @@ describe("example-native-token-transfers", () => {
         from: tokenAccount,
         fromAuthority: user,
         amount,
-        recipientChain: "ethereum",
+        recipientChain: "Ethereum",
         recipientAddress: Array.from(user.publicKey.toBuffer()), // TODO: dummy
         shouldQueue: false,
       });
 
-      const wormholeMessage = ntt.wormholeMessageAccountAddress(outboxItem);
+      const wormholeMessage = ntt.pdas.wormholeMessageAccount(outboxItem);
 
       const wormholeMessageAccount = await connection.getAccountInfo(
         wormholeMessage
@@ -234,37 +228,34 @@ describe("example-native-token-transfers", () => {
         throw new Error("wormhole message account not found");
       }
 
-      const messageData = PostedMessageData.deserialize(
-        wormholeMessageAccount.data
-      );
+      const messageData = deserializePostMessage(wormholeMessageAccount.data);
       const transceiverMessage = deserializePayload(
         "Ntt:WormholeTransfer",
-        messageData.message.payload
+        messageData.payload
       );
 
       // assert theat amount is what we expect
       expect(
         transceiverMessage.nttManagerPayload.payload.trimmedAmount
-      ).to.deep.equal({ amount: 10000n, decimals: 8 });
+      ).toEqual({ amount: 10000n, decimals: 8 });
       // get from balance
       const balance = await connection.getTokenAccountBalance(tokenAccount);
-      expect(balance.value.amount).to.equal("9900000");
+      expect(balance.value.amount).toEqual("9900000");
 
-      expect((await counterValue()).toString()).to.be.eq("1")
+      expect((await counterValue()).toString()).toEqual("1");
     });
 
     it("Can receive tokens", async () => {
-      const emitter = new MockEmitter(
-        Buffer.from("transceiver".padStart(32, "\0")).toString("hex"),
-        toChainId("ethereum"),
-        Number(0) // sequence
+      const emitter = new testing.mocks.MockEmitter(
+        new UniversalAddress(
+          encoding.bytes.zpad(encoding.bytes.encode("transceiver"), 32)
+        ),
+        "Ethereum"
       );
 
-      const guardians = new MockGuardians(0, [GUARDIAN_KEY]);
+      const guardians = new testing.mocks.MockGuardians(0, [GUARDIAN_KEY]);
 
-      const sendingTransceiverMessage: WormholeTransceiverMessage<
-        typeof nttMessageLayout
-      > = {
+      const sendingTransceiverMessage = {
         sourceNttManager: new UniversalAddress(
           encoding.bytes.encode("nttManager".padStart(32, "\0"))
         ),
@@ -284,7 +275,7 @@ describe("example-native-token-transfers", () => {
             recipientChain: "Solana",
           },
         },
-        transceiverPayload: { forSpecializedRelayer: false },
+        transceiverPayload: new Uint8Array(),
       } as const;
 
       const serialized = serializePayload(
@@ -292,24 +283,18 @@ describe("example-native-token-transfers", () => {
         sendingTransceiverMessage
       );
 
-      const published = emitter.publishMessage(
-        0, // nonce
-        Buffer.from(serialized),
-        0 // consistency level
-      );
+      const published = emitter.publishMessage(0, serialized, 0);
 
-      const vaaBuf = guardians.addSignatures(published, [0]);
+      const vaa = guardians.addSignatures(published, [0]);
 
-      await postVaa(connection, payer, vaaBuf, ntt.wormholeId);
+      const txids = await postVaa(connection, payer, vaa, ntt.wormholeId);
+      console.log("Posted VAA", txids);
 
-      const released = await ntt.redeem({
-        payer,
-        vaa: vaaBuf,
-      });
+      const released = await ntt.redeem({ payer, vaa: serialize(vaa) });
 
-      expect(released).to.equal(true);
+      expect(released).toEqual(true);
 
-      expect((await counterValue()).toString()).to.be.eq("2")
+      expect((await counterValue()).toString()).toEqual("2");
     });
   });
 });

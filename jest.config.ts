@@ -3,7 +3,7 @@ import type { JestConfigWithTsJest } from "ts-jest";
 const jestConfig: JestConfigWithTsJest = {
   verbose: true,
   testTimeout: 10000000,
-  roots: ["./__tests__"],
+  roots: ["./sdk/__tests__"],
   testMatch: ["**/*.test.ts"],
   modulePathIgnorePatterns: ["mocks"],
   preset: "ts-jest",

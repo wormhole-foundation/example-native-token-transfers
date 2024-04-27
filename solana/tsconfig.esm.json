@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "include": ["ts/index.ts", "ts/sdk/**/*.ts", "ts/sdk/**/*.json", "ts/lib/**/*.ts", "target/**/*.ts", "target/**/*.json"],
+  "exclude": ["jest.config.ts"],
+  "compilerOptions": {
+    "outDir": "dist/esm",
+    "rootDir": ".",
+    "resolveJsonModule": true
+  }
+}
