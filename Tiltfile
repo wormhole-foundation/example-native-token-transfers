@@ -50,7 +50,8 @@ docker_build(
 # CI tests
 docker_build(
     ref = "ntt-ci",
-    context = "./sdk",
+    context = "./",
+    only=["./sdk", "./package.json", "./package-lock.json", "jest.config.ts", "tsconfig.json", "tsconfig.test.json"],
     dockerfile = "./sdk/Dockerfile",
 )
 k8s_yaml_with_ns("./sdk/ci.yaml") 

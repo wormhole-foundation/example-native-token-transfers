@@ -1,16 +1,19 @@
+import {
+  CustomConversion,
+  Layout,
+  encoding,
+} from "@wormhole-foundation/sdk-base";
+
+import { BN } from "@coral-xyz/anchor";
 import { PublicKey, PublicKeyInitData } from "@solana/web3.js";
 import {
   Chain,
   ChainId,
-  CustomConversion,
-  Layout,
-  encoding,
   keccak256,
   toChainId,
-  ChainAddress,
 } from "@wormhole-foundation/sdk-connect";
 import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
-import BN from "bn.js";
+import { TransferArgs } from "./ntt.js";
 
 export const BPF_LOADER_UPGRADEABLE_PROGRAM_ID = new PublicKey(
   "BPFLoaderUpgradeab1e11111111111111111111111"
@@ -53,27 +56,19 @@ export const programDataLayout = [
   },
 ] as const satisfies Layout;
 
-export const programVersionLayout = [
-  { name: "length", binary: "uint", endianness: "little", size: 4 },
-  { name: "version", binary: "bytes" },
-] as const satisfies Layout;
-
 export const U64 = {
   MAX: new BN((2n ** 64n - 1n).toString()),
   to: (amount: number, unit: number) => {
     const ret = new BN(Math.round(amount * unit));
+
     if (ret.isNeg()) throw new Error("Value negative");
+
     if (ret.bitLength() > 64) throw new Error("Value too large");
+
     return ret;
   },
   from: (amount: BN, unit: number) => amount.toNumber() / unit,
 };
-
-export interface TransferArgs {
-  amount: bigint;
-  recipient: ChainAddress;
-  shouldQueue: boolean;
-}
 
 type Seed = Uint8Array | string;
 export function derivePda(
@@ -88,7 +83,7 @@ export function derivePda(
   )[0];
 }
 
-const chainToBytes = (chain: Chain | ChainId) =>
+export const chainToBytes = (chain: Chain | ChainId) =>
   encoding.bignum.toBytes(toChainId(chain), 2);
 
 export const nttAddresses = (programId: PublicKeyInitData) => {
@@ -121,9 +116,9 @@ export const nttAddresses = (programId: PublicKeyInitData) => {
         sender.toBytes(),
         keccak256(
           encoding.bytes.concat(
-            encoding.bignum.toBytes(args.amount, 8),
-            chainToBytes(args.recipient.chain),
-            args.recipient.address.toUniversalAddress().toUint8Array(),
+            encoding.bytes.zpad(new Uint8Array(args.amount.toBuffer()), 8),
+            chainToBytes(args.recipientChain.id),
+            new Uint8Array(args.recipientAddress),
             new Uint8Array([args.shouldQueue ? 1 : 0])
           )
         ),

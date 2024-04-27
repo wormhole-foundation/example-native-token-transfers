@@ -5,7 +5,6 @@ import {
   ChainContext,
   Signer,
   UniversalAddress,
-  VAA,
   Wormhole,
   deserialize,
   deserializePayload,
@@ -18,14 +17,17 @@ import {
 import {
   SolanaAddress,
   SolanaPlatform,
-  SolanaSendSigner,
+  getSolanaSignAndSendSigner,
 } from "@wormhole-foundation/sdk-solana";
 import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 import * as fs from "fs";
 
-import { SolanaNtt } from "../src/index.js";
+import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import { AccountAddress } from "@wormhole-foundation/sdk";
+import { DummyTransferHook } from "../ts/sdk/anchor-idl/1_0_0/dummy_transfer_hook.js";
+import { SolanaNtt } from "../ts/sdk/index.js";
 
-const solanaRootDir = `${__dirname}/../../../solana`;
+const solanaRootDir = `${__dirname}/../`;
 
 const GUARDIAN_KEY =
   "cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0";
@@ -69,117 +71,226 @@ const remoteMgr: ChainAddress = {
   ),
 };
 
+const payerSecretKey = Uint8Array.from(
+  JSON.parse(
+    fs.readFileSync(`${solanaRootDir}/keys/test.json`, {
+      encoding: "utf-8",
+    })
+  )
+);
+const payer = anchor.web3.Keypair.fromSecretKey(payerSecretKey);
+
+const owner = anchor.web3.Keypair.generate();
+const connection = new anchor.web3.Connection(
+  "http://localhost:8899",
+  "confirmed"
+);
+
+// Make sure we're using the exact same Connection obj for rpc
+const ctx: ChainContext<"Devnet", "Solana"> = w
+  .getPlatform("Solana")
+  .getChain("Solana", connection);
+
+let tokenAccount: anchor.web3.PublicKey;
+
+const mint = anchor.web3.Keypair.generate();
+
+const dummyTransferHook = anchor.workspace
+  .DummyTransferHook as anchor.Program<DummyTransferHook>;
+
+console.log(dummyTransferHook);
+
+const [extraAccountMetaListPDA] = PublicKey.findProgramAddressSync(
+  [Buffer.from("extra-account-metas"), mint.publicKey.toBuffer()],
+  dummyTransferHook.programId
+);
+
+const [counterPDA] = PublicKey.findProgramAddressSync(
+  [Buffer.from("counter")],
+  dummyTransferHook.programId
+);
+
+async function counterValue(): Promise<anchor.BN> {
+  const counter = await dummyTransferHook.account.counter.fetch(counterPDA);
+  return counter.count;
+}
+
+const coreBridge = new SolanaWormholeCore("Devnet", "Solana", connection, {
+  coreBridge: CORE_BRIDGE_ADDRESS,
+});
+
+const TOKEN_PROGRAM = spl.TOKEN_2022_PROGRAM_ID;
+
 describe("example-native-token-transfers", () => {
-  const payerSecretKey = Uint8Array.from(
-    JSON.parse(
-      fs.readFileSync(`${solanaRootDir}/keys/test.json`, {
-        encoding: "utf-8",
-      })
-    )
-  );
-  const payer = anchor.web3.Keypair.fromSecretKey(payerSecretKey);
-  const owner = anchor.web3.Keypair.generate();
-
-  const connection = new anchor.web3.Connection(
-    "http://localhost:8899",
-    "confirmed"
-  );
-
-  // Make sure we're using the exact same Connection obj for rpc
-  const ctx: ChainContext<"Devnet", "Solana"> = w
-    .getPlatform("Solana")
-    .getChain("Solana", connection);
-
-  const signer = new SolanaSendSigner(connection, "Solana", payer);
-  const sender = Wormhole.parseAddress(signer.chain(), signer.address());
-
-  const coreBridge = new SolanaWormholeCore("Devnet", "Solana", connection, {
-    coreBridge: CORE_BRIDGE_ADDRESS,
-  });
-
-  let tokenAccount: anchor.web3.PublicKey;
-  let mint: anchor.web3.PublicKey;
   let ntt: SolanaNtt<"Devnet", "Solana">;
+  let signer: Signer;
+  let sender: AccountAddress<"Solana">;
 
   beforeAll(async () => {
-    // airdrop some tokens to payer
-    mint = await spl.createMint(connection, payer, owner.publicKey, null, 9);
+    try {
+      signer = await getSolanaSignAndSendSigner(connection, payer, {
+        //debug: true,
+      });
+      sender = Wormhole.parseAddress("Solana", signer.address());
 
-    // Create our contract client
-    ntt = new SolanaNtt("Devnet", "Solana", connection, {
-      ...ctx.config.contracts,
-      ntt: {
-        token: mint.toBase58(),
-        manager: NTT_ADDRESS,
-        transceiver: {
-          wormhole: NTT_ADDRESS,
+      const extensions = [spl.ExtensionType.TransferHook];
+      const mintLen = spl.getMintLen(extensions);
+      const lamports = await connection.getMinimumBalanceForRentExemption(
+        mintLen
+      );
+
+      const transaction = new Transaction().add(
+        SystemProgram.createAccount({
+          fromPubkey: payer.publicKey,
+          newAccountPubkey: mint.publicKey,
+          space: mintLen,
+          lamports,
+          programId: TOKEN_PROGRAM,
+        }),
+        spl.createInitializeTransferHookInstruction(
+          mint.publicKey,
+          owner.publicKey,
+          dummyTransferHook.programId,
+          TOKEN_PROGRAM
+        ),
+        spl.createInitializeMintInstruction(
+          mint.publicKey,
+          9,
+          owner.publicKey,
+          null,
+          TOKEN_PROGRAM
+        )
+      );
+
+      const { blockhash } = await connection.getRecentBlockhash();
+
+      transaction.feePayer = payer.publicKey;
+      transaction.recentBlockhash = blockhash;
+      console.log(transaction);
+
+      const txid = await connection.sendTransaction(transaction, [payer, mint]);
+      await connection.confirmTransaction(txid, "confirmed");
+
+      tokenAccount = await spl.createAssociatedTokenAccount(
+        connection,
+        payer,
+        mint.publicKey,
+        payer.publicKey,
+        undefined,
+        TOKEN_PROGRAM,
+        spl.ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+
+      await spl.mintTo(
+        connection,
+        payer,
+        mint.publicKey,
+        tokenAccount,
+        owner,
+        BigInt(10000000),
+        undefined,
+        undefined,
+        TOKEN_PROGRAM
+      );
+
+      // Create our contract client
+      ntt = new SolanaNtt("Devnet", "Solana", connection, {
+        ...ctx.config.contracts,
+        ntt: {
+          token: mint.publicKey.toBase58(),
+          manager: NTT_ADDRESS,
+          transceiver: {
+            wormhole: NTT_ADDRESS,
+          },
         },
-      },
-    });
-
-    tokenAccount = await spl.createAssociatedTokenAccount(
-      connection,
-      payer,
-      mint,
-      payer.publicKey
-    );
-
-    await spl.mintTo(
-      connection,
-      payer,
-      mint,
-      tokenAccount,
-      owner,
-      BigInt(10000000)
-    );
+      });
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
   });
 
   describe("Locking", () => {
     beforeAll(async () => {
-      await spl.setAuthority(
-        connection,
-        payer,
-        mint,
-        owner,
-        0, // mint
-        ntt.pdas.tokenAuthority()
+      try {
+        await spl.setAuthority(
+          connection,
+          payer,
+          mint.publicKey,
+          owner,
+          spl.AuthorityType.MintTokens,
+          ntt.pdas.tokenAuthority(),
+          [],
+          undefined,
+          TOKEN_PROGRAM
+        );
+
+        // init
+        const initTxs = ntt.initialize({
+          payer,
+          owner: payer,
+          chain: "Solana",
+          mint: mint.publicKey,
+          outboundLimit: 1000000n,
+          mode: "burning",
+        });
+        await signSendWait(ctx, initTxs, signer);
+
+        // register
+        const registerTxs = ntt.registerTransceiver({
+          payer,
+          owner: payer,
+          transceiver: ntt.program.programId,
+        });
+        await signSendWait(ctx, registerTxs, signer);
+
+        // Set Wormhole xcvr peer
+        const setXcvrPeerTxs = ntt.setWormholeTransceiverPeer(
+          remoteXcvr,
+          sender
+        );
+        await signSendWait(ctx, setXcvrPeerTxs, signer);
+
+        // Set manager peer
+        const setPeerTxs = ntt.setPeer(remoteMgr, 18, 1000000n, sender);
+        await signSendWait(ctx, setPeerTxs, signer);
+      } catch (e) {
+        console.error(e);
+        throw e;
+      }
+    });
+
+    it("Create ExtraAccountMetaList Account", async () => {
+      const initializeExtraAccountMetaListInstruction =
+        await dummyTransferHook.methods
+          .initializeExtraAccountMetaList()
+          .accountsStrict({
+            payer: payer.publicKey,
+            mint: mint.publicKey,
+            counter: counterPDA,
+            extraAccountMetaList: extraAccountMetaListPDA,
+            tokenProgram: TOKEN_PROGRAM,
+            associatedTokenProgram: spl.ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+          })
+          .instruction();
+
+      const transaction = new Transaction().add(
+        initializeExtraAccountMetaListInstruction
       );
+      transaction.feePayer = payer.publicKey;
+      const { blockhash } = await connection.getRecentBlockhash();
+      transaction.recentBlockhash = blockhash;
 
-      // init
-      const initTxs = ntt.initialize({
-        payer,
-        owner: payer,
-        chain: "Solana",
-        mint,
-        outboundLimit: 1000000n,
-        mode: "locking",
-      });
-      await signSendWait(ctx, initTxs, signer);
-
-      // register
-      const registerTxs = ntt.registerTransceiver({
-        payer,
-        owner: payer,
-        transceiver: ntt.program.programId,
-      });
-      await signSendWait(ctx, registerTxs, signer);
-
-      // Set Wormhole xcvr peer
-      const setXcvrPeerTxs = ntt.setWormholeTransceiverPeer(remoteXcvr, sender);
-      await signSendWait(ctx, setXcvrPeerTxs, signer);
-
-      // Set manager peer
-      const setPeerTxs = ntt.setPeer(remoteMgr, 18, 1000000n, sender);
-      await signSendWait(ctx, setPeerTxs, signer);
+      transaction.sign(payer);
+      const txid = await connection.sendTransaction(transaction, [payer]);
+      console.log(await connection.confirmTransaction(txid, "confirmed"));
     });
 
     test("Can send tokens", async () => {
-      // TODO: factor out this test so it can be reused for burn&mint
-      // transfer some tokens
       const amount = 100000n;
       const sender = Wormhole.parseAddress("Solana", signer.address());
 
-      // made up receiver
       const receiver = testing.utils.makeUniversalChainAddress("Ethereum");
 
       // TODO: keep or remove the `outboxItem` param?
@@ -198,9 +309,9 @@ describe("example-native-token-transfers", () => {
         outboxItem.publicKey
       );
 
-      const unsignedVaa = (await coreBridge.parsePostMessageAccount(
+      const unsignedVaa = await coreBridge.parsePostMessageAccount(
         wormholeMessage
-      )) as VAA<"Uint8Array">; // TODO: remove `as` when next version sdk is out
+      );
 
       const transceiverMessage = deserializePayload(
         "Ntt:WormholeTransfer",
@@ -209,7 +320,7 @@ describe("example-native-token-transfers", () => {
 
       // assert theat amount is what we expect
       expect(
-        transceiverMessage.nttManagerPayload.payload.trimmedAmount
+        transceiverMessage["nttManagerPayload"].payload.trimmedAmount
       ).toMatchObject({ amount: 10000n, decimals: 8 });
 
       // get from balance
@@ -275,7 +386,7 @@ describe("example-native-token-transfers", () => {
         await signSendWait(ctx, redeemTxs, signer);
       } catch (e) {
         console.error(e);
-        return;
+        throw e;
       }
 
       // expect(released).to.equal(true);
@@ -331,17 +442,4 @@ describe("example-native-token-transfers", () => {
       });
     });
   });
-
-  // describe('Burning', () => {
-  //   beforeEach(async () => {
-  //     await ntt.initialize({
-  //       payer,
-  //       owner,
-  //       chain: 'solana',
-  //       mint,
-  //       outboundLimit: new BN(1000000),
-  //       mode: 'burning'
-  //     })
-  //   });
-  // });
 });

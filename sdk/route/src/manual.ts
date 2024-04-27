@@ -202,7 +202,7 @@ export class NttManualRoute<N extends Network>
     );
     const completeTransfer = ntt.completeInboundQueuedTransfer(
       toChain.chain,
-      vaa.payload.nttManagerPayload,
+      vaa.payload["nttManagerPayload"],
       this.request.destination.id.address
     );
     const finalizeTxids = await signSendWait(toChain, completeTransfer, signer);

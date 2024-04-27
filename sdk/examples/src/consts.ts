@@ -1,7 +1,7 @@
 import { Chain } from "@wormhole-foundation/sdk";
 import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
 import { NttRoute } from "@wormhole-foundation/sdk-route-ntt";
-type NttContracts = {
+export type NttContracts = {
   [key in Chain]?: Ntt.Contracts;
 };
 
