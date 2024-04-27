@@ -516,13 +516,10 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     options: Ntt.TransferOptions,
     outboxItem?: Keypair
   ): AsyncGenerator<UnsignedTransaction<N, C>, any, unknown> {
-    console.log("wtf");
     const config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");
 
     outboxItem = outboxItem ?? Keypair.generate();
-
-    console.log(sender);
 
     const payerAddress = new SolanaAddress(sender).unwrap();
     const fromAuthority = payerAddress;
@@ -600,6 +597,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     }).compileToV0Message(luts);
 
     const vtx = new VersionedTransaction(messageV0);
+
+    console.log(encoding.b64.encode(vtx.message.serialize()));
+
     yield this.createUnsignedTx(
       { transaction: vtx, signers: [outboxItem] },
       "Ntt.Transfer"
