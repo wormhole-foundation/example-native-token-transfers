@@ -24,10 +24,10 @@ import {
   VersionedTransaction
 } from '@solana/web3.js'
 import { Keccak } from 'sha3'
-import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from '../../idl/ts/example_native_token_transfers'
+import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from '../idl/1_0_0/ts/example_native_token_transfers'
 import { BPF_LOADER_UPGRADEABLE_PROGRAM_ID, programDataAddress, chainIdToBeBytes, derivePda } from './utils'
 import * as splToken from '@solana/spl-token';
-import IDL from '../../idl/json/example_native_token_transfers.json';
+import IDL from '../idl/1_0_0/json/example_native_token_transfers.json';
 
 export * from './utils/wormhole'
 
@@ -205,7 +205,7 @@ export class NTT {
 
     // the return buffer is in base64 and it encodes the string with a 32 bit
     // little endian length prefix.
-    const buffer = Buffer.from(txSimulation.value.returnData?.data[0], 'base64')
+    const buffer = Buffer.from(txSimulation.value.returnData?.data[0]!, 'base64')
     const len = buffer.readUInt32LE(0)
     return buffer.slice(4, len + 4).toString()
   }

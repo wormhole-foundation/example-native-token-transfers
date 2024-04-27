@@ -11,8 +11,8 @@ import {
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 import { Program } from "@coral-xyz/anchor";
-import { NttQuoter as Idl } from '../../idl/ts/ntt_quoter'
-import IDL from "../../idl/json/ntt_quoter.json";
+import { NttQuoter as Idl } from '../idl/1_0_0/ts/ntt_quoter'
+import IDL from "../idl/1_0_0/json/ntt_quoter.json";
 import { U64, programDataLayout, programDataAddress, chainIdToBeBytes, derivePda } from "./utils";
 
 //constants that must match ntt-quoter lib.rs / implementation:
