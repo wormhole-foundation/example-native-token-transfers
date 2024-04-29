@@ -1,5 +1,5 @@
 export type NttQuoter = {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "name": "ntt_quoter",
   "instructions": [
     {
@@ -585,10 +585,9 @@ export type NttQuoter = {
       "msg": "The price cannot be zero"
     }
   ]
-};
-
+}
 export const IDL: NttQuoter = {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "name": "ntt_quoter",
   "instructions": [
     {
@@ -1174,4 +1173,5 @@ export const IDL: NttQuoter = {
       "msg": "The price cannot be zero"
     }
   ]
-};
+}
+

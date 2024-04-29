@@ -12,8 +12,8 @@ import {
   serialize,
   serializePayload,
   signSendWait as ssw,
-  testing,
 } from "@wormhole-foundation/sdk-connect";
+import * as testing from "@wormhole-foundation/sdk-definitions/testing";
 import {
   SolanaAddress,
   SolanaPlatform,
@@ -24,7 +24,7 @@ import * as fs from "fs";
 
 import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { AccountAddress } from "@wormhole-foundation/sdk";
-import { DummyTransferHook } from "../ts/sdk/anchor-idl/1_0_0/dummy_transfer_hook.js";
+import { DummyTransferHook } from "../ts/idl/1_0_0/ts/dummy_transfer_hook.js";
 import { SolanaNtt } from "../ts/sdk/index.js";
 
 const solanaRootDir = `${__dirname}/../`;

@@ -39,9 +39,6 @@
     "rebuild": "npm run clean && npm run build",
     "clean": "rm -rf ./dist",
     "test:ci": "jest --config ./jest.config.ts",
-    "generate": "export IDL_VERSION=`tsx scripts/readVersion.ts` && mkdir -p ./ts/sdk/anchor-idl/$IDL_VERSION && npm run copy:idl && npm run copy:types",
-    "copy:idl": "cp ./target/idl/*.json ./ts/sdk/anchor-idl/$IDL_VERSION/",
-    "copy:types": "cp ./target/types/*.ts ./ts/sdk/anchor-idl/$IDL_VERSION/",
     "build:contracts": "make build"
   },
   "devDependencies": {
