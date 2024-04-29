@@ -41,6 +41,13 @@ pub struct ReleaseInbound<'info> {
     pub mint: InterfaceAccount<'info, token_interface::Mint>,
 
     pub token_program: Interface<'info, token_interface::TokenInterface>,
+
+    /// CHECK: the token program checks if this indeed the right authority for the mint
+    #[account(
+        mut,
+        address = config.custody
+    )]
+    pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -52,6 +59,9 @@ pub struct ReleaseInboundArgs {
 
 #[derive(Accounts)]
 pub struct ReleaseInboundMint<'info> {
+    #[account(
+        constraint = common.config.mode == Mode::Burning @ NTTError::InvalidMode,
+    )]
     common: ReleaseInbound<'info>,
 }
 
@@ -62,8 +72,8 @@ pub struct ReleaseInboundMint<'info> {
 /// Setting this flag to `false` is useful when bundling this instruction
 /// together with [`crate::instructions::redeem`] in a transaction, so that the minting
 /// is attempted optimistically.
-pub fn release_inbound_mint(
-    ctx: Context<ReleaseInboundMint>,
+pub fn release_inbound_mint<'info>(
+    ctx: Context<'_, '_, '_, 'info, ReleaseInboundMint<'info>>,
     args: ReleaseInboundArgs,
 ) -> Result<()> {
     let inbox_item = &mut ctx.accounts.common.inbox_item;
@@ -79,38 +89,65 @@ pub fn release_inbound_mint(
     }
 
     assert!(inbox_item.release_status == ReleaseStatus::Released);
-    match ctx.accounts.common.config.mode {
-        Mode::Burning => token_interface::mint_to(
-            CpiContext::new_with_signer(
-                ctx.accounts.common.token_program.to_account_info(),
-                token_interface::MintTo {
-                    mint: ctx.accounts.common.mint.to_account_info(),
-                    to: ctx.accounts.common.recipient.to_account_info(),
-                    authority: ctx.accounts.common.token_authority.clone(),
-                },
-                &[&[
-                    crate::TOKEN_AUTHORITY_SEED,
-                    &[ctx.bumps.common.token_authority],
-                ]],
-            ),
-            inbox_item.amount,
+
+    // NOTE: minting tokens is a two-step process:
+    // 1. Mint tokens to the custody account
+    // 2. Transfer the tokens from the custody account to the recipient
+    //
+    // This is done to ensure that if the token has a transfer hook defined, it
+    // will be called after the tokens are minted.
+    // Unfortunately the Token2022 program doesn't trigger transfer hooks when
+    // minting tokens, so we have to do it "manually" via a transfer.
+    //
+    // If we didn't do this, transfer hooks could be bypassed by transferring
+    // the tokens out through NTT first, then back in to the intended recipient.
+    //
+    // The [`transfer_burn`] function operates in a similar way
+    // (transfer to custody from sender, *then* burn).
+
+    // Step 1: mint tokens to the custody account
+    token_interface::mint_to(
+        CpiContext::new_with_signer(
+            ctx.accounts.common.token_program.to_account_info(),
+            token_interface::MintTo {
+                mint: ctx.accounts.common.mint.to_account_info(),
+                to: ctx.accounts.common.custody.to_account_info(),
+                authority: ctx.accounts.common.token_authority.clone(),
+            },
+            &[&[
+                crate::TOKEN_AUTHORITY_SEED,
+                &[ctx.bumps.common.token_authority],
+            ]],
         ),
-        Mode::Locking => Err(NTTError::InvalidMode.into()),
-    }
+        inbox_item.amount,
+    )?;
+
+    // Step 2: transfer the tokens from the custody account to the recipient
+    onchain::invoke_transfer_checked(
+        &ctx.accounts.common.token_program.key(),
+        ctx.accounts.common.custody.to_account_info(),
+        ctx.accounts.common.mint.to_account_info(),
+        ctx.accounts.common.recipient.to_account_info(),
+        ctx.accounts.common.token_authority.clone(),
+        ctx.remaining_accounts,
+        inbox_item.amount,
+        ctx.accounts.common.mint.decimals,
+        &[&[
+            crate::TOKEN_AUTHORITY_SEED,
+            &[ctx.bumps.common.token_authority],
+        ]],
+    )?;
+    Ok(())
 }
 
 // Lock/unlock
 
 #[derive(Accounts)]
 pub struct ReleaseInboundUnlock<'info> {
-    common: ReleaseInbound<'info>,
-
-    /// CHECK: the token program checks if this indeed the right authority for the mint
     #[account(
-        mut,
-        address = common.config.custody
+        constraint = common.config.mode == Mode::Locking @ NTTError::InvalidMode,
     )]
-    pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
+    common: ReleaseInbound<'info>,
 }
 
 /// Release an inbound transfer and unlock the tokens to the recipient.
@@ -136,25 +173,19 @@ pub fn release_inbound_unlock<'info>(
         }
     }
 
-    assert!(inbox_item.release_status == ReleaseStatus::Released);
-    match ctx.accounts.common.config.mode {
-        Mode::Burning => Err(NTTError::InvalidMode.into()),
-        Mode::Locking => {
-            onchain::invoke_transfer_checked(
-                &ctx.accounts.common.token_program.key(),
-                ctx.accounts.custody.to_account_info(),
-                ctx.accounts.common.mint.to_account_info(),
-                ctx.accounts.common.recipient.to_account_info(),
-                ctx.accounts.common.token_authority.clone(),
-                ctx.remaining_accounts,
-                inbox_item.amount,
-                ctx.accounts.common.mint.decimals,
-                &[&[
-                    crate::TOKEN_AUTHORITY_SEED,
-                    &[ctx.bumps.common.token_authority],
-                ]],
-            )?;
-            Ok(())
-        }
-    }
+    onchain::invoke_transfer_checked(
+        &ctx.accounts.common.token_program.key(),
+        ctx.accounts.common.custody.to_account_info(),
+        ctx.accounts.common.mint.to_account_info(),
+        ctx.accounts.common.recipient.to_account_info(),
+        ctx.accounts.common.token_authority.clone(),
+        ctx.remaining_accounts,
+        inbox_item.amount,
+        ctx.accounts.common.mint.decimals,
+        &[&[
+            crate::TOKEN_AUTHORITY_SEED,
+            &[ctx.bumps.common.token_authority],
+        ]],
+    )?;
+    Ok(())
 }
