@@ -107,8 +107,7 @@ export type DummyTransferHook = {
       }
     }
   ]
-};
-
+}
 export const IDL: DummyTransferHook = {
   "version": "2.0.0",
   "name": "dummy_transfer_hook",
@@ -218,4 +217,5 @@ export const IDL: DummyTransferHook = {
       }
     }
   ]
-};
+}
+

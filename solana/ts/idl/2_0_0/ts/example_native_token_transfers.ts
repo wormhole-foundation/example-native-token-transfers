@@ -1262,38 +1262,6 @@ export type ExampleNativeTokenTransfers = {
       }
     },
     {
-      "name": "validatedTransceiverMessage",
-      "generics": [
-        "A"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "fromChain",
-            "type": {
-              "defined": "ChainId"
-            }
-          },
-          {
-            "name": "message",
-            "type": {
-              "definedWithTypeArgs": {
-                "name": "TransceiverMessageData",
-                "args": [
-                  {
-                    "type": {
-                      "generic": "A"
-                    }
-                  }
-                ]
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "nttManagerPeer",
       "docs": [
         "A peer on another chain. Stored in a PDA seeded by the chain id."
@@ -1804,85 +1772,6 @@ export type ExampleNativeTokenTransfers = {
       }
     },
     {
-      "name": "NttManagerMessage",
-      "generics": [
-        "A"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "id",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "sender",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "payload",
-            "type": {
-              "generic": "A"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "TransceiverMessageData",
-      "generics": [
-        "A"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "sourceNttManager",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "recipientNttManager",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "nttManagerPayload",
-            "type": {
-              "definedWithTypeArgs": {
-                "name": "NttManagerMessage",
-                "args": [
-                  {
-                    "type": {
-                      "generic": "A"
-                    }
-                  }
-                ]
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "TrimmedAmount",
       "type": {
         "kind": "struct",
@@ -2040,8 +1929,7 @@ export type ExampleNativeTokenTransfers = {
       "msg": "BitmapIndexOutOfBounds"
     }
   ]
-};
-
+}
 export const IDL: ExampleNativeTokenTransfers = {
   "version": "2.0.0",
   "name": "example_native_token_transfers",
@@ -3306,38 +3194,6 @@ export const IDL: ExampleNativeTokenTransfers = {
       }
     },
     {
-      "name": "validatedTransceiverMessage",
-      "generics": [
-        "A"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "fromChain",
-            "type": {
-              "defined": "ChainId"
-            }
-          },
-          {
-            "name": "message",
-            "type": {
-              "definedWithTypeArgs": {
-                "name": "TransceiverMessageData",
-                "args": [
-                  {
-                    "type": {
-                      "generic": "A"
-                    }
-                  }
-                ]
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "nttManagerPeer",
       "docs": [
         "A peer on another chain. Stored in a PDA seeded by the chain id."
@@ -3848,85 +3704,6 @@ export const IDL: ExampleNativeTokenTransfers = {
       }
     },
     {
-      "name": "NttManagerMessage",
-      "generics": [
-        "A"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "id",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "sender",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "payload",
-            "type": {
-              "generic": "A"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "TransceiverMessageData",
-      "generics": [
-        "A"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "sourceNttManager",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "recipientNttManager",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
-          },
-          {
-            "name": "nttManagerPayload",
-            "type": {
-              "definedWithTypeArgs": {
-                "name": "NttManagerMessage",
-                "args": [
-                  {
-                    "type": {
-                      "generic": "A"
-                    }
-                  }
-                ]
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "TrimmedAmount",
       "type": {
         "kind": "struct",
@@ -4084,4 +3861,5 @@ export const IDL: ExampleNativeTokenTransfers = {
       "msg": "BitmapIndexOutOfBounds"
     }
   ]
-};
+}
+

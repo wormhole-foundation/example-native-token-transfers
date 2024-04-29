@@ -1,5 +1,5 @@
 export type WormholeGovernance = {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "name": "wormhole_governance",
   "instructions": [
     {
@@ -13,7 +13,10 @@ export type WormholeGovernance = {
         {
           "name": "governance",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "governed program."
+          ]
         },
         {
           "name": "vaa",
@@ -63,12 +66,16 @@ export type WormholeGovernance = {
       "code": 6001,
       "name": "InvalidGovernanceEmitter",
       "msg": "InvalidGovernanceEmitter"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidGovernanceProgram",
+      "msg": "InvalidGovernanceProgram"
     }
   ]
-};
-
+}
 export const IDL: WormholeGovernance = {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "name": "wormhole_governance",
   "instructions": [
     {
@@ -82,7 +89,10 @@ export const IDL: WormholeGovernance = {
         {
           "name": "governance",
           "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "governed program."
+          ]
         },
         {
           "name": "vaa",
@@ -132,6 +142,12 @@ export const IDL: WormholeGovernance = {
       "code": 6001,
       "name": "InvalidGovernanceEmitter",
       "msg": "InvalidGovernanceEmitter"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidGovernanceProgram",
+      "msg": "InvalidGovernanceProgram"
     }
   ]
-};
+}
+

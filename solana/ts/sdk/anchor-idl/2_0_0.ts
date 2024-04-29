@@ -1,10 +1,9 @@
-import ntt from "./2_0_0/example_native_token_transfers.json";
-import quoter from "./2_0_0/ntt_quoter.json";
-import governance from "./2_0_0/wormhole_governance.json";
-
-import type { ExampleNativeTokenTransfers } from "./2_0_0/example_native_token_transfers.js";
-import type { NttQuoter } from "./2_0_0/ntt_quoter.js";
-import type { WormholeGovernance } from "./2_0_0/wormhole_governance.js";
+import { type ExampleNativeTokenTransfers } from "../../idl/2_0_0/ts/example_native_token_transfers.js";
+import { IDL as ntt } from "../../idl/2_0_0/ts/example_native_token_transfers.js";
+import { type NttQuoter } from "../../idl/2_0_0/ts/ntt_quoter.js";
+import { IDL as quoter } from "../../idl/2_0_0/ts/ntt_quoter.js";
+import { type WormholeGovernance } from "../../idl/2_0_0/ts/wormhole_governance.js";
+import { IDL as governance } from "../../idl/2_0_0/ts/wormhole_governance.js";
 
 export namespace _2_0_0 {
   export const idl = { ntt, quoter, governance };
