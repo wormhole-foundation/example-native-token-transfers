@@ -1,17 +1,18 @@
 import { IdlAccounts, Program } from "@coral-xyz/anchor";
-import { OmitGenerics, _1_0_0 } from "./anchor-idl/index.js";
+import { OmitGenerics, _1_0_0, _2_0_0 } from "./anchor-idl/index.js";
 import { Connection } from "@solana/web3.js";
 
 export const IdlVersions = {
   "1.0.0": _1_0_0,
-  default: _1_0_0,
+  "2.0.0": _2_0_0,
+  default: _2_0_0,
 } as const;
 export type IdlVersion = keyof typeof IdlVersions;
 
 export namespace NttBindings {
   export type NativeTokenTransfer =
-    OmitGenerics<_1_0_0.RawExampleNativeTokenTransfers>;
-  export type Quoter = OmitGenerics<_1_0_0.RawNttQuoter>;
+    OmitGenerics<_2_0_0.RawExampleNativeTokenTransfers>;
+  export type Quoter = OmitGenerics<_2_0_0.RawNttQuoter>;
 
   export type Config = IdlAccounts<NttBindings.NativeTokenTransfer>["config"];
   export type InboxItem =
