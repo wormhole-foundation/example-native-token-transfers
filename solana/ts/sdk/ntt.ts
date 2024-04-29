@@ -68,9 +68,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   core: SolanaWormholeCore<N, C>;
   pdas: ReturnType<typeof nttAddresses>;
 
-  program: Program<NttBindings.NativeTokenTransfer>;
+  program: Program<NttBindings.NativeTokenTransfer<typeof this.idlVersion>>;
 
-  config?: NttBindings.Config;
+  config?: NttBindings.Config<typeof this.idlVersion>;
   quoter?: NttQuoter;
   addressLookupTable?: AddressLookupTableAccount;
 
@@ -143,7 +143,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     );
   }
 
-  async getConfig(): Promise<NttBindings.Config> {
+  async getConfig(): Promise<NttBindings.Config<typeof this.idlVersion>> {
     this.config =
       this.config ??
       (await this.program.account.config.fetch(this.pdas.configAccount()));
@@ -847,6 +847,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         peer: this.pdas.peerAccount(recipientChain),
         inboxRateLimit: this.pdas.inboxRateLimitAccount(recipientChain),
         sessionAuthority: sessionAuthority,
+        custody: config.custody,
       })
       .instruction();
 
@@ -1163,6 +1164,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           custody: config.custody,
           tokenProgram: config.tokenProgram,
         },
+        custody: config.custody,
       })
       .instruction();
 
