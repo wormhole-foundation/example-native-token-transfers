@@ -140,6 +140,11 @@ export type ExampleNativeTokenTransfers = {
               "isSigner": false
             },
             {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
               "name": "systemProgram",
               "isMut": false,
               "isSigner": false
@@ -158,6 +163,11 @@ export type ExampleNativeTokenTransfers = {
         },
         {
           "name": "sessionAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAuthority",
           "isMut": false,
           "isSigner": false
         }
@@ -221,6 +231,11 @@ export type ExampleNativeTokenTransfers = {
               "isSigner": false
             },
             {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
               "name": "systemProgram",
               "isMut": false,
               "isSigner": false
@@ -240,11 +255,6 @@ export type ExampleNativeTokenTransfers = {
         {
           "name": "sessionAuthority",
           "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "custody",
-          "isMut": true,
           "isSigner": false
         }
       ],
@@ -378,6 +388,11 @@ export type ExampleNativeTokenTransfers = {
               "name": "tokenProgram",
               "isMut": false,
               "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
             }
           ]
         }
@@ -436,13 +451,13 @@ export type ExampleNativeTokenTransfers = {
               "name": "tokenProgram",
               "isMut": false,
               "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
             }
           ]
-        },
-        {
-          "name": "custody",
-          "isMut": true,
-          "isSigner": false
         }
       ],
       "args": [
@@ -2022,6 +2037,11 @@ export const IDL: ExampleNativeTokenTransfers = {
               "isSigner": false
             },
             {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
               "name": "systemProgram",
               "isMut": false,
               "isSigner": false
@@ -2040,6 +2060,11 @@ export const IDL: ExampleNativeTokenTransfers = {
         },
         {
           "name": "sessionAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAuthority",
           "isMut": false,
           "isSigner": false
         }
@@ -2103,6 +2128,11 @@ export const IDL: ExampleNativeTokenTransfers = {
               "isSigner": false
             },
             {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
               "name": "systemProgram",
               "isMut": false,
               "isSigner": false
@@ -2122,11 +2152,6 @@ export const IDL: ExampleNativeTokenTransfers = {
         {
           "name": "sessionAuthority",
           "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "custody",
-          "isMut": true,
           "isSigner": false
         }
       ],
@@ -2260,6 +2285,11 @@ export const IDL: ExampleNativeTokenTransfers = {
               "name": "tokenProgram",
               "isMut": false,
               "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
             }
           ]
         }
@@ -2318,13 +2348,13 @@ export const IDL: ExampleNativeTokenTransfers = {
               "name": "tokenProgram",
               "isMut": false,
               "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
             }
           ]
-        },
-        {
-          "name": "custody",
-          "isMut": true,
-          "isSigner": false
         }
       ],
       "args": [
