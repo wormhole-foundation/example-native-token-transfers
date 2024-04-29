@@ -144,7 +144,7 @@ jobs:
           shell: bash
         - name: Check idl
           run: |
-            git diff --exit-code idl
+            git diff --exit-code ts/idl
         - name: Run tests
           run: anchor test
           shell: bash

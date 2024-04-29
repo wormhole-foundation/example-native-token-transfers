@@ -585,8 +585,7 @@ export type NttQuoter = {
       "msg": "The price cannot be zero"
     }
   ]
-};
-
+}
 export const IDL: NttQuoter = {
   "version": "2.0.0",
   "name": "ntt_quoter",
@@ -1174,4 +1173,5 @@ export const IDL: NttQuoter = {
       "msg": "The price cannot be zero"
     }
   ]
-};
+}
+

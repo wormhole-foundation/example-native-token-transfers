@@ -22,7 +22,7 @@ const WEI_PER_GWEI = 1e9;
 const GWEI_PER_ETH = 1e9;
 
 export class NttQuoter<N extends Network, C extends Chain> {
-  program: Program<NttBindings.Quoter>;
+  program: Program<NttBindings.Quoter<typeof this.idlVersion>>;
   pdas: ReturnType<typeof quoterAddresses>;
 
   instance: PublicKey;
