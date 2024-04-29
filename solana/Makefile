@@ -1,5 +1,5 @@
 .PHONY: build
-build: _anchor-build idl
+build: _anchor-build target/idl/example_native_token_transfers.json
 
 # remove the generics from the idl file. This is necessary as of anchor 0.29.0, because
 # the javascript library does not support generics yet, and just panics
@@ -17,13 +17,15 @@ anchor-test: build idl sdk
 
 .PHONY: idl
 idl: target/idl/example_native_token_transfers.json
-	echo "hi"
-# $(eval VERSION=$(shell grep "const VERSION" programs/example-native-token-transfers/src/lib.rs | cut -d'"' -f2 | sed 's/\./_/g'))
-# @echo "IDL Version: $(VERSION)"
-# @ mkdir -p ts/idl/$(VERSION)/json
-# @ mkdir -p ts/idl/$(VERSION)/ts
-# @ cp -r target/idl/* ts/idl/$(VERSION)/json/
-# @ find target/types/ -name "*.ts" ! -name "*.d.ts" -exec cp {} ts/idl/$(VERSION)/ts/ \;
+	$(eval VERSION=$(shell grep "const VERSION" programs/example-native-token-transfers/src/lib.rs | cut -d'"' -f2 | sed 's/\./_/g'))
+	@echo "IDL Version: $(VERSION)"
+	@ mkdir -p ts/idl/$(VERSION)/json
+	@ mkdir -p ts/idl/$(VERSION)/ts
+	@ cp -r target/idl/* ts/idl/$(VERSION)/json/
+	@for jsonfile in ts/idl/$(VERSION)/json/*.json; do \
+	    tsfile=$$(echo $$jsonfile | sed 's/json\/\(.*\)\.json/ts\/\1.ts/'); \
+	    tsx scripts/regenerateIdl.ts $$jsonfile > $$tsfile; \
+	done
 
 sdk: build
 	@echo "Building SDK"

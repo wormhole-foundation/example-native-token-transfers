@@ -586,9 +586,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const luts: AddressLookupTableAccount[] = [];
     try {
       luts.push(await this.getAddressLookupTable());
-    } catch (e) {
-      console.log(e);
-    }
+    } catch {}
 
     const messageV0 = new TransactionMessage({
       payerKey: payerAddress,
@@ -690,9 +688,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     try {
       luts.push(await this.getAddressLookupTable());
-    } catch (e) {
-      console.log(e);
-    }
+    } catch {}
 
     const messageV0 = new TransactionMessage({
       payerKey: senderAddress,
