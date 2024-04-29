@@ -73,8 +73,7 @@ export type WormholeGovernance = {
       "msg": "InvalidGovernanceProgram"
     }
   ]
-};
-
+}
 export const IDL: WormholeGovernance = {
   "version": "2.0.0",
   "name": "wormhole_governance",
@@ -150,4 +149,5 @@ export const IDL: WormholeGovernance = {
       "msg": "InvalidGovernanceProgram"
     }
   ]
-};
+}
+
