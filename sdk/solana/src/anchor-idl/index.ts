@@ -1,4 +1,5 @@
 export * from "./1_0_0.js";
+export * from "./2_0_0.js";
 
 // This is a workaround for the fact that the anchor idl doesn't support generics
 // yet. This type is used to remove the generics from the idl types.
