@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# cd to the solana root (one level up from the script location)
+cd "$(dirname "$0")"/..
+
+# check if --check is passed (in a way that doesn't complain about unbound variables)
+check=false
+if [[ "${1:-}" == "--check" ]]; then
+    check=true
+fi
+
+version=$(./scripts/program-version)
+failed=0
+
+# update Cargo.toml versions in all Cargo.toml files in the `programs` and
+# `modules` directories
+for cargo in $(find programs modules -name Cargo.toml); do
+    if $check; then
+        if ! grep -q "version = \"$version\"" $cargo; then
+            echo "Error: $cargo is out of date" >&2
+            failed=$((failed + 1))
+        fi
+    else
+        # NOTE: we don't use sed -i because it's not portable
+        cp $cargo $cargo.bak
+        sed "s/^version = .*/version = \"$version\"/" $cargo.bak > $cargo
+        if ! diff $cargo $cargo.bak > /dev/null; then
+            echo "Updated $cargo"
+        fi
+        rm $cargo.bak
+    fi
+done
+
+if [[ $failed -gt 0 ]]; then
+    echo "Run $0 to update versions" >&2
+    exit 1
+fi
