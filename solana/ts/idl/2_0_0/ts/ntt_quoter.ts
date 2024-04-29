@@ -1,5 +1,5 @@
 export type NttQuoter = {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "name": "ntt_quoter",
   "instructions": [
     {
@@ -588,7 +588,7 @@ export type NttQuoter = {
 };
 
 export const IDL: NttQuoter = {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "name": "ntt_quoter",
   "instructions": [
     {

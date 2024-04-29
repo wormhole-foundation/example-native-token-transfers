@@ -1,5 +1,5 @@
 .PHONY: build
-build: _anchor-build target/idl/example_native_token_transfers.json idl
+build: _anchor-build idl
 
 # remove the generics from the idl file. This is necessary as of anchor 0.29.0, because
 # the javascript library does not support generics yet, and just panics
@@ -12,7 +12,7 @@ target/idl/example_native_token_transfers.json: _anchor-build
 _anchor-build:
 	@anchor build --arch sbf
 
-anchor-test: build target/idl/example_native_token_transfers.json sdk
+anchor-test: build idl sdk
 	anchor test --skip-build
 
 .PHONY: idl

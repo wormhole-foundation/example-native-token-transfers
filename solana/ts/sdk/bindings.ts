@@ -39,13 +39,15 @@ export const getNttProgram = (
   connection: Connection,
   address: string,
   version: IdlVersion = "default"
-) =>
-  new Program<NttBindings.NativeTokenTransfer<typeof version>>(
+) => {
+  console.log("getNttProgram", version);
+  return new Program<NttBindings.NativeTokenTransfer>(
     // @ts-ignore
     loadIdlVersion(version).idl.ntt,
     address,
     { connection }
   );
+};
 
 export const getQuoterProgram = (
   connection: Connection,
@@ -53,6 +55,7 @@ export const getQuoterProgram = (
   version: IdlVersion = "default"
 ) =>
   new Program<NttBindings.Quoter<typeof version>>(
+    // @ts-ignore
     loadIdlVersion(version).idl.quoter,
     address,
     {
