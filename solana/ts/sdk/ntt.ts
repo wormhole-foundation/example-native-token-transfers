@@ -11,7 +11,6 @@ import {
 } from './nttLayout'
 import { derivePostedVaaKey, getWormholeDerivedAccounts } from '@certusone/wormhole-sdk/lib/cjs/solana/wormhole'
 import { BN, translateError, type IdlAccounts, Program, AnchorProvider, Wallet, } from '@coral-xyz/anchor'
-import { associatedAddress } from '@coral-xyz/anchor/dist/cjs/utils/token'
 import { getAssociatedTokenAddressSync } from '@solana/spl-token'
 import {
   PublicKey, Keypair,
@@ -22,7 +21,9 @@ import {
   type Connection,
   SystemProgram,
   TransactionMessage,
-  VersionedTransaction
+  VersionedTransaction,
+  Commitment,
+  AccountMeta
 } from '@solana/web3.js'
 import { Keccak } from 'sha3'
 import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from '../../idl/ts/example_native_token_transfers'
@@ -208,7 +209,7 @@ export class NTT {
     // little endian length prefix.
     const buffer = Buffer.from(txSimulation.value.returnData?.data[0], 'base64')
     const len = buffer.readUInt32LE(0)
-    return buffer.slice(4, len + 4).toString()
+    return buffer.subarray(4, len + 4).toString()
   }
 
   // Instructions
@@ -354,22 +355,58 @@ export class NTT {
       shouldQueue: args.shouldQueue
     }
 
-    return await this.program.methods
+    const transferIx = await this.program.methods
       .transferBurn(transferArgs)
-      .accounts({
+      .accountsStrict({
         common: {
           payer: args.payer,
           config: { config: this.configAccountAddress() },
           mint,
           from: args.from,
+          tokenProgram: await this.tokenProgram(config),
           outboxItem: args.outboxItem,
-          outboxRateLimit: this.outboxRateLimitAccountAddress()
+          outboxRateLimit: this.outboxRateLimitAccountAddress(),
+          custody: await this.custodyAccountAddress(config),
+          systemProgram: SystemProgram.programId,
         },
         peer: this.peerAccountAddress(args.recipientChain),
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain),
-        sessionAuthority: this.sessionAuthorityAddress(args.fromAuthority, transferArgs)
+        sessionAuthority: this.sessionAuthorityAddress(args.fromAuthority, transferArgs),
+        tokenAuthority: this.tokenAuthorityAddress()
       })
       .instruction()
+
+    const mintInfo = await splToken.getMint(
+      this.program.provider.connection,
+      config.mint,
+      undefined,
+      config.tokenProgram
+    )
+    const transferHook = splToken.getTransferHook(mintInfo)
+
+    if (transferHook) {
+      const source = args.from
+      const mint = config.mint
+      const destination = await this.custodyAccountAddress(config)
+      const owner = this.sessionAuthorityAddress(args.fromAuthority, transferArgs)
+      await addExtraAccountMetasForExecute(
+        this.program.provider.connection,
+        transferIx,
+        transferHook.programId,
+        source,
+        mint,
+        destination,
+        owner,
+        // TODO(csongor): compute the amount that's passed into transfer.
+        // Leaving this 0 is fine unless the transfer hook accounts addresses
+        // depend on the amount (which is unlikely).
+        // If this turns out to be the case, the amount to put here is the
+        // untrimmed amount after removing dust.
+        0,
+      );
+    }
+
+    return transferIx
   }
 
   /**
@@ -413,11 +450,11 @@ export class NTT {
           from: args.from,
           tokenProgram: await this.tokenProgram(config),
           outboxItem: args.outboxItem,
-          outboxRateLimit: this.outboxRateLimitAccountAddress()
+          outboxRateLimit: this.outboxRateLimitAccountAddress(),
+          custody: await this.custodyAccountAddress(config)
         },
         peer: this.peerAccountAddress(args.recipientChain),
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain),
-        custody: await this.custodyAccountAddress(config),
         sessionAuthority: this.sessionAuthorityAddress(args.fromAuthority, transferArgs)
       })
       .instruction()
@@ -530,7 +567,7 @@ export class NTT {
 
     const mint = await this.mintAccountAddress(config)
 
-    return await this.program.methods
+    const transferIx = await this.program.methods
       .releaseInboundMint({
         revertOnDelay: args.revertOnDelay
       })
@@ -542,10 +579,38 @@ export class NTT {
           recipient: getAssociatedTokenAddressSync(mint, recipientAddress, true, config.tokenProgram),
           mint,
           tokenAuthority: this.tokenAuthorityAddress(),
-          tokenProgram: config.tokenProgram
+          tokenProgram: config.tokenProgram,
+          custody: await this.custodyAccountAddress(config)
         }
       })
       .instruction()
+
+    const mintInfo = await splToken.getMint(this.program.provider.connection, config.mint, undefined, config.tokenProgram)
+    const transferHook = splToken.getTransferHook(mintInfo)
+
+    if (transferHook) {
+      const source = await this.custodyAccountAddress(config)
+      const mint = config.mint
+      const destination = getAssociatedTokenAddressSync(mint, recipientAddress, true, config.tokenProgram)
+      const owner = this.tokenAuthorityAddress()
+      await addExtraAccountMetasForExecute(
+        this.program.provider.connection,
+        transferIx,
+        transferHook.programId,
+        source,
+        mint,
+        destination,
+        owner,
+        // TODO(csongor): compute the amount that's passed into transfer.
+        // Leaving this 0 is fine unless the transfer hook accounts addresses
+        // depend on the amount (which is unlikely).
+        // If this turns out to be the case, the amount to put here is the
+        // untrimmed amount after removing dust.
+        0,
+      );
+    }
+
+    return transferIx
   }
 
   async releaseInboundMint(args: {
@@ -602,9 +667,9 @@ export class NTT {
           recipient: getAssociatedTokenAddressSync(mint, recipientAddress, true, config.tokenProgram),
           mint,
           tokenAuthority: this.tokenAuthorityAddress(),
-          tokenProgram: config.tokenProgram
+          tokenProgram: config.tokenProgram,
+          custody: await this.custodyAccountAddress(config)
         },
-        custody: await this.custodyAccountAddress(config)
       })
       .instruction()
 

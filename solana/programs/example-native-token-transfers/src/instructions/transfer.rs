@@ -1,3 +1,17 @@
+//! This module implements the transfer instruction(s).
+//! There are two types of transfers: burning and locking, depending on the
+//! configuration of the NTT deployment.
+//!
+//! Since these two operations are very similar, we abstract out as much of the
+//! common account structure as possible into the `Transfer` struct.
+//! Due to some unfortunate limitations of Anchor, namely that it's impossible
+//! to propagate instruction data to nested account structs, there is some
+//! amount of duplication between `TransferBurn` and `TransferLock` (exactly the
+//! accounts whose constraints refer to the instruction data).
+//!
+//! See the documentation of [`crate::SESSION_AUTHORITY_SEED`] for an
+//! explanation of the approval flow.
+
 #![allow(clippy::too_many_arguments)]
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
@@ -52,6 +66,15 @@ pub struct Transfer<'info> {
     #[account(mut)]
     pub outbox_rate_limit: Account<'info, OutboxRateLimit>,
 
+    #[account(
+        mut,
+        address = config.custody
+    )]
+    /// Tokens are always transferred to the custody account first regardless of
+    /// the mode.
+    /// For an explanation, see the note in [`transfer_burn`].
+    pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -85,6 +108,9 @@ impl TransferArgs {
 #[derive(Accounts)]
 #[instruction(args: TransferArgs)]
 pub struct TransferBurn<'info> {
+    #[account(
+        constraint = common.config.mode == Mode::Burning @ NTTError::InvalidMode,
+    )]
     pub common: Transfer<'info>,
 
     #[account(
@@ -110,16 +136,20 @@ pub struct TransferBurn<'info> {
         ],
         bump,
     )]
+    /// See [`crate::SESSION_AUTHORITY_SEED`] for an explanation of the flow.
     pub session_authority: AccountInfo<'info>,
+
+    #[account(
+        seeds = [crate::TOKEN_AUTHORITY_SEED],
+        bump,
+    )]
+    pub token_authority: AccountInfo<'info>,
 }
 
-pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<()> {
-    require_eq!(
-        ctx.accounts.common.config.mode,
-        Mode::Burning,
-        NTTError::InvalidMode
-    );
-
+pub fn transfer_burn<'info>(
+    ctx: Context<'_, '_, '_, 'info, TransferBurn<'info>>,
+    args: TransferArgs,
+) -> Result<()> {
     let accs = ctx.accounts;
     let TransferArgs {
         mut amount,
@@ -136,30 +166,67 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
     )
     .map_err(NTTError::from)?;
 
-    let before = accs.common.from.amount;
+    let before = accs.common.custody.amount;
 
+    // NOTE: burning tokens is a two-step process:
+    // 1. Transfer the tokens to the custody account
+    // 2. Burn the tokens from the custody account
+    //
+    // This is done to ensure that if the token has a transfer hook defined, it
+    // will be called before the tokens are burned.
+    // Unfortunately the Token2022 program doesn't trigger transfer hooks when
+    // burning tokens, so we have to do it "manually" via a transfer.
+    //
+    // If we didn't do this, transfer hooks could be bypassed by transferring
+    // the tokens out through NTT first, then back in to the intended recipient.
+    //
+    // The [`release_inbound_mint`] function operates in a similar way
+    // (mint to custody, *then* transfer to recipient).
+
+    // Step 1: transfer to custody account
+    onchain::invoke_transfer_checked(
+        &accs.common.token_program.key(),
+        accs.common.from.to_account_info(),
+        accs.common.mint.to_account_info(),
+        accs.common.custody.to_account_info(),
+        accs.session_authority.to_account_info(),
+        ctx.remaining_accounts,
+        amount,
+        accs.common.mint.decimals,
+        &[&[
+            crate::SESSION_AUTHORITY_SEED,
+            accs.common.from.owner.as_ref(),
+            args.keccak256().as_ref(),
+            &[ctx.bumps.session_authority],
+        ]],
+    )?;
+
+    // Step 2: burn the tokens from the custody account
     token_interface::burn(
         CpiContext::new_with_signer(
             accs.common.token_program.to_account_info(),
             token_interface::Burn {
                 mint: accs.common.mint.to_account_info(),
-                from: accs.common.from.to_account_info(),
-                authority: accs.session_authority.to_account_info(),
+                from: accs.common.custody.to_account_info(),
+                authority: accs.token_authority.to_account_info(),
             },
-            &[&[
-                crate::SESSION_AUTHORITY_SEED,
-                accs.common.from.owner.as_ref(),
-                args.keccak256().as_ref(),
-                &[ctx.bumps.session_authority],
-            ]],
+            &[&[crate::TOKEN_AUTHORITY_SEED, &[ctx.bumps.token_authority]]],
         ),
         amount,
     )?;
 
-    accs.common.from.reload()?;
-    let after = accs.common.from.amount;
+    accs.common.custody.reload()?;
+    let after = accs.common.custody.amount;
 
-    if after != before - amount {
+    // NOTE: we currently do not support tokens with fees. Support could be
+    // added, but it would require the client to calculate the amount _before_
+    // paying fees that results in an amount that can safely be trimmed.
+    // Otherwise, if the amount after paying fees has dust, then that amount
+    // would be lost.
+    // To support fee tokens, we would first transfer the amount, _then_ assert
+    // that the resulting amount has no dust (instead of removing dust before
+    // the transfer like we do now).
+    if after != before {
         return Err(NTTError::BadAmountAfterBurn.into());
     }
 
@@ -174,7 +241,9 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
         recipient_ntt_manager,
         recipient_address,
         should_queue,
-    )
+    )?;
+
+    Ok(())
 }
 
 // Lock/unlock
@@ -182,6 +251,9 @@ pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<(
 #[derive(Accounts)]
 #[instruction(args: TransferArgs)]
 pub struct TransferLock<'info> {
+    #[account(
+        constraint = common.config.mode == Mode::Locking @ NTTError::InvalidMode,
+    )]
     pub common: Transfer<'info>,
 
     #[account(
@@ -207,25 +279,14 @@ pub struct TransferLock<'info> {
         ],
         bump,
     )]
+    /// See [`crate::SESSION_AUTHORITY_SEED`] for an explanation of the flow.
     pub session_authority: AccountInfo<'info>,
-
-    #[account(
-        mut,
-        address = common.config.custody
-    )]
-    pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
 }
 
 pub fn transfer_lock<'info>(
     ctx: Context<'_, '_, '_, 'info, TransferLock<'info>>,
     args: TransferArgs,
 ) -> Result<()> {
-    require_eq!(
-        ctx.accounts.common.config.mode,
-        Mode::Locking,
-        NTTError::InvalidMode
-    );
-
     let accs = ctx.accounts;
     let TransferArgs {
         mut amount,
@@ -242,13 +303,13 @@ pub fn transfer_lock<'info>(
     )
     .map_err(NTTError::from)?;
 
-    let before = accs.custody.amount;
+    let before = accs.common.custody.amount;
 
     onchain::invoke_transfer_checked(
         &accs.common.token_program.key(),
         accs.common.from.to_account_info(),
         accs.common.mint.to_account_info(),
-        accs.custody.to_account_info(),
+        accs.common.custody.to_account_info(),
         accs.session_authority.to_account_info(),
         ctx.remaining_accounts,
         amount,
@@ -261,8 +322,8 @@ pub fn transfer_lock<'info>(
         ]],
     )?;
 
-    accs.custody.reload()?;
-    let after = accs.custody.amount;
+    accs.common.custody.reload()?;
+    let after = accs.common.custody.amount;
 
     // NOTE: we currently do not support tokens with fees. Support could be
     // added, but it would require the client to calculate the amount _before_

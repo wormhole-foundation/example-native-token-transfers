@@ -67,9 +67,8 @@ pub struct Initialize<'info> {
         associated_token::authority = token_authority,
         associated_token::token_program = token_program,
     )]
-    /// The custody account that holds tokens in locking mode.
-    /// NOTE: the account is unconditionally initialized, but not used in
-    /// burning mode.
+    /// The custody account that holds tokens in locking mode and temporarily
+    /// holds tokens in burning mode.
     /// CHECK: Use init_if_needed here to prevent a denial-of-service of the [`initialize`]
     /// function if  the token account has already been created.
     pub custody: InterfaceAccount<'info, token_interface::TokenAccount>,
