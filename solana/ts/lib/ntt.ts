@@ -31,8 +31,8 @@ import {
   type NttManagerMessage,
 } from "@wormhole-foundation/sdk-definitions-ntt";
 import { utils } from "@wormhole-foundation/sdk-solana-core";
-import IDL from "../../target/idl/example_native_token_transfers.json";
-import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from "../../target/types/example_native_token_transfers.js";
+import IDL from "../idl/2_0_0/json/example_native_token_transfers.json";
+import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from "../idl/2_0_0/ts/example_native_token_transfers.js";
 import {
   BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
   nttAddresses,

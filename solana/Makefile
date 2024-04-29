@@ -17,10 +17,12 @@ anchor-test: build target/idl/example_native_token_transfers.json sdk
 
 .PHONY: idl
 idl: target/idl/example_native_token_transfers.json
-	@ mkdir -p $@/json
-	@ mkdir -p $@/ts
-	@ cp -r target/idl/* $@/json/
-	@ cp -r target/types/* $@/ts/
+	$(eval VERSION=$(shell grep "const VERSION" programs/example-native-token-transfers/src/lib.rs | cut -d'"' -f2 | sed 's/\./_/g'))
+	@echo "IDL Version: $(VERSION)"
+	@ mkdir -p ts/idl/$(VERSION)/json
+	@ mkdir -p ts/idl/$(VERSION)/ts
+	@ cp -r target/idl/* ts/idl/$(VERSION)/json/
+	@ find target/types/ -name "*.ts" ! -name "*.d.ts" -exec cp {} ts/idl/$(VERSION)/ts/ \;
 
 sdk: build
 	@echo "Building SDK"
