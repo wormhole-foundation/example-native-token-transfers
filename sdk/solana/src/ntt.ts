@@ -789,6 +789,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         peer: this.pdas.peerAccount(recipientChain),
         inboxRateLimit: this.pdas.inboxRateLimitAccount(recipientChain),
         sessionAuthority: sessionAuthority,
+        custody: config.custody,
       })
       .instruction();
   }
@@ -1017,6 +1018,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           custody: config.custody,
           tokenProgram: config.tokenProgram,
         },
+        custody: config.custody,
       })
       .instruction();
   }
