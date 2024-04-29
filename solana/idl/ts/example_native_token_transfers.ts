@@ -45,9 +45,8 @@ export type ExampleNativeTokenTransfers = {
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "The custody account that holds tokens in locking mode.",
-            "NOTE: the account is unconditionally initialized, but not used in",
-            "burning mode.",
+            "The custody account that holds tokens in locking mode and temporarily",
+            "holds tokens in burning mode.",
             "function if  the token account has already been created."
           ]
         },
@@ -140,6 +139,16 @@ export type ExampleNativeTokenTransfers = {
               "isSigner": false
             },
             {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false,
+              "docs": [
+                "Tokens are always transferred to the custody account first regardless of",
+                "the mode.",
+                "For an explanation, see the note in [`transfer_burn`]."
+              ]
+            },
+            {
               "name": "systemProgram",
               "isMut": false,
               "isSigner": false
@@ -158,6 +167,14 @@ export type ExampleNativeTokenTransfers = {
         },
         {
           "name": "sessionAuthority",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "See [`crate::SESSION_AUTHORITY_SEED`] for an explanation of the flow."
+          ]
+        },
+        {
+          "name": "tokenAuthority",
           "isMut": false,
           "isSigner": false
         }
@@ -221,6 +238,16 @@ export type ExampleNativeTokenTransfers = {
               "isSigner": false
             },
             {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false,
+              "docs": [
+                "Tokens are always transferred to the custody account first regardless of",
+                "the mode.",
+                "For an explanation, see the note in [`transfer_burn`]."
+              ]
+            },
+            {
               "name": "systemProgram",
               "isMut": false,
               "isSigner": false
@@ -240,12 +267,10 @@ export type ExampleNativeTokenTransfers = {
         {
           "name": "sessionAuthority",
           "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "custody",
-          "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "See [`crate::SESSION_AUTHORITY_SEED`] for an explanation of the flow."
+          ]
         }
       ],
       "args": [
@@ -378,6 +403,11 @@ export type ExampleNativeTokenTransfers = {
               "name": "tokenProgram",
               "isMut": false,
               "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
             }
           ]
         }
@@ -436,13 +466,13 @@ export type ExampleNativeTokenTransfers = {
               "name": "tokenProgram",
               "isMut": false,
               "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
             }
           ]
-        },
-        {
-          "name": "custody",
-          "isMut": true,
-          "isSigner": false
         }
       ],
       "args": [
@@ -1927,9 +1957,8 @@ export const IDL: ExampleNativeTokenTransfers = {
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "The custody account that holds tokens in locking mode.",
-            "NOTE: the account is unconditionally initialized, but not used in",
-            "burning mode.",
+            "The custody account that holds tokens in locking mode and temporarily",
+            "holds tokens in burning mode.",
             "function if  the token account has already been created."
           ]
         },
@@ -2022,6 +2051,16 @@ export const IDL: ExampleNativeTokenTransfers = {
               "isSigner": false
             },
             {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false,
+              "docs": [
+                "Tokens are always transferred to the custody account first regardless of",
+                "the mode.",
+                "For an explanation, see the note in [`transfer_burn`]."
+              ]
+            },
+            {
               "name": "systemProgram",
               "isMut": false,
               "isSigner": false
@@ -2040,6 +2079,14 @@ export const IDL: ExampleNativeTokenTransfers = {
         },
         {
           "name": "sessionAuthority",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "See [`crate::SESSION_AUTHORITY_SEED`] for an explanation of the flow."
+          ]
+        },
+        {
+          "name": "tokenAuthority",
           "isMut": false,
           "isSigner": false
         }
@@ -2103,6 +2150,16 @@ export const IDL: ExampleNativeTokenTransfers = {
               "isSigner": false
             },
             {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false,
+              "docs": [
+                "Tokens are always transferred to the custody account first regardless of",
+                "the mode.",
+                "For an explanation, see the note in [`transfer_burn`]."
+              ]
+            },
+            {
               "name": "systemProgram",
               "isMut": false,
               "isSigner": false
@@ -2122,12 +2179,10 @@ export const IDL: ExampleNativeTokenTransfers = {
         {
           "name": "sessionAuthority",
           "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "custody",
-          "isMut": true,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "See [`crate::SESSION_AUTHORITY_SEED`] for an explanation of the flow."
+          ]
         }
       ],
       "args": [
@@ -2260,6 +2315,11 @@ export const IDL: ExampleNativeTokenTransfers = {
               "name": "tokenProgram",
               "isMut": false,
               "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
             }
           ]
         }
@@ -2318,13 +2378,13 @@ export const IDL: ExampleNativeTokenTransfers = {
               "name": "tokenProgram",
               "isMut": false,
               "isSigner": false
+            },
+            {
+              "name": "custody",
+              "isMut": true,
+              "isSigner": false
             }
           ]
-        },
-        {
-          "name": "custody",
-          "isMut": true,
-          "isSigner": false
         }
       ],
       "args": [
