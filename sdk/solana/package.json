@@ -41,7 +41,7 @@
     "test:ci": "jest --config ./jest.config.ts",
     "copy:idl": "cp ../../solana/target/idl/*.json ./src/anchor-idl/$IDL_VERSION/",
     "copy:types": "cp ../../solana/target/types/*.ts ./src/anchor-idl/$IDL_VERSION/",
-    "generate": "export IDL_VERSION=`tsx scripts/readVersion.ts` && mkdir ./src/anchor-idl/$IDL_VERSION && npm run copy:idl && npm run copy:types",
+    "generate": "export IDL_VERSION=`tsx scripts/readVersion.ts` && mkdir -p ./src/anchor-idl/$IDL_VERSION && npm run copy:idl && npm run copy:types",
     "build:contracts": "cd ../../solana && make build"
   },
   "devDependencies": {
