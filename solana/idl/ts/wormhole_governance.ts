@@ -1,5 +1,5 @@
 export type WormholeGovernance = {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "name": "wormhole_governance",
   "instructions": [
     {
@@ -76,7 +76,7 @@ export type WormholeGovernance = {
 };
 
 export const IDL: WormholeGovernance = {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "name": "wormhole_governance",
   "instructions": [
     {

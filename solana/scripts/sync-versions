@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# cd to the solana root (one level up from the script location)
+cd "$(dirname "$0")"/..
+
+# check if --check is passed (in a way that doesn't complain about unbound variables)
+check=false
+if [[ "${1:-}" == "--check" ]]; then
+    check=true
+fi
+
+version=
+
+# grab all lib.rs files that export a VERSION constant
+# and ensure there is exactly one
+for lib in $(find . -name lib.rs); do
+    if grep -q "pub const VERSION" $lib; then
+        echo "Found version in $lib"
+        if [[ -n $version ]]; then
+            echo "Error: multiple versions found" >&2
+            exit 1
+        fi
+        version=$(grep "pub const VERSION" $lib | cut -d '"' -f 2)
+        echo "Version is $version"
+    fi
+done
+
+if [[ -z $version ]]; then
+    echo "Error: version not found" >&2
+    exit 1
+fi
+
+failed=0
+
+# update Cargo.toml versions in all Cargo.toml files in the `programs` and
+# `modules` directories
+for cargo in $(find programs modules -name Cargo.toml); do
+    if $check; then
+        if ! grep -q "version = \"$version\"" $cargo; then
+            echo "Error: $cargo is out of date" >&2
+            failed=$((failed + 1))
+        fi
+    else
+        # NOTE: we don't use sed -i because it's not portable
+        cp $cargo $cargo.bak
+        sed "s/^version = .*/version = \"$version\"/" $cargo.bak > $cargo
+        if ! diff $cargo $cargo.bak > /dev/null; then
+            echo "Updated $cargo"
+        fi
+        rm $cargo.bak
+    fi
+done
+
+if [[ $failed -gt 0 ]]; then
+    exit 1
+fi
