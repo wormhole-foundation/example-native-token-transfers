@@ -26,10 +26,22 @@ const recoverTxids: TransactionId[] = [
   const srcSigner = await getSigner(src);
   const dstSigner = await getSigner(dst);
 
-  const srcNtt = await src.getProtocol("Ntt", {
-    ntt: TEST_NTT_TOKENS[src.chain],
-  });
-  const dstNtt = await dst.getProtocol("Ntt", {
+  const srcNttInit = src.platform.getProtocolInitializer("Ntt");
+  const srcNtt = new srcNttInit(
+    wh.network,
+    src.chain,
+    await src.getRpc(),
+    {
+      ...src.config.contracts,
+      ntt: TEST_NTT_TOKENS[src.chain],
+    },
+    // @ts-ignore
+    "1.0.0"
+  );
+
+  const dstNttInit = dst.platform.getProtocolInitializer("Ntt");
+  const dstNtt = new dstNttInit(wh.network, dst.chain, await dst.getRpc(), {
+    ...dst.config.contracts,
     ntt: TEST_NTT_TOKENS[dst.chain],
   });
 

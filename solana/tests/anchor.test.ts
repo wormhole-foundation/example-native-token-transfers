@@ -166,7 +166,6 @@ describe("example-native-token-transfers", () => {
 
       transaction.feePayer = payer.publicKey;
       transaction.recentBlockhash = blockhash;
-      console.log(transaction);
 
       const txid = await connection.sendTransaction(transaction, [payer, mint]);
       await connection.confirmTransaction(txid, "confirmed");
@@ -205,7 +204,6 @@ describe("example-native-token-transfers", () => {
         },
       });
     } catch (e) {
-      console.error(e);
       throw e;
     }
   });
@@ -255,7 +253,6 @@ describe("example-native-token-transfers", () => {
         const setPeerTxs = ntt.setPeer(remoteMgr, 18, 1000000n, sender);
         await signSendWait(ctx, setPeerTxs, signer);
       } catch (e) {
-        console.error(e);
         throw e;
       }
     });

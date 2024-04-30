@@ -62,18 +62,15 @@ import {
   getNttProgram,
 } from "./bindings.js";
 
-const v = "1.0.0";
-type V = typeof v;
-
 export class SolanaNtt<N extends Network, C extends SolanaChains>
   implements Ntt<N, C>
 {
   core: SolanaWormholeCore<N, C>;
   pdas: ReturnType<typeof nttAddresses>;
 
-  program: Program<NttBindings.NativeTokenTransfer<V>>;
+  program: Program<NttBindings.NativeTokenTransfer<typeof this.version>>;
 
-  config?: NttBindings.Config<V>;
+  config?: NttBindings.Config<typeof this.version>;
   quoter?: NttQuoter;
   addressLookupTable?: AddressLookupTableAccount;
 
@@ -82,11 +79,11 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     readonly chain: C,
     readonly connection: Connection,
     readonly contracts: Contracts & { ntt?: Ntt.Contracts },
-    readonly version: IdlVersion = v
+    readonly version: IdlVersion = "default"
   ) {
     if (!contracts.ntt) throw new Error("Ntt contracts not found");
 
-    this.program = getNttProgram(connection, contracts.ntt.manager, v);
+    this.program = getNttProgram(connection, contracts.ntt.manager, version);
 
     if (this.contracts.ntt?.quoter)
       this.quoter = new NttQuoter(
@@ -279,6 +276,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   // do, it won't actually submit a transaction, so it's cheap to call.
   async *initializeOrUpdateLUT(args: { payer: Keypair }) {
     if (this.version === "1.0.0") return;
+    const program = this.program as Program<
+      NttBindings.NativeTokenTransfer<"2.0.0">
+    >;
 
     // TODO: find a more robust way of fetching a recent slot
     const slot = (await this.connection.getSlot()) - 1;
@@ -290,7 +290,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     });
 
     const whAccs = utils.getWormholeDerivedAccounts(
-      this.program.programId,
+      program.programId,
       this.core.address
     );
     const config = await this.getConfig();
@@ -350,11 +350,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       }
     }
 
-    const ix = await (
-      this.program as unknown as Program<
-        NttBindings.NativeTokenTransfer<"2.0.0">
-      >
-    ).methods
+    const ix = await program.methods
       .initializeLut(new BN(slot))
       .accountsStrict({
         payer: args.payer.publicKey,
@@ -606,17 +602,10 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     const vtx = new VersionedTransaction(messageV0);
 
-    console.log(encoding.b64.encode(vtx.message.serialize()));
-
     yield this.createUnsignedTx(
       { transaction: vtx, signers: [outboxItem] },
       "Ntt.Transfer"
     );
-
-    // yield this.createUnsignedTx(
-    //   { transaction: tx, signers: [outboxItem] },
-    //   "Ntt.Transfer"
-    // );
   }
 
   private async getTokenAccount(sender: PublicKey): Promise<PublicKey> {
@@ -826,49 +815,74 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       args.transferArgs
     );
 
-    const commonAccounts =
-      this.version === "1.0.0"
-        ? {}
-        : {
-            custody: config.custody,
-          };
-    const rootAccounts =
-      this.version === "1.0.0"
-        ? {
-            custody: config.custody,
-          }
-        : {};
-
     const recipientChain = args.transferArgs.recipient.chain;
-    const transferIx = await this.program.methods
-      .transferLock({
-        recipientChain: { id: toChainId(recipientChain) },
-        amount: new BN(args.transferArgs.amount.toString()),
-        recipientAddress: Array.from(
-          args.transferArgs.recipient.address
-            .toUniversalAddress()
-            .toUint8Array()
-        ),
-        shouldQueue: args.transferArgs.shouldQueue,
-      })
-      .accounts({
-        common: {
-          payer: args.payer,
-          config: { config: this.pdas.configAccount() },
-          mint: config.mint,
-          from: args.from,
-          tokenProgram: config.tokenProgram,
-          outboxItem: args.outboxItem,
-          outboxRateLimit: this.pdas.outboxRateLimitAccount(),
-          systemProgram: SystemProgram.programId,
-          ...commonAccounts,
-        },
-        peer: this.pdas.peerAccount(recipientChain),
-        inboxRateLimit: this.pdas.inboxRateLimitAccount(recipientChain),
-        sessionAuthority: sessionAuthority,
-        ...rootAccounts,
-      })
-      .instruction();
+
+    console.log(this.program.idl.version);
+    console.log(this.version);
+    let transferIx;
+    if (this.program.idl.version === "1.0.0") {
+      transferIx = await (
+        this.program as Program<NttBindings.NativeTokenTransfer<"1.0.0">>
+      ).methods
+        .transferLock({
+          recipientChain: { id: toChainId(recipientChain) },
+          amount: new BN(args.transferArgs.amount.toString()),
+          recipientAddress: Array.from(
+            args.transferArgs.recipient.address
+              .toUniversalAddress()
+              .toUint8Array()
+          ),
+          shouldQueue: args.transferArgs.shouldQueue,
+        })
+        .accountsStrict({
+          common: {
+            payer: args.payer,
+            config: { config: this.pdas.configAccount() },
+            mint: config.mint,
+            from: args.from,
+            tokenProgram: config.tokenProgram,
+            outboxItem: args.outboxItem,
+            outboxRateLimit: this.pdas.outboxRateLimitAccount(),
+            systemProgram: SystemProgram.programId,
+          },
+          peer: this.pdas.peerAccount(recipientChain),
+          inboxRateLimit: this.pdas.inboxRateLimitAccount(recipientChain),
+          sessionAuthority: sessionAuthority,
+          custody: config.custody,
+        })
+        .instruction();
+    } else {
+      transferIx = await (
+        this.program as Program<NttBindings.NativeTokenTransfer<"2.0.0">>
+      ).methods
+        .transferLock({
+          recipientChain: { id: toChainId(recipientChain) },
+          amount: new BN(args.transferArgs.amount.toString()),
+          recipientAddress: Array.from(
+            args.transferArgs.recipient.address
+              .toUniversalAddress()
+              .toUint8Array()
+          ),
+          shouldQueue: args.transferArgs.shouldQueue,
+        })
+        .accountsStrict({
+          common: {
+            payer: args.payer,
+            config: { config: this.pdas.configAccount() },
+            mint: config.mint,
+            from: args.from,
+            tokenProgram: config.tokenProgram,
+            outboxItem: args.outboxItem,
+            outboxRateLimit: this.pdas.outboxRateLimitAccount(),
+            systemProgram: SystemProgram.programId,
+            custody: config.custody,
+          },
+          peer: this.pdas.peerAccount(recipientChain),
+          inboxRateLimit: this.pdas.inboxRateLimitAccount(recipientChain),
+          sessionAuthority: sessionAuthority,
+        })
+        .instruction();
+    }
 
     const mintInfo = await splToken.getMint(
       this.connection,
@@ -914,48 +928,76 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     const recipientChain = toChain(args.transferArgs.recipient.chain);
 
-    const commonAccounts =
-      this.version === "1.0.0" ? {} : { custody: config.custody };
-
-    const rootAccounts =
-      this.version === "1.0.0"
-        ? {}
-        : {
-            tokenAuthority: this.pdas.tokenAuthority(),
-          };
-
-    const transferIx = await this.program.methods
-      .transferBurn({
-        recipientChain: { id: toChainId(recipientChain) },
-        amount: new BN(args.transferArgs.amount.toString()),
-        recipientAddress: Array.from(
-          args.transferArgs.recipient.address
-            .toUniversalAddress()
-            .toUint8Array()
-        ),
-        shouldQueue: args.transferArgs.shouldQueue,
-      })
-      .accountsStrict({
-        common: {
-          payer: args.payer,
-          config: { config: this.pdas.configAccount() },
-          mint: config.mint,
-          from: args.from,
-          outboxItem: args.outboxItem,
-          outboxRateLimit: this.pdas.outboxRateLimitAccount(),
-          tokenProgram: config.tokenProgram,
-          systemProgram: SystemProgram.programId,
-          ...commonAccounts,
-        },
-        peer: this.pdas.peerAccount(recipientChain),
-        inboxRateLimit: this.pdas.inboxRateLimitAccount(recipientChain),
-        sessionAuthority: this.pdas.sessionAuthority(
-          args.fromAuthority,
-          args.transferArgs
-        ),
-        ...rootAccounts,
-      })
-      .instruction();
+    let transferIx;
+    if (this.program.idl.version === "1.0.0") {
+      transferIx = await (
+        this.program as Program<NttBindings.NativeTokenTransfer<"1.0.0">>
+      ).methods
+        .transferBurn({
+          recipientChain: { id: toChainId(recipientChain) },
+          amount: new BN(args.transferArgs.amount.toString()),
+          recipientAddress: Array.from(
+            args.transferArgs.recipient.address
+              .toUniversalAddress()
+              .toUint8Array()
+          ),
+          shouldQueue: args.transferArgs.shouldQueue,
+        })
+        .accountsStrict({
+          common: {
+            payer: args.payer,
+            config: { config: this.pdas.configAccount() },
+            mint: config.mint,
+            from: args.from,
+            outboxItem: args.outboxItem,
+            outboxRateLimit: this.pdas.outboxRateLimitAccount(),
+            tokenProgram: config.tokenProgram,
+            systemProgram: SystemProgram.programId,
+          },
+          peer: this.pdas.peerAccount(recipientChain),
+          inboxRateLimit: this.pdas.inboxRateLimitAccount(recipientChain),
+          sessionAuthority: this.pdas.sessionAuthority(
+            args.fromAuthority,
+            args.transferArgs
+          ),
+        })
+        .instruction();
+    } else {
+      transferIx = await (
+        this.program as Program<NttBindings.NativeTokenTransfer<"2.0.0">>
+      ).methods
+        .transferBurn({
+          recipientChain: { id: toChainId(recipientChain) },
+          amount: new BN(args.transferArgs.amount.toString()),
+          recipientAddress: Array.from(
+            args.transferArgs.recipient.address
+              .toUniversalAddress()
+              .toUint8Array()
+          ),
+          shouldQueue: args.transferArgs.shouldQueue,
+        })
+        .accountsStrict({
+          common: {
+            payer: args.payer,
+            config: { config: this.pdas.configAccount() },
+            mint: config.mint,
+            from: args.from,
+            outboxItem: args.outboxItem,
+            outboxRateLimit: this.pdas.outboxRateLimitAccount(),
+            tokenProgram: config.tokenProgram,
+            systemProgram: SystemProgram.programId,
+            custody: config.custody,
+          },
+          peer: this.pdas.peerAccount(recipientChain),
+          inboxRateLimit: this.pdas.inboxRateLimitAccount(recipientChain),
+          sessionAuthority: this.pdas.sessionAuthority(
+            args.fromAuthority,
+            args.transferArgs
+          ),
+          tokenAuthority: this.pdas.tokenAuthority(),
+        })
+        .instruction();
+    }
 
     const mintInfo = await splToken.getMint(
       this.connection,
@@ -1108,28 +1150,49 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         .toNative(this.chain)
         .unwrap();
 
-    const commonAccounts =
-      this.version === "1.0.0" ? {} : { custody: config.custody };
-
     const tokenAddress = await this.getTokenAccount(recipientAddress);
-    const transferIx = await this.program.methods
-      .releaseInboundMint({
-        revertOnDelay: args.revertOnDelay,
-      })
-      .accountsStrict({
-        common: {
-          payer: args.payer,
-          config: { config: this.pdas.configAccount() },
-          inboxItem,
-          recipient: tokenAddress,
-          mint: config.mint,
-          tokenAuthority: this.pdas.tokenAuthority(),
-          ...commonAccounts,
-          tokenProgram: config.tokenProgram,
-        },
-      })
-      .instruction();
 
+    let transferIx;
+    if (this.program.idl.version === "1.0.0") {
+      transferIx = await (
+        this.program as Program<NttBindings.NativeTokenTransfer<"1.0.0">>
+      ).methods
+        .releaseInboundMint({
+          revertOnDelay: args.revertOnDelay,
+        })
+        .accountsStrict({
+          common: {
+            payer: args.payer,
+            config: { config: this.pdas.configAccount() },
+            inboxItem,
+            recipient: tokenAddress,
+            mint: config.mint,
+            tokenAuthority: this.pdas.tokenAuthority(),
+            tokenProgram: config.tokenProgram,
+          },
+        })
+        .instruction();
+    } else {
+      transferIx = await (
+        this.program as Program<NttBindings.NativeTokenTransfer<"2.0.0">>
+      ).methods
+        .releaseInboundMint({
+          revertOnDelay: args.revertOnDelay,
+        })
+        .accountsStrict({
+          common: {
+            payer: args.payer,
+            config: { config: this.pdas.configAccount() },
+            inboxItem,
+            recipient: tokenAddress,
+            mint: config.mint,
+            tokenAuthority: this.pdas.tokenAuthority(),
+            tokenProgram: config.tokenProgram,
+            custody: config.custody,
+          },
+        })
+        .instruction();
+    }
     const mintInfo = await splToken.getMint(
       this.connection,
       config.mint,
@@ -1179,31 +1242,51 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         .toNative(this.chain)
         .unwrap();
 
-    const commonAccounts =
-      this.version === "1.0.0" ? {} : { custody: config.custody };
-    const rootAccounts =
-      this.version === "1.0.0" ? { custody: config.custody } : {};
-
     const inboxItem = this.pdas.inboxItemAccount(args.chain, args.nttMessage);
     const tokenAddress = await this.getTokenAccount(recipientAddress);
-    const transferIx = await this.program.methods
-      .releaseInboundUnlock({
-        revertOnDelay: args.revertOnDelay,
-      })
-      .accounts({
-        common: {
-          payer: args.payer,
-          config: { config: this.pdas.configAccount() },
-          inboxItem: inboxItem,
-          recipient: tokenAddress,
-          mint: config.mint,
-          tokenAuthority: this.pdas.tokenAuthority(),
-          tokenProgram: config.tokenProgram,
-          ...commonAccounts,
-        },
-        ...rootAccounts,
-      })
-      .instruction();
+
+    let transferIx;
+    if (this.program.idl.version === "1.0.0") {
+      transferIx = await (
+        this.program as Program<NttBindings.NativeTokenTransfer<"1.0.0">>
+      ).methods
+        .releaseInboundUnlock({
+          revertOnDelay: args.revertOnDelay,
+        })
+        .accountsStrict({
+          common: {
+            payer: args.payer,
+            config: { config: this.pdas.configAccount() },
+            inboxItem: inboxItem,
+            recipient: tokenAddress,
+            mint: config.mint,
+            tokenAuthority: this.pdas.tokenAuthority(),
+            tokenProgram: config.tokenProgram,
+          },
+          custody: config.custody,
+        })
+        .instruction();
+    } else {
+      transferIx = await (
+        this.program as Program<NttBindings.NativeTokenTransfer<"2.0.0">>
+      ).methods
+        .releaseInboundUnlock({
+          revertOnDelay: args.revertOnDelay,
+        })
+        .accountsStrict({
+          common: {
+            payer: args.payer,
+            config: { config: this.pdas.configAccount() },
+            inboxItem: inboxItem,
+            recipient: tokenAddress,
+            mint: config.mint,
+            tokenAuthority: this.pdas.tokenAuthority(),
+            tokenProgram: config.tokenProgram,
+            custody: config.custody,
+          },
+        })
+        .instruction();
+    }
 
     const mintInfo = await splToken.getMint(
       this.connection,
