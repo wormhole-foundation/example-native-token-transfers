@@ -165,6 +165,11 @@ contract TrimmingTest is Test {
 
     // =============   FUZZ TESTS ================== //
 
+    function testFuzz_setDecimals(TrimmedAmount a, uint8 decimals) public {
+        TrimmedAmount b = a.setDecimals(decimals);
+        assertEq(b.getDecimals(), decimals);
+    }
+
     function test_packUnpack(uint64 amount, uint8 decimals) public {
         TrimmedAmount trimmed = packTrimmedAmount(amount, decimals);
         assertEq(trimmed.getAmount(), amount);
@@ -172,7 +177,7 @@ contract TrimmingTest is Test {
     }
 
     function testFuzz_AddOperatorOverload(TrimmedAmount a, TrimmedAmount b) public {
-        vm.assume(a.getDecimals() == b.getDecimals());
+        a = a.setDecimals(b.getDecimals());
 
         // check if the add operation reverts on an overflow.
         // if it overflows, discard the input
@@ -188,7 +193,7 @@ contract TrimmingTest is Test {
     }
 
     function testFuzz_SubOperatorOverload(TrimmedAmount a, TrimmedAmount b) public {
-        vm.assume(a.getDecimals() == b.getDecimals());
+        a = a.setDecimals(b.getDecimals());
         vm.assume(a.getAmount() >= b.getAmount());
 
         TrimmedAmount subAmt = a - b;
@@ -206,7 +211,7 @@ contract TrimmingTest is Test {
     }
 
     function testFuzz_GtOperatorOverload(TrimmedAmount a, TrimmedAmount b) public {
-        vm.assume(a.getDecimals() == b.getDecimals());
+        a = a.setDecimals(b.getDecimals());
         bool isGt = a > b;
         bool expectedIsGt = gt(a, b);
 
@@ -214,7 +219,7 @@ contract TrimmingTest is Test {
     }
 
     function testFuzz_LtOperatorOverload(TrimmedAmount a, TrimmedAmount b) public {
-        vm.assume(a.getDecimals() == b.getDecimals());
+        a = a.setDecimals(b.getDecimals());
         bool isLt = a > b;
         bool expectedIsLt = gt(a, b);
 
@@ -224,7 +229,7 @@ contract TrimmingTest is Test {
     // invariant: forall (TrimmedAmount a, TrimmedAmount b)
     //            a.saturatingAdd(b).amount <= type(uint64).max
     function testFuzz_saturatingAddDoesNotOverflow(TrimmedAmount a, TrimmedAmount b) public {
-        vm.assume(a.getDecimals() == b.getDecimals());
+        a = a.setDecimals(b.getDecimals());
 
         TrimmedAmount c = a.saturatingAdd(b);
 
