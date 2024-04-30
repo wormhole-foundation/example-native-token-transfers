@@ -62,15 +62,18 @@ import {
   getNttProgram,
 } from "./bindings.js";
 
+const v = "1.0.0";
+type V = typeof v;
+
 export class SolanaNtt<N extends Network, C extends SolanaChains>
   implements Ntt<N, C>
 {
   core: SolanaWormholeCore<N, C>;
   pdas: ReturnType<typeof nttAddresses>;
 
-  program: Program<NttBindings.NativeTokenTransfer<typeof this.idlVersion>>;
+  program: Program<NttBindings.NativeTokenTransfer<V>>;
 
-  config?: NttBindings.Config<typeof this.idlVersion>;
+  config?: NttBindings.Config<V>;
   quoter?: NttQuoter;
   addressLookupTable?: AddressLookupTableAccount;
 
@@ -79,11 +82,12 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     readonly chain: C,
     readonly connection: Connection,
     readonly contracts: Contracts & { ntt?: Ntt.Contracts },
-    readonly idlVersion: IdlVersion = "default"
+    readonly version: IdlVersion = v
   ) {
     if (!contracts.ntt) throw new Error("Ntt contracts not found");
 
-    this.program = getNttProgram(connection, contracts.ntt.manager, idlVersion);
+    this.program = getNttProgram(connection, contracts.ntt.manager, v);
+
     if (this.contracts.ntt?.quoter)
       this.quoter = new NttQuoter(
         connection,
@@ -143,11 +147,11 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     );
   }
 
-  async getConfig(): Promise<NttBindings.Config<typeof this.idlVersion>> {
+  async getConfig(): Promise<NttBindings.Config<typeof this.version>> {
     this.config =
       this.config ??
       (await this.program.account.config.fetch(this.pdas.configAccount()));
-    return this.config;
+    return this.config!;
   }
 
   async getTokenDecimals(): Promise<number> {
@@ -196,7 +200,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     const senderAddress = new SolanaAddress(sender).unwrap();
 
-    const program = getNttProgram(connection, programAddress);
+    const program = getNttProgram(connection, programAddress, "default");
 
     const ix = await program.methods.version().accountsStrict({}).instruction();
     const latestBlockHash =
@@ -274,6 +278,8 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   // This function should be called after each upgrade. If there's nothing to
   // do, it won't actually submit a transaction, so it's cheap to call.
   async *initializeOrUpdateLUT(args: { payer: Keypair }) {
+    if (this.version === "1.0.0") return;
+
     // TODO: find a more robust way of fetching a recent slot
     const slot = (await this.connection.getSlot()) - 1;
 
@@ -344,7 +350,11 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       }
     }
 
-    const ix = await this.program.methods
+    const ix = await (
+      this.program as unknown as Program<
+        NttBindings.NativeTokenTransfer<"2.0.0">
+      >
+    ).methods
       .initializeLut(new BN(slot))
       .accountsStrict({
         payer: args.payer.publicKey,
@@ -816,6 +826,19 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       args.transferArgs
     );
 
+    const commonAccounts =
+      this.version === "1.0.0"
+        ? {}
+        : {
+            custody: config.custody,
+          };
+    const rootAccounts =
+      this.version === "1.0.0"
+        ? {
+            custody: config.custody,
+          }
+        : {};
+
     const recipientChain = args.transferArgs.recipient.chain;
     const transferIx = await this.program.methods
       .transferLock({
@@ -828,7 +851,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         ),
         shouldQueue: args.transferArgs.shouldQueue,
       })
-      .accountsStrict({
+      .accounts({
         common: {
           payer: args.payer,
           config: { config: this.pdas.configAccount() },
@@ -838,12 +861,12 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           outboxItem: args.outboxItem,
           outboxRateLimit: this.pdas.outboxRateLimitAccount(),
           systemProgram: SystemProgram.programId,
-          custody: config.custody,
+          ...commonAccounts,
         },
         peer: this.pdas.peerAccount(recipientChain),
         inboxRateLimit: this.pdas.inboxRateLimitAccount(recipientChain),
         sessionAuthority: sessionAuthority,
-        custody: config.custody,
+        ...rootAccounts,
       })
       .instruction();
 
@@ -885,12 +908,22 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     from: PublicKey;
     fromAuthority: PublicKey;
     outboxItem: PublicKey;
-    config?: NttBindings.Config;
   }): Promise<TransactionInstruction> {
     const config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");
 
     const recipientChain = toChain(args.transferArgs.recipient.chain);
+
+    const commonAccounts =
+      this.version === "1.0.0" ? {} : { custody: config.custody };
+
+    const rootAccounts =
+      this.version === "1.0.0"
+        ? {}
+        : {
+            tokenAuthority: this.pdas.tokenAuthority(),
+          };
+
     const transferIx = await this.program.methods
       .transferBurn({
         recipientChain: { id: toChainId(recipientChain) },
@@ -910,9 +943,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           from: args.from,
           outboxItem: args.outboxItem,
           outboxRateLimit: this.pdas.outboxRateLimitAccount(),
-          custody: config.custody,
           tokenProgram: config.tokenProgram,
           systemProgram: SystemProgram.programId,
+          ...commonAccounts,
         },
         peer: this.pdas.peerAccount(recipientChain),
         inboxRateLimit: this.pdas.inboxRateLimitAccount(recipientChain),
@@ -920,7 +953,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           args.fromAuthority,
           args.transferArgs
         ),
-        tokenAuthority: this.pdas.tokenAuthority(),
+        ...rootAccounts,
       })
       .instruction();
 
@@ -1075,6 +1108,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         .toNative(this.chain)
         .unwrap();
 
+    const commonAccounts =
+      this.version === "1.0.0" ? {} : { custody: config.custody };
+
     const tokenAddress = await this.getTokenAccount(recipientAddress);
     const transferIx = await this.program.methods
       .releaseInboundMint({
@@ -1088,7 +1124,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           recipient: tokenAddress,
           mint: config.mint,
           tokenAuthority: this.pdas.tokenAuthority(),
-          custody: config.custody,
+          ...commonAccounts,
           tokenProgram: config.tokenProgram,
         },
       })
@@ -1143,13 +1179,18 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         .toNative(this.chain)
         .unwrap();
 
+    const commonAccounts =
+      this.version === "1.0.0" ? {} : { custody: config.custody };
+    const rootAccounts =
+      this.version === "1.0.0" ? { custody: config.custody } : {};
+
     const inboxItem = this.pdas.inboxItemAccount(args.chain, args.nttMessage);
     const tokenAddress = await this.getTokenAccount(recipientAddress);
     const transferIx = await this.program.methods
       .releaseInboundUnlock({
         revertOnDelay: args.revertOnDelay,
       })
-      .accountsStrict({
+      .accounts({
         common: {
           payer: args.payer,
           config: { config: this.pdas.configAccount() },
@@ -1157,10 +1198,10 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           recipient: tokenAddress,
           mint: config.mint,
           tokenAuthority: this.pdas.tokenAuthority(),
-          custody: config.custody,
           tokenProgram: config.tokenProgram,
+          ...commonAccounts,
         },
-        custody: config.custody,
+        ...rootAccounts,
       })
       .instruction();
 
@@ -1222,7 +1263,11 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   async getAddressLookupTable(
     useCache = true
   ): Promise<AddressLookupTableAccount> {
+    if (this.version === "1.0.0")
+      throw new Error("Lookup tables not supported for this version");
+
     if (!useCache || !this.addressLookupTable) {
+      // @ts-ignore
       const lut = await this.program.account.lut.fetchNullable(
         this.pdas.lutAccount()
       );

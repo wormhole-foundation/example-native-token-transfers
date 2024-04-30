@@ -41,7 +41,7 @@ export async function getSigner<N extends Network, C extends Chain>(
     case "Solana":
       signer = await solana.getSigner(
         await chain.getRpc(),
-        getEnv("SOL_PRIVATE_KEY", DEVNET_SOL_PRIVATE_KEY),
+        getEnv("OTHER_SOL_PRIVATE_KEY", DEVNET_SOL_PRIVATE_KEY),
         { debug: true }
       );
       break;
