@@ -28,7 +28,7 @@ export namespace NttBindings {
     ProgramAccounts<V>["inboxItem"];
 }
 
-function loadIdlVersion<V extends IdlVersion>(
+function loadIdlVersion<const V extends IdlVersion>(
   version: V
 ): (typeof IdlVersions)[V] {
   if (!(version in IdlVersions))
@@ -36,27 +36,29 @@ function loadIdlVersion<V extends IdlVersion>(
   return IdlVersions[version];
 }
 
-export const getNttProgram = <V extends IdlVersion>(
+export function getNttProgram<const V extends IdlVersion>(
   connection: Connection,
   address: string,
   version: V
-): Program<NttBindings.NativeTokenTransfer<V>> =>
-  new Program<NttBindings.NativeTokenTransfer<V>>(
+): Program<NttBindings.NativeTokenTransfer<V>> {
+  return new Program<NttBindings.NativeTokenTransfer<V>>(
     //@ts-ignore
     loadIdlVersion(version).idl.ntt,
     address,
     { connection }
   );
+}
 
-export const getQuoterProgram = <V extends IdlVersion>(
+export function getQuoterProgram<const V extends IdlVersion>(
   connection: Connection,
   address: string,
   version: V
-) =>
-  new Program<NttBindings.Quoter<V>>(
+) {
+  return new Program<NttBindings.Quoter<V>>(
     loadIdlVersion(version).idl.quoter,
     address,
     {
       connection,
     }
   );
+}
