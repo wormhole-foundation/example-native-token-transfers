@@ -25,6 +25,7 @@ import {
   UnsignedTransaction,
   deserializeLayout,
   encoding,
+  rpc,
   toChain,
   toChainId,
 } from "@wormhole-foundation/sdk-connect";
@@ -188,12 +189,13 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     //
     // It's a little unfortunate but it's the best we can do.
 
-    if (!sender)
-      sender = new SolanaAddress(
-        // The default pubkey is funded on mainnet and devnet
-        // we need a funded account to simulate the transaction below
-        "Hk3SdYTJFpawrvRz4qRztuEt2SqoCG7BGj2yJfDJSFbJ"
-      );
+    if (!sender) {
+      const address =
+        connection.rpcEndpoint === rpc.rpcAddress("Devnet", "Solana")
+          ? "6sbzC1eH4FTujJXWj51eQe25cYvr4xfXbJ1vAj7j2k5J" // The CI pubkey, funded on local network
+          : "Hk3SdYTJFpawrvRz4qRztuEt2SqoCG7BGj2yJfDJSFbJ"; // The default pubkey is funded on mainnet and devnet we need a funded account to simulate the transaction below
+      sender = new SolanaAddress(address);
+    }
 
     const senderAddress = new SolanaAddress(sender).unwrap();
 
