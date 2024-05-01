@@ -68,9 +68,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   core: SolanaWormholeCore<N, C>;
   pdas: ReturnType<typeof nttAddresses>;
 
-  program: Program<NttBindings.NativeTokenTransfer<typeof this.version>>;
+  program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>;
 
-  config?: NttBindings.Config<typeof this.version>;
+  config?: NttBindings.Config<IdlVersion>;
   quoter?: NttQuoter;
   addressLookupTable?: AddressLookupTableAccount;
 
@@ -79,11 +79,15 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     readonly chain: C,
     readonly connection: Connection,
     readonly contracts: Contracts & { ntt?: Ntt.Contracts },
-    readonly version: IdlVersion = "default"
+    readonly version: string = "default"
   ) {
     if (!contracts.ntt) throw new Error("Ntt contracts not found");
 
-    this.program = getNttProgram(connection, contracts.ntt.manager, version);
+    this.program = getNttProgram(
+      connection,
+      contracts.ntt.manager,
+      version as IdlVersion
+    );
 
     if (this.contracts.ntt?.quoter)
       this.quoter = new NttQuoter(
@@ -133,7 +137,11 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     if (!("ntt" in conf.contracts)) throw new Error("Ntt contracts not found");
     const ntt = conf.contracts["ntt"];
 
-    const version = await SolanaNtt._getVersion(ntt.manager, provider);
+    const version = await SolanaNtt.getVersion(
+      provider,
+      //@ts-ignore
+      conf.contracts
+    );
 
     return new SolanaNtt(
       network as N,
@@ -144,7 +152,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     );
   }
 
-  async getConfig(): Promise<NttBindings.Config<typeof this.version>> {
+  async getConfig(): Promise<NttBindings.Config> {
     this.config =
       this.config ??
       (await this.program.account.config.fetch(this.pdas.configAccount()));
@@ -164,17 +172,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     return (await this.getConfig()).custody.toBase58();
   }
 
-  async getVersion(sender: AccountAddress<C>): Promise<string> {
-    return await SolanaNtt._getVersion(
-      this.program.programId.toBase58(),
-      this.connection,
-      sender
-    );
-  }
-
-  static async _getVersion(
-    programAddress: string,
+  static async getVersion(
     connection: Connection,
+    contracts: Contracts & { ntt: Ntt.Contracts },
     sender?: AccountAddress<SolanaChains>
   ): Promise<IdlVersion> {
     // the anchor library has a built-in method to read view functions. However,
@@ -197,7 +197,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     const senderAddress = new SolanaAddress(sender).unwrap();
 
-    const program = getNttProgram(connection, programAddress, "default");
+    const program = getNttProgram(connection, contracts.ntt.manager, "default");
 
     const ix = await program.methods.version().accountsStrict({}).instruction();
     const latestBlockHash =
@@ -817,8 +817,6 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     const recipientChain = args.transferArgs.recipient.chain;
 
-    console.log(this.program.idl.version);
-    console.log(this.version);
     let transferIx;
     if (this.program.idl.version === "1.0.0") {
       transferIx = await (

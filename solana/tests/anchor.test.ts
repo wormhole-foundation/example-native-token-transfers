@@ -427,12 +427,9 @@ describe("example-native-token-transfers", () => {
       });
 
       test("It gets the correct version", async function () {
-        // TODO: need valida address with lamports on network
-
-        const { manager } = overrides["Solana"];
-        const version = await SolanaNtt._getVersion(
-          manager,
+        const version = await SolanaNtt.getVersion(
           await ctx.getRpc(),
+          { ntt: overrides["Solana"] },
           new SolanaAddress(payer.publicKey.toBase58())
         );
         expect(version).toBe("1.0.0");
