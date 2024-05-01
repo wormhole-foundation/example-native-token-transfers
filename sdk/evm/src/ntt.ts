@@ -29,7 +29,6 @@ import {
 } from "@wormhole-foundation/sdk-definitions-ntt";
 import { Contract, type Provider, type TransactionRequest } from "ethers";
 import {
-  AbiVersion,
   NttBindings,
   NttManagerBindings,
   NttTransceiverBindings,
@@ -99,7 +98,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     readonly chain: C,
     readonly provider: Provider,
     readonly contracts: Contracts & { ntt?: Ntt.Contracts },
-    readonly abiVersion: AbiVersion = "default"
+    readonly version: string = "default"
   ) {
     if (!contracts.ntt) throw new Error("No Ntt Contracts provided");
 
@@ -111,7 +110,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     this.tokenAddress = contracts.ntt.token;
     this.managerAddress = contracts.ntt.manager;
 
-    const abiBindings = loadAbiVersion(this.abiVersion);
+    const abiBindings = loadAbiVersion(this.version);
 
     this.manager = abiBindings.NttManager.connect(
       contracts.ntt.manager,
@@ -175,9 +174,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     if (conf.network !== network)
       throw new Error(`Network mismatch: ${conf.network} != ${network}`);
 
-    const { ntt } = conf.contracts as { ntt: Ntt.Contracts };
-
-    const version = await EvmNtt._getVersion(ntt.manager, provider);
+    const version = await EvmNtt.getVersion(provider, conf.contracts);
     return new EvmNtt(network as N, chain, provider, conf.contracts, version);
   }
 
@@ -192,13 +189,12 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     return ixs;
   }
 
-  async getVersion(): Promise<string> {
-    return EvmNtt._getVersion(this.managerAddress, this.provider);
-  }
-
-  static async _getVersion(address: string, provider: Provider) {
+  static async getVersion(
+    provider: Provider,
+    contracts: Contracts & { ntt?: Ntt.Contracts }
+  ) {
     const contract = new Contract(
-      address,
+      contracts.ntt!.manager,
       ["function NTT_MANAGER_VERSION() public view returns (string)"],
       provider
     );
@@ -212,7 +208,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
       return abiVersion;
     } catch (e) {
       console.error(
-        `Failed to get NTT_MANAGER_VERSION from contract ${address}`
+        `Failed to get NTT_MANAGER_VERSION from contract ${contracts.ntt?.manager}`
       );
       throw e;
     }

@@ -166,7 +166,6 @@ describe("example-native-token-transfers", () => {
 
       transaction.feePayer = payer.publicKey;
       transaction.recentBlockhash = blockhash;
-      console.log(transaction);
 
       const txid = await connection.sendTransaction(transaction, [payer, mint]);
       await connection.confirmTransaction(txid, "confirmed");
@@ -205,7 +204,6 @@ describe("example-native-token-transfers", () => {
         },
       });
     } catch (e) {
-      console.error(e);
       throw e;
     }
   });
@@ -255,7 +253,6 @@ describe("example-native-token-transfers", () => {
         const setPeerTxs = ntt.setPeer(remoteMgr, 18, 1000000n, sender);
         await signSendWait(ctx, setPeerTxs, signer);
       } catch (e) {
-        console.error(e);
         throw e;
       }
     });
@@ -430,12 +427,9 @@ describe("example-native-token-transfers", () => {
       });
 
       test("It gets the correct version", async function () {
-        // TODO: need valida address with lamports on network
-
-        const { manager } = overrides["Solana"];
-        const version = await SolanaNtt._getVersion(
-          manager,
+        const version = await SolanaNtt.getVersion(
           await ctx.getRpc(),
+          { ntt: overrides["Solana"] },
           new SolanaAddress(payer.publicKey.toBase58())
         );
         expect(version).toBe("1.0.0");

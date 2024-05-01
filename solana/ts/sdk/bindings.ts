@@ -1,6 +1,6 @@
 import { IdlAccounts, Program } from "@coral-xyz/anchor";
 import { Connection } from "@solana/web3.js";
-import { OmitGenerics, _1_0_0, _2_0_0 } from "./anchor-idl/index.js";
+import { _1_0_0, _2_0_0 } from "./anchor-idl/index.js";
 
 export const IdlVersions = {
   "1.0.0": _1_0_0,
@@ -10,24 +10,25 @@ export const IdlVersions = {
 export type IdlVersion = keyof typeof IdlVersions;
 
 export namespace NttBindings {
-  export type NativeTokenTransfer<V extends IdlVersion = "default"> =
-    V extends "1.0.0"
-      ? OmitGenerics<_1_0_0.RawExampleNativeTokenTransfers>
-      : OmitGenerics<_2_0_0.RawExampleNativeTokenTransfers>;
-  export type Quoter<V extends IdlVersion = "default"> = V extends "1.0.0"
-    ? OmitGenerics<_1_0_0.RawNttQuoter>
-    : OmitGenerics<_2_0_0.RawNttQuoter>;
+  export type NativeTokenTransfer<V extends IdlVersion> = V extends "1.0.0"
+    ? _1_0_0.RawExampleNativeTokenTransfers
+    : _2_0_0.RawExampleNativeTokenTransfers;
 
-  export type Config<V extends IdlVersion = "default"> = IdlAccounts<
-    NttBindings.NativeTokenTransfer<V>
-  >["config"];
+  export type Quoter<V extends IdlVersion> = V extends "1.0.0"
+    ? _1_0_0.RawNttQuoter
+    : _2_0_0.RawNttQuoter;
 
-  export type InboxItem<V extends IdlVersion = "default"> = IdlAccounts<
+  type ProgramAccounts<V extends IdlVersion> = IdlAccounts<
     NttBindings.NativeTokenTransfer<V>
-  >["inboxItem"];
+  >;
+
+  export type Config<V extends IdlVersion = IdlVersion> =
+    ProgramAccounts<V>["config"];
+  export type InboxItem<V extends IdlVersion = IdlVersion> =
+    ProgramAccounts<V>["inboxItem"];
 }
 
-function loadIdlVersion<V extends IdlVersion>(
+function loadIdlVersion<const V extends IdlVersion>(
   version: V
 ): (typeof IdlVersions)[V] {
   if (!(version in IdlVersions))
@@ -35,27 +36,29 @@ function loadIdlVersion<V extends IdlVersion>(
   return IdlVersions[version];
 }
 
-export const getNttProgram = (
+export function getNttProgram<const V extends IdlVersion>(
   connection: Connection,
   address: string,
-  version: IdlVersion = "default"
-) =>
-  new Program<NttBindings.NativeTokenTransfer>(
-    // @ts-ignore
+  version: V
+): Program<NttBindings.NativeTokenTransfer<V>> {
+  return new Program<NttBindings.NativeTokenTransfer<V>>(
+    //@ts-ignore
     loadIdlVersion(version).idl.ntt,
     address,
     { connection }
   );
+}
 
-export const getQuoterProgram = (
+export function getQuoterProgram<const V extends IdlVersion>(
   connection: Connection,
   address: string,
-  version: IdlVersion = "default"
-) =>
-  new Program<NttBindings.Quoter<typeof version>>(
+  version: V
+) {
+  return new Program<NttBindings.Quoter<V>>(
     loadIdlVersion(version).idl.quoter,
     address,
     {
       connection,
     }
   );
+}
