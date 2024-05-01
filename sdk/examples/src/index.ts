@@ -10,33 +10,31 @@ import solana from "@wormhole-foundation/sdk/platforms/solana";
 import "@wormhole-foundation/sdk-evm-ntt";
 import "@wormhole-foundation/sdk-solana-ntt";
 
-import { TEST_NTT_TOKENS } from "./consts.js";
+import { TEST_NTT_SPL22_TOKENS, TEST_NTT_TOKENS } from "./consts.js";
 import { getSigner } from "./helpers.js";
 
 // Recover an in-flight transfer by setting txids here from output of previous run
 const recoverTxids: TransactionId[] = [
-  // { chain: "Solana", txid: "hZXRs9TEvMWnSAzcgmrEuHsq1C5rbcompy63vkJ2SrXv4a7u6ZBEaJAkBMXKAfScCooDNhN36Jt4PMcDhN8yGjP", },
+  //{ chain: "Solana", txid: "hZXRs9TEvMWnSAzcgmrEuHsq1C5rbcompy63vkJ2SrXv4a7u6ZBEaJAkBMXKAfScCooDNhN36Jt4PMcDhN8yGjP", },
 ];
 
 (async function () {
   const wh = new Wormhole("Testnet", [solana.Platform, evm.Platform]);
   const src = wh.getChain("Solana");
-  const dst = wh.getChain("ArbitrumSepolia");
+  const dst = wh.getChain("Sepolia");
 
   const srcSigner = await getSigner(src);
   const dstSigner = await getSigner(dst);
 
   const srcNtt = await src.getProtocol("Ntt", {
-    ntt: TEST_NTT_TOKENS[src.chain],
+    ntt: TEST_NTT_SPL22_TOKENS[src.chain],
   });
   const dstNtt = await dst.getProtocol("Ntt", {
-    ntt: TEST_NTT_TOKENS[dst.chain],
+    ntt: TEST_NTT_SPL22_TOKENS[dst.chain],
   });
 
-  console.log("Source signer", srcSigner.address.address);
-
   const xfer = () =>
-    srcNtt.transfer(srcSigner.address.address, 1000n, dstSigner.address, {
+    srcNtt.transfer(srcSigner.address.address, 1_000n, dstSigner.address, {
       queue: false,
       automatic: false,
       gasDropoff: 0n,
@@ -54,7 +52,7 @@ const recoverTxids: TransactionId[] = [
 
   const dstTxids = await signSendWait(
     dst,
-    dstNtt.redeem([vaa!]),
+    dstNtt.redeem([vaa!], dstSigner.address.address),
     dstSigner.signer
   );
   console.log("dstTxids", dstTxids);

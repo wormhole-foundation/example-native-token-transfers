@@ -36,7 +36,11 @@ export class NttQuoter<N extends Network, C extends Chain> {
     readonly idlVersion: IdlVersion = "default"
   ) {
     if (!contracts.ntt?.quoter) throw new Error("No quoter program found");
-    this.program = getQuoterProgram(connection, contracts.ntt.quoter);
+    this.program = getQuoterProgram(
+      connection,
+      contracts.ntt.quoter,
+      idlVersion
+    );
     this.pdas = quoterAddresses(this.program.programId);
     this.nttProgramId = new PublicKey(contracts.ntt.manager);
     this.instance = this.pdas.instanceAccount();
