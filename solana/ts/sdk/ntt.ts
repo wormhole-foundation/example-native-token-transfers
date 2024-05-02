@@ -46,7 +46,7 @@ import {
   utils,
 } from "@wormhole-foundation/sdk-solana-core";
 import BN from "bn.js";
-import { NttQuoter } from "../lib/index.js";
+import { NttQuoter, WEI_PER_GWEI } from "../lib/index.js";
 import {
   BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
   TransferArgs,
@@ -577,16 +577,15 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           "No quoter available, cannot initiate an automatic transfer."
         );
 
-      //const fee = await this.quoteDeliveryPrice(destination.chain, options);
+      const fee = await this.quoteDeliveryPrice(destination.chain, options);
+
       const relayIx = await this.quoter.createRequestRelayInstruction(
         payerAddress,
         outboxItem.publicKey,
         destination.chain,
-        // TODO: do not merge until this is fixed
-        0,
-        //fee,
-        0
-        // new BN((options.gasDropoff ?? 0n).toString())
+        Number(fee),
+        // Note: quoter expects gas dropoff to be in terms of gwei
+        Number(options.gasDropoff ?? 0n) / WEI_PER_GWEI
       );
       tx.add(relayIx);
     }
