@@ -1,6 +1,6 @@
 {
-  "feeRecipient": "AdAVF5KmmGmpNQhjY7FL96wZLEynD6Mx3VXJTZf2yFps",
-  "assistant": "HmnUyU4rS6Bd3cFh5tC5Ttax9Qfa1k9V6XZBHtjy8cCW",
+  "feeRecipient": "8eg1XSPJE1nKg7RoVcz9HYQHDQr35oXsMSUGDtaHf3Df",
+  "assistant": "7GZ6Zp1EU4rLKAZoTKJH8ByfdXvHTZwJQYjqen5Ty81F",
   "solPriceUsd": "150000000",
   "managerRegistrations": [
     {
@@ -13,6 +13,13 @@
     {
       "programId": "Hxk4UDrSgf3e5xpQg1giYaYtR5dvzhdkY2cMeNDPhMi8",
       "tokenAddress": "2JZQnfjQTjzmmTGosK6Hhr3dJokeQdwRhQ1UtxsYQGdX",
+      "gasCost": 400000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
+    },
+    {
+      "programId": "NtT7qQDQYgvsEG4XGbX3E8JUTKHouog9jC86g1eM9tC",
+      "tokenAddress": "CKfFwHNiZbPGbQH3gSQYYRodCvnn6eYEwyoyYX3S3Ktx",
       "gasCost": 400000,
       "wormholeTransceiverIndex": 0,
       "isSupported": true
