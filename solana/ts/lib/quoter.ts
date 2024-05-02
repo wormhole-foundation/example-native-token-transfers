@@ -25,8 +25,9 @@ import {
 
 //constants that must match ntt-quoter lib.rs / implementation:
 const USD_UNIT = 1e6;
-const WEI_PER_GWEI = 1e9;
 const GWEI_PER_ETH = 1e9;
+export const WEI_PER_GWEI = 1e9;
+
 const SEED_PREFIX_INSTANCE = "instance";
 const SEED_PREFIX_REGISTERED_CHAIN = "registered_chain";
 const SEED_PREFIX_REGISTERED_NTT = "registered_ntt";
