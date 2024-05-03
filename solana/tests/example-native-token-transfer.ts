@@ -18,7 +18,8 @@ import {
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 
-import { serialize, testing } from "@wormhole-foundation/sdk-connect";
+import { serialize } from "@wormhole-foundation/sdk-connect";
+import * as testing from "@wormhole-foundation/sdk-definitions/testing";
 import { deserializePostMessage } from "@wormhole-foundation/sdk-solana-core";
 import { DummyTransferHook } from "../target/types/dummy_transfer_hook.js";
 
@@ -287,11 +288,9 @@ describe("example-native-token-transfers", () => {
 
       const vaa = guardians.addSignatures(published, [0]);
 
-      const txids = await postVaa(connection, payer, vaa, ntt.wormholeId);
-      console.log("Posted VAA", txids);
+      await postVaa(connection, payer, vaa, ntt.wormholeId);
 
       const released = await ntt.redeem({ payer, vaa: serialize(vaa) });
-
       expect(released).toEqual(true);
 
       expect((await counterValue()).toString()).toEqual("2");

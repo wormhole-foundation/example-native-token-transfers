@@ -10,6 +10,5 @@
     "allowUnusedLabels": true,
     "noUnusedLocals": false,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": false,
   }
 }

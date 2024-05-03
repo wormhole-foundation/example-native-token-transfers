@@ -40,7 +40,6 @@ import "../../solana/ts/sdk/index.js";
 import { SolanaNtt } from "../../solana/ts/sdk/index.js";
 import { submitAccountantVAA } from "./accountant.js";
 
-console.log(SolanaNtt);
 // Note: Currently, in order for this to run, the evm bindings with extra contracts must be build
 // To do that, at the root, run `npm run generate:test`
 
