@@ -223,8 +223,8 @@ describe("example-native-token-transfers", () => {
 
         // init
         const initTxs = ntt.initialize({
-          payer,
-          owner: payer,
+          payer: payer.publicKey,
+          owner: payer.publicKey,
           chain: "Solana",
           mint: mint.publicKey,
           outboundLimit: 1000000n,

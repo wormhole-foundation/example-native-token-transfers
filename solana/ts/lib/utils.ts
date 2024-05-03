@@ -3,17 +3,9 @@ import {
   Layout,
   encoding,
 } from "@wormhole-foundation/sdk-base";
-
 import { BN } from "@coral-xyz/anchor";
 import { PublicKey, PublicKeyInitData } from "@solana/web3.js";
-import {
-  Chain,
-  ChainId,
-  keccak256,
-  toChainId,
-} from "@wormhole-foundation/sdk-connect";
-import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
-import { TransferArgs } from "./ntt.js";
+import { Chain, ChainId, toChainId } from "@wormhole-foundation/sdk-connect";
 
 export const BPF_LOADER_UPGRADEABLE_PROGRAM_ID = new PublicKey(
   "BPFLoaderUpgradeab1e11111111111111111111111"
@@ -86,64 +78,6 @@ export function derivePda(
 export const chainToBytes = (chain: Chain | ChainId) =>
   encoding.bignum.toBytes(toChainId(chain), 2);
 
-export const nttAddresses = (programId: PublicKeyInitData) => {
-  const configAccount = (): PublicKey => derivePda("config", programId);
-  const emitterAccount = (): PublicKey => derivePda("emitter", programId);
-  const inboxRateLimitAccount = (chain: Chain): PublicKey =>
-    derivePda(["inbox_rate_limit", chainToBytes(chain)], programId);
-  const inboxItemAccount = (chain: Chain, nttMessage: Ntt.Message): PublicKey =>
-    derivePda(["inbox_item", Ntt.messageDigest(chain, nttMessage)], programId);
-  const outboxRateLimitAccount = (): PublicKey =>
-    derivePda("outbox_rate_limit", programId);
-  const tokenAuthority = (): PublicKey =>
-    derivePda("token_authority", programId);
-  const peerAccount = (chain: Chain): PublicKey =>
-    derivePda(["peer", chainToBytes(chain)], programId);
-  const transceiverPeerAccount = (chain: Chain): PublicKey =>
-    derivePda(["transceiver_peer", chainToBytes(chain)], programId);
-  const registeredTransceiver = (transceiver: PublicKey): PublicKey =>
-    derivePda(["registered_transceiver", transceiver.toBytes()], programId);
-  const transceiverMessageAccount = (chain: Chain, id: Uint8Array): PublicKey =>
-    derivePda(["transceiver_message", chainToBytes(chain), id], programId);
-  const wormholeMessageAccount = (outboxItem: PublicKey): PublicKey =>
-    derivePda(["message", outboxItem.toBytes()], programId);
-  const lutAccount = (): PublicKey => derivePda("lut", programId);
-  const lutAuthority = (): PublicKey => derivePda("lut_authority", programId);
-  const sessionAuthority = (sender: PublicKey, args: TransferArgs): PublicKey =>
-    derivePda(
-      [
-        "session_authority",
-        sender.toBytes(),
-        keccak256(
-          encoding.bytes.concat(
-            encoding.bytes.zpad(new Uint8Array(args.amount.toBuffer()), 8),
-            chainToBytes(args.recipientChain.id),
-            new Uint8Array(args.recipientAddress),
-            new Uint8Array([args.shouldQueue ? 1 : 0])
-          )
-        ),
-      ],
-      programId
-    );
-
-  return {
-    configAccount,
-    outboxRateLimitAccount,
-    inboxRateLimitAccount,
-    inboxItemAccount,
-    sessionAuthority,
-    tokenAuthority,
-    emitterAccount,
-    wormholeMessageAccount,
-    peerAccount,
-    transceiverPeerAccount,
-    transceiverMessageAccount,
-    registeredTransceiver,
-    lutAccount,
-    lutAuthority,
-  };
-};
-
 export const quoterAddresses = (programId: PublicKeyInitData) => {
   const instanceAccount = () => derivePda("instance", programId);
   const registeredNttAccount = (nttProgramId: PublicKey) =>
@@ -159,3 +93,15 @@ export const quoterAddresses = (programId: PublicKeyInitData) => {
     registeredNttAccount,
   };
 };
+
+//   // The `translateError` function expects this format, but the idl gives us a
+//   // different one, so we preprocess the idl and store the expected format.
+//   // NOTE: I'm sure there's a function within anchor that does this, but I
+//   // couldn't find it.
+//   private processErrors(): Map<number, string> {
+//     const errors = this.program.idl.errors;
+//     const result: Map<number, string> = new Map<number, string>();
+//     errors.forEach((entry) => result.set(entry.code, entry.msg));
+//     return result;
+//   }
+//   // View functions

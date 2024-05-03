@@ -535,8 +535,8 @@ async function deploySolana(ctx: Ctx): Promise<Ctx> {
     );
 
     const initTxs = manager.initialize({
-      payer: keypair,
-      owner: keypair,
+      payer: keypair.publicKey,
+      owner: keypair.publicKey,
       chain: "Solana",
       mint,
       outboundLimit: 1000000000n,

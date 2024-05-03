@@ -23,9 +23,6 @@ import {
   Network,
   TokenAddress,
   UnsignedTransaction,
-  deserializeLayout,
-  encoding,
-  rpc,
   toChain,
   toChainId,
 } from "@wormhole-foundation/sdk-connect";
@@ -46,22 +43,16 @@ import {
   utils,
 } from "@wormhole-foundation/sdk-solana-core";
 import BN from "bn.js";
-import { NttQuoter, WEI_PER_GWEI } from "../lib/index.js";
+import { NTT, NttQuoter, WEI_PER_GWEI } from "../lib/index.js";
 import {
   BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
   TransferArgs,
   addExtraAccountMetasForExecute,
   nttAddresses,
   programDataAddress,
-  programVersionLayout,
 } from "./utils.js";
 
-import {
-  IdlVersion,
-  IdlVersions,
-  NttBindings,
-  getNttProgram,
-} from "./bindings.js";
+import { IdlVersion, NttBindings, getNttProgram } from "../lib/bindings.js";
 
 export class SolanaNtt<N extends Network, C extends SolanaChains>
   implements Ntt<N, C>
@@ -80,7 +71,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     readonly chain: C,
     readonly connection: Connection,
     readonly contracts: Contracts & { ntt?: Ntt.Contracts },
-    readonly version: string = "default"
+    readonly version: string = "2.0.0"
   ) {
     if (!contracts.ntt) throw new Error("Ntt contracts not found");
 
@@ -153,7 +144,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     );
   }
 
-  async getConfig(): Promise<NttBindings.Config> {
+  async getConfig(): Promise<NttBindings.Config<IdlVersion>> {
     this.config =
       this.config ??
       (await this.program.account.config.fetch(this.pdas.configAccount()));
@@ -178,56 +169,16 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     contracts: Contracts & { ntt: Ntt.Contracts },
     sender?: AccountAddress<SolanaChains>
   ): Promise<IdlVersion> {
-    // the anchor library has a built-in method to read view functions. However,
-    // it requires a signer, which would trigger a wallet prompt on the frontend.
-    // Instead, we manually construct a versioned transaction and call the
-    // simulate function with sigVerify: false below.
-    //
-    // This way, the simulation won't require a signer, but it still requires
-    // the pubkey of an account that has some lamports in it (since the
-    // simulation checks if the account has enough money to pay for the transaction).
-    //
-    // It's a little unfortunate but it's the best we can do.
-
-    if (!sender) {
-      const address =
-        connection.rpcEndpoint === rpc.rpcAddress("Devnet", "Solana")
-          ? "6sbzC1eH4FTujJXWj51eQe25cYvr4xfXbJ1vAj7j2k5J" // The CI pubkey, funded on local network
-          : "Hk3SdYTJFpawrvRz4qRztuEt2SqoCG7BGj2yJfDJSFbJ"; // The default pubkey is funded on mainnet and devnet we need a funded account to simulate the transaction below
-      sender = new SolanaAddress(address);
-    }
-
-    const senderAddress = new SolanaAddress(sender).unwrap();
-
-    const program = getNttProgram(connection, contracts.ntt.manager, "default");
-
-    const ix = await program.methods.version().accountsStrict({}).instruction();
-    const latestBlockHash =
-      await program.provider.connection.getLatestBlockhash();
-
-    const msg = new TransactionMessage({
-      payerKey: senderAddress,
-      recentBlockhash: latestBlockHash.blockhash,
-      instructions: [ix],
-    }).compileToV0Message();
-
-    const tx = new VersionedTransaction(msg);
-
-    const txSimulation = await program.provider.connection.simulateTransaction(
-      tx,
-      { sigVerify: false }
+    return NTT.getVersion(
+      connection,
+      new PublicKey(contracts.ntt.manager!),
+      sender ? new SolanaAddress(sender).unwrap() : undefined
     );
-
-    const data = encoding.b64.decode(txSimulation.value.returnData?.data[0]!);
-    const parsed = deserializeLayout(programVersionLayout, data);
-    const version = encoding.bytes.decode(parsed.version);
-    if (version in IdlVersions) return version as IdlVersion;
-    else throw new Error("Unknown IDL version: " + version);
   }
 
   async *initialize(args: {
-    payer: Keypair;
-    owner: Keypair;
+    payer: PublicKey;
+    owner: PublicKey;
     chain: Chain;
     mint: PublicKey;
     outboundLimit: bigint;
@@ -248,8 +199,8 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const ix = await this.program.methods
       .initialize({ chainId, limit: limit, mode })
       .accountsStrict({
-        payer: args.payer.publicKey,
-        deployer: args.owner.publicKey,
+        payer: args.payer,
+        deployer: args.owner,
         programData: programDataAddress(this.program.programId),
         config: this.pdas.configAccount(),
         mint: args.mint,
@@ -264,7 +215,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       .instruction();
 
     const tx = new Transaction();
-    tx.feePayer = args.payer.publicKey;
+    tx.feePayer = args.payer;
     tx.add(ix);
     yield this.createUnsignedTx(
       { transaction: tx, signers: [] },
@@ -276,7 +227,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
   // This function should be called after each upgrade. If there's nothing to
   // do, it won't actually submit a transaction, so it's cheap to call.
-  async *initializeOrUpdateLUT(args: { payer: Keypair }) {
+  async *initializeOrUpdateLUT(args: { payer: PublicKey }) {
     if (this.version === "1.0.0") return;
     const program = this.program as Program<
       NttBindings.NativeTokenTransfer<"2.0.0">
@@ -287,7 +238,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     const [_, lutAddress] = web3.AddressLookupTableProgram.createLookupTable({
       authority: this.pdas.lutAuthority(),
-      payer: args.payer.publicKey,
+      payer: args.payer,
       recentSlot: slot,
     });
 
@@ -355,7 +306,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const ix = await program.methods
       .initializeLut(new BN(slot))
       .accountsStrict({
-        payer: args.payer.publicKey,
+        payer: args.payer,
         authority: this.pdas.lutAuthority(),
         lutAddress,
         lut: this.pdas.lutAccount(),
@@ -366,7 +317,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       .instruction();
 
     const tx = new Transaction().add(ix);
-    tx.feePayer = args.payer.publicKey;
+    tx.feePayer = args.payer;
 
     yield this.createUnsignedTx({ transaction: tx }, "Ntt.InitializeLUT");
   }
@@ -806,7 +757,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     from: PublicKey;
     fromAuthority: PublicKey;
     outboxItem: PublicKey;
-    config?: NttBindings.Config;
+    config?: NttBindings.Config<IdlVersion>;
   }): Promise<TransactionInstruction> {
     const config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");
@@ -1322,7 +1273,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
    * Otherwise, the mint must be provided.
    */
   async custodyAccountAddress(
-    configOrMint: NttBindings.Config | PublicKey,
+    configOrMint: NttBindings.Config<IdlVersion> | PublicKey,
     tokenProgram = splToken.TOKEN_PROGRAM_ID
   ): Promise<PublicKey> {
     if (configOrMint instanceof PublicKey) {
