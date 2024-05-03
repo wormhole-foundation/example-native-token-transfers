@@ -6,6 +6,7 @@ import {
   Signer,
   UniversalAddress,
   Wormhole,
+  contracts,
   deserialize,
   deserializePayload,
   encoding,
@@ -31,10 +32,8 @@ const solanaRootDir = `${__dirname}/../`;
 
 const GUARDIAN_KEY =
   "cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0";
-
-// TODO: are these in either the SDK or anchor.toml?
-const CORE_BRIDGE_ADDRESS = "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth";
-const NTT_ADDRESS = "nttiK1SepaQt6sZ4WGW5whvc9tEnGXGxuKeptcQPCcS";
+const CORE_BRIDGE_ADDRESS = contracts.coreBridge("Mainnet", "Solana");
+const NTT_ADDRESS = anchor.workspace.ExampleNativeTokenTransfers.programId;
 
 async function signSendWait(
   chain: ChainContext<any, any, any>,
@@ -97,8 +96,6 @@ const mint = anchor.web3.Keypair.generate();
 
 const dummyTransferHook = anchor.workspace
   .DummyTransferHook as anchor.Program<DummyTransferHook>;
-
-console.log(dummyTransferHook);
 
 const [extraAccountMetaListPDA] = PublicKey.findProgramAddressSync(
   [Buffer.from("extra-account-metas"), mint.publicKey.toBuffer()],
@@ -186,7 +183,7 @@ describe("example-native-token-transfers", () => {
         mint.publicKey,
         tokenAccount,
         owner,
-        BigInt(10000000),
+        10_000_000n,
         undefined,
         undefined,
         TOKEN_PROGRAM
@@ -204,6 +201,7 @@ describe("example-native-token-transfers", () => {
         },
       });
     } catch (e) {
+      console.error("Failed to setup solana token: ", e);
       throw e;
     }
   });
@@ -253,6 +251,7 @@ describe("example-native-token-transfers", () => {
         const setPeerTxs = ntt.setPeer(remoteMgr, 18, 1000000n, sender);
         await signSendWait(ctx, setPeerTxs, signer);
       } catch (e) {
+        console.error("Failed to setup peer: ", e);
         throw e;
       }
     });
@@ -281,7 +280,7 @@ describe("example-native-token-transfers", () => {
 
       transaction.sign(payer);
       const txid = await connection.sendTransaction(transaction, [payer]);
-      console.log(await connection.confirmTransaction(txid, "confirmed"));
+      await connection.confirmTransaction(txid, "confirmed");
     });
 
     test("Can send tokens", async () => {
@@ -315,9 +314,9 @@ describe("example-native-token-transfers", () => {
         unsignedVaa.payload
       );
 
-      // assert theat amount is what we expect
+      // assert that amount is what we expect
       expect(
-        transceiverMessage["nttManagerPayload"].payload.trimmedAmount
+        transceiverMessage.nttManagerPayload.payload.trimmedAmount
       ).toMatchObject({ amount: 10000n, decimals: 8 });
 
       // get from balance
