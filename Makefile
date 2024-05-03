@@ -36,7 +36,7 @@ test-evm:
 
 .PHONY: anchor-lint
 anchor-lint:
-	cd solana && make anchor-lint
+	make -C solana anchor-lint
 
 
 # Verify that the contracts do not include PUSH0 opcodes
