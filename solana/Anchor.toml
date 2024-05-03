@@ -20,7 +20,7 @@ cluster = "localnet"
 wallet = "keys/test.json"
 
 [scripts]
-test = "yarn test:ci"
+test = "npm run test:ci"
 
 [test]
 startup_wait = 5000
