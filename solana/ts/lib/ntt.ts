@@ -15,12 +15,14 @@ import {
 } from "@solana/web3.js";
 import {
   Chain,
+  ChainAddress,
   ChainId,
   deserialize,
   deserializeLayout,
   encoding,
   keccak256,
   rpc,
+  toChain,
   toChainId,
 } from "@wormhole-foundation/sdk-connect";
 
@@ -38,14 +40,29 @@ import {
 } from "./bindings.js";
 import { chainToBytes, derivePda } from "./utils.js";
 
-export interface TransferArgs {
-  amount: BN;
-  recipientChain: { id: ChainId };
-  recipientAddress: number[];
-  shouldQueue: boolean;
-}
-
 export namespace NTT {
+  export interface TransferArgs {
+    amount: BN;
+    recipientChain: { id: ChainId };
+    recipientAddress: number[];
+    shouldQueue: boolean;
+  }
+
+  export function transferArgs(
+    amount: bigint,
+    recipient: ChainAddress,
+    shouldQueue: boolean
+  ): TransferArgs {
+    return {
+      amount: new BN(amount.toString()),
+      recipientChain: { id: toChainId(recipient.chain) },
+      recipientAddress: Array.from(
+        recipient.address.toUniversalAddress().toUint8Array()
+      ),
+      shouldQueue: shouldQueue,
+    };
+  }
+
   export type Pdas = ReturnType<typeof pdas>;
   export const pdas = (programId: PublicKeyInitData) => {
     const configAccount = (): PublicKey => derivePda("config", programId);
@@ -174,28 +191,16 @@ export namespace NTT {
       payer: PublicKey;
       from: PublicKey;
       fromAuthority: PublicKey;
-      amount: BN;
-      recipientChain: Chain;
-      recipientAddress: ArrayLike<number>;
+      transferArgs: TransferArgs;
       outboxItem: PublicKey;
-      shouldQueue: boolean;
     },
     pdas?: Pdas
   ): Promise<TransactionInstruction> {
-    if (config.paused) throw new Error("Contract is paused");
-
-    const chainId = toChainId(args.recipientChain);
-    const transferArgs: TransferArgs = {
-      amount: args.amount,
-      recipientChain: { id: chainId },
-      recipientAddress: Array.from(args.recipientAddress),
-      shouldQueue: args.shouldQueue,
-    };
-
     pdas = pdas ?? NTT.pdas(program.programId);
 
+    const recipientChain = toChain(args.transferArgs.recipientChain.id);
     const transferIx = await program.methods
-      .transferBurn(transferArgs)
+      .transferBurn(args.transferArgs)
       .accountsStrict({
         common: {
           payer: args.payer,
@@ -208,11 +213,11 @@ export namespace NTT {
           custody: await custodyAccountAddress(pdas, config),
           systemProgram: SystemProgram.programId,
         },
-        peer: pdas.peerAccount(args.recipientChain),
-        inboxRateLimit: pdas.inboxRateLimitAccount(args.recipientChain),
+        peer: pdas.peerAccount(recipientChain),
+        inboxRateLimit: pdas.inboxRateLimitAccount(recipientChain),
         sessionAuthority: pdas.sessionAuthority(
           args.fromAuthority,
-          transferArgs
+          args.transferArgs
         ),
         tokenAuthority: pdas.tokenAuthority(),
       })
@@ -230,7 +235,10 @@ export namespace NTT {
       const source = args.from;
       const mint = config.mint;
       const destination = await custodyAccountAddress(pdas, config);
-      const owner = pdas.sessionAuthority(args.fromAuthority, transferArgs);
+      const owner = pdas.sessionAuthority(
+        args.fromAuthority,
+        args.transferArgs
+      );
       await addExtraAccountMetasForExecute(
         program.provider.connection,
         transferIx,
@@ -262,29 +270,19 @@ export namespace NTT {
       payer: PublicKey;
       from: PublicKey;
       fromAuthority: PublicKey;
-      amount: BN;
-      recipientChain: Chain;
-      recipientAddress: ArrayLike<number>;
-      shouldQueue: boolean;
+      transferArgs: NTT.TransferArgs;
       outboxItem: PublicKey;
     },
     pdas?: Pdas
   ): Promise<TransactionInstruction> {
     if (config.paused) throw new Error("Contract is paused");
 
-    const chainId = toChainId(args.recipientChain);
-
-    const transferArgs: TransferArgs = {
-      amount: args.amount,
-      recipientChain: { id: chainId },
-      recipientAddress: Array.from(args.recipientAddress),
-      shouldQueue: args.shouldQueue,
-    };
-
     pdas = pdas ?? NTT.pdas(program.programId);
 
+    const chain = toChain(args.transferArgs.recipientChain.id);
+
     const transferIx = await program.methods
-      .transferLock(transferArgs)
+      .transferLock(args.transferArgs)
       .accounts({
         common: {
           payer: args.payer,
@@ -296,11 +294,11 @@ export namespace NTT {
           outboxRateLimit: pdas.outboxRateLimitAccount(),
           custody: await custodyAccountAddress(pdas, config),
         },
-        peer: pdas.peerAccount(args.recipientChain),
-        inboxRateLimit: pdas.inboxRateLimitAccount(args.recipientChain),
+        peer: pdas.peerAccount(chain),
+        inboxRateLimit: pdas.inboxRateLimitAccount(chain),
         sessionAuthority: pdas.sessionAuthority(
           args.fromAuthority,
-          transferArgs
+          args.transferArgs
         ),
       })
       .instruction();
@@ -316,7 +314,10 @@ export namespace NTT {
     if (transferHook) {
       const source = args.from;
       const destination = await custodyAccountAddress(pdas, config);
-      const owner = pdas.sessionAuthority(args.fromAuthority, transferArgs);
+      const owner = pdas.sessionAuthority(
+        args.fromAuthority,
+        args.transferArgs
+      );
       await addExtraAccountMetasForExecute(
         program.provider.connection,
         transferIx,
@@ -392,8 +393,6 @@ export namespace NTT {
     },
     pdas?: Pdas
   ): Promise<TransactionInstruction> {
-    if (config.paused) throw new Error("Contract is paused");
-
     pdas = pdas ?? NTT.pdas(program.programId);
 
     const recipientAddress =
@@ -474,8 +473,6 @@ export namespace NTT {
     },
     pdas?: Pdas
   ) {
-    if (config.paused) throw new Error("Contract is paused");
-
     const recipientAddress =
       args.recipient ??
       (await NTT.getInboxItem(program, args.chain, args.nttMessage))
@@ -727,15 +724,12 @@ export namespace NTT {
 
   export async function createReceiveWormholeMessageInstruction(
     program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
-    config: NttBindings.Config<IdlVersion>,
     args: {
       wormholeId: PublicKey;
       payer: PublicKey;
       vaa: Uint8Array;
     }
   ): Promise<TransactionInstruction> {
-    if (config.paused) throw new Error("Contract is paused");
-
     const pdas = NTT.pdas(program.programId);
 
     const wormholeNTT = deserialize("Ntt:WormholeTransfer", args.vaa);
@@ -767,11 +761,10 @@ export namespace NTT {
     args: {
       payer: PublicKey;
       vaa: Uint8Array;
-    }
+    },
+    pdas?: Pdas
   ): Promise<TransactionInstruction> {
-    if (config.paused) throw new Error("Contract is paused");
-
-    const pdas = NTT.pdas(program.programId);
+    pdas = pdas ?? NTT.pdas(program.programId);
 
     const wormholeNTT = deserialize("Ntt:WormholeTransfer", args.vaa);
     const nttMessage = wormholeNTT.payload.nttManagerPayload;
