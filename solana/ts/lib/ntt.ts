@@ -38,7 +38,12 @@ import {
   NttBindings,
   getNttProgram,
 } from "./bindings.js";
-import { chainToBytes, derivePda } from "./utils.js";
+import {
+  BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
+  chainToBytes,
+  derivePda,
+  programDataAddress,
+} from "./utils.js";
 
 export namespace NTT {
   export interface TransferArgs {
@@ -182,6 +187,49 @@ export namespace NTT {
     const version = encoding.bytes.decode(parsed.version);
     if (version in IdlVersions) return version as IdlVersion;
     else throw new Error("Unknown IDL version: " + version);
+  }
+
+  export async function createInitializeInstruction(
+    program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
+    args: {
+      payer: PublicKey;
+      owner: PublicKey;
+      chain: Chain;
+      mint: PublicKey;
+      outboundLimit: bigint;
+      tokenProgram: PublicKey;
+      mode: "burning" | "locking";
+    },
+    pdas?: Pdas
+  ) {
+    const mode: any =
+      args.mode === "burning" ? { burning: {} } : { locking: {} };
+    const chainId = toChainId(args.chain);
+
+    pdas = pdas ?? NTT.pdas(program.programId);
+
+    const limit = new BN(args.outboundLimit.toString());
+    return await program.methods
+      .initialize({ chainId, limit: limit, mode })
+      .accountsStrict({
+        payer: args.payer,
+        deployer: args.owner,
+        programData: programDataAddress(program.programId),
+        config: pdas.configAccount(),
+        mint: args.mint,
+        rateLimit: pdas.outboxRateLimitAccount(),
+        tokenProgram: args.tokenProgram,
+        tokenAuthority: pdas.tokenAuthority(),
+        custody: await NTT.custodyAccountAddress(
+          pdas,
+          args.mint,
+          args.tokenProgram
+        ),
+        bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
+        associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
   }
 
   export async function createTransferBurnInstruction(

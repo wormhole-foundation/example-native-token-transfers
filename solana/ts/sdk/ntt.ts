@@ -42,10 +42,6 @@ import {
 } from "@wormhole-foundation/sdk-solana-core";
 import BN from "bn.js";
 import { NTT, NttQuoter, WEI_PER_GWEI } from "../lib/index.js";
-import {
-  BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
-  programDataAddress,
-} from "./utils.js";
 
 import { IdlVersion, NttBindings, getNttProgram } from "../lib/bindings.js";
 
@@ -177,35 +173,17 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     outboundLimit: bigint;
     mode: "burning" | "locking";
   }) {
-    const mode: any =
-      args.mode === "burning" ? { burning: {} } : { locking: {} };
-    const chainId = toChainId(args.chain);
     const mintInfo = await this.connection.getAccountInfo(args.mint);
-    if (mintInfo === null) {
+    if (mintInfo === null)
       throw new Error(
         "Couldn't determine token program. Mint account is null."
       );
-    }
 
-    const tokenProgram = mintInfo.owner;
-    const limit = new BN(args.outboundLimit.toString());
-    const ix = await this.program.methods
-      .initialize({ chainId, limit: limit, mode })
-      .accountsStrict({
-        payer: args.payer,
-        deployer: args.owner,
-        programData: programDataAddress(this.program.programId),
-        config: this.pdas.configAccount(),
-        mint: args.mint,
-        rateLimit: this.pdas.outboxRateLimitAccount(),
-        tokenProgram,
-        tokenAuthority: this.pdas.tokenAuthority(),
-        custody: await this.custodyAccountAddress(args.mint, tokenProgram),
-        bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
-        associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
+    const ix = await NTT.createInitializeInstruction(
+      this.program,
+      { ...args, tokenProgram: mintInfo.owner },
+      this.pdas
+    );
 
     const tx = new Transaction();
     tx.feePayer = args.payer;
@@ -781,32 +759,6 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     };
 
     return xfer;
-  }
-
-  /**
-   * Returns the address of the custody account. If the config is available
-   * (i.e. the program is initialised), the mint is derived from the config.
-   * Otherwise, the mint must be provided.
-   */
-  async custodyAccountAddress(
-    configOrMint: NttBindings.Config<IdlVersion> | PublicKey,
-    tokenProgram = splToken.TOKEN_PROGRAM_ID
-  ): Promise<PublicKey> {
-    if (configOrMint instanceof PublicKey) {
-      return splToken.getAssociatedTokenAddress(
-        configOrMint,
-        this.pdas.tokenAuthority(),
-        true,
-        tokenProgram
-      );
-    } else {
-      return splToken.getAssociatedTokenAddress(
-        configOrMint.mint,
-        this.pdas.tokenAuthority(),
-        true,
-        configOrMint.tokenProgram
-      );
-    }
   }
 
   async getAddressLookupTable(
