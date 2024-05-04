@@ -319,20 +319,6 @@ describe("example-native-token-transfers", () => {
       // get from balance
       const balance = await connection.getTokenAccountBalance(tokenAccount);
       expect(balance.value.amount).toBe("9900000");
-
-      // grab logs
-      //await connection.confirmTransaction(redeemTx, "confirmed");
-      //const tx = await anchor
-      //  .getProvider()
-      //  .connection.getParsedTransaction(redeemTx, {
-      //    commitment: "confirmed",
-      //  });
-      // console.log(tx);
-      // const log = tx.meta.logMessages[1];
-      // const message = log.substring(log.indexOf(':') + 1);
-      // console.log(message);
-      // TODO: assert other stuff in the message
-      // console.log(nttManagerMessage);
     });
 
     it("Can receive tokens", async () => {
@@ -382,7 +368,8 @@ describe("example-native-token-transfers", () => {
         throw e;
       }
 
-      // expect(released).to.equal(true);
+      // expect(released).toEqual(true);
+      expect((await counterValue()).toString()).toEqual("2");
     });
   });
 

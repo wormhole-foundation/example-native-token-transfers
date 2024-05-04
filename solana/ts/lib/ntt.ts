@@ -1,7 +1,9 @@
-import { BN, Program } from "@coral-xyz/anchor";
+import { BN, Program, web3 } from "@coral-xyz/anchor";
 import * as splToken from "@solana/spl-token";
 import {
   AccountMeta,
+  AddressLookupTableAccount,
+  AddressLookupTableProgram,
   Commitment,
   Connection,
   Keypair,
@@ -232,6 +234,103 @@ export namespace NTT {
         bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
         associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+  }
+
+  // This function should be called after each upgrade. If there's nothing to
+  // do, it won't actually submit a transaction, so it's cheap to call.
+  export async function initializeOrUpdateLUT(
+    program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
+    config: NttBindings.Config<IdlVersion>,
+    args: {
+      payer: PublicKey;
+      wormholeId: PublicKey;
+    },
+    pdas?: Pdas
+  ) {
+    // if the program is at version 1.0.0, we don't need to initialize the LUT
+    if (program.idl.version === "1.0.0") return;
+
+    pdas = pdas ?? NTT.pdas(program.programId);
+
+    // TODO: find a more robust way of fetching a recent slot
+    const slot = (await program.provider.connection.getSlot()) - 1;
+
+    const [_, lutAddress] = web3.AddressLookupTableProgram.createLookupTable({
+      authority: pdas.lutAuthority(),
+      payer: args.payer,
+      recentSlot: slot,
+    });
+
+    const whAccs = utils.getWormholeDerivedAccounts(
+      program.programId,
+      args.wormholeId.toString()
+    );
+
+    const entries = {
+      config: pdas.configAccount(),
+      custody: config.custody,
+      tokenProgram: config.tokenProgram,
+      mint: config.mint,
+      tokenAuthority: pdas.tokenAuthority(),
+      outboxRateLimit: pdas.outboxRateLimitAccount(),
+      wormhole: {
+        bridge: whAccs.wormholeBridge,
+        feeCollector: whAccs.wormholeFeeCollector,
+        sequence: whAccs.wormholeSequence,
+        program: args.wormholeId,
+        systemProgram: SystemProgram.programId,
+        clock: web3.SYSVAR_CLOCK_PUBKEY,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+      },
+    };
+
+    // collect all pubkeys in entries recursively
+    const collectPubkeys = (obj: any): Array<PublicKey> => {
+      const pubkeys = new Array<PublicKey>();
+      for (const key in obj) {
+        const value = obj[key];
+        if (value instanceof PublicKey) {
+          pubkeys.push(value);
+        } else if (typeof value === "object") {
+          pubkeys.push(...collectPubkeys(value));
+        }
+      }
+      return pubkeys;
+    };
+    const pubkeys = collectPubkeys(entries).map((pk) => pk.toBase58());
+
+    let existingLut: web3.AddressLookupTableAccount | null = null;
+    try {
+      existingLut = await getAddressLookupTable(program, pdas);
+    } catch {}
+
+    if (existingLut !== null) {
+      const existingPubkeys =
+        existingLut.state.addresses?.map((a) => a.toBase58()) ?? [];
+
+      // if pubkeys contains keys that are not in the existing LUT, we need to
+      // add them to the LUT
+      const missingPubkeys = pubkeys.filter(
+        (pk) => !existingPubkeys.includes(pk)
+      );
+
+      if (missingPubkeys.length === 0) {
+        return null;
+      }
+    }
+
+    return await program.methods
+      .initializeLut(new BN(slot))
+      .accountsStrict({
+        payer: args.payer,
+        authority: pdas.lutAuthority(),
+        lutAddress,
+        lut: pdas.lutAccount(),
+        lutProgram: AddressLookupTableProgram.programId,
+        systemProgram: SystemProgram.programId,
+        entries,
       })
       .instruction();
   }
@@ -672,9 +771,11 @@ export namespace NTT {
       })
       .instruction();
 
+    const transaction = new Transaction().add(ix, broadcastIx);
+    transaction.feePayer = args.payer;
     return {
-      transaction: new Transaction().add(ix, broadcastIx),
-      signers: [args.payer, args.owner, wormholeMessage],
+      transaction,
+      signers: [wormholeMessage],
     } as SolanaTransaction;
   }
 
@@ -723,9 +824,11 @@ export namespace NTT {
       })
       .instruction();
 
+    const transaction = new Transaction().add(ix, broadcastIx);
+    transaction.feePayer = args.payer;
     return {
-      transaction: new Transaction().add(ix, broadcastIx),
-      signers: [args.payer, args.owner, wormholeMessage],
+      transaction,
+      signers: [wormholeMessage],
     };
   }
 
@@ -867,6 +970,27 @@ export namespace NTT {
     return await program.account.inboxItem.fetch(
       NTT.pdas(program.programId).inboxItemAccount(fromChain, nttMessage)
     );
+  }
+
+  export async function getAddressLookupTable(
+    program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
+    pdas?: Pdas
+  ): Promise<AddressLookupTableAccount> {
+    if (program.idl.version === "1.0.0")
+      throw new Error("Lookup tables not supported for this version");
+
+    pdas = pdas ?? NTT.pdas(program.programId);
+    const lut = await program.account.lut.fetchNullable(pdas.lutAccount());
+    if (!lut)
+      throw new Error(
+        "Address lookup table not found. Did you forget to call initializeLUT?"
+      );
+
+    const response = await program.provider.connection.getAddressLookupTable(
+      lut.address
+    );
+    if (response.value === null) throw new Error("Could not fetch LUT");
+    return response.value;
   }
 
   /**
