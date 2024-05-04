@@ -47,6 +47,10 @@ export const programDataLayout = [
     ],
   },
 ] as const satisfies Layout;
+export const programVersionLayout = [
+  { name: "length", binary: "uint", endianness: "little", size: 4 },
+  { name: "version", binary: "bytes" },
+] as const satisfies Layout;
 
 export const U64 = {
   MAX: new BN((2n ** 64n - 1n).toString()),

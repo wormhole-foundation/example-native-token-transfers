@@ -31,7 +31,6 @@ import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { SolanaTransaction } from "@wormhole-foundation/sdk-solana";
 import { utils } from "@wormhole-foundation/sdk-solana-core";
-import { programVersionLayout } from "../sdk/utils.js";
 import {
   IdlVersion,
   IdlVersions,
@@ -43,6 +42,7 @@ import {
   chainToBytes,
   derivePda,
   programDataAddress,
+  programVersionLayout,
 } from "./utils.js";
 
 export namespace NTT {
