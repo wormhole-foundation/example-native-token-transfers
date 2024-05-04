@@ -9,7 +9,6 @@ import {
   PublicKey,
   SystemProgram,
   Transaction,
-  TransactionInstruction,
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
@@ -45,7 +44,6 @@ import BN from "bn.js";
 import { NTT, NttQuoter, WEI_PER_GWEI } from "../lib/index.js";
 import {
   BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
-  addExtraAccountMetasForExecute,
   programDataAddress,
 } from "./utils.js";
 
@@ -744,8 +742,16 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     tx.add(
       await (config.mode.locking != null
-        ? this.createReleaseInboundUnlockInstruction(releaseArgs)
-        : this.createReleaseInboundMintInstruction(releaseArgs))
+        ? NTT.createReleaseInboundUnlockInstruction(
+            this.program,
+            config,
+            releaseArgs
+          )
+        : NTT.createReleaseInboundMintInstruction(
+            this.program,
+            config,
+            releaseArgs
+          ))
     );
 
     yield this.createUnsignedTx(
@@ -775,228 +781,6 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     };
 
     return xfer;
-  }
-
-  async createRedeemInstruction(
-    payer: PublicKey,
-    wormholeNTT: WormholeNttTransceiver.VAA
-  ): Promise<TransactionInstruction> {
-    const config = await this.getConfig();
-    if (config.paused) throw new Error("Contract is paused");
-
-    const nttMessage = wormholeNTT.payload["nttManagerPayload"];
-    const emitterChain = wormholeNTT.emitterChain;
-
-    const nttManagerPeer = this.pdas.peerAccount(emitterChain);
-    const inboxRateLimit = this.pdas.inboxRateLimitAccount(emitterChain);
-    const inboxItem = this.pdas.inboxItemAccount(emitterChain, nttMessage);
-
-    return await this.program.methods
-      .redeem({})
-      .accountsStrict({
-        payer: payer,
-        config: this.pdas.configAccount(),
-        peer: nttManagerPeer,
-        transceiverMessage: this.pdas.transceiverMessageAccount(
-          emitterChain,
-          nttMessage.id
-        ),
-        transceiver: this.pdas.registeredTransceiver(this.program.programId),
-        mint: config.mint,
-        inboxItem,
-        inboxRateLimit,
-        outboxRateLimit: this.pdas.outboxRateLimitAccount(),
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-  }
-
-  async createReleaseInboundMintInstruction(args: {
-    payer: PublicKey;
-    chain: Chain;
-    nttMessage: Ntt.Message;
-    revertOnDelay: boolean;
-    recipient?: PublicKey;
-  }): Promise<TransactionInstruction> {
-    const config = await this.getConfig();
-    if (config.paused) throw new Error("Contract is paused");
-
-    const inboxItem = this.pdas.inboxItemAccount(args.chain, args.nttMessage);
-
-    const recipientAddress =
-      args.recipient ??
-      (await this.getInboundQueuedTransfer(
-        args.chain,
-        args.nttMessage
-      ))!.recipient
-        .toNative(this.chain)
-        .unwrap();
-
-    const tokenAddress = await this.getTokenAccount(recipientAddress);
-
-    let transferIx;
-    if (this.program.idl.version === "1.0.0") {
-      transferIx = await (
-        this.program as Program<NttBindings.NativeTokenTransfer<"1.0.0">>
-      ).methods
-        .releaseInboundMint({
-          revertOnDelay: args.revertOnDelay,
-        })
-        .accountsStrict({
-          common: {
-            payer: args.payer,
-            config: { config: this.pdas.configAccount() },
-            inboxItem,
-            recipient: tokenAddress,
-            mint: config.mint,
-            tokenAuthority: this.pdas.tokenAuthority(),
-            tokenProgram: config.tokenProgram,
-          },
-        })
-        .instruction();
-    } else {
-      transferIx = await (
-        this.program as Program<NttBindings.NativeTokenTransfer<"2.0.0">>
-      ).methods
-        .releaseInboundMint({
-          revertOnDelay: args.revertOnDelay,
-        })
-        .accountsStrict({
-          common: {
-            payer: args.payer,
-            config: { config: this.pdas.configAccount() },
-            inboxItem,
-            recipient: tokenAddress,
-            mint: config.mint,
-            tokenAuthority: this.pdas.tokenAuthority(),
-            tokenProgram: config.tokenProgram,
-            custody: config.custody,
-          },
-        })
-        .instruction();
-    }
-    const mintInfo = await splToken.getMint(
-      this.connection,
-      config.mint,
-      undefined,
-      config.tokenProgram
-    );
-
-    const transferHook = splToken.getTransferHook(mintInfo);
-
-    if (transferHook) {
-      await addExtraAccountMetasForExecute(
-        this.connection,
-        transferIx,
-        transferHook.programId,
-        config.custody,
-        config.mint,
-        tokenAddress,
-        this.pdas.tokenAuthority(),
-        // TODO(csongor): compute the amount that's passed into transfer.
-        // Leaving this 0 is fine unless the transfer hook accounts addresses
-        // depend on the amount (which is unlikely).
-        // If this turns out to be the case, the amount to put here is the
-        // untrimmed amount after removing dust.
-        0
-      );
-    }
-
-    return transferIx;
-  }
-
-  async createReleaseInboundUnlockInstruction(args: {
-    payer: PublicKey;
-    chain: Chain;
-    nttMessage: Ntt.Message;
-    revertOnDelay: boolean;
-    recipient?: PublicKey;
-  }): Promise<TransactionInstruction> {
-    const config = await this.getConfig();
-    if (config.paused) throw new Error("Contract is paused");
-
-    const recipientAddress =
-      args.recipient ??
-      (await this.getInboundQueuedTransfer(
-        args.chain,
-        args.nttMessage
-      ))!.recipient
-        .toNative(this.chain)
-        .unwrap();
-
-    const inboxItem = this.pdas.inboxItemAccount(args.chain, args.nttMessage);
-    const tokenAddress = await this.getTokenAccount(recipientAddress);
-
-    let transferIx;
-    if (this.program.idl.version === "1.0.0") {
-      transferIx = await (
-        this.program as Program<NttBindings.NativeTokenTransfer<"1.0.0">>
-      ).methods
-        .releaseInboundUnlock({
-          revertOnDelay: args.revertOnDelay,
-        })
-        .accountsStrict({
-          common: {
-            payer: args.payer,
-            config: { config: this.pdas.configAccount() },
-            inboxItem: inboxItem,
-            recipient: tokenAddress,
-            mint: config.mint,
-            tokenAuthority: this.pdas.tokenAuthority(),
-            tokenProgram: config.tokenProgram,
-          },
-          custody: config.custody,
-        })
-        .instruction();
-    } else {
-      transferIx = await (
-        this.program as Program<NttBindings.NativeTokenTransfer<"2.0.0">>
-      ).methods
-        .releaseInboundUnlock({
-          revertOnDelay: args.revertOnDelay,
-        })
-        .accountsStrict({
-          common: {
-            payer: args.payer,
-            config: { config: this.pdas.configAccount() },
-            inboxItem: inboxItem,
-            recipient: tokenAddress,
-            mint: config.mint,
-            tokenAuthority: this.pdas.tokenAuthority(),
-            tokenProgram: config.tokenProgram,
-            custody: config.custody,
-          },
-        })
-        .instruction();
-    }
-
-    const mintInfo = await splToken.getMint(
-      this.connection,
-      config.mint,
-      undefined,
-      config.tokenProgram
-    );
-
-    const transferHook = splToken.getTransferHook(mintInfo);
-
-    if (transferHook) {
-      await addExtraAccountMetasForExecute(
-        this.connection,
-        transferIx,
-        transferHook.programId,
-        config.custody,
-        config.mint,
-        tokenAddress,
-        this.pdas.tokenAuthority(),
-        // TODO(csongor): compute the amount that's passed into transfer.
-        // Leaving this 0 is fine unless the transfer hook accounts addresses
-        // depend on the amount (which is unlikely).
-        // If this turns out to be the case, the amount to put here is the
-        // untrimmed amount after removing dust.
-        0
-      );
-    }
-    return transferIx;
   }
 
   /**
