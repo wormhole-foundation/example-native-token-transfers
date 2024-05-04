@@ -615,9 +615,19 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     yield* this.core.postVaa(payer, wormholeNTT);
 
     const senderAddress = new SolanaAddress(payer).unwrap();
-    const nttMessage = wormholeNTT.payload["nttManagerPayload"];
-    const emitterChain = wormholeNTT.emitterChain;
 
+    const receiveMessageIx = NTT.createReceiveWormholeMessageInstruction(
+      this.program,
+      {
+        wormholeId: new PublicKey(this.core.address),
+        payer: senderAddress,
+        vaa: wormholeNTT,
+      },
+      this.pdas
+    );
+
+    const nttMessage = wormholeNTT.payload.nttManagerPayload;
+    const emitterChain = wormholeNTT.emitterChain;
     const releaseArgs = {
       payer: senderAddress,
       config,
@@ -629,17 +639,27 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       revertOnDelay: false,
     };
 
-    const [receiveMessageIx, redeemIx, releaseIx] = await Promise.all([
-      this.createReceiveWormholeMessageInstruction(senderAddress, wormholeNTT),
-      this.createRedeemInstruction(senderAddress, wormholeNTT),
+    const redeemIx = NTT.createRedeemInstruction(this.program, config, {
+      payer: senderAddress,
+      vaa: wormholeNTT,
+    });
+
+    const releaseIx =
       config.mode.locking != null
-        ? this.createReleaseInboundUnlockInstruction(releaseArgs)
-        : this.createReleaseInboundMintInstruction(releaseArgs),
-    ]);
+        ? NTT.createReleaseInboundUnlockInstruction(
+            this.program,
+            config,
+            releaseArgs
+          )
+        : NTT.createReleaseInboundMintInstruction(
+            this.program,
+            config,
+            releaseArgs
+          );
 
     const tx = new Transaction();
     tx.feePayer = senderAddress;
-    tx.add(receiveMessageIx, redeemIx, releaseIx);
+    tx.add(...(await Promise.all([receiveMessageIx, redeemIx, releaseIx])));
 
     const luts: AddressLookupTableAccount[] = [];
 
@@ -755,34 +775,6 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     };
 
     return xfer;
-  }
-
-  async createReceiveWormholeMessageInstruction(
-    payer: PublicKey,
-    wormholeNTT: WormholeNttTransceiver.VAA
-  ): Promise<TransactionInstruction> {
-    const config = await this.getConfig();
-    if (config.paused) throw new Error("Contract is paused");
-
-    const nttMessage = wormholeNTT.payload["nttManagerPayload"];
-    const emitterChain = wormholeNTT.emitterChain;
-    return await this.program.methods
-      .receiveWormholeMessage()
-      .accountsStrict({
-        payer: payer,
-        config: { config: this.pdas.configAccount() },
-        peer: this.pdas.transceiverPeerAccount(emitterChain),
-        vaa: utils.derivePostedVaaKey(
-          this.core.address,
-          Buffer.from(wormholeNTT.hash)
-        ),
-        transceiverMessage: this.pdas.transceiverMessageAccount(
-          emitterChain,
-          nttMessage.id
-        ),
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
   }
 
   async createRedeemInstruction(

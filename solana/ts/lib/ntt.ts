@@ -17,7 +17,7 @@ import {
   Chain,
   ChainAddress,
   ChainId,
-  deserialize,
+  VAA,
   deserializeLayout,
   encoding,
   keccak256,
@@ -727,12 +727,13 @@ export namespace NTT {
     args: {
       wormholeId: PublicKey;
       payer: PublicKey;
-      vaa: Uint8Array;
-    }
+      vaa: VAA<"Ntt:WormholeTransfer">;
+    },
+    pdas?: Pdas
   ): Promise<TransactionInstruction> {
-    const pdas = NTT.pdas(program.programId);
+    pdas = pdas ?? NTT.pdas(program.programId);
 
-    const wormholeNTT = deserialize("Ntt:WormholeTransfer", args.vaa);
+    const wormholeNTT = args.vaa;
     const nttMessage = wormholeNTT.payload.nttManagerPayload;
     const chain = wormholeNTT.emitterChain;
 
@@ -760,13 +761,13 @@ export namespace NTT {
     config: NttBindings.Config<IdlVersion>,
     args: {
       payer: PublicKey;
-      vaa: Uint8Array;
+      vaa: VAA<"Ntt:WormholeTransfer">;
     },
     pdas?: Pdas
   ): Promise<TransactionInstruction> {
     pdas = pdas ?? NTT.pdas(program.programId);
 
-    const wormholeNTT = deserialize("Ntt:WormholeTransfer", args.vaa);
+    const wormholeNTT = args.vaa;
     const nttMessage = wormholeNTT.payload.nttManagerPayload;
     const chain = wormholeNTT.emitterChain;
 
@@ -790,6 +791,7 @@ export namespace NTT {
   }
 
   // Account access
+
   /**
    * Fetches the Config account from the contract.
    *
