@@ -5,5 +5,4 @@ import "@wormhole-foundation/sdk-definitions-ntt";
 
 registerProtocol(_platform, "Ntt", SolanaNtt);
 
-export * as idl from "../lib/anchor-idl/index.js";
 export * from "./ntt.js";

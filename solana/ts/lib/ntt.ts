@@ -46,6 +46,7 @@ import {
 } from "./utils.js";
 
 export namespace NTT {
+  /** Arguments for transfer instruction */
   export interface TransferArgs {
     amount: BN;
     recipientChain: { id: ChainId };
@@ -53,6 +54,7 @@ export namespace NTT {
     shouldQueue: boolean;
   }
 
+  /** utility to create TransferArgs from SDK types */
   export function transferArgs(
     amount: bigint,
     recipient: ChainAddress,
@@ -68,7 +70,9 @@ export namespace NTT {
     };
   }
 
+  /** Type of object containing methods to compute program addresses */
   export type Pdas = ReturnType<typeof pdas>;
+  /** pdas returns an object containing all functions to compute program addresses */
   export const pdas = (programId: PublicKeyInitData) => {
     const configAccount = (): PublicKey => derivePda("config", programId);
     const emitterAccount = (): PublicKey => derivePda("emitter", programId);
@@ -111,7 +115,7 @@ export namespace NTT {
           sender.toBytes(),
           keccak256(
             encoding.bytes.concat(
-              encoding.bytes.zpad(new Uint8Array(args.amount.toBuffer()), 8),
+              encoding.bytes.zpad(new Uint8Array(args.amount.toArray()), 8),
               chainToBytes(args.recipientChain.id),
               new Uint8Array(args.recipientAddress),
               new Uint8Array([args.shouldQueue ? 1 : 0])

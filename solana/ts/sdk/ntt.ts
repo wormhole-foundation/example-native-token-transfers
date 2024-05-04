@@ -165,35 +165,43 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     );
   }
 
-  async *initialize(args: {
-    payer: PublicKey;
-    owner: PublicKey;
-    chain: Chain;
-    mint: PublicKey;
-    outboundLimit: bigint;
-    mode: "burning" | "locking";
-  }) {
+  async *initialize(
+    sender: AccountAddress<C>,
+    args: {
+      mint: PublicKey;
+      mode: Ntt.Mode;
+      outboundLimit: bigint;
+    }
+  ) {
     const mintInfo = await this.connection.getAccountInfo(args.mint);
     if (mintInfo === null)
       throw new Error(
         "Couldn't determine token program. Mint account is null."
       );
 
+    const payer = new SolanaAddress(sender).unwrap();
+
     const ix = await NTT.createInitializeInstruction(
       this.program,
-      { ...args, tokenProgram: mintInfo.owner },
+      {
+        ...args,
+        payer,
+        owner: payer,
+        chain: this.chain,
+        tokenProgram: mintInfo.owner,
+      },
       this.pdas
     );
 
     const tx = new Transaction();
-    tx.feePayer = args.payer;
+    tx.feePayer = payer;
     tx.add(ix);
     yield this.createUnsignedTx(
       { transaction: tx, signers: [] },
       "Ntt.Initialize"
     );
 
-    yield* this.initializeOrUpdateLUT({ payer: args.payer });
+    yield* this.initializeOrUpdateLUT({ payer });
   }
 
   // This function should be called after each upgrade. If there's nothing to
