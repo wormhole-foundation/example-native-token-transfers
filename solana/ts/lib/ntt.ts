@@ -366,6 +366,7 @@ export namespace NTT {
   ): Promise<TransactionInstruction> {
     pdas = pdas ?? NTT.pdas(program.programId);
 
+    const custody = await custodyAccountAddress(pdas, config);
     const recipientChain = toChain(args.transferArgs.recipientChain.id);
     const transferIx = await program.methods
       .transferBurn(args.transferArgs)
@@ -378,8 +379,8 @@ export namespace NTT {
           tokenProgram: config.tokenProgram,
           outboxItem: args.outboxItem,
           outboxRateLimit: pdas.outboxRateLimitAccount(),
-          custody: await custodyAccountAddress(pdas, config),
           systemProgram: SystemProgram.programId,
+          custody,
         },
         peer: pdas.peerAccount(recipientChain),
         inboxRateLimit: pdas.inboxRateLimitAccount(recipientChain),
@@ -448,10 +449,10 @@ export namespace NTT {
     pdas = pdas ?? NTT.pdas(program.programId);
 
     const chain = toChain(args.transferArgs.recipientChain.id);
-
+    const custody = await custodyAccountAddress(pdas, config);
     const transferIx = await program.methods
       .transferLock(args.transferArgs)
-      .accounts({
+      .accountsStrict({
         common: {
           payer: args.payer,
           config: { config: pdas.configAccount() },
@@ -460,7 +461,8 @@ export namespace NTT {
           tokenProgram: config.tokenProgram,
           outboxItem: args.outboxItem,
           outboxRateLimit: pdas.outboxRateLimitAccount(),
-          custody: await custodyAccountAddress(pdas, config),
+          custody,
+          systemProgram: SystemProgram.programId,
         },
         peer: pdas.peerAccount(chain),
         inboxRateLimit: pdas.inboxRateLimitAccount(chain),
@@ -468,6 +470,7 @@ export namespace NTT {
           args.fromAuthority,
           args.transferArgs
         ),
+        custody,
       })
       .instruction();
 
@@ -647,6 +650,7 @@ export namespace NTT {
         .recipientAddress;
 
     pdas = pdas ?? NTT.pdas(program.programId);
+    const custody = await custodyAccountAddress(pdas, config);
 
     const transferIx = await program.methods
       .releaseInboundUnlock({
@@ -666,9 +670,9 @@ export namespace NTT {
           mint: config.mint,
           tokenAuthority: pdas.tokenAuthority(),
           tokenProgram: config.tokenProgram,
-          custody: await custodyAccountAddress(pdas, config),
+          custody,
         },
-        custody: "",
+        custody,
       })
       .instruction();
 

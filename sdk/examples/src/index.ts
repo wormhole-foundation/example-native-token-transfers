@@ -1,6 +1,7 @@
 import {
   TransactionId,
   Wormhole,
+  amount,
   signSendWait,
 } from "@wormhole-foundation/sdk";
 import evm from "@wormhole-foundation/sdk/platforms/evm";
@@ -13,9 +14,15 @@ import "@wormhole-foundation/sdk-solana-ntt";
 import { TEST_NTT_SPL22_TOKENS, TEST_NTT_TOKENS } from "./consts.js";
 import { getSigner } from "./helpers.js";
 
+const TOKEN_CONTRACTS = TEST_NTT_TOKENS;
+//const TOKEN_CONTRACTS = TEST_NTT_SPL22_TOKENS;
+
 // Recover an in-flight transfer by setting txids here from output of previous run
 const recoverTxids: TransactionId[] = [
   //{ chain: "Solana", txid: "hZXRs9TEvMWnSAzcgmrEuHsq1C5rbcompy63vkJ2SrXv4a7u6ZBEaJAkBMXKAfScCooDNhN36Jt4PMcDhN8yGjP", },
+  // Unused adn staged
+  // {chain "Sepolia", txid: "0x9f2b1a8124f8377d77deb5c85f165c290669587b494c598beacea60a4d9a00fd"}
+  // {chain "Sepolia", txid: "0x1aff02ed4bf9d51a424626187e3e331304229fc0d422b7abfe8025452b166180"}
 ];
 
 (async function () {
@@ -27,14 +34,18 @@ const recoverTxids: TransactionId[] = [
   const dstSigner = await getSigner(dst);
 
   const srcNtt = await src.getProtocol("Ntt", {
-    ntt: TEST_NTT_SPL22_TOKENS[src.chain],
+    ntt: TOKEN_CONTRACTS[src.chain],
   });
   const dstNtt = await dst.getProtocol("Ntt", {
-    ntt: TEST_NTT_SPL22_TOKENS[dst.chain],
+    ntt: TOKEN_CONTRACTS[dst.chain],
   });
 
+  const amt = amount.units(
+    amount.parse("0.01", await srcNtt.getTokenDecimals())
+  );
+
   const xfer = () =>
-    srcNtt.transfer(srcSigner.address.address, 1_000n, dstSigner.address, {
+    srcNtt.transfer(srcSigner.address.address, amt, dstSigner.address, {
       queue: false,
       automatic: false,
       gasDropoff: 0n,
@@ -47,7 +58,11 @@ const recoverTxids: TransactionId[] = [
       : recoverTxids;
   console.log("Source txs", txids);
 
-  const vaa = await wh.getVaa(txids[0]!.txid, "Ntt:WormholeTransfer");
+  const vaa = await wh.getVaa(
+    txids[0]!.txid,
+    "Ntt:WormholeTransfer",
+    25 * 60 * 1000
+  );
   console.log(vaa);
 
   const dstTxids = await signSendWait(
