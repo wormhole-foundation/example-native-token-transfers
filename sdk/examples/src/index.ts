@@ -14,21 +14,24 @@ import "@wormhole-foundation/sdk-solana-ntt";
 import { TEST_NTT_SPL22_TOKENS, TEST_NTT_TOKENS } from "./consts.js";
 import { getSigner } from "./helpers.js";
 
+// EVM 1.0.0, Solana 1.0.0
 const TOKEN_CONTRACTS = TEST_NTT_TOKENS;
-//const TOKEN_CONTRACTS = TEST_NTT_SPL22_TOKENS;
+// EVM 1.0.0 Solana 2.0.0
+// const TOKEN_CONTRACTS = TEST_NTT_SPL22_TOKENS;
 
 // Recover an in-flight transfer by setting txids here from output of previous run
 const recoverTxids: TransactionId[] = [
   //{ chain: "Solana", txid: "hZXRs9TEvMWnSAzcgmrEuHsq1C5rbcompy63vkJ2SrXv4a7u6ZBEaJAkBMXKAfScCooDNhN36Jt4PMcDhN8yGjP", },
-  // Unused adn staged
-  // {chain "Sepolia", txid: "0x9f2b1a8124f8377d77deb5c85f165c290669587b494c598beacea60a4d9a00fd"}
-  // {chain "Sepolia", txid: "0x1aff02ed4bf9d51a424626187e3e331304229fc0d422b7abfe8025452b166180"}
+  //{ chain: "Sepolia", txid: "0x9f2b1a8124f8377d77deb5c85f165c290669587b494c598beacea60a4d9a00fd", },
+  //{ chain: "Sepolia", txid: "0x7c60e520f807593d27702427666e5c72aa282a3f14fe59ec934c5f9de9558609", },
+  // Unused and staged
+  //{chain: "Sepolia", txid: "0x1aff02ed4bf9d51a424626187e3e331304229fc0d422b7abfe8025452b166180"}
 ];
 
 (async function () {
   const wh = new Wormhole("Testnet", [solana.Platform, evm.Platform]);
-  const src = wh.getChain("Solana");
-  const dst = wh.getChain("Sepolia");
+  const src = wh.getChain("Sepolia");
+  const dst = wh.getChain("Solana");
 
   const srcSigner = await getSigner(src);
   const dstSigner = await getSigner(dst);
