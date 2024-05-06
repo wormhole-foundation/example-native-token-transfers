@@ -1,4 +1,10 @@
-import { BN, Program, web3 } from "@coral-xyz/anchor";
+import {
+  BN,
+  Program,
+  parseIdlErrors,
+  translateError,
+  web3,
+} from "@coral-xyz/anchor";
 import * as splToken from "@solana/spl-token";
 import {
   AccountMeta,
@@ -165,7 +171,9 @@ export namespace NTT {
     if (!sender) {
       const address =
         connection.rpcEndpoint === rpc.rpcAddress("Devnet", "Solana")
-          ? "6sbzC1eH4FTujJXWj51eQe25cYvr4xfXbJ1vAj7j2k5J" // The CI pubkey, funded on local network
+          ? "6sbzC1eH4FTujJXWj51eQe25cYvr4xfXbJ1vAj7j2k5J" // The CI pubkey, funded on ci network
+          : connection.rpcEndpoint.startsWith("http://localhost")
+          ? "98evdAiWr7ey9MAQzoQQMwFQkTsSR6KkWQuFqKrgwNwb" // the anchor pubkey, funded on local network
           : "Hk3SdYTJFpawrvRz4qRztuEt2SqoCG7BGj2yJfDJSFbJ"; // The default pubkey is funded on mainnet and devnet we need a funded account to simulate the transaction below
       sender = new PublicKey(address);
     }
@@ -173,11 +181,11 @@ export namespace NTT {
     const program = getNttProgram(connection, programId.toString(), "1.0.0");
 
     const ix = await program.methods.version().accountsStrict({}).instruction();
-    const latestBlockHash =
+    const { blockhash } =
       await program.provider.connection.getLatestBlockhash();
     const msg = new TransactionMessage({
       payerKey: sender,
-      recentBlockhash: latestBlockHash.blockhash,
+      recentBlockhash: blockhash,
       instructions: [ix],
     }).compileToV0Message();
 
@@ -187,6 +195,15 @@ export namespace NTT {
       tx,
       { sigVerify: false }
     );
+
+    if (!txSimulation.value.returnData || txSimulation.value.err) {
+      throw new Error(
+        "Could not fetch IDL version: " +
+          JSON.stringify(
+            translateError(txSimulation.value.err, parseIdlErrors(program.idl))
+          )
+      );
+    }
 
     const data = encoding.b64.decode(txSimulation.value.returnData?.data[0]!);
     const parsed = deserializeLayout(programVersionLayout, data);

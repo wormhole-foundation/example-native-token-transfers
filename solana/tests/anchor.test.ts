@@ -122,6 +122,7 @@ describe("example-native-token-transfers", () => {
   let ntt: SolanaNtt<"Devnet", "Solana">;
   let signer: Signer;
   let sender: AccountAddress<"Solana">;
+  let tokenAddress: string;
 
   beforeAll(async () => {
     try {
@@ -189,15 +190,14 @@ describe("example-native-token-transfers", () => {
         TOKEN_PROGRAM
       );
 
+      tokenAddress = mint.publicKey.toBase58();
       // Create our contract client
       ntt = new SolanaNtt("Devnet", "Solana", connection, {
         ...ctx.config.contracts,
         ntt: {
-          token: mint.publicKey.toBase58(),
+          token: tokenAddress,
           manager: NTT_ADDRESS,
-          transceiver: {
-            wormhole: NTT_ADDRESS,
-          },
+          transceiver: { wormhole: NTT_ADDRESS },
         },
       });
     } catch (e) {
@@ -374,27 +374,24 @@ describe("example-native-token-transfers", () => {
   });
 
   describe("Static Checks", () => {
-    const wh = new Wormhole("Testnet", [SolanaPlatform]);
-
+    const wh = new Wormhole("Devnet", [SolanaPlatform]);
+    const ctx = wh.getChain("Solana");
     const overrides = {
       Solana: {
-        token: "EetppHswYvV1jjRWoQKC1hejdeBDHR9NNzNtCyRQfrrQ",
-        manager: "NTtAaoDJhkeHeaVUHnyhwbPNAN6WgBpHkHBTc6d7vLK",
-        transceiver: {
-          wormhole: "ExVbjD8inGXkt7Cx8jVr4GF175sQy1MeqgfaY53Ah8as",
-        },
+        token: tokenAddress,
+        manager: NTT_ADDRESS,
+        transceiver: { wormhole: NTT_ADDRESS },
       },
     };
 
     describe("ABI Versions Test", function () {
-      const ctx = wh.getChain("Solana");
       test("It initializes from Rpc", async function () {
-        const ntt = await SolanaNtt.fromRpc(await ctx.getRpc(), {
+        const ntt = await SolanaNtt.fromRpc(connection, {
           Solana: {
             ...ctx.config,
             contracts: {
               ...ctx.config.contracts,
-              ...{ ntt: overrides["Solana"] },
+              ntt: overrides["Solana"],
             },
           },
         });
@@ -402,7 +399,7 @@ describe("example-native-token-transfers", () => {
       });
 
       test("It initializes from constructor", async function () {
-        const ntt = new SolanaNtt("Testnet", "Solana", await ctx.getRpc(), {
+        const ntt = new SolanaNtt("Devnet", "Solana", connection, {
           ...ctx.config.contracts,
           ...{ ntt: overrides["Solana"] },
         });
@@ -411,11 +408,11 @@ describe("example-native-token-transfers", () => {
 
       test("It gets the correct version", async function () {
         const version = await SolanaNtt.getVersion(
-          await ctx.getRpc(),
+          connection,
           { ntt: overrides["Solana"] },
           new SolanaAddress(payer.publicKey.toBase58())
         );
-        expect(version).toBe("1.0.0");
+        expect(version).toBe("2.0.0");
       });
     });
   });
