@@ -3,17 +3,9 @@ import {
   Layout,
   encoding,
 } from "@wormhole-foundation/sdk-base";
-
 import { BN } from "@coral-xyz/anchor";
 import { PublicKey, PublicKeyInitData } from "@solana/web3.js";
-import {
-  Chain,
-  ChainId,
-  keccak256,
-  toChainId,
-} from "@wormhole-foundation/sdk-connect";
-import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
-import { TransferArgs } from "./ntt.js";
+import { Chain, ChainId, toChainId } from "@wormhole-foundation/sdk-connect";
 
 export const BPF_LOADER_UPGRADEABLE_PROGRAM_ID = new PublicKey(
   "BPFLoaderUpgradeab1e11111111111111111111111"
@@ -24,6 +16,22 @@ export function programDataAddress(programId: PublicKeyInitData) {
     [new PublicKey(programId).toBytes()],
     BPF_LOADER_UPGRADEABLE_PROGRAM_ID
   )[0];
+}
+
+export function parseVersion(
+  version: string
+): [number, number, number, string] {
+  const components = version.split(".");
+  if (components.length < 3) throw new Error("Invalid version string");
+  const patchVersion = components[2]!;
+  const patchNumber = patchVersion.split(/[^0-9]/)[0]!;
+  const patchLabel = patchVersion.slice(patchNumber.length);
+  return [
+    Number(components[0]),
+    Number(components[1]),
+    Number(patchNumber),
+    patchLabel,
+  ];
 }
 
 export const pubKeyConversion = {
@@ -55,6 +63,10 @@ export const programDataLayout = [
     ],
   },
 ] as const satisfies Layout;
+export const programVersionLayout = [
+  { name: "length", binary: "uint", endianness: "little", size: 4 },
+  { name: "version", binary: "bytes" },
+] as const satisfies Layout;
 
 export const U64 = {
   MAX: new BN((2n ** 64n - 1n).toString()),
@@ -85,64 +97,6 @@ export function derivePda(
 
 export const chainToBytes = (chain: Chain | ChainId) =>
   encoding.bignum.toBytes(toChainId(chain), 2);
-
-export const nttAddresses = (programId: PublicKeyInitData) => {
-  const configAccount = (): PublicKey => derivePda("config", programId);
-  const emitterAccount = (): PublicKey => derivePda("emitter", programId);
-  const inboxRateLimitAccount = (chain: Chain): PublicKey =>
-    derivePda(["inbox_rate_limit", chainToBytes(chain)], programId);
-  const inboxItemAccount = (chain: Chain, nttMessage: Ntt.Message): PublicKey =>
-    derivePda(["inbox_item", Ntt.messageDigest(chain, nttMessage)], programId);
-  const outboxRateLimitAccount = (): PublicKey =>
-    derivePda("outbox_rate_limit", programId);
-  const tokenAuthority = (): PublicKey =>
-    derivePda("token_authority", programId);
-  const peerAccount = (chain: Chain): PublicKey =>
-    derivePda(["peer", chainToBytes(chain)], programId);
-  const transceiverPeerAccount = (chain: Chain): PublicKey =>
-    derivePda(["transceiver_peer", chainToBytes(chain)], programId);
-  const registeredTransceiver = (transceiver: PublicKey): PublicKey =>
-    derivePda(["registered_transceiver", transceiver.toBytes()], programId);
-  const transceiverMessageAccount = (chain: Chain, id: Uint8Array): PublicKey =>
-    derivePda(["transceiver_message", chainToBytes(chain), id], programId);
-  const wormholeMessageAccount = (outboxItem: PublicKey): PublicKey =>
-    derivePda(["message", outboxItem.toBytes()], programId);
-  const lutAccount = (): PublicKey => derivePda("lut", programId);
-  const lutAuthority = (): PublicKey => derivePda("lut_authority", programId);
-  const sessionAuthority = (sender: PublicKey, args: TransferArgs): PublicKey =>
-    derivePda(
-      [
-        "session_authority",
-        sender.toBytes(),
-        keccak256(
-          encoding.bytes.concat(
-            encoding.bytes.zpad(new Uint8Array(args.amount.toBuffer()), 8),
-            chainToBytes(args.recipientChain.id),
-            new Uint8Array(args.recipientAddress),
-            new Uint8Array([args.shouldQueue ? 1 : 0])
-          )
-        ),
-      ],
-      programId
-    );
-
-  return {
-    configAccount,
-    outboxRateLimitAccount,
-    inboxRateLimitAccount,
-    inboxItemAccount,
-    sessionAuthority,
-    tokenAuthority,
-    emitterAccount,
-    wormholeMessageAccount,
-    peerAccount,
-    transceiverPeerAccount,
-    transceiverMessageAccount,
-    registeredTransceiver,
-    lutAccount,
-    lutAuthority,
-  };
-};
 
 export const quoterAddresses = (programId: PublicKeyInitData) => {
   const instanceAccount = () => derivePda("instance", programId);
