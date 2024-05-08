@@ -18,10 +18,20 @@ export function programDataAddress(programId: PublicKeyInitData) {
   )[0];
 }
 
-export function parseVersion(version: string): [number, number, number] {
+export function parseVersion(
+  version: string
+): [number, number, number, string] {
   const components = version.split(".");
-  if (components.length !== 3) throw new Error("Invalid version string");
-  return [Number(components[0]), Number(components[1]), Number(components[2])];
+  if (components.length < 3) throw new Error("Invalid version string");
+  const patchVersion = components[2]!;
+  const patchNumber = patchVersion.split(/[^0-9]/)[0]!;
+  const patchLabel = patchVersion.slice(patchNumber.length);
+  return [
+    Number(components[0]),
+    Number(components[1]),
+    Number(patchNumber),
+    patchLabel,
+  ];
 }
 
 export const pubKeyConversion = {

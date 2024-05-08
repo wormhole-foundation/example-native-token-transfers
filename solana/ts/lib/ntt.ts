@@ -268,7 +268,7 @@ export namespace NTT {
     pdas?: Pdas
   ) {
     // if the program is < major version 2.x.x, we don't need to initialize the LUT
-    const [major, ,] = parseVersion(program.idl.version);
+    const [major, , ,] = parseVersion(program.idl.version);
     if (major < 2) return;
 
     pdas = pdas ?? NTT.pdas(program.programId);
@@ -997,7 +997,7 @@ export namespace NTT {
     program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
     pdas?: Pdas
   ): Promise<AddressLookupTableAccount | null> {
-    const [major, ,] = parseVersion(program.idl.version);
+    const [major, , ,] = parseVersion(program.idl.version);
     if (major < 2) return null;
 
     pdas = pdas ?? NTT.pdas(program.programId);

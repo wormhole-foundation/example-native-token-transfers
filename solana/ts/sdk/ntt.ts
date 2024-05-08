@@ -639,10 +639,8 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     useCache = true
   ): Promise<AddressLookupTableAccount> {
     if (!useCache || !this.addressLookupTable) {
-      this.addressLookupTable = await NTT.getAddressLookupTable(
-        this.program,
-        this.pdas
-      );
+      const alut = await NTT.getAddressLookupTable(this.program, this.pdas);
+      if (alut) this.addressLookupTable = alut;
     }
 
     if (!this.addressLookupTable)
