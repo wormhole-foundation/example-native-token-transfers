@@ -246,6 +246,12 @@ contract TestNttManager is Test, IRateLimiterEvents {
             abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, pauser)
         );
         nttManager.unpause();
+
+        // execute from owner context
+        // ensures that owner can still unpause
+        vm.startPrank(address(this));
+        nttManager.unpause();
+        assertEq(nttManager.isPaused(), false);
     }
 
     // === deployment with invalid token
