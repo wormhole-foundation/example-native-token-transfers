@@ -51,6 +51,9 @@
     "@wormhole-foundation/sdk-evm-ntt": "0.0.1-beta.1",
     "@wormhole-foundation/sdk-connect": "0.6.5"
   },
+  "peerDependencies": {
+    "@wormhole-foundation/sdk-connect": "^0.6"
+  },
   "type": "module",
   "exports": {
     ".": {

@@ -3,13 +3,11 @@ import * as splToken from "@solana/spl-token";
 import { createAssociatedTokenAccountInstruction } from "@solana/spl-token";
 import {
   AddressLookupTableAccount,
-  AddressLookupTableProgram,
   Connection,
   Keypair,
   PublicKey,
   SystemProgram,
   Transaction,
-  TransactionInstruction,
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
@@ -23,11 +21,6 @@ import {
   Network,
   TokenAddress,
   UnsignedTransaction,
-  deserializeLayout,
-  encoding,
-  rpc,
-  toChain,
-  toChainId,
 } from "@wormhole-foundation/sdk-connect";
 import {
   Ntt,
@@ -46,28 +39,15 @@ import {
   utils,
 } from "@wormhole-foundation/sdk-solana-core";
 import BN from "bn.js";
-import { NttQuoter, WEI_PER_GWEI } from "../lib/index.js";
-import {
-  BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
-  TransferArgs,
-  addExtraAccountMetasForExecute,
-  nttAddresses,
-  programDataAddress,
-  programVersionLayout,
-} from "./utils.js";
+import { NTT, NttQuoter, WEI_PER_GWEI } from "../lib/index.js";
 
-import {
-  IdlVersion,
-  IdlVersions,
-  NttBindings,
-  getNttProgram,
-} from "./bindings.js";
+import { IdlVersion, NttBindings, getNttProgram } from "../lib/bindings.js";
 
 export class SolanaNtt<N extends Network, C extends SolanaChains>
   implements Ntt<N, C>
 {
   core: SolanaWormholeCore<N, C>;
-  pdas: ReturnType<typeof nttAddresses>;
+  pdas: NTT.Pdas;
 
   program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>;
 
@@ -80,7 +60,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     readonly chain: C,
     readonly connection: Connection,
     readonly contracts: Contracts & { ntt?: Ntt.Contracts },
-    readonly version: string = "default"
+    readonly version: string = "2.0.0"
   ) {
     if (!contracts.ntt) throw new Error("Ntt contracts not found");
 
@@ -103,7 +83,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       connection,
       contracts
     );
-    this.pdas = nttAddresses(this.program.programId);
+    this.pdas = NTT.pdas(this.program.programId);
   }
 
   async isRelayingAvailable(destination: Chain): Promise<boolean> {
@@ -153,10 +133,8 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     );
   }
 
-  async getConfig(): Promise<NttBindings.Config> {
-    this.config =
-      this.config ??
-      (await this.program.account.config.fetch(this.pdas.configAccount()));
+  async getConfig(): Promise<NttBindings.Config<IdlVersion>> {
+    this.config = this.config ?? (await NTT.getConfig(this.program, this.pdas));
     return this.config!;
   }
 
@@ -178,195 +156,64 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     contracts: Contracts & { ntt: Ntt.Contracts },
     sender?: AccountAddress<SolanaChains>
   ): Promise<IdlVersion> {
-    // the anchor library has a built-in method to read view functions. However,
-    // it requires a signer, which would trigger a wallet prompt on the frontend.
-    // Instead, we manually construct a versioned transaction and call the
-    // simulate function with sigVerify: false below.
-    //
-    // This way, the simulation won't require a signer, but it still requires
-    // the pubkey of an account that has some lamports in it (since the
-    // simulation checks if the account has enough money to pay for the transaction).
-    //
-    // It's a little unfortunate but it's the best we can do.
-
-    if (!sender) {
-      const address =
-        connection.rpcEndpoint === rpc.rpcAddress("Devnet", "Solana")
-          ? "6sbzC1eH4FTujJXWj51eQe25cYvr4xfXbJ1vAj7j2k5J" // The CI pubkey, funded on local network
-          : "Hk3SdYTJFpawrvRz4qRztuEt2SqoCG7BGj2yJfDJSFbJ"; // The default pubkey is funded on mainnet and devnet we need a funded account to simulate the transaction below
-      sender = new SolanaAddress(address);
-    }
-
-    const senderAddress = new SolanaAddress(sender).unwrap();
-
-    const program = getNttProgram(connection, contracts.ntt.manager, "default");
-
-    const ix = await program.methods.version().accountsStrict({}).instruction();
-    const latestBlockHash =
-      await program.provider.connection.getLatestBlockhash();
-
-    const msg = new TransactionMessage({
-      payerKey: senderAddress,
-      recentBlockhash: latestBlockHash.blockhash,
-      instructions: [ix],
-    }).compileToV0Message();
-
-    const tx = new VersionedTransaction(msg);
-
-    const txSimulation = await program.provider.connection.simulateTransaction(
-      tx,
-      { sigVerify: false }
+    return NTT.getVersion(
+      connection,
+      new PublicKey(contracts.ntt.manager!),
+      sender ? new SolanaAddress(sender).unwrap() : undefined
     );
-
-    const data = encoding.b64.decode(txSimulation.value.returnData?.data[0]!);
-    const parsed = deserializeLayout(programVersionLayout, data);
-    const version = encoding.bytes.decode(parsed.version);
-    if (version in IdlVersions) return version as IdlVersion;
-    else throw new Error("Unknown IDL version: " + version);
   }
 
-  async *initialize(args: {
-    payer: Keypair;
-    owner: Keypair;
-    chain: Chain;
-    mint: PublicKey;
-    outboundLimit: bigint;
-    mode: "burning" | "locking";
-  }) {
-    const mode: any =
-      args.mode === "burning" ? { burning: {} } : { locking: {} };
-    const chainId = toChainId(args.chain);
+  async *initialize(
+    sender: AccountAddress<C>,
+    args: {
+      mint: PublicKey;
+      mode: Ntt.Mode;
+      outboundLimit: bigint;
+    }
+  ) {
     const mintInfo = await this.connection.getAccountInfo(args.mint);
-    if (mintInfo === null) {
+    if (mintInfo === null)
       throw new Error(
         "Couldn't determine token program. Mint account is null."
       );
-    }
 
-    const tokenProgram = mintInfo.owner;
-    const limit = new BN(args.outboundLimit.toString());
-    const ix = await this.program.methods
-      .initialize({ chainId, limit: limit, mode })
-      .accountsStrict({
-        payer: args.payer.publicKey,
-        deployer: args.owner.publicKey,
-        programData: programDataAddress(this.program.programId),
-        config: this.pdas.configAccount(),
-        mint: args.mint,
-        rateLimit: this.pdas.outboxRateLimitAccount(),
-        tokenProgram,
-        tokenAuthority: this.pdas.tokenAuthority(),
-        custody: await this.custodyAccountAddress(args.mint, tokenProgram),
-        bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
-        associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
+    const payer = new SolanaAddress(sender).unwrap();
+
+    const ix = await NTT.createInitializeInstruction(
+      this.program,
+      {
+        ...args,
+        payer,
+        owner: payer,
+        chain: this.chain,
+        tokenProgram: mintInfo.owner,
+      },
+      this.pdas
+    );
 
     const tx = new Transaction();
-    tx.feePayer = args.payer.publicKey;
+    tx.feePayer = payer;
     tx.add(ix);
     yield this.createUnsignedTx(
       { transaction: tx, signers: [] },
       "Ntt.Initialize"
     );
 
-    yield* this.initializeOrUpdateLUT({ payer: args.payer });
+    yield* this.initializeOrUpdateLUT({ payer });
   }
 
-  // This function should be called after each upgrade. If there's nothing to
-  // do, it won't actually submit a transaction, so it's cheap to call.
-  async *initializeOrUpdateLUT(args: { payer: Keypair }) {
-    if (this.version === "1.0.0") return;
-    const program = this.program as Program<
-      NttBindings.NativeTokenTransfer<"2.0.0">
-    >;
-
-    // TODO: find a more robust way of fetching a recent slot
-    const slot = (await this.connection.getSlot()) - 1;
-
-    const [_, lutAddress] = web3.AddressLookupTableProgram.createLookupTable({
-      authority: this.pdas.lutAuthority(),
-      payer: args.payer.publicKey,
-      recentSlot: slot,
-    });
-
-    const whAccs = utils.getWormholeDerivedAccounts(
-      program.programId,
-      this.core.address
-    );
+  async *initializeOrUpdateLUT(args: { payer: PublicKey }) {
     const config = await this.getConfig();
 
-    const entries = {
-      config: this.pdas.configAccount(),
-      custody: config.custody,
-      tokenProgram: config.tokenProgram,
-      mint: config.mint,
-      tokenAuthority: this.pdas.tokenAuthority(),
-      outboxRateLimit: this.pdas.outboxRateLimitAccount(),
-      wormhole: {
-        bridge: whAccs.wormholeBridge,
-        feeCollector: whAccs.wormholeFeeCollector,
-        sequence: whAccs.wormholeSequence,
-        program: this.core.address,
-        systemProgram: SystemProgram.programId,
-        clock: web3.SYSVAR_CLOCK_PUBKEY,
-        rent: web3.SYSVAR_RENT_PUBKEY,
-      },
-    };
-
-    // collect all pubkeys in entries recursively
-    const collectPubkeys = (obj: any): Array<PublicKey> => {
-      const pubkeys = new Array<PublicKey>();
-      for (const key in obj) {
-        const value = obj[key];
-        if (value instanceof PublicKey) {
-          pubkeys.push(value);
-        } else if (typeof value === "object") {
-          pubkeys.push(...collectPubkeys(value));
-        }
-      }
-      return pubkeys;
-    };
-    const pubkeys = collectPubkeys(entries).map((pk) => pk.toBase58());
-
-    var existingLut: web3.AddressLookupTableAccount | null = null;
-    try {
-      existingLut = await this.getAddressLookupTable(false);
-    } catch {
-      // swallow errors here, it just means that lut doesn't exist
-    }
-
-    if (existingLut !== null) {
-      const existingPubkeys =
-        existingLut.state.addresses?.map((a) => a.toBase58()) ?? [];
-
-      // if pubkeys contains keys that are not in the existing LUT, we need to
-      // add them to the LUT
-      const missingPubkeys = pubkeys.filter(
-        (pk) => !existingPubkeys.includes(pk)
-      );
-
-      if (missingPubkeys.length === 0) {
-        return existingLut;
-      }
-    }
-
-    const ix = await program.methods
-      .initializeLut(new BN(slot))
-      .accountsStrict({
-        payer: args.payer.publicKey,
-        authority: this.pdas.lutAuthority(),
-        lutAddress,
-        lut: this.pdas.lutAccount(),
-        lutProgram: AddressLookupTableProgram.programId,
-        systemProgram: SystemProgram.programId,
-        entries,
-      })
-      .instruction();
+    const ix = await NTT.initializeOrUpdateLUT(this.program, config, {
+      payer: args.payer,
+      wormholeId: new PublicKey(this.core.address),
+    });
+    // Already up to date
+    if (!ix) return;
 
     const tx = new Transaction().add(ix);
-    tx.feePayer = args.payer.publicKey;
+    tx.feePayer = args.payer;
 
     yield this.createUnsignedTx({ transaction: tx }, "Ntt.InitializeLUT");
   }
@@ -432,56 +279,14 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     payer: AccountAddress<C>
   ) {
     const sender = new SolanaAddress(payer).unwrap();
-    const wormholeMessage = Keypair.generate();
-    const whAccs = utils.getWormholeDerivedAccounts(
-      this.program.programId,
-      this.core.address
-    );
-
-    const [setPeerIx, broadcastIx] = await Promise.all([
-      this.program.methods
-        .setWormholePeer({
-          chainId: { id: toChainId(peer.chain) },
-          address: Array.from(peer.address.toUniversalAddress().toUint8Array()),
-        })
-        .accountsStrict({
-          payer: sender,
-          owner: sender,
-          config: this.pdas.configAccount(),
-          peer: this.pdas.transceiverPeerAccount(peer.chain),
-          systemProgram: SystemProgram.programId,
-        })
-        .instruction(),
-      this.program.methods
-        .broadcastWormholePeer({ chainId: toChainId(peer.chain) })
-        .accountsStrict({
-          payer: sender,
-          config: this.pdas.configAccount(),
-          peer: this.pdas.transceiverPeerAccount(peer.chain),
-          wormholeMessage: wormholeMessage.publicKey,
-          emitter: this.pdas.emitterAccount(),
-          wormhole: {
-            bridge: whAccs.wormholeBridge,
-            feeCollector: whAccs.wormholeFeeCollector,
-            sequence: whAccs.wormholeSequence,
-            program: this.core.address,
-            clock: web3.SYSVAR_CLOCK_PUBKEY,
-            rent: web3.SYSVAR_RENT_PUBKEY,
-            systemProgram: SystemProgram.programId,
-          },
-        })
-        .instruction(),
-    ]);
-
-    const tx = new Transaction();
-    tx.feePayer = sender;
-    tx.add(setPeerIx, broadcastIx);
-
     yield this.createUnsignedTx(
-      {
-        transaction: tx,
-        signers: [wormholeMessage],
-      },
+      await NTT.setWormholeTransceiverPeer(this.program, {
+        wormholeId: new PublicKey(this.core.address),
+        payer: sender,
+        owner: sender,
+        chain: peer.chain,
+        address: peer.address.toUniversalAddress().toUint8Array(),
+      }),
       "Ntt.SetWormholeTransceiverPeer"
     );
   }
@@ -494,22 +299,14 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   ) {
     const sender = new SolanaAddress(payer).unwrap();
 
-    const ix = await this.program.methods
-      .setPeer({
-        chainId: { id: toChainId(peer.chain) },
-        address: Array.from(peer.address.toUniversalAddress().toUint8Array()),
-        limit: new BN(inboundLimit.toString()),
-        tokenDecimals: tokenDecimals,
-      })
-      .accountsStrict({
-        payer: sender,
-        owner: sender,
-        config: this.pdas.configAccount(),
-        peer: this.pdas.peerAccount(peer.chain),
-        inboxRateLimit: this.pdas.inboxRateLimitAccount(peer.chain),
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
+    const ix = await NTT.createSetPeerInstruction(this.program, {
+      payer: sender,
+      owner: sender,
+      chain: peer.chain,
+      address: peer.address.toUniversalAddress().toUint8Array(),
+      limit: new BN(inboundLimit.toString()),
+      tokenDecimals,
+    });
 
     const tx = new Transaction();
     tx.feePayer = sender;
@@ -533,11 +330,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const fromAuthority = payerAddress;
     const from = await this.getTokenAccount(fromAuthority);
 
-    const transferArgs: TransferArgs = {
-      amount: amount,
-      recipient: destination,
-      shouldQueue: options.queue,
-    };
+    const transferArgs = NTT.transferArgs(amount, destination, options.queue);
 
     const txArgs = {
       transferArgs,
@@ -545,31 +338,46 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       from,
       fromAuthority,
       outboxItem: outboxItem.publicKey,
-      config,
     };
 
-    const [approveIx, transferIx, releaseIx] = await Promise.all([
-      splToken.createApproveInstruction(
-        from,
-        this.pdas.sessionAuthority(fromAuthority, transferArgs),
-        fromAuthority,
-        amount,
-        [],
-        config.tokenProgram
-      ),
+    const approveIx = splToken.createApproveInstruction(
+      from,
+      this.pdas.sessionAuthority(fromAuthority, transferArgs),
+      fromAuthority,
+      amount,
+      [],
+      config.tokenProgram
+    );
+
+    const transferIx =
       config.mode.locking != null
-        ? this.createTransferLockInstruction(txArgs)
-        : this.createTransferBurnInstruction(txArgs),
-      this.createReleaseOutboundInstruction({
+        ? NTT.createTransferLockInstruction(
+            this.program,
+            config,
+            txArgs,
+            this.pdas
+          )
+        : NTT.createTransferBurnInstruction(
+            this.program,
+            config,
+            txArgs,
+            this.pdas
+          );
+
+    const releaseIx = NTT.createReleaseOutboundInstruction(
+      this.program,
+      {
         payer: payerAddress,
         outboxItem: outboxItem.publicKey,
         revertOnDelay: !options.queue,
-      }),
-    ]);
+        wormholeId: new PublicKey(this.core.address),
+      },
+      this.pdas
+    );
 
     const tx = new Transaction();
     tx.feePayer = payerAddress;
-    tx.add(approveIx, transferIx, releaseIx);
+    tx.add(approveIx, ...(await Promise.all([transferIx, releaseIx])));
 
     if (options.automatic) {
       if (!this.quoter)
@@ -658,9 +466,19 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     yield* this.core.postVaa(payer, wormholeNTT);
 
     const senderAddress = new SolanaAddress(payer).unwrap();
-    const nttMessage = wormholeNTT.payload["nttManagerPayload"];
-    const emitterChain = wormholeNTT.emitterChain;
 
+    const receiveMessageIx = NTT.createReceiveWormholeMessageInstruction(
+      this.program,
+      {
+        wormholeId: new PublicKey(this.core.address),
+        payer: senderAddress,
+        vaa: wormholeNTT,
+      },
+      this.pdas
+    );
+
+    const nttMessage = wormholeNTT.payload.nttManagerPayload;
+    const emitterChain = wormholeNTT.emitterChain;
     const releaseArgs = {
       payer: senderAddress,
       config,
@@ -672,20 +490,29 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       revertOnDelay: false,
     };
 
-    const [receiveMessageIx, redeemIx, releaseIx] = await Promise.all([
-      this.createReceiveWormholeMessageInstruction(senderAddress, wormholeNTT),
-      this.createRedeemInstruction(senderAddress, wormholeNTT),
+    const redeemIx = NTT.createRedeemInstruction(this.program, config, {
+      payer: senderAddress,
+      vaa: wormholeNTT,
+    });
+
+    const releaseIx =
       config.mode.locking != null
-        ? this.createReleaseInboundUnlockInstruction(releaseArgs)
-        : this.createReleaseInboundMintInstruction(releaseArgs),
-    ]);
+        ? NTT.createReleaseInboundUnlockInstruction(
+            this.program,
+            config,
+            releaseArgs
+          )
+        : NTT.createReleaseInboundMintInstruction(
+            this.program,
+            config,
+            releaseArgs
+          );
 
     const tx = new Transaction();
     tx.feePayer = senderAddress;
-    tx.add(receiveMessageIx, redeemIx, releaseIx);
+    tx.add(...(await Promise.all([receiveMessageIx, redeemIx, releaseIx])));
 
     const luts: AddressLookupTableAccount[] = [];
-
     try {
       luts.push(await this.getAddressLookupTable());
     } catch {}
@@ -767,8 +594,16 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     tx.add(
       await (config.mode.locking != null
-        ? this.createReleaseInboundUnlockInstruction(releaseArgs)
-        : this.createReleaseInboundMintInstruction(releaseArgs))
+        ? NTT.createReleaseInboundUnlockInstruction(
+            this.program,
+            config,
+            releaseArgs
+          )
+        : NTT.createReleaseInboundMintInstruction(
+            this.program,
+            config,
+            releaseArgs
+          ))
     );
 
     yield this.createUnsignedTx(
@@ -800,568 +635,12 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     return xfer;
   }
 
-  async createTransferLockInstruction(args: {
-    transferArgs: TransferArgs;
-    payer: PublicKey;
-    from: PublicKey;
-    fromAuthority: PublicKey;
-    outboxItem: PublicKey;
-    config?: NttBindings.Config;
-  }): Promise<TransactionInstruction> {
-    const config = await this.getConfig();
-    if (config.paused) throw new Error("Contract is paused");
-
-    const sessionAuthority = this.pdas.sessionAuthority(
-      args.fromAuthority,
-      args.transferArgs
-    );
-
-    const recipientChain = args.transferArgs.recipient.chain;
-
-    let transferIx;
-    if (this.program.idl.version === "1.0.0") {
-      transferIx = await (
-        this.program as Program<NttBindings.NativeTokenTransfer<"1.0.0">>
-      ).methods
-        .transferLock({
-          recipientChain: { id: toChainId(recipientChain) },
-          amount: new BN(args.transferArgs.amount.toString()),
-          recipientAddress: Array.from(
-            args.transferArgs.recipient.address
-              .toUniversalAddress()
-              .toUint8Array()
-          ),
-          shouldQueue: args.transferArgs.shouldQueue,
-        })
-        .accountsStrict({
-          common: {
-            payer: args.payer,
-            config: { config: this.pdas.configAccount() },
-            mint: config.mint,
-            from: args.from,
-            tokenProgram: config.tokenProgram,
-            outboxItem: args.outboxItem,
-            outboxRateLimit: this.pdas.outboxRateLimitAccount(),
-            systemProgram: SystemProgram.programId,
-          },
-          peer: this.pdas.peerAccount(recipientChain),
-          inboxRateLimit: this.pdas.inboxRateLimitAccount(recipientChain),
-          sessionAuthority: sessionAuthority,
-          custody: config.custody,
-        })
-        .instruction();
-    } else {
-      transferIx = await (
-        this.program as Program<NttBindings.NativeTokenTransfer<"2.0.0">>
-      ).methods
-        .transferLock({
-          recipientChain: { id: toChainId(recipientChain) },
-          amount: new BN(args.transferArgs.amount.toString()),
-          recipientAddress: Array.from(
-            args.transferArgs.recipient.address
-              .toUniversalAddress()
-              .toUint8Array()
-          ),
-          shouldQueue: args.transferArgs.shouldQueue,
-        })
-        .accountsStrict({
-          common: {
-            payer: args.payer,
-            config: { config: this.pdas.configAccount() },
-            mint: config.mint,
-            from: args.from,
-            tokenProgram: config.tokenProgram,
-            outboxItem: args.outboxItem,
-            outboxRateLimit: this.pdas.outboxRateLimitAccount(),
-            systemProgram: SystemProgram.programId,
-            custody: config.custody,
-          },
-          peer: this.pdas.peerAccount(recipientChain),
-          inboxRateLimit: this.pdas.inboxRateLimitAccount(recipientChain),
-          sessionAuthority: sessionAuthority,
-        })
-        .instruction();
-    }
-
-    const mintInfo = await splToken.getMint(
-      this.connection,
-      config.mint,
-      undefined,
-      config.tokenProgram
-    );
-    const transferHook = splToken.getTransferHook(mintInfo);
-
-    if (transferHook) {
-      const owner = this.pdas.sessionAuthority(
-        args.fromAuthority,
-        args.transferArgs
-      );
-      await addExtraAccountMetasForExecute(
-        this.connection,
-        transferIx,
-        transferHook.programId,
-        args.from,
-        config.mint,
-        config.custody,
-        owner,
-        // TODO(csongor): compute the amount that's passed into transfer.
-        // Leaving this 0 is fine unless the transfer hook accounts addresses
-        // depend on the amount (which is unlikely).
-        // If this turns out to be the case, the amount to put here is the
-        // untrimmed amount after removing dust.
-        0
-      );
-    }
-    return transferIx;
-  }
-
-  async createTransferBurnInstruction(args: {
-    transferArgs: TransferArgs;
-    payer: PublicKey;
-    from: PublicKey;
-    fromAuthority: PublicKey;
-    outboxItem: PublicKey;
-  }): Promise<TransactionInstruction> {
-    const config = await this.getConfig();
-    if (config.paused) throw new Error("Contract is paused");
-
-    const recipientChain = toChain(args.transferArgs.recipient.chain);
-
-    let transferIx;
-    if (this.program.idl.version === "1.0.0") {
-      transferIx = await (
-        this.program as Program<NttBindings.NativeTokenTransfer<"1.0.0">>
-      ).methods
-        .transferBurn({
-          recipientChain: { id: toChainId(recipientChain) },
-          amount: new BN(args.transferArgs.amount.toString()),
-          recipientAddress: Array.from(
-            args.transferArgs.recipient.address
-              .toUniversalAddress()
-              .toUint8Array()
-          ),
-          shouldQueue: args.transferArgs.shouldQueue,
-        })
-        .accountsStrict({
-          common: {
-            payer: args.payer,
-            config: { config: this.pdas.configAccount() },
-            mint: config.mint,
-            from: args.from,
-            outboxItem: args.outboxItem,
-            outboxRateLimit: this.pdas.outboxRateLimitAccount(),
-            tokenProgram: config.tokenProgram,
-            systemProgram: SystemProgram.programId,
-          },
-          peer: this.pdas.peerAccount(recipientChain),
-          inboxRateLimit: this.pdas.inboxRateLimitAccount(recipientChain),
-          sessionAuthority: this.pdas.sessionAuthority(
-            args.fromAuthority,
-            args.transferArgs
-          ),
-        })
-        .instruction();
-    } else {
-      transferIx = await (
-        this.program as Program<NttBindings.NativeTokenTransfer<"2.0.0">>
-      ).methods
-        .transferBurn({
-          recipientChain: { id: toChainId(recipientChain) },
-          amount: new BN(args.transferArgs.amount.toString()),
-          recipientAddress: Array.from(
-            args.transferArgs.recipient.address
-              .toUniversalAddress()
-              .toUint8Array()
-          ),
-          shouldQueue: args.transferArgs.shouldQueue,
-        })
-        .accountsStrict({
-          common: {
-            payer: args.payer,
-            config: { config: this.pdas.configAccount() },
-            mint: config.mint,
-            from: args.from,
-            outboxItem: args.outboxItem,
-            outboxRateLimit: this.pdas.outboxRateLimitAccount(),
-            tokenProgram: config.tokenProgram,
-            systemProgram: SystemProgram.programId,
-            custody: config.custody,
-          },
-          peer: this.pdas.peerAccount(recipientChain),
-          inboxRateLimit: this.pdas.inboxRateLimitAccount(recipientChain),
-          sessionAuthority: this.pdas.sessionAuthority(
-            args.fromAuthority,
-            args.transferArgs
-          ),
-          tokenAuthority: this.pdas.tokenAuthority(),
-        })
-        .instruction();
-    }
-
-    const mintInfo = await splToken.getMint(
-      this.connection,
-      config.mint,
-      undefined,
-      config.tokenProgram
-    );
-
-    const transferHook = splToken.getTransferHook(mintInfo);
-
-    if (transferHook) {
-      const owner = this.pdas.sessionAuthority(
-        args.fromAuthority,
-        args.transferArgs
-      );
-      await addExtraAccountMetasForExecute(
-        this.connection,
-        transferIx,
-        transferHook.programId,
-        args.from,
-        config.mint,
-        config.custody,
-        owner,
-        // TODO(csongor): compute the amount that's passed into transfer.
-        // Leaving this 0 is fine unless the transfer hook accounts addresses
-        // depend on the amount (which is unlikely).
-        // If this turns out to be the case, the amount to put here is the
-        // untrimmed amount after removing dust.
-        0
-      );
-    }
-
-    return transferIx;
-  }
-
-  async createReleaseOutboundInstruction(args: {
-    payer: PublicKey;
-    outboxItem: PublicKey;
-    revertOnDelay: boolean;
-  }): Promise<TransactionInstruction> {
-    const whAccs = utils.getWormholeDerivedAccounts(
-      this.program.programId,
-      this.core.address
-    );
-
-    return await this.program.methods
-      .releaseWormholeOutbound({
-        revertOnDelay: args.revertOnDelay,
-      })
-      .accountsStrict({
-        payer: args.payer,
-        config: { config: this.pdas.configAccount() },
-        outboxItem: args.outboxItem,
-        wormholeMessage: this.pdas.wormholeMessageAccount(args.outboxItem),
-        emitter: whAccs.wormholeEmitter,
-        transceiver: this.pdas.registeredTransceiver(this.program.programId),
-        wormhole: {
-          bridge: whAccs.wormholeBridge,
-          feeCollector: whAccs.wormholeFeeCollector,
-          sequence: whAccs.wormholeSequence,
-          program: this.core.address,
-          systemProgram: SystemProgram.programId,
-          clock: web3.SYSVAR_CLOCK_PUBKEY,
-          rent: web3.SYSVAR_RENT_PUBKEY,
-        },
-      })
-      .instruction();
-  }
-
-  async createReceiveWormholeMessageInstruction(
-    payer: PublicKey,
-    wormholeNTT: WormholeNttTransceiver.VAA
-  ): Promise<TransactionInstruction> {
-    const config = await this.getConfig();
-    if (config.paused) throw new Error("Contract is paused");
-
-    const nttMessage = wormholeNTT.payload["nttManagerPayload"];
-    const emitterChain = wormholeNTT.emitterChain;
-    return await this.program.methods
-      .receiveWormholeMessage()
-      .accountsStrict({
-        payer: payer,
-        config: { config: this.pdas.configAccount() },
-        peer: this.pdas.transceiverPeerAccount(emitterChain),
-        vaa: utils.derivePostedVaaKey(
-          this.core.address,
-          Buffer.from(wormholeNTT.hash)
-        ),
-        transceiverMessage: this.pdas.transceiverMessageAccount(
-          emitterChain,
-          nttMessage.id
-        ),
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-  }
-
-  async createRedeemInstruction(
-    payer: PublicKey,
-    wormholeNTT: WormholeNttTransceiver.VAA
-  ): Promise<TransactionInstruction> {
-    const config = await this.getConfig();
-    if (config.paused) throw new Error("Contract is paused");
-
-    const nttMessage = wormholeNTT.payload["nttManagerPayload"];
-    const emitterChain = wormholeNTT.emitterChain;
-
-    const nttManagerPeer = this.pdas.peerAccount(emitterChain);
-    const inboxRateLimit = this.pdas.inboxRateLimitAccount(emitterChain);
-    const inboxItem = this.pdas.inboxItemAccount(emitterChain, nttMessage);
-
-    return await this.program.methods
-      .redeem({})
-      .accountsStrict({
-        payer: payer,
-        config: this.pdas.configAccount(),
-        peer: nttManagerPeer,
-        transceiverMessage: this.pdas.transceiverMessageAccount(
-          emitterChain,
-          nttMessage.id
-        ),
-        transceiver: this.pdas.registeredTransceiver(this.program.programId),
-        mint: config.mint,
-        inboxItem,
-        inboxRateLimit,
-        outboxRateLimit: this.pdas.outboxRateLimitAccount(),
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-  }
-
-  async createReleaseInboundMintInstruction(args: {
-    payer: PublicKey;
-    chain: Chain;
-    nttMessage: Ntt.Message;
-    revertOnDelay: boolean;
-    recipient?: PublicKey;
-  }): Promise<TransactionInstruction> {
-    const config = await this.getConfig();
-    if (config.paused) throw new Error("Contract is paused");
-
-    const inboxItem = this.pdas.inboxItemAccount(args.chain, args.nttMessage);
-
-    const recipientAddress =
-      args.recipient ??
-      (await this.getInboundQueuedTransfer(
-        args.chain,
-        args.nttMessage
-      ))!.recipient
-        .toNative(this.chain)
-        .unwrap();
-
-    const tokenAddress = await this.getTokenAccount(recipientAddress);
-
-    let transferIx;
-    if (this.program.idl.version === "1.0.0") {
-      transferIx = await (
-        this.program as Program<NttBindings.NativeTokenTransfer<"1.0.0">>
-      ).methods
-        .releaseInboundMint({
-          revertOnDelay: args.revertOnDelay,
-        })
-        .accountsStrict({
-          common: {
-            payer: args.payer,
-            config: { config: this.pdas.configAccount() },
-            inboxItem,
-            recipient: tokenAddress,
-            mint: config.mint,
-            tokenAuthority: this.pdas.tokenAuthority(),
-            tokenProgram: config.tokenProgram,
-          },
-        })
-        .instruction();
-    } else {
-      transferIx = await (
-        this.program as Program<NttBindings.NativeTokenTransfer<"2.0.0">>
-      ).methods
-        .releaseInboundMint({
-          revertOnDelay: args.revertOnDelay,
-        })
-        .accountsStrict({
-          common: {
-            payer: args.payer,
-            config: { config: this.pdas.configAccount() },
-            inboxItem,
-            recipient: tokenAddress,
-            mint: config.mint,
-            tokenAuthority: this.pdas.tokenAuthority(),
-            tokenProgram: config.tokenProgram,
-            custody: config.custody,
-          },
-        })
-        .instruction();
-    }
-    const mintInfo = await splToken.getMint(
-      this.connection,
-      config.mint,
-      undefined,
-      config.tokenProgram
-    );
-
-    const transferHook = splToken.getTransferHook(mintInfo);
-
-    if (transferHook) {
-      await addExtraAccountMetasForExecute(
-        this.connection,
-        transferIx,
-        transferHook.programId,
-        config.custody,
-        config.mint,
-        tokenAddress,
-        this.pdas.tokenAuthority(),
-        // TODO(csongor): compute the amount that's passed into transfer.
-        // Leaving this 0 is fine unless the transfer hook accounts addresses
-        // depend on the amount (which is unlikely).
-        // If this turns out to be the case, the amount to put here is the
-        // untrimmed amount after removing dust.
-        0
-      );
-    }
-
-    return transferIx;
-  }
-
-  async createReleaseInboundUnlockInstruction(args: {
-    payer: PublicKey;
-    chain: Chain;
-    nttMessage: Ntt.Message;
-    revertOnDelay: boolean;
-    recipient?: PublicKey;
-  }): Promise<TransactionInstruction> {
-    const config = await this.getConfig();
-    if (config.paused) throw new Error("Contract is paused");
-
-    const recipientAddress =
-      args.recipient ??
-      (await this.getInboundQueuedTransfer(
-        args.chain,
-        args.nttMessage
-      ))!.recipient
-        .toNative(this.chain)
-        .unwrap();
-
-    const inboxItem = this.pdas.inboxItemAccount(args.chain, args.nttMessage);
-    const tokenAddress = await this.getTokenAccount(recipientAddress);
-
-    let transferIx;
-    if (this.program.idl.version === "1.0.0") {
-      transferIx = await (
-        this.program as Program<NttBindings.NativeTokenTransfer<"1.0.0">>
-      ).methods
-        .releaseInboundUnlock({
-          revertOnDelay: args.revertOnDelay,
-        })
-        .accountsStrict({
-          common: {
-            payer: args.payer,
-            config: { config: this.pdas.configAccount() },
-            inboxItem: inboxItem,
-            recipient: tokenAddress,
-            mint: config.mint,
-            tokenAuthority: this.pdas.tokenAuthority(),
-            tokenProgram: config.tokenProgram,
-          },
-          custody: config.custody,
-        })
-        .instruction();
-    } else {
-      transferIx = await (
-        this.program as Program<NttBindings.NativeTokenTransfer<"2.0.0">>
-      ).methods
-        .releaseInboundUnlock({
-          revertOnDelay: args.revertOnDelay,
-        })
-        .accountsStrict({
-          common: {
-            payer: args.payer,
-            config: { config: this.pdas.configAccount() },
-            inboxItem: inboxItem,
-            recipient: tokenAddress,
-            mint: config.mint,
-            tokenAuthority: this.pdas.tokenAuthority(),
-            tokenProgram: config.tokenProgram,
-            custody: config.custody,
-          },
-        })
-        .instruction();
-    }
-
-    const mintInfo = await splToken.getMint(
-      this.connection,
-      config.mint,
-      undefined,
-      config.tokenProgram
-    );
-
-    const transferHook = splToken.getTransferHook(mintInfo);
-
-    if (transferHook) {
-      await addExtraAccountMetasForExecute(
-        this.connection,
-        transferIx,
-        transferHook.programId,
-        config.custody,
-        config.mint,
-        tokenAddress,
-        this.pdas.tokenAuthority(),
-        // TODO(csongor): compute the amount that's passed into transfer.
-        // Leaving this 0 is fine unless the transfer hook accounts addresses
-        // depend on the amount (which is unlikely).
-        // If this turns out to be the case, the amount to put here is the
-        // untrimmed amount after removing dust.
-        0
-      );
-    }
-    return transferIx;
-  }
-
-  /**
-   * Returns the address of the custody account. If the config is available
-   * (i.e. the program is initialised), the mint is derived from the config.
-   * Otherwise, the mint must be provided.
-   */
-  async custodyAccountAddress(
-    configOrMint: NttBindings.Config | PublicKey,
-    tokenProgram = splToken.TOKEN_PROGRAM_ID
-  ): Promise<PublicKey> {
-    if (configOrMint instanceof PublicKey) {
-      return splToken.getAssociatedTokenAddress(
-        configOrMint,
-        this.pdas.tokenAuthority(),
-        true,
-        tokenProgram
-      );
-    } else {
-      return splToken.getAssociatedTokenAddress(
-        configOrMint.mint,
-        this.pdas.tokenAuthority(),
-        true,
-        configOrMint.tokenProgram
-      );
-    }
-  }
-
   async getAddressLookupTable(
     useCache = true
   ): Promise<AddressLookupTableAccount> {
-    if (this.version === "1.0.0")
-      throw new Error("Lookup tables not supported for this version");
-
     if (!useCache || !this.addressLookupTable) {
-      // @ts-ignore
-      const lut = await this.program.account.lut.fetchNullable(
-        this.pdas.lutAccount()
-      );
-      if (!lut)
-        throw new Error(
-          "Address lookup table not found. Did you forget to call initializeLUT?"
-        );
-
-      const response = await this.connection.getAddressLookupTable(lut.address);
-      if (response.value === null) throw new Error("Could not fetch LUT");
-
-      this.addressLookupTable = response.value;
+      const alut = await NTT.getAddressLookupTable(this.program, this.pdas);
+      if (alut) this.addressLookupTable = alut;
     }
 
     if (!this.addressLookupTable)
