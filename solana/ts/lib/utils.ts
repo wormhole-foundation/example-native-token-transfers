@@ -18,6 +18,12 @@ export function programDataAddress(programId: PublicKeyInitData) {
   )[0];
 }
 
+export function parseVersion(version: string): [number, number, number] {
+  const components = version.split(".");
+  if (components.length !== 3) throw new Error("Invalid version string");
+  return [Number(components[0]), Number(components[1]), Number(components[2])];
+}
+
 export const pubKeyConversion = {
   to: (encoded: Uint8Array) => new PublicKey(encoded),
   from: (decoded: PublicKey) => decoded.toBytes(),
@@ -97,15 +103,3 @@ export const quoterAddresses = (programId: PublicKeyInitData) => {
     registeredNttAccount,
   };
 };
-
-//   // The `translateError` function expects this format, but the idl gives us a
-//   // different one, so we preprocess the idl and store the expected format.
-//   // NOTE: I'm sure there's a function within anchor that does this, but I
-//   // couldn't find it.
-//   private processErrors(): Map<number, string> {
-//     const errors = this.program.idl.errors;
-//     const result: Map<number, string> = new Map<number, string>();
-//     errors.forEach((entry) => result.set(entry.code, entry.msg));
-//     return result;
-//   }
-//   // View functions

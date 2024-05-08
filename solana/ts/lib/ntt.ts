@@ -49,6 +49,7 @@ import {
   BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
   chainToBytes,
   derivePda,
+  parseVersion,
   programDataAddress,
   programVersionLayout,
 } from "./utils.js";
@@ -266,8 +267,9 @@ export namespace NTT {
     },
     pdas?: Pdas
   ) {
-    // if the program is at version 1.0.0, we don't need to initialize the LUT
-    if (program.idl.version === "1.0.0") return;
+    // if the program is < major version 2.x.x, we don't need to initialize the LUT
+    const [major, ,] = parseVersion(program.idl.version);
+    if (major < 2) return;
 
     pdas = pdas ?? NTT.pdas(program.programId);
 
@@ -318,10 +320,8 @@ export namespace NTT {
     };
     const pubkeys = collectPubkeys(entries).map((pk) => pk.toBase58());
 
-    let existingLut: web3.AddressLookupTableAccount | null = null;
-    try {
-      existingLut = await getAddressLookupTable(program, pdas);
-    } catch {}
+    let existingLut: web3.AddressLookupTableAccount | null =
+      await getAddressLookupTable(program, pdas);
 
     if (existingLut !== null) {
       const existingPubkeys =
@@ -996,9 +996,9 @@ export namespace NTT {
   export async function getAddressLookupTable(
     program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
     pdas?: Pdas
-  ): Promise<AddressLookupTableAccount> {
-    if (program.idl.version === "1.0.0")
-      throw new Error("Lookup tables not supported for this version");
+  ): Promise<AddressLookupTableAccount | null> {
+    const [major, ,] = parseVersion(program.idl.version);
+    if (major < 2) return null;
 
     pdas = pdas ?? NTT.pdas(program.programId);
     const lut = await program.account.lut.fetchNullable(pdas.lutAccount());
