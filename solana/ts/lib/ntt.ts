@@ -320,7 +320,7 @@ export namespace NTT {
     };
     const pubkeys = collectPubkeys(entries).map((pk) => pk.toBase58());
 
-    let existingLut: web3.AddressLookupTableAccount | null =
+    const existingLut: web3.AddressLookupTableAccount | null =
       await getAddressLookupTable(program, pdas);
 
     if (existingLut !== null) {
@@ -1002,10 +1002,7 @@ export namespace NTT {
 
     pdas = pdas ?? NTT.pdas(program.programId);
     const lut = await program.account.lut.fetchNullable(pdas.lutAccount());
-    if (!lut)
-      throw new Error(
-        "Address lookup table not found. Did you forget to call initializeLUT?"
-      );
+    if (!lut) return null;
 
     const response = await program.provider.connection.getAddressLookupTable(
       lut.address
