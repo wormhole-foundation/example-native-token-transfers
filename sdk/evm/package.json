@@ -1,6 +1,6 @@
 {
   "name": "@wormhole-foundation/sdk-evm-ntt",
-  "version": "0.0.1-beta.1",
+  "version": "0.0.1-beta.5",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/wormhole-foundation/connect-sdk.git"
@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "@wormhole-foundation/sdk-connect": "0.6.5",
-    "@wormhole-foundation/sdk-definitions-ntt": "0.0.1-beta.1",
+    "@wormhole-foundation/sdk-definitions-ntt": "0.0.1-beta.5",
     "@wormhole-foundation/sdk-evm": "0.6.5",
     "@wormhole-foundation/sdk-evm-core": "0.6.5",
     "ethers": "^6.5.1"

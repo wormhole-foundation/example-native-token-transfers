@@ -1,6 +1,6 @@
 {
   "name": "ntt",
-  "version": "0.0.1-beta.1",
+  "version": "0.0.1-beta.5",
   "type": "module",
   "license": "Apache-2.0",
   "scripts": {
@@ -14,10 +14,10 @@
     "test:local": "jest --config ./jest.config.ts",
     "generate:test": "npm run generate:test --workspaces --if-present",
     "build:deps": "npm run build:contracts --workspaces --if-present && npm run generate",
-    "publish": "npm publish --access public --tag $TAG --workspaces",
+    "publish": "npm publish --access public --tag $TAG --workspace sdk/definitions --workspace sdk/evm --workspace solana --workspace sdk/route",
     "pub:beta": "TAG=beta npm run publish",
     "pub:latest": "TAG=latest npm run publish",
-    "sync": "tsx syncVersion.ts && npm install && npm run build"
+    "sync": "tsx sdk/syncVersion.ts && npm install && npm run build"
   },
   "devDependencies": {
     "@wormhole-foundation/sdk": "0.6.5",
