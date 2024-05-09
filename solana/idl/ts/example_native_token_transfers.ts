@@ -1876,6 +1876,11 @@ export type ExampleNativeTokenTransfers = {
       "code": 6022,
       "name": "BitmapIndexOutOfBounds",
       "msg": "BitmapIndexOutOfBounds"
+    },
+    {
+      "code": 6023,
+      "name": "NoRegisteredTransceivers",
+      "msg": "NoRegisteredTransceivers"
     }
   ]
 };
@@ -3758,6 +3763,11 @@ export const IDL: ExampleNativeTokenTransfers = {
       "code": 6022,
       "name": "BitmapIndexOutOfBounds",
       "msg": "BitmapIndexOutOfBounds"
+    },
+    {
+      "code": 6023,
+      "name": "NoRegisteredTransceivers",
+      "msg": "NoRegisteredTransceivers"
     }
   ]
 };

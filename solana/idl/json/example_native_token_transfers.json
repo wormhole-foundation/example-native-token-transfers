@@ -1765,6 +1765,11 @@
       "code": 6022,
       "name": "BitmapIndexOutOfBounds",
       "msg": "BitmapIndexOutOfBounds"
+    },
+    {
+      "code": 6023,
+      "name": "NoRegisteredTransceivers",
+      "msg": "NoRegisteredTransceivers"
     }
   ]
 }
