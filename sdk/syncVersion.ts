@@ -24,7 +24,7 @@ function updateVersionInPackageJson(
 }
 
 function getVersion(dir: string): string {
-  const versionFilePath = path.join(dir, "VERSION");
+  const versionFilePath = path.join(dir, "sdk/VERSION");
   const v = fs.readFileSync(versionFilePath);
   return v.toString().replace("\n", "");
 }
