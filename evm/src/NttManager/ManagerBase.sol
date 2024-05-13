@@ -312,7 +312,7 @@ abstract contract ManagerBase is
         _pause();
     }
 
-    function unpause() public onlyOwnerOrPauser {
+    function unpause() public onlyOwner {
         _unpause();
     }
 
