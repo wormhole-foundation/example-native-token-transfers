@@ -19,11 +19,14 @@ library TransceiverHelpersLib {
         internal
         returns (DummyTransceiver, DummyTransceiver)
     {
+        nttManager.setOutboundPauseStatus(true);
         DummyTransceiver e1 = new DummyTransceiver(address(nttManager));
         DummyTransceiver e2 = new DummyTransceiver(address(nttManager));
         nttManager.setTransceiver(address(e1));
         nttManager.setTransceiver(address(e2));
         nttManager.setThreshold(2);
+        nttManager.setOutboundPauseStatus(false);
+
         return (e1, e2);
     }
 
@@ -98,9 +101,14 @@ library TransceiverHelpersLib {
     ) internal {
         DummyToken token = DummyToken(nttManager.token());
         token.mintDummy(address(recipientNttManager), amount.untrim(token.decimals()));
+
+        nttManager.setOutboundPauseStatus(true);
+        recipientNttManager.setOutboundPauseStatus(true);
         NttManagerHelpersLib.setConfigs(
             inboundLimit, nttManager, recipientNttManager, token.decimals()
         );
+        nttManager.setOutboundPauseStatus(false);
+        recipientNttManager.setOutboundPauseStatus(false);
     }
 
     function buildTransceiverMessageWithNttManagerPayload(

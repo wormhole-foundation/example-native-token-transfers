@@ -12,6 +12,7 @@ import "../src/interfaces/IRateLimiterEvents.sol";
 import "../src/NttManager/TransceiverRegistry.sol";
 import "../src/libraries/PausableUpgradeable.sol";
 import "../src/libraries/TransceiverHelpers.sol";
+import "../src/libraries/PausableOwnable.sol";
 import {Utils} from "./libraries/Utils.sol";
 
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
@@ -70,6 +71,11 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         dummyTransceiver = new DummyTransceiver(address(nttManager));
         nttManager.setTransceiver(address(dummyTransceiver));
+
+        nttManager.setOutboundPauseStatus(false);
+        nttManager.setInboundPauseStatus(false);
+        nttManagerOther.setInboundPauseStatus(false);
+        nttManagerOther.setOutboundPauseStatus(false);
     }
 
     // === pure unit tests
@@ -109,9 +115,12 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         uint8 decimals = t.decimals();
 
+        nttManagerZeroRateLimiter.setOutboundPauseStatus(true);
         nttManagerZeroRateLimiter.setPeer(
             chainId2, toWormholeFormat(address(0x1)), 9, type(uint64).max
         );
+        nttManagerZeroRateLimiter.setOutboundPauseStatus(false);
+        nttManagerZeroRateLimiter.setInboundPauseStatus(false);
 
         t.mintDummy(address(user_A), 5 * 10 ** decimals);
 
@@ -136,6 +145,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         // Test incoming transfer completes successfully with rate limit disabled
         (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(nttManagerZeroRateLimiter);
+        nttManagerZeroRateLimiter.setOutboundPauseStatus(true);
         nttManagerZeroRateLimiter.setThreshold(2);
 
         // register nttManager peer
@@ -143,6 +153,8 @@ contract TestNttManager is Test, IRateLimiterEvents {
         nttManagerZeroRateLimiter.setPeer(
             TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9, type(uint64).max
         );
+
+        nttManagerZeroRateLimiter.setOutboundPauseStatus(false);
 
         TransceiverStructs.NttManagerMessage memory nttManagerMessage;
         bytes memory transceiverMessage;
@@ -309,14 +321,17 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
     function test_disableReenableTransceiver() public {
         DummyTransceiver e = new DummyTransceiver(address(nttManager));
+        nttManager.setOutboundPauseStatus(true);
         nttManager.setTransceiver(address(e));
         nttManager.removeTransceiver(address(e));
         nttManager.setTransceiver(address(e));
     }
 
     function test_disableAllTransceiversFails() public {
+        nttManager.setOutboundPauseStatus(true);
         vm.expectRevert(abi.encodeWithSelector(IManagerBase.ZeroThreshold.selector));
         nttManager.removeTransceiver(address(dummyTransceiver));
+        nttManager.setOutboundPauseStatus(false);
     }
 
     function test_multipleTransceivers() public {
@@ -360,8 +375,10 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         uint8 decimals = token.decimals();
 
+        newNttManager.setOutboundPauseStatus(true);
         newNttManager.setPeer(chainId2, toWormholeFormat(address(0x1)), 9, type(uint64).max);
         newNttManager.setOutboundLimit(packTrimmedAmount(type(uint64).max, 8).untrim(decimals));
+        newNttManager.setOutboundPauseStatus(false);
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
 
@@ -391,7 +408,10 @@ contract TestNttManager is Test, IRateLimiterEvents {
         // since we register 1 in the setup
         DummyTransceiver e = new DummyTransceiver(address(nttManager));
         nttManager.setTransceiver(address(e));
+
+        nttManager.setOutboundPauseStatus(true);
         nttManager.removeTransceiver(address(e));
+        nttManager.setOutboundPauseStatus(false);
 
         // We should be able to register 64 transceivers total
         for (uint256 i = 0; i < 62; ++i) {
@@ -413,7 +433,10 @@ contract TestNttManager is Test, IRateLimiterEvents {
         // since we register 1 in the setup
         DummyTransceiver e = new DummyTransceiver(address(nttManager));
         nttManager.setTransceiver(address(e));
+
+        nttManager.setOutboundPauseStatus(true);
         nttManager.removeTransceiver(address(dummyTransceiver));
+        nttManager.setOutboundPauseStatus(false);
 
         address user_A = address(0x123);
         address user_B = address(0x456);
@@ -422,8 +445,10 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         uint8 decimals = token.decimals();
 
+        nttManager.setOutboundPauseStatus(true);
         nttManager.setPeer(chainId2, toWormholeFormat(address(0x1)), 9, type(uint64).max);
         nttManager.setOutboundLimit(packTrimmedAmount(type(uint64).max, 8).untrim(decimals));
+        nttManager.setOutboundPauseStatus(false);
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
 
@@ -458,7 +483,10 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         uint8 decimals = token.decimals();
 
+        nttManager.setOutboundPauseStatus(true);
         nttManager.setPeer(chainId2, toWormholeFormat(address(0x1)), 9, type(uint64).max);
+        nttManager.setOutboundPauseStatus(false);
+
         nttManager.setOutboundLimit(0);
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
@@ -522,6 +550,8 @@ contract TestNttManager is Test, IRateLimiterEvents {
     // == threshold
 
     function test_cantSetThresholdTooHigh() public {
+        nttManager.setOutboundPauseStatus(true);
+
         // 1 transceiver set, so can't set threshold to 2
         vm.expectRevert(abi.encodeWithSelector(IManagerBase.ThresholdTooHigh.selector, 2, 1));
         nttManager.setThreshold(2);
@@ -533,26 +563,31 @@ contract TestNttManager is Test, IRateLimiterEvents {
         nttManager.setTransceiver(address(e1));
         nttManager.setTransceiver(address(e2));
 
+        nttManager.setOutboundPauseStatus(true);
         nttManager.setThreshold(1);
         nttManager.setThreshold(2);
         nttManager.setThreshold(1);
+        nttManager.setOutboundPauseStatus(false);
     }
 
     function test_cantSetThresholdToZero() public {
         DummyTransceiver e = new DummyTransceiver(address(nttManager));
         nttManager.setTransceiver(address(e));
 
+        nttManager.setOutboundPauseStatus(true);
         vm.expectRevert(abi.encodeWithSelector(IManagerBase.ZeroThreshold.selector));
         nttManager.setThreshold(0);
     }
 
     function test_onlyOwnerCanSetThreshold() public {
+        nttManager.setOutboundPauseStatus(true);
+
         address notOwner = address(0x123);
         vm.startPrank(notOwner);
-
         vm.expectRevert(
             abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, notOwner)
         );
+
         nttManager.setThreshold(1);
     }
 
@@ -560,8 +595,8 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
     function test_peerRegistrationLimitsCanBeUpdated() public {
         bytes32 peer = toWormholeFormat(address(nttManager));
+        nttManager.setOutboundPauseStatus(true);
         nttManager.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9, 0);
-
         IRateLimiter.RateLimitParams memory params =
             nttManager.getInboundLimitParams(TransceiverHelpersLib.SENDING_CHAIN_ID);
         assertEq(params.limit.getAmount(), 0);
@@ -577,6 +612,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
     function test_onlyEnabledTransceiversCanAttest() public {
         (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(nttManagerOther);
+        nttManagerOther.setOutboundPauseStatus(true);
         nttManagerOther.removeTransceiver(address(e1));
         bytes32 peer = toWormholeFormat(address(nttManager));
         nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9, type(uint64).max);
@@ -594,7 +630,9 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
     function test_onlyPeerNttManagerCanAttest() public {
         (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(nttManagerOther);
+        nttManagerOther.setOutboundPauseStatus(true);
         nttManagerOther.setThreshold(2);
+        nttManagerOther.setOutboundPauseStatus(false);
 
         bytes32 peer = toWormholeFormat(address(nttManager));
 
@@ -615,11 +653,13 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
     function test_attestSimple() public {
         (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(nttManagerOther);
+        nttManagerOther.setOutboundPauseStatus(true);
         nttManagerOther.setThreshold(2);
 
         // register nttManager peer
         bytes32 peer = toWormholeFormat(address(nttManager));
         nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9, type(uint64).max);
+        nttManagerOther.setOutboundPauseStatus(false);
 
         TransceiverStructs.NttManagerMessage memory nttManagerMessage;
         bytes memory transceiverMessage;
@@ -638,11 +678,13 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
     function test_attestTwice() public {
         (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(nttManagerOther);
+        nttManagerOther.setOutboundPauseStatus(true);
         nttManagerOther.setThreshold(2);
 
         // register nttManager peer
         bytes32 peer = toWormholeFormat(address(nttManager));
         nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9, type(uint64).max);
+        nttManagerOther.setOutboundPauseStatus(false);
 
         TransceiverStructs.NttManagerMessage memory nttManagerMessage;
         bytes memory transceiverMessage;
@@ -667,10 +709,13 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
     function test_attestDisabled() public {
         (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(nttManagerOther);
+
+        nttManagerOther.setOutboundPauseStatus(true);
         nttManagerOther.setThreshold(2);
 
         bytes32 peer = toWormholeFormat(address(nttManager));
         nttManagerOther.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9, type(uint64).max);
+        nttManagerOther.setOutboundPauseStatus(false);
 
         ITransceiverReceiver[] memory transceivers = new ITransceiverReceiver[](1);
         transceivers[0] = e1;
@@ -687,6 +732,7 @@ contract TestNttManager is Test, IRateLimiterEvents {
             transceivers
         );
 
+        nttManagerOther.setOutboundPauseStatus(true);
         nttManagerOther.removeTransceiver(address(e1));
 
         bytes32 hash =
@@ -706,8 +752,9 @@ contract TestNttManager is Test, IRateLimiterEvents {
         DummyToken token = DummyToken(nttManager.token());
 
         uint8 decimals = token.decimals();
-
+        nttManager.setOutboundPauseStatus(true);
         nttManager.setPeer(chainId2, toWormholeFormat(address(0x1)), 9, type(uint64).max);
+        nttManager.setOutboundPauseStatus(false);
         nttManager.setOutboundLimit(packTrimmedAmount(type(uint64).max, 8).untrim(decimals));
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
@@ -748,7 +795,9 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
     function test_transferWithAmountAndDecimalsThatCouldOverflow() public {
         // The source chain has 18 decimals trimmed to 8, and the peer has 6 decimals trimmed to 6
+        nttManager.setOutboundPauseStatus(true);
         nttManager.setPeer(chainId2, toWormholeFormat(address(0x1)), 6, type(uint64).max);
+        nttManager.setOutboundPauseStatus(false);
 
         address user_A = address(0x123);
         address user_B = address(0x456);
@@ -848,12 +897,14 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         uint8 decimals = token.decimals();
 
+        nttManager.setOutboundPauseStatus(true);
         nttManager.setPeer(
             TransceiverHelpersLib.SENDING_CHAIN_ID,
             toWormholeFormat(address(nttManagerOther)),
             9,
             type(uint64).max
         );
+        nttManager.setOutboundPauseStatus(false);
         nttManager.setOutboundLimit(0);
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
@@ -992,7 +1043,11 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         uint256 maxAmount = 5 * 10 ** decimals;
         token.mintDummy(from, maxAmount);
+
+        nttManager.setOutboundPauseStatus(true);
         nttManager.setPeer(chainId2, toWormholeFormat(address(0x1)), 9, type(uint64).max);
+        nttManager.setOutboundPauseStatus(false);
+
         nttManager.setOutboundLimit(packTrimmedAmount(type(uint64).max, 8).untrim(decimals));
         nttManager.setInboundLimit(
             packTrimmedAmount(type(uint64).max, 8).untrim(decimals),
@@ -1118,7 +1173,10 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         // register nttManager peer and transceiver
         bytes32 peer = toWormholeFormat(address(nttManager));
+        newNttManager.setOutboundPauseStatus(true);
         newNttManager.setPeer(TransceiverHelpersLib.SENDING_CHAIN_ID, peer, 9, type(uint64).max);
+        newNttManager.setOutboundPauseStatus(false);
+        newNttManager.setInboundPauseStatus(false);
         {
             DummyTransceiver e = new DummyTransceiver(address(newNttManager));
             newNttManager.setTransceiver(address(e));
@@ -1143,7 +1201,10 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         // Check that we can receive a transfer
         (DummyTransceiver e1,) = TransceiverHelpersLib.setup_transceivers(newNttManager);
+
+        newNttManager.setOutboundPauseStatus(true);
         newNttManager.setThreshold(1);
+        newNttManager.setOutboundPauseStatus(false);
 
         bytes memory transceiverMessage;
         bytes memory tokenTransferMessage;
@@ -1237,7 +1298,9 @@ contract TestNttManager is Test, IRateLimiterEvents {
 
         uint8 decimals = token.decimals();
 
+        nttManager.setOutboundPauseStatus(true);
         nttManager.setPeer(chainId2, toWormholeFormat(address(0x1)), 9, type(uint64).max);
+        nttManager.setOutboundPauseStatus(false);
         nttManager.setOutboundLimit(packTrimmedAmount(type(uint64).max, 8).untrim(decimals));
 
         token.mintDummy(address(user_A), 5 * 10 ** decimals);
@@ -1257,5 +1320,57 @@ contract TestNttManager is Test, IRateLimiterEvents {
             false,
             encodedInstructions
         );
+    }
+
+    function test_setUnilateralPauseBase() public {
+        // Both inbound and outbound pause should default to true on deployment
+        // IManagerBase.UnilateralPause memory initial_p = nttManager.getUnilateralPause();
+        // require(initial_p.inbound == true, "Inital inbound pause value unset");
+        // require(initial_p.outbound == true, "Inital outbound pause value unset");
+
+        nttManager.setInboundPauseStatus(true);
+        IManagerBase.UnilateralPause memory p_after_update1 = nttManager.getUnilateralPause();
+        require(p_after_update1.inbound == true, "Inbound pause value unset after update");
+        require(p_after_update1.outbound == false, "Outbound pause value not unset");
+
+        nttManager.setInboundPauseStatus(false);
+        IManagerBase.UnilateralPause memory p_after_update2 = nttManager.getUnilateralPause();
+        require(p_after_update2.inbound == false, "Inbound pause value did not reset back to false");
+        require(p_after_update2.outbound == false, "Outbound pause value not unset");
+
+        nttManager.setOutboundPauseStatus(true);
+        IManagerBase.UnilateralPause memory p_after_update3 = nttManager.getUnilateralPause();
+        require(p_after_update3.inbound == false, "Inbound pause unexpectedly updated to true");
+        require(p_after_update3.outbound == true, "Outbound pause value not set to true");
+
+        nttManager.setOutboundPauseStatus(false);
+        IManagerBase.UnilateralPause memory p_after_update4 = nttManager.getUnilateralPause();
+        require(p_after_update4.inbound == false, "Inbound pause value changed unexpectedly");
+        require(
+            p_after_update4.outbound == false, "Outbound pause value did not reset back to false"
+        );
+    }
+
+    function test_setUnilateralPauseAuth() public {
+        IManagerBase.UnilateralPause memory initial_p = nttManager.getUnilateralPause();
+        require(initial_p.inbound == false, "Inital inbound pause value unset");
+        require(initial_p.outbound == false, "Inital outbound pause value unset");
+
+        address user_B = address(0x456);
+        vm.startPrank(user_B);
+
+        // Check if other can
+        vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.InvalidPauser.selector, user_B));
+        nttManager.setInboundPauseStatus(false);
+
+        vm.expectRevert(abi.encodeWithSelector(PausableUpgradeable.InvalidPauser.selector, user_B));
+        nttManager.setOutboundPauseStatus(false);
+
+        vm.stopPrank();
+        nttManager.setInboundPauseStatus(true);
+        nttManager.setOutboundPauseStatus(true);
+        IManagerBase.UnilateralPause memory p_after_update1 = nttManager.getUnilateralPause();
+        require(p_after_update1.inbound == true, "Inbound pause value unset after update");
+        require(p_after_update1.outbound == true, "Outbound pause value unset after update");
     }
 }

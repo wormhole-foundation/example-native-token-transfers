@@ -31,6 +31,12 @@ interface IManagerBase {
         uint8 num;
     }
 
+    /// @dev Structure for storing pause information for inbound and outbound transfers
+    struct UnilateralPause {
+        bool inbound;
+        bool outbound;
+    }
+
     /// @notice Emitted when a message has been attested to.
     /// @dev Topic0
     ///      0x35a2101eaac94b493e0dfca061f9a7f087913fde8678e7cde0aca9897edba0e5.
@@ -109,6 +115,18 @@ interface IManagerBase {
     /// @param chainId The target chain id
     error PeerNotRegistered(uint16 chainId);
 
+    /// @notice Error when the receiving message on inbound call when inbound calls are paused
+    /// @dev Selector 0xab6e758b
+    error InboundPaused();
+
+    /// @notice Error when sending a message when outbound transfers are paused
+    /// @dev Selector 0xe741d03c
+    error OutboundPaused();
+
+    /// @notice Error when trying to update sensitive values when the outbound is not paused
+    /// @dev Select 0x37291df0
+    error NotPausedForUpdate();
+
     /// @notice Fetch the delivery price for a given recipient chain transfer.
     /// @param recipientChain The chain ID of the transfer destination.
     /// @param transceiverInstructions The transceiver specific instructions for quoting and sending
@@ -164,6 +182,10 @@ interface IManagerBase {
     /// @notice Returns the number of Transceivers that must attest to a msgId for
     /// it to be considered valid and acted upon.
     function getThreshold() external view returns (uint8);
+
+    /// @notice Returns the inbound and outbound pause information for the manager.
+    /// This is seperate to the general pause feature
+    function getUnilateralPause() external view returns (UnilateralPause memory);
 
     /// @notice Returns a boolean indicating if the transceiver has attested to the message.
     function transceiverAttestedToMessage(

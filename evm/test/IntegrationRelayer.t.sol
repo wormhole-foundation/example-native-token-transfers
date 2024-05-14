@@ -98,6 +98,9 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
         nttManagerChain1.setOutboundLimit(type(uint64).max);
         nttManagerChain1.setInboundLimit(type(uint64).max, chainId2);
         nttManagerChain1.setThreshold(1);
+
+        nttManagerChain1.setInboundPauseStatus(false);
+        nttManagerChain1.setOutboundPauseStatus(false);
     }
 
     // Setup the chain to relay to of the network
@@ -145,8 +148,10 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
         nttManagerChain2.setTransceiver(address(wormholeTransceiverChain2Other));
         nttManagerChain2.setOutboundLimit(type(uint64).max);
         nttManagerChain2.setInboundLimit(type(uint64).max, chainId1);
-
         nttManagerChain2.setThreshold(1);
+
+        nttManagerChain2.setInboundPauseStatus(false);
+        nttManagerChain2.setOutboundPauseStatus(false);
     }
 
     function test_chainToChainReverts() public {
@@ -158,9 +163,24 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
         wormholeTransceiverChain2.setWormholePeer(
             chainId1, bytes32(uint256(uint160(address(wormholeTransceiverChain1))))
         );
+
+        // Ensure that the enforcement for changing the peer is in place.
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.NotPausedForUpdate.selector));
         nttManagerChain2.setPeer(
             chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))), 9, type(uint64).max
         );
+
+        // Test that the threshold must be changed while in the paused state
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.NotPausedForUpdate.selector));
+        nttManagerChain2.setThreshold(1);
+
+        // Set the peer
+        nttManagerChain2.setOutboundPauseStatus(true);
+        nttManagerChain2.setPeer(
+            chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))), 9, type(uint64).max
+        );
+        nttManagerChain2.setOutboundPauseStatus(false);
+
         DummyToken token2 = DummyTokenMintAndBurn(nttManagerChain2.token());
         wormholeTransceiverChain2.setIsWormholeRelayingEnabled(chainId1, true);
         wormholeTransceiverChain2.setIsWormholeEvmChain(chainId1, true);
@@ -171,9 +191,12 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
         wormholeTransceiverChain1.setWormholePeer(
             chainId2, bytes32(uint256(uint160((address(wormholeTransceiverChain2)))))
         );
+
+        nttManagerChain1.setOutboundPauseStatus(true);
         nttManagerChain1.setPeer(
             chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))), 7, type(uint64).max
         );
+        nttManagerChain1.setOutboundPauseStatus(false);
 
         // Enable general relaying on the chain to transfer for the funds.
         wormholeTransceiverChain1.setIsWormholeRelayingEnabled(chainId2, true);
@@ -265,7 +288,36 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
                 instructions
             );
 
+            // Test whether a random caller can set the inbound or outbound pause status
+            vm.expectRevert(
+                abi.encodeWithSelector(PausableUpgradeable.InvalidPauser.selector, userA)
+            );
+            nttManagerChain1.setOutboundPauseStatus(true);
+            vm.expectRevert(
+                abi.encodeWithSelector(PausableUpgradeable.InvalidPauser.selector, userA)
+            );
+            nttManagerChain1.setInboundPauseStatus(true);
+
+            // Pause outbound transfers and see if this still succeeds
+            vm.stopPrank();
+            nttManagerChain1.setOutboundPauseStatus(true);
+            vm.startPrank(userA);
+
+            vm.expectRevert(abi.encodeWithSelector(IManagerBase.OutboundPaused.selector));
             // Do the payment with slightly more gas than needed. This should result in a *payback* of 1 wei.
+            nttManagerChain1.transfer{value: priceQuote1 + 1}(
+                sendingAmount,
+                chainId2,
+                bytes32(uint256(uint160(userB))),
+                bytes32(uint256(uint160(userB))),
+                false,
+                instructions
+            );
+
+            // Unpause then to do the transfer
+            vm.stopPrank();
+            nttManagerChain1.setOutboundPauseStatus(false);
+            vm.startPrank(userA);
             nttManagerChain1.transfer{value: priceQuote1 + 1}(
                 sendingAmount,
                 chainId2,
@@ -319,18 +371,24 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
         wormholeTransceiverChain2.setWormholePeer(
             chainId1, bytes32(uint256(uint160(address(wormholeTransceiverChain1))))
         );
+
+        nttManagerChain2.setOutboundPauseStatus(true);
         nttManagerChain2.setPeer(
             chainId1, bytes32(uint256(uint160(address(nttManagerChain1)))), 9, type(uint64).max
         );
+        nttManagerChain2.setOutboundPauseStatus(false);
+
         DummyToken token2 = DummyTokenMintAndBurn(nttManagerChain2.token());
         wormholeTransceiverChain2.setIsWormholeRelayingEnabled(chainId1, true);
         wormholeTransceiverChain2.setIsWormholeEvmChain(chainId1, true);
 
         // Register peer contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of peers here.
         vm.selectFork(sourceFork);
+        nttManagerChain1.setOutboundPauseStatus(true);
         nttManagerChain1.setPeer(
             chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))), 7, type(uint64).max
         );
+        nttManagerChain1.setOutboundPauseStatus(false);
         wormholeTransceiverChain1.setWormholePeer(
             chainId2, bytes32(uint256(uint160((address(wormholeTransceiverChain2)))))
         );
@@ -355,7 +413,7 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             nttManagerChain1.transfer{
                 value: wormholeTransceiverChain1.quoteDeliveryPrice(
                     chainId2, buildTransceiverInstruction(false)
-                )
+                    )
             }(
                 sendingAmount,
                 chainId2,
@@ -409,7 +467,7 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             nttManagerChain2.transfer{
                 value: wormholeTransceiverChain2.quoteDeliveryPrice(
                     chainId1, buildTransceiverInstruction(false)
-                )
+                    )
             }(
                 sendingAmount,
                 chainId1,
@@ -476,9 +534,12 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             [wormholeTransceiverChain1, wormholeTransceiverChain1Other],
             [chainId1, chainId1]
         );
+
+        nttManagerChain2.setOutboundPauseStatus(true);
         nttManagerChain2.setPeer(
             chainId1, toWormholeFormat(address(nttManagerChain1)), 9, type(uint64).max
         );
+        nttManagerChain2.setOutboundPauseStatus(false);
 
         // setup token
         DummyToken token2 = DummyTokenMintAndBurn(nttManagerChain2.token());
@@ -493,10 +554,11 @@ contract TestEndToEndRelayer is IntegrationHelpers, IRateLimiterEvents, Wormhole
             [wormholeTransceiverChain2, wormholeTransceiverChain2Other],
             [chainId2, chainId2]
         );
+        nttManagerChain1.setOutboundPauseStatus(true);
         nttManagerChain1.setPeer(
             chainId2, toWormholeFormat(address(nttManagerChain2)), 7, type(uint64).max
         );
-
+        nttManagerChain1.setOutboundPauseStatus(false);
         DummyToken token1 = DummyToken(nttManagerChain1.token());
         uint8 decimals = token1.decimals();
 

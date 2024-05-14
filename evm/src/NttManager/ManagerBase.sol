@@ -15,6 +15,7 @@ import "../interfaces/ITransceiver.sol";
 import "../interfaces/IManagerBase.sol";
 
 import "./TransceiverRegistry.sol";
+import "forge-std/console.sol"; // TODO - remove this - MAX
 
 abstract contract ManagerBase is
     IManagerBase,
@@ -42,6 +43,27 @@ abstract contract ManagerBase is
         deployer = msg.sender;
     }
 
+    modifier inboundNotPaused() {
+        if (_getUnilateralPauseStorage().inbound) {
+            revert InboundPaused();
+        }
+        _;
+    }
+
+    modifier outboundNotPaused() {
+        if (_getUnilateralPauseStorage().outbound) {
+            revert OutboundPaused();
+        }
+        _;
+    }
+
+    modifier outboundWhenPaused() {
+        if (_getUnilateralPauseStorage().outbound == false) {
+            revert NotPausedForUpdate();
+        }
+        _;
+    }
+
     function _migrate() internal virtual override {
         _checkThresholdInvariants();
         _checkTransceiversInvariants();
@@ -57,7 +79,17 @@ abstract contract ManagerBase is
 
     bytes32 private constant THRESHOLD_SLOT = bytes32(uint256(keccak256("ntt.threshold")) - 1);
 
+    bytes32 private constant UNILATERAL_PAUSE_SLOT =
+        bytes32(uint256(keccak256("ntt.unilateral_pause")) - 1);
+
     // =============== Storage Getters/Setters ==============================================
+
+    function _getUnilateralPauseStorage() internal pure returns (UnilateralPause storage $) {
+        uint256 slot = uint256(UNILATERAL_PAUSE_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
 
     function _getThresholdStorage() private pure returns (_Threshold storage $) {
         uint256 slot = uint256(THRESHOLD_SLOT);
@@ -274,6 +306,13 @@ abstract contract ManagerBase is
     }
 
     /// @inheritdoc IManagerBase
+    function getUnilateralPause() public view returns (UnilateralPause memory) {
+        UnilateralPause storage u = _getUnilateralPauseStorage();
+
+        return UnilateralPause({inbound: u.inbound, outbound: u.outbound});
+    }
+
+    /// @inheritdoc IManagerBase
     function isMessageApproved(bytes32 digest) public view returns (bool) {
         uint8 threshold = getThreshold();
         return messageAttestations(digest) >= threshold && threshold > 0;
@@ -316,6 +355,14 @@ abstract contract ManagerBase is
         _unpause();
     }
 
+    function setInboundPauseStatus(bool status) external onlyOwnerOrPauser {
+        _getUnilateralPauseStorage().inbound = status;
+    }
+
+    function setOutboundPauseStatus(bool status) external onlyOwnerOrPauser {
+        _getUnilateralPauseStorage().outbound = status;
+    }
+
     /// @notice Transfer ownership of the Manager contract and all Transceiver contracts to a new owner.
     function transferOwnership(address newOwner) public override onlyOwner {
         super.transferOwnership(newOwner);
@@ -356,7 +403,7 @@ abstract contract ManagerBase is
     }
 
     /// @inheritdoc IManagerBase
-    function removeTransceiver(address transceiver) external onlyOwner {
+    function removeTransceiver(address transceiver) external onlyOwner outboundWhenPaused {
         _removeTransceiver(transceiver);
 
         _Threshold storage _threshold = _getThresholdStorage();
@@ -372,7 +419,7 @@ abstract contract ManagerBase is
     }
 
     /// @inheritdoc IManagerBase
-    function setThreshold(uint8 threshold) external onlyOwner {
+    function setThreshold(uint8 threshold) external onlyOwner outboundWhenPaused {
         if (threshold == 0) {
             revert ZeroThreshold();
         }

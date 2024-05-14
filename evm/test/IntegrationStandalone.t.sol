@@ -146,6 +146,11 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
         // Actually set it
         nttManagerChain1.setThreshold(1);
         nttManagerChain2.setThreshold(1);
+
+        nttManagerChain1.setInboundPauseStatus(false);
+        nttManagerChain1.setOutboundPauseStatus(false);
+        nttManagerChain2.setInboundPauseStatus(false);
+        nttManagerChain2.setOutboundPauseStatus(false);
     }
 
     function test_chainToChainBase() public {
@@ -332,6 +337,13 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
         wormholeTransceiverChain1.receiveMessage(encodedVMs[0]);
 
         vm.chainId(chainId2);
+
+        // Check if the inbound pauser works effectively
+        nttManagerChain2.setInboundPauseStatus(true);
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.InboundPaused.selector));
+        wormholeTransceiverChain2.receiveMessage(encodedVMs[0]);
+        nttManagerChain2.setInboundPauseStatus(false);
+
         {
             uint256 supplyBefore = token2.totalSupply();
             wormholeTransceiverChain2.receiveMessage(encodedVMs[0]);
@@ -377,6 +389,14 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
                 true,
                 encodeTransceiverInstruction(true)
             );
+
+            // Check that the outbound pause status checker works on queued transactions
+            vm.stopPrank();
+            nttManagerChain2.setOutboundPauseStatus(true);
+            vm.expectRevert(abi.encodeWithSelector(IManagerBase.OutboundPaused.selector));
+            nttManagerChain2.completeOutboundQueuedTransfer(0);
+            nttManagerChain2.setOutboundPauseStatus(false);
+            vm.startPrank(userC);
 
             // Test timing on the queues
             vm.expectRevert(
@@ -446,6 +466,14 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
                 Utils.fetchQueuedTransferDigestsFromLogs(vm.getRecordedLogs());
 
             vm.warp(vm.getBlockTimestamp() + 100000);
+
+            // Verify that the inbound paused modifier is functional for the inbound queue.
+            nttManagerChain1.setInboundPauseStatus(true);
+            vm.expectRevert(abi.encodeWithSelector(IManagerBase.InboundPaused.selector));
+            nttManagerChain1.completeInboundQueuedTransfer(queuedDigests[0]);
+            nttManagerChain1.setInboundPauseStatus(false);
+
+            // Complete the transfer and remove it from the queue.
             nttManagerChain1.completeInboundQueuedTransfer(queuedDigests[0]);
 
             // Double redeem
@@ -514,9 +542,17 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
         nttManagerChain2.setTransceiver(address(wormholeTransceiverChain2_2));
         nttManagerChain1.setTransceiver(address(wormholeTransceiverChain1_2));
 
+        // Ensure that a threshold change comes alongside an upgrade pauser
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.NotPausedForUpdate.selector));
+        nttManagerChain1.setThreshold(2);
+
         // Change the threshold from the setUp functions 1 to 2.
+        nttManagerChain1.setOutboundPauseStatus(true);
+        nttManagerChain2.setOutboundPauseStatus(true);
         nttManagerChain1.setThreshold(2);
         nttManagerChain2.setThreshold(2);
+        nttManagerChain1.setOutboundPauseStatus(false);
+        nttManagerChain2.setOutboundPauseStatus(false);
 
         // Setting up the transfer
         DummyToken token1 = DummyToken(nttManagerChain1.token());
