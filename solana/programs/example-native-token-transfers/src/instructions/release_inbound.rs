@@ -44,7 +44,7 @@ pub struct ReleaseInbound<'info> {
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct ReleaseInboundArgs {
-    pub revert_on_delay: bool,
+    pub revert_when_not_ready: bool,
 }
 
 // Burn/mint
@@ -55,8 +55,8 @@ pub struct ReleaseInboundMint<'info> {
 }
 
 /// Release an inbound transfer and mint the tokens to the recipient.
-/// When `revert_on_error` is true, the transaction will revert if the
-/// release timestamp has not been reached. When `revert_on_error` is false, the
+/// When `revert_when_not_ready` is true, the transaction will revert if the
+/// release timestamp has not been reached. When `revert_when_not_ready` is false, the
 /// transaction succeeds, but the minting is not performed.
 /// Setting this flag to `false` is useful when bundling this instruction
 /// together with [`crate::instructions::redeem`] in a transaction, so that the minting
@@ -70,8 +70,14 @@ pub fn release_inbound_mint(
     let released = inbox_item.try_release()?;
 
     if !released {
-        if args.revert_on_delay {
-            return Err(NTTError::CantReleaseYet.into());
+        if args.revert_when_not_ready {
+            match inbox_item.release_status {
+                ReleaseStatus::NotApproved => return Err(NTTError::TransferNotApproved.into()),
+                ReleaseStatus::ReleaseAfter(_) => return Err(NTTError::CantReleaseYet.into()),
+                // Unreachable: if released, [`InboxItem::try_release`] will return an Error immediately
+                // rather than Ok(bool).
+                ReleaseStatus::Released => return Err(NTTError::TransferAlreadyRedeemed.into()),
+            }
         } else {
             return Ok(());
         }
@@ -113,8 +119,8 @@ pub struct ReleaseInboundUnlock<'info> {
 }
 
 /// Release an inbound transfer and unlock the tokens to the recipient.
-/// When `revert_on_error` is true, the transaction will revert if the
-/// release timestamp has not been reached. When `revert_on_error` is false, the
+/// When `revert_when_not_ready` is true, the transaction will revert if the
+/// release timestamp has not been reached. When `revert_when_not_ready` is false, the
 /// transaction succeeds, but the unlocking is not performed.
 /// Setting this flag to `false` is useful when bundling this instruction
 /// together with [`crate::instructions::redeem`], so that the unlocking
@@ -128,8 +134,14 @@ pub fn release_inbound_unlock(
     let released = inbox_item.try_release()?;
 
     if !released {
-        if args.revert_on_delay {
-            return Err(NTTError::CantReleaseYet.into());
+        if args.revert_when_not_ready {
+            match inbox_item.release_status {
+                ReleaseStatus::NotApproved => return Err(NTTError::TransferNotApproved.into()),
+                ReleaseStatus::ReleaseAfter(_) => return Err(NTTError::CantReleaseYet.into()),
+                // Unreachable: if released, [`InboxItem::try_release`] will return an Error immediately
+                // rather than Ok(bool).
+                ReleaseStatus::Released => return Err(NTTError::TransferAlreadyRedeemed.into()),
+            }
         } else {
             return Ok(());
         }

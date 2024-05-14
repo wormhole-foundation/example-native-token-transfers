@@ -31,11 +31,6 @@
           "isSigner": false
         },
         {
-          "name": "counter",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
@@ -78,11 +73,6 @@
           "docs": [
             "computes and the on-chain code correctly passes on the PDA."
           ]
-        },
-        {
-          "name": "counter",
-          "isMut": true,
-          "isSigner": false
         }
       ],
       "args": [
@@ -93,21 +83,7 @@
       ]
     }
   ],
-  "accounts": [
-    {
-      "name": "Counter",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "count",
-            "type": "u64"
-          }
-        ]
-      }
-    }
-  ],
   "metadata": {
-    "address": "BgabMDLaxsyB7eGMBt9L22MSk9KMrL4zY2iNe14kyFP5"
+    "address": "7R368vaW4Ztt8ShPuBRaaCqSTumLCVMbc1na4ajR5y4G"
   }
 }

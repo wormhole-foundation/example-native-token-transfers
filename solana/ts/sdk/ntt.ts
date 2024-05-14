@@ -477,7 +477,7 @@ export class NTT {
     payer: PublicKey
     chain: ChainName | ChainId
     nttMessage: NttMessage
-    revertOnDelay: boolean
+    revertWhenNotReady: boolean
     recipient?: PublicKey
     config?: Config
   }): Promise<TransactionInstruction> {
@@ -494,7 +494,7 @@ export class NTT {
 
     return await this.program.methods
       .releaseInboundMint({
-        revertOnDelay: args.revertOnDelay
+        revertWhenNotReady: args.revertWhenNotReady
       })
       .accounts({
         common: {
@@ -513,7 +513,7 @@ export class NTT {
     payer: Keypair
     chain: ChainName | ChainId
     nttMessage: NttMessage
-    revertOnDelay: boolean
+    revertWhenNotReady: boolean
     config?: Config
   }): Promise<void> {
     if (await this.isPaused()) {
@@ -536,7 +536,7 @@ export class NTT {
     payer: PublicKey
     chain: ChainName | ChainId
     nttMessage: NttMessage
-    revertOnDelay: boolean
+    revertWhenNotReady: boolean
     recipient?: PublicKey
     config?: Config
   }): Promise<TransactionInstruction> {
@@ -553,7 +553,7 @@ export class NTT {
 
     return await this.program.methods
       .releaseInboundUnlock({
-        revertOnDelay: args.revertOnDelay
+        revertWhenNotReady: args.revertWhenNotReady
       })
       .accounts({
         common: {
@@ -573,7 +573,7 @@ export class NTT {
     payer: Keypair
     chain: ChainName | ChainId
     nttMessage: NttMessage
-    revertOnDelay: boolean
+    revertWhenNotReady: boolean
     config?: Config
   }): Promise<void> {
     if (await this.isPaused()) {
@@ -742,7 +742,7 @@ export class NTT {
 
     return await this.program.methods.receiveWormholeMessage().accounts({
       payer: args.payer,
-      config: { config: this.configAccountAddress() },
+          config: { config: this.configAccountAddress() },
       peer: transceiverPeer,
       vaa: derivePostedVaaKey(this.wormholeId, Buffer.from(wormholeNTT.hash)),
       transceiverMessage: this.transceiverMessageAccountAddress(
@@ -825,7 +825,7 @@ export class NTT {
     // In case the redeemed amount exceeds the remaining inbound rate limit capacity,
     // the transaction gets delayed. If this happens, the second instruction will not actually
     // be able to release the transfer yet.
-    // To make sure the transaction still succeeds, we set revertOnDelay to false, which will
+    // To make sure the transaction still succeeds, we set revertWhenNotReady to false, which will
     // just make the second instruction a no-op in case the transfer is delayed.
 
     const tx = new Transaction()
@@ -838,8 +838,7 @@ export class NTT {
       nttMessage,
       recipient: new PublicKey(nttMessage.payload.recipientAddress.toUint8Array()),
       chain: chainId,
-      revertOnDelay: false,
-      config: config
+      revertWhenNotReady: false
     }
 
     if (config.mode.locking != null) {
