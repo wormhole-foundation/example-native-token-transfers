@@ -7,6 +7,9 @@ import "wormhole-solidity-sdk/libraries/BytesParsing.sol";
 contract Governance {
     using BytesParsing for bytes;
 
+    // Only 2 Guardian signatures are required for quorum to call the pause function on governed contracts.
+    uint PAUSER_QUORUM = 2;
+
     // "GeneralPurposeGovernance" (left padded)
     bytes32 public constant MODULE =
         0x000000000000000047656E6572616C507572706F7365476F7665726E616E6365;
@@ -79,6 +82,8 @@ contract Governance {
     }
 
     function performGovernance(bytes calldata vaa) external {
+        
+
         IWormhole.VM memory verified = _verifyGovernanceVAA(vaa);
         GeneralPurposeGovernanceMessage memory message =
             parseGeneralPurposeGovernanceMessage(verified.payload);
@@ -115,11 +120,23 @@ contract Governance {
         internal
         returns (IWormhole.VM memory parsedVM)
     {
-        (IWormhole.VM memory vm, bool valid, string memory reason) =
-            wormhole.parseAndVerifyVM(encodedVM);
+        IWormhole.VM memory vm = wormhole.parseVM(encodedVM);
+        GeneralPurposeGovernanceMessage memory message =
+            parseGeneralPurposeGovernanceMessage(vm.payload);
 
-        if (!valid) {
-            revert(reason);
+        bytes memory pauseSig = abi.encodeWithSignature("pause()");
+        if (keccak256(message.callData) == keccak256(pauseSig)) {
+            // If we're calling the pause() function, only require 2 Guardian signatures
+            (bool valid, string memory reason) = _verifyVMForPause(vm, true);
+            if (!valid) {
+                revert(reason);
+            }
+        } else {
+            // If we're calling any other function signature, require the full 13 Guardian signatures
+            (bool valid, string memory reason) = wormhole.verifyVM(vm);
+            if (!valid) {
+                revert(reason);
+            }
         }
 
         if (vm.emitterChainId != wormhole.governanceChainId()) {
@@ -133,6 +150,79 @@ contract Governance {
         _replayProtect(vm.hash);
 
         return vm;
+    }
+
+    /**
+    * @dev COPIED FROM WORMHOLE CORE CONTRACT AND RENAMED TO `verifyVMForPause` 
+    * `verifyVMInternal` serves to validate an arbitrary vm against a valid Guardian set
+    * if checkHash is set then the hash field of the vm is verified against the hash of its contents
+    * in the case that the vm is securely parsed and the hash field can be trusted, checkHash can be set to false
+    * as the check would be redundant
+    */
+    function _verifyVMForPause(IWormhole.VM memory vm, bool checkHash) internal view returns (bool valid, string memory reason) {
+        /// @dev Obtain the current guardianSet for the guardianSetIndex provided
+        IWormhole.GuardianSet memory guardianSet = wormhole.getGuardianSet(vm.guardianSetIndex);
+
+        /**
+         * Verify that the hash field in the vm matches with the hash of the contents of the vm if checkHash is set
+         * WARNING: This hash check is critical to ensure that the vm.hash provided matches with the hash of the body.
+         * Without this check, it would not be safe to call verifyVM on it's own as vm.hash can be a valid signed hash
+         * but the body of the vm could be completely different from what was actually signed by the guardians
+         */
+        if(checkHash){
+            bytes memory body = abi.encodePacked(
+                vm.timestamp,
+                vm.nonce,
+                vm.emitterChainId,
+                vm.emitterAddress,
+                vm.sequence,
+                vm.consistencyLevel,
+                vm.payload
+            );
+
+            bytes32 vmHash = keccak256(abi.encodePacked(keccak256(body)));
+
+            if(vmHash != vm.hash){
+                return (false, "vm.hash doesn't match body");
+            }
+        }
+
+       /**
+        * @dev Checks whether the guardianSet has zero keys
+        * WARNING: This keys check is critical to ensure the guardianSet has keys present AND to ensure
+        * that guardianSet key size doesn't fall to zero and negatively impact quorum assessment.  If guardianSet
+        * key length is 0 and vm.signatures length is 0, this could compromise the integrity of both vm and
+        * signature verification.
+        */
+        if(guardianSet.keys.length == 0){
+            return (false, "invalid guardian set");
+        }
+
+        /// @dev Checks if VM guardian set index matches the current index (unless the current set is expired).
+        if(vm.guardianSetIndex != wormhole.getCurrentGuardianSetIndex() && guardianSet.expirationTime < block.timestamp){
+            return (false, "guardian set has expired");
+        }
+
+       /**
+        * @dev We're using a fixed point number transformation with 1 decimal to deal with rounding.
+        *   WARNING: This quorum check is critical to assessing whether we have enough Guardian signatures to validate a VM
+        *   if making any changes to this, obtain additional peer review. If guardianSet key length is 0 and
+        *   vm.signatures length is 0, this could compromise the integrity of both vm and signature verification.
+        */
+        uint fullQuorum = wormhole.quorum(guardianSet.keys.length);
+        uint requiredPauseQuorum = PAUSER_QUORUM < fullQuorum ? PAUSER_QUORUM : fullQuorum;
+        if (vm.signatures.length < requiredPauseQuorum){
+            return (false, "no quorum");
+        }
+
+        /// @dev Verify the proposed vm.signatures against the guardianSet
+        (bool signaturesValid, string memory invalidReason) = wormhole.verifySignatures(vm.hash, vm.signatures, guardianSet);
+        if(!signaturesValid){
+            return (false, invalidReason);
+        }
+
+        /// If we are here, we've validated the VM is a valid multi-sig that matches the guardianSet.
+        return (true, "");
     }
 
     function encodeGeneralPurposeGovernanceMessage(GeneralPurposeGovernanceMessage memory m)
