@@ -19,6 +19,21 @@ export const JITO_NTT_CONTRACTS: NttContracts = {
   },
 };
 
+export const OSSI_TOKENS: NttContracts = {
+  Sepolia: {
+    token: "0x6B7864f1d91370aB647FC357388C3E42913F1EEc",
+    manager: "0x941fAB49efD181C3FD66b93D5A4ab68148116652",
+    transceiver: {
+      wormhole: "0x7ABB84356d23be69eA90c80F989E269Ecf8f19C2",
+    },
+  },
+  Avalanche: {
+    token: "0x6B7864f1d91370aB647FC357388C3E42913F1EEc",
+    manager: "0xA685662A3dE6292f8278B5e0375C2CE69f56Bb0B",
+    transceiver: { wormhole: "0x702f07740bF410e9c47d29f11591F6fDfEceD1F0" },
+  },
+};
+
 export const TEST_NTT_TOKENS: NttContracts = {
   Sepolia: {
     token: "0x738141EFf659625F2eAD4feECDfCD94155C67f18",
