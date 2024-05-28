@@ -31,11 +31,6 @@ export type DummyTransferHook = {
           "isSigner": false
         },
         {
-          "name": "counter",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
@@ -78,11 +73,6 @@ export type DummyTransferHook = {
           "docs": [
             "computes and the on-chain code correctly passes on the PDA."
           ]
-        },
-        {
-          "name": "counter",
-          "isMut": true,
-          "isSigner": false
         }
       ],
       "args": [
@@ -91,20 +81,6 @@ export type DummyTransferHook = {
           "type": "u64"
         }
       ]
-    }
-  ],
-  "accounts": [
-    {
-      "name": "counter",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "count",
-            "type": "u64"
-          }
-        ]
-      }
     }
   ]
 };
@@ -142,11 +118,6 @@ export const IDL: DummyTransferHook = {
           "isSigner": false
         },
         {
-          "name": "counter",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
@@ -189,11 +160,6 @@ export const IDL: DummyTransferHook = {
           "docs": [
             "computes and the on-chain code correctly passes on the PDA."
           ]
-        },
-        {
-          "name": "counter",
-          "isMut": true,
-          "isSigner": false
         }
       ],
       "args": [
@@ -202,20 +168,6 @@ export const IDL: DummyTransferHook = {
           "type": "u64"
         }
       ]
-    }
-  ],
-  "accounts": [
-    {
-      "name": "counter",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "count",
-            "type": "u64"
-          }
-        ]
-      }
     }
   ]
 };
