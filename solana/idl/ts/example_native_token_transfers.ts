@@ -870,7 +870,10 @@ export type ExampleNativeTokenTransfers = {
         {
           "name": "emitter",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "enforced by the [`CpiContext`] call in [`post_message`]."
+          ]
         },
         {
           "name": "wormhole",
@@ -2752,7 +2755,10 @@ export const IDL: ExampleNativeTokenTransfers = {
         {
           "name": "emitter",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "enforced by the [`CpiContext`] call in [`post_message`]."
+          ]
         },
         {
           "name": "wormhole",

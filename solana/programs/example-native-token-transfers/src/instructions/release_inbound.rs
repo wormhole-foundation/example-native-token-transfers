@@ -61,6 +61,8 @@ pub struct ReleaseInboundMint<'info> {
 /// Setting this flag to `false` is useful when bundling this instruction
 /// together with [`crate::instructions::redeem`] in a transaction, so that the minting
 /// is attempted optimistically.
+/// SECURITY: Signer checks are disabled here because anyone is permitted to send a release
+/// transaction.
 pub fn release_inbound_mint(
     ctx: Context<ReleaseInboundMint>,
     args: ReleaseInboundArgs,
@@ -119,6 +121,8 @@ pub struct ReleaseInboundUnlock<'info> {
 /// Setting this flag to `false` is useful when bundling this instruction
 /// together with [`crate::instructions::redeem`], so that the unlocking
 /// is attempted optimistically.
+/// SECURITY: Signer checks are disabled here because anyone is permitted to send a release
+/// transaction.
 pub fn release_inbound_unlock(
     ctx: Context<ReleaseInboundUnlock>,
     args: ReleaseInboundArgs,
