@@ -757,15 +757,30 @@ export class NTT {
     chain: ChainName
     limit: BN
   }) {
-    const ix = await this.program.methods.setOutboundLimit({
+    const ix = await this.createOutboundLimitInstruction({
+      owner: args.owner.publicKey,
       limit: args.limit
-    })
+    });
+    return this.sendAndConfirmTransaction(
+      new Transaction().add(ix),
+      [args.owner]
+    );
+  }
+
+  async createOutboundLimitInstruction(args: {
+    owner: PublicKey
+    limit: BN
+  }) {
+    return this.program.methods
+      .setOutboundLimit({
+        limit: args.limit
+      })
       .accounts({
-        owner: args.owner.publicKey,
+        owner: args.owner,
         config: this.configAccountAddress(),
         rateLimit: this.outboxRateLimitAccountAddress(),
-      }).instruction();
-    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.owner]);
+      })
+      .instruction();
   }
 
   async setInboundLimit(args: {
@@ -773,16 +788,33 @@ export class NTT {
     chain: ChainName
     limit: BN
   }) {
-    const ix = await this.program.methods.setInboundLimit({
-      chainId: { id: toChainId(args.chain) },
+    const ix = await this.createInboundLimitInstruction({
+      owner: args.owner.publicKey,
+      chain: args.chain,
       limit: args.limit
-    })
+    });
+    return this.sendAndConfirmTransaction(
+      new Transaction().add(ix),
+      [args.owner]
+    );
+  }
+
+  async createInboundLimitInstruction(args: {
+    owner: PublicKey
+    chain: ChainName
+    limit: BN
+  }) {
+    return this.program.methods
+      .setInboundLimit({
+        chainId: { id: toChainId(args.chain) },
+        limit: args.limit
+      })
       .accounts({
-        owner: args.owner.publicKey,
+        owner: args.owner,
         config: this.configAccountAddress(),
         rateLimit: this.inboxRateLimitAccountAddress(args.chain),
-      }).instruction();
-    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.owner]);
+      })
+      .instruction();
   }
 
   async createReceiveWormholeMessageInstruction(args: {
