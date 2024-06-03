@@ -28,6 +28,7 @@ docker_build(
     context = "./",
     only = ["./sdk", "./solana"],
     ignore=["./sdk/__tests__", "./sdk/Dockerfile", "./sdk/ci.yaml", "./sdk/**/dist", "./sdk/node_modules", "./sdk/**/node_modules"],
+    target = "dev-builder",
     dockerfile = "./solana/Dockerfile",
 )
 k8s_yaml_with_ns("./solana/solana-devnet.yaml")
@@ -53,7 +54,7 @@ docker_build(
     context = "./sdk",
     dockerfile = "./sdk/Dockerfile",
 )
-k8s_yaml_with_ns("./sdk/ci.yaml") 
+k8s_yaml_with_ns("./sdk/ci.yaml")
 k8s_resource(
     "ntt-ci-tests",
     labels = ["ntt"],
