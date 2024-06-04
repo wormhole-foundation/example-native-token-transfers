@@ -1,10 +1,9 @@
 import { inspect } from "util";
 import { CHAIN_ID_SOLANA, ChainId } from "@certusone/wormhole-sdk";
 import {
-  WormholeTransceiver__factory,
   NttManager__factory,
   ISpecialRelayer__factory,
-  IERC20,
+  NttManager,
 } from "../contract-bindings";
 import {
   loadOperatingChains,
@@ -15,7 +14,7 @@ import {
   loadScriptConfig,
 } from "./env";
 import { IWormholeRelayer__factory } from "@certusone/wormhole-sdk/lib/cjs/ethers-contracts";
-import { ERC20__factory } from "../contract-bindings/factories/ERC20Mock.sol";
+import { ERC20__factory } from "../contract-bindings/factories";
 
 const processName = "transferTokens";
 
@@ -63,7 +62,7 @@ async function trnsferTokens(chain: ChainInfo, peers: Peer[]) {
   const managerContract = await getManagerContract(chain);
   const specialRelayer = await getSpecializedRelayer(chain);
   const tokenAddress = await managerContract.token();
-
+  
   const recipientChainId = Number(process.env.TARGET_CHAIN_ID) as ChainId;
   const recipientAddress = process.env.RECIPIENT_ADDRESS as string;
 
@@ -99,34 +98,39 @@ async function trnsferTokens(chain: ChainInfo, peers: Peer[]) {
 
   const tokenContract = ERC20__factory.connect(tokenAddress, await getSigner(chain));
 
+  log("Token contract connected")
   const txValue = deliveryQuote.mul(2);
   const approveTx = await (await tokenContract.approve(managerContract.address, txValue));
+  log("Approval sent.");
   const res = await approveTx.wait();
+  log("Approval receipt: ", res.transactionHash);
 
-  const transferTx = await managerContract["transfer(uint256,uint16,bytes32,bool,bytes)"](
+  const overrides = {
+    type: 2,
+    maxFeePerGas: 30000000000n,
+    maxPriorityFeePerGas: 30000000000n,
+  };
+
+  const transferTx = await managerContract["transfer(uint256,uint16,bytes32,bytes32,bool,bytes)"](
     "10000000000000",
     recipientChainId,
     recipientAddress,
+    recipientAddress,
     false,
     "0x01000100", // one instruction of 1 empty byte
-    { value: txValue },
+    { 
+      ...overrides,
+      value: txValue
+    },
   );
 
-  log("Transfer sent. Receipt:", await transferTx.wait());
+  log("Transfer sent. Receipt:");
+  await transferTx.wait()
 
   return { chainId: chain.chainId };
 }
 
-async function getTransceiverContract(chain: ChainInfo) {
-  const signer = await getSigner(chain);
-  const transceiverAddress = await getContractAddress(
-    "NttTransceiverProxies",
-    chain.chainId
-  );
-  return WormholeTransceiver__factory.connect(transceiverAddress, signer);
-}
-
-async function getManagerContract(chain: ChainInfo) {
+async function getManagerContract(chain: ChainInfo): Promise<NttManager> {
   const signer = await getSigner(chain);
   const managerAddress = await getContractAddress(
     "NttManagerProxies",
