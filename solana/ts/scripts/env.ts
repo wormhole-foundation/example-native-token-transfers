@@ -114,7 +114,7 @@ export function getGovernanceVaa(): GovernanceVaa {
   return loadScriptConfig("governance-vaa");
 }
 
-function loadScriptConfig(filename: string): any {
+export function loadScriptConfig(filename: string): any {
   const configFile = fs.readFileSync(
     `./ts/scripts/config/${env}/${filename}.json`
   );

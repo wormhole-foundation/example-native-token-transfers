@@ -8,12 +8,11 @@ import {
   connection,
   getSigner,
   getProgramAddresses,
-  getGovernanceVaa,
+  loadScriptConfig,
 } from "./env";
 import { addLedgerSignature, ledgerSignAndSend } from "./helpers";
 import { postVaaSolana } from "@certusone/wormhole-sdk";
 import { NTTGovernance } from "../sdk/governance";
-import { loadScriptConfig } from '../../../evm/ts-scripts/src/env';
 
 const governanceVaasFileName = process.env.GOVERNANCE_VAAS_FILE_PATH;
 if (!governanceVaasFileName) {
