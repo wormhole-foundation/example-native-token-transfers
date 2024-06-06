@@ -271,7 +271,7 @@ async function waitForRelay(
   const deliveryHash = keccak256(vaa!.hash);
 
   const wormholeRelayer = IWormholeRelayer__factory.connect(
-    dst.context.config.contracts.relayer!,
+    "0xcC680D088586c09c3E0E099a676FA4b6e42467b4", // dst.context.config.contracts.relayer!,
     await dst.context.getRpc()
   );
 
@@ -429,7 +429,7 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
     // List of useful wormhole contracts - https://github.com/wormhole-foundation/wormhole/blob/00f504ef452ae2d94fa0024c026be2d8cf903ad5/ethereum/ts-scripts/relayer/config/ci/contracts.json
     await manager.getAddress(),
     ctx.context.config.contracts.coreBridge!, // Core wormhole contract - https://docs.wormhole.com/wormhole/blockchain-environments/evm#local-network-contract -- may need to be changed to support other chains
-    ctx.context.config.contracts.relayer!, // Relayer contract -- double check these...https://github.com/wormhole-foundation/wormhole/blob/main/sdk/js/src/relayer/__tests__/wormhole_relayer.ts
+    "0xcC680D088586c09c3E0E099a676FA4b6e42467b4", // ctx.context.config.contracts.relayer!, // Relayer contract -- double check these...https://github.com/wormhole-foundation/wormhole/blob/main/sdk/js/src/relayer/__tests__/wormhole_relayer.ts
     "0x0000000000000000000000000000000000000000", // TODO - Specialized relayer??????
     200, // Consistency level
     500000n // Gas limit
