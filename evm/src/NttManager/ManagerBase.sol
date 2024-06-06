@@ -75,6 +75,19 @@ abstract contract ManagerBase is
         }
     }
 
+    function _getThresholdStoragePerChain()
+        private
+        pure
+        returns (mapping(uint16 => _Threshold) storage $)
+    {
+        // TODO: this is safe (reusing the storage slot, because the mapping
+        // doesn't write into the slot itself) buy maybe we shouldn't?
+        uint256 slot = uint256(THRESHOLD_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
     function _getMessageAttestationsStorage()
         internal
         pure
@@ -122,6 +135,9 @@ abstract contract ManagerBase is
         uint256 totalPriceQuote = 0;
         for (uint256 i = 0; i < numEnabledTransceivers; i++) {
             address transceiverAddr = enabledTransceivers[i];
+            if (!_isTransceiverEnabledForChain(transceiverAddr, recipientChain)) {
+                continue;
+            }
             uint8 registeredTransceiverIndex = transceiverInfos[transceiverAddr].index;
             uint256 transceiverPriceQuote = ITransceiver(transceiverAddr).quoteDeliveryPrice(
                 recipientChain, transceiverInstructions[registeredTransceiverIndex]
@@ -150,6 +166,7 @@ abstract contract ManagerBase is
         ) {
             revert TransceiverAlreadyAttestedToMessage(nttManagerMessageHash);
         }
+        _getMessageAttestationsStorage()[nttManagerMessageHash].sourceChainId = sourceChainId;
         _setTransceiverAttestedToMessage(nttManagerMessageHash, msg.sender);
 
         return nttManagerMessageHash;
@@ -200,6 +217,9 @@ abstract contract ManagerBase is
         // call into transceiver contracts to send the message
         for (uint256 i = 0; i < numEnabledTransceivers; i++) {
             address transceiverAddr = enabledTransceivers[i];
+            if (!_isTransceiverEnabledForChain(transceiverAddr, recipientChain)) {
+                continue;
+            }
 
             // send it to the recipient nttManager based on the chain
             ITransceiver(transceiverAddr).sendMessage{value: priceQuotes[i]}(
@@ -284,11 +304,22 @@ abstract contract ManagerBase is
         return _getThresholdStorage().num;
     }
 
+    function getThreshold(
+        uint16 forChainId
+    ) public view returns (uint8) {
+        uint8 threshold = _getThresholdStoragePerChain()[forChainId].num;
+        if (threshold == 0) {
+            return _getThresholdStorage().num;
+        }
+        return threshold;
+    }
+
     /// @inheritdoc IManagerBase
     function isMessageApproved(
         bytes32 digest
     ) public view returns (bool) {
-        uint8 threshold = getThreshold();
+        uint16 sourceChainId = _getMessageAttestationsStorage()[digest].sourceChainId;
+        uint8 threshold = getThreshold(sourceChainId);
         return messageAttestations(digest) >= threshold && threshold > 0;
     }
 
@@ -432,8 +463,10 @@ abstract contract ManagerBase is
         bytes32 digest
     ) internal view returns (uint64) {
         uint64 enabledTransceiverBitmap = _getEnabledTransceiversBitmap();
-        return
-            _getMessageAttestationsStorage()[digest].attestedTransceivers & enabledTransceiverBitmap;
+        uint16 sourceChainId = _getMessageAttestationsStorage()[digest].sourceChainId;
+        uint64 enabledTransceiversForChain = _getEnabledTransceiversBitmapForChain(sourceChainId);
+        return _getMessageAttestationsStorage()[digest].attestedTransceivers
+            & enabledTransceiverBitmap & enabledTransceiversForChain;
     }
 
     function _getEnabledTransceiverAttestedToMessage(

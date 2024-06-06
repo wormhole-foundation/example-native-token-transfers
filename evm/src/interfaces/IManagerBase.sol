@@ -21,6 +21,9 @@ interface IManagerBase {
     struct AttestationInfo {
         bool executed;
         uint64 attestedTransceivers;
+        // TODO: think about potential migration issues here (this field was
+        // introduced later, so for older messages it will be 0).
+        uint16 sourceChainId;
     }
 
     struct _Sequence {

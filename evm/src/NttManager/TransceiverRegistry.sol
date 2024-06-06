@@ -122,6 +122,19 @@ abstract contract TransceiverRegistry {
         }
     }
 
+    function _getPerChainTransceiverBitmapStorage()
+        private
+        pure
+        returns (mapping(uint16 => _EnabledTransceiverBitmap) storage $)
+    {
+        // TODO: this is safe (reusing the storage slot, because the mapping
+        // doesn't write into the slot itself) buy maybe we shouldn't?
+        uint256 slot = uint256(TRANSCEIVER_BITMAP_SLOT);
+        assembly ("memory-safe") {
+            $.slot := slot
+        }
+    }
+
     function _getRegisteredTransceiversStorage() internal pure returns (address[] storage $) {
         uint256 slot = uint256(REGISTERED_TRANSCEIVERS_SLOT);
         assembly ("memory-safe") {
@@ -137,6 +150,15 @@ abstract contract TransceiverRegistry {
     }
 
     // =============== Storage Getters/Setters ========================================
+
+    function _isTransceiverEnabledForChain(
+        address transceiver,
+        uint16 chainId
+    ) internal view returns (bool) {
+        uint64 bitmap = _getEnabledTransceiversBitmapForChain(chainId);
+        uint8 index = _getTransceiverInfosStorage()[transceiver].index;
+        return (bitmap & uint64(1 << index)) != 0;
+    }
 
     function _setTransceiver(
         address transceiver
@@ -232,6 +254,17 @@ abstract contract TransceiverRegistry {
 
     function _getEnabledTransceiversBitmap() internal view virtual returns (uint64 bitmap) {
         return _getTransceiverBitmapStorage().bitmap;
+    }
+
+    function _getEnabledTransceiversBitmapForChain(
+        uint16 forChainId
+    ) internal view virtual returns (uint64 bitmap) {
+        bitmap = _getPerChainTransceiverBitmapStorage()[forChainId].bitmap;
+        if (bitmap == 0) {
+            // NOTE: this makes it backwards compatible -- if the bitmap is not
+            // set, it's assumed the corridor uses all transceivers.
+            return type(uint64).max;
+        }
     }
 
     /// @notice Returns the Transceiver contracts that have been enabled via governance.
