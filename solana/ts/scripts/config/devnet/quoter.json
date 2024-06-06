@@ -28,27 +28,27 @@
   "peerQuotes": {
     "Sepolia": {
       "maxGasDropoffEth": "0",
-      "basePriceUsd": "500000",
-      "nativePriceUsd": "3500000000",
+      "basePriceUsd": "1",
+      "nativePriceUsd": "3865",
       "gasPriceGwei": "25"
     },
     "ArbitrumSepolia": {
       "maxGasDropoffEth": "0",
-      "basePriceUsd": "500000",
-      "nativePriceUsd": "3500000000",
-      "gasPriceGwei": "25"
+      "basePriceUsd": "0",
+      "nativePriceUsd": "3865",
+      "gasPriceGwei": "0"
     },
     "OptimismSepolia": {
       "maxGasDropoffEth": "0",
-      "basePriceUsd": "500000",
-      "nativePriceUsd": "3500000000",
-      "gasPriceGwei": "25"
+      "basePriceUsd": "0",
+      "nativePriceUsd": "3865",
+      "gasPriceGwei": "0"
     },
     "BaseSepolia": {
       "maxGasDropoffEth": "0",
-      "basePriceUsd": "500000",
-      "nativePriceUsd": "3500000000",
-      "gasPriceGwei": "25"
+      "basePriceUsd": "0",
+      "nativePriceUsd": "3865",
+      "gasPriceGwei": "0"
     }
   }
 }
