@@ -84,7 +84,7 @@ pub fn set_assistant(ctx: Context<SetAssistant>) -> Result<()> {
         .accounts
         .assistant
         .as_deref()
-        .map_or(Pubkey::default(), |val| val.key());
+        .map_or_else(|| { Pubkey::default() }, |val| val.key());
     Ok(())
 }
 
