@@ -42,3 +42,20 @@ COPY solana/Makefile Makefile
 COPY solana/scripts scripts
 
 RUN make target/idl/example_native_token_transfers.json
+
+FROM node:lts-alpine3.19@sha256:ec0c413b1d84f3f7f67ec986ba885930c57b5318d2eb3abc6960ee05d4f2eb28 as governance
+
+WORKDIR /app
+
+# RUN apk add python3
+RUN apk add make python3 gcc g++
+
+COPY tsconfig.json tsconfig.json
+COPY package.json package.json
+COPY package-lock.json package-lock.json
+RUN npm ci
+
+COPY idl idl
+COPY ts ts
+
+ENTRYPOINT [ "npx", "ts-node", "-T" ]

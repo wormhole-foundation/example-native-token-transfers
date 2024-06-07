@@ -105,6 +105,10 @@ export class NTT {
     return this.derivePda('config')
   }
 
+  upgradeLockAccountAddress(): PublicKey {
+    return this.derivePda('upgrade_lock')
+  }
+
   outboxRateLimitAccountAddress(): PublicKey {
     return this.derivePda('outbox_rate_limit')
   }
@@ -305,6 +309,66 @@ export class NTT {
     await this.sendAndConfirmTransaction(tx, signers)
 
     return outboxItem.publicKey
+  }
+
+  async transferOwnership(args: {
+    payer: Keypair
+    owner: Keypair,
+    newOwner: PublicKey
+  }) {
+    const ix = await this.createTransferOwnershipInstruction({
+      owner: args.owner.publicKey,
+      newOwner: args.newOwner
+    })
+    return await this.sendAndConfirmTransaction(
+      new Transaction().add(ix),
+      [args.payer, args.owner]
+    )
+  }
+
+  async createTransferOwnershipInstruction(args: {
+    owner: PublicKey;
+    newOwner: PublicKey;
+  }) {
+    return this.program.methods
+      .transferOwnership()
+      .accountsStrict({
+        config: this.configAccountAddress(),
+        owner: args.owner,
+        newOwner: args.newOwner,
+        upgradeLock: this.upgradeLockAccountAddress(),
+        programData: programDataAddress(this.program.programId),
+        bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
+      })
+      .instruction();
+  }
+
+  async claimOwnership(args: {
+    payer: Keypair
+    owner: Keypair
+  }) {
+    const ix = await this.createClaimOwnershipInstruction({
+      newOwner: args.owner.publicKey
+    })
+    return await this.sendAndConfirmTransaction(
+      new Transaction().add(ix),
+      [args.payer, args.owner]
+    )
+  }
+
+  async createClaimOwnershipInstruction(args: {
+    newOwner: PublicKey;
+  }) {
+    return this.program.methods
+      .claimOwnership()
+      .accountsStrict({
+        config: this.configAccountAddress(),
+        upgradeLock: this.upgradeLockAccountAddress(),
+        newOwner: args.newOwner,
+        programData: programDataAddress(this.program.programId),
+        bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
+      })
+      .instruction();
   }
 
   /**
@@ -693,15 +757,30 @@ export class NTT {
     chain: ChainName
     limit: BN
   }) {
-    const ix = await this.program.methods.setOutboundLimit({
+    const ix = await this.createOutboundLimitInstruction({
+      owner: args.owner.publicKey,
       limit: args.limit
-    })
+    });
+    return this.sendAndConfirmTransaction(
+      new Transaction().add(ix),
+      [args.owner]
+    );
+  }
+
+  async createOutboundLimitInstruction(args: {
+    owner: PublicKey
+    limit: BN
+  }) {
+    return this.program.methods
+      .setOutboundLimit({
+        limit: args.limit
+      })
       .accounts({
-        owner: args.owner.publicKey,
+        owner: args.owner,
         config: this.configAccountAddress(),
         rateLimit: this.outboxRateLimitAccountAddress(),
-      }).instruction();
-    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.owner]);
+      })
+      .instruction();
   }
 
   async setInboundLimit(args: {
@@ -709,16 +788,33 @@ export class NTT {
     chain: ChainName
     limit: BN
   }) {
-    const ix = await this.program.methods.setInboundLimit({
-      chainId: { id: toChainId(args.chain) },
+    const ix = await this.createInboundLimitInstruction({
+      owner: args.owner.publicKey,
+      chain: args.chain,
       limit: args.limit
-    })
+    });
+    return this.sendAndConfirmTransaction(
+      new Transaction().add(ix),
+      [args.owner]
+    );
+  }
+
+  async createInboundLimitInstruction(args: {
+    owner: PublicKey
+    chain: ChainName
+    limit: BN
+  }) {
+    return this.program.methods
+      .setInboundLimit({
+        chainId: { id: toChainId(args.chain) },
+        limit: args.limit
+      })
       .accounts({
-        owner: args.owner.publicKey,
+        owner: args.owner,
         config: this.configAccountAddress(),
         rateLimit: this.inboxRateLimitAccountAddress(args.chain),
-      }).instruction();
-    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.owner]);
+      })
+      .instruction();
   }
 
   async createReceiveWormholeMessageInstruction(args: {
