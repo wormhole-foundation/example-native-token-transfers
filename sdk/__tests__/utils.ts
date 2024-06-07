@@ -76,7 +76,20 @@ export interface Ctx extends StartingCtx {
 
 export const wh = new Wormhole(NETWORK, [evm.Platform, solana.Platform], {
   ...(process.env["CI"]
-    ? {}
+    ? {
+        chains: {
+          Ethereum: {
+            contracts: {
+              relayer: "0xcC680D088586c09c3E0E099a676FA4b6e42467b4",
+            },
+          },
+          Bsc: {
+            contracts: {
+              relayer: "0xcC680D088586c09c3E0E099a676FA4b6e42467b4",
+            },
+          },
+        },
+      }
     : {
         api: "http://localhost:7071",
         chains: {

@@ -41,3 +41,32 @@ jobs:
         run: |
           make check-format
         id: check
+    
+  echidna:
+    name: echidna
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Forge build
+        run: |
+          make test-push0
+        id: build
+
+      - name: Install Echidna
+        run: |
+          curl -LO https://github.com/crytic/echidna/releases/download/v2.2.3/echidna-2.2.3-x86_64-linux.tar.gz
+          tar -xzf echidna-2.2.3-x86_64-linux.tar.gz
+          pip install crytic-compile
+      
+      - name: Run Echidna
+        run: |
+          cd evm
+          ../echidna ./echidna --config echidna.yaml

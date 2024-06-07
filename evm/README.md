@@ -30,6 +30,9 @@ Similarly, transfers that are rate-limited on the destination chain are added to
 
 If the client attempts to release the transfer from the queue before the expiry of the `rateLimitDuration`, the contract reverts with a `InboundQueuedTransferStillQueued` error.
 
+To disable the rate-limiter, set `_rateLimitDuration` to 0 and enable the `_skipRateLimiting` field in the `NttManager` constructor. Configuring this incorrectly will throw an error.
+If the rate-limiter is disabled, the inbound and outbound rate-limits can be set to 0.
+
 _Events_
 
 ```solidity

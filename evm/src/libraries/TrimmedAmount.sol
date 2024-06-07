@@ -106,6 +106,14 @@ library TrimmedAmountLib {
         return uint8(TrimmedAmount.unwrap(a) & 0xFF);
     }
 
+    /// @dev Set the decimals of the TrimmedAmount.
+    ///      This function should only be used for testing purposes, as it
+    ///      should not be necessary to change the decimals of a TrimmedAmount
+    ///      under normal circumstances.
+    function setDecimals(TrimmedAmount a, uint8 decimals) internal pure returns (TrimmedAmount) {
+        return TrimmedAmount.wrap((TrimmedAmount.unwrap(a) & ~uint72(0xFF)) | decimals);
+    }
+
     function isNull(TrimmedAmount a) internal pure returns (bool) {
         return (getAmount(a) == 0 && getDecimals(a) == 0);
     }

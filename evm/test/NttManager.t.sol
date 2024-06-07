@@ -231,6 +231,29 @@ contract TestNttManager is Test, IRateLimiterEvents {
         assertEq(nttManager.isPaused(), false);
     }
 
+    function test_pausePauserUnpauseOnlyOwner() public {
+        // transfer pauser to another address
+        address pauser = address(0x123);
+        nttManager.transferPauserCapability(pauser);
+
+        // execute from pauser context
+        vm.startPrank(pauser);
+        assertEq(nttManager.isPaused(), false);
+        nttManager.pause();
+        assertEq(nttManager.isPaused(), true);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, pauser)
+        );
+        nttManager.unpause();
+
+        // execute from owner context
+        // ensures that owner can still unpause
+        vm.startPrank(address(this));
+        nttManager.unpause();
+        assertEq(nttManager.isPaused(), false);
+    }
+
     // === deployment with invalid token
     function test_brokenToken() public {
         DummyToken t = new DummyTokenBroken();
