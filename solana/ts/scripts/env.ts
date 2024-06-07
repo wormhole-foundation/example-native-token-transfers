@@ -12,7 +12,7 @@ if (!process.env.ENV) {
 
 const env = process.env.ENV;
 
-interface SolanaSigner {
+export interface SolanaSigner {
   getAddress(): Promise<Buffer>;
   signMessage(message: Buffer): Promise<Buffer>;
   signTransaction(transaction: Buffer): Promise<Buffer>;
