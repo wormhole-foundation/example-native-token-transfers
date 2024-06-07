@@ -2,7 +2,17 @@ load('ext://namespace', 'namespace_create', 'namespace_inject')
 load('ext://git_resource', 'git_checkout')
 
 git_checkout('https://github.com/wormhole-foundation/wormhole.git#main', '.wormhole/', unsafe_mode=True)
-local(['sed','-i','/{chainId: vaa.ChainIDEthereum, addr: "000000000000000000000000855FA758c77D68a04990E992aA4dcdeF899F654A"},/i {chainId: vaa.ChainIDSolana, addr: "8bf0b547c96edc5c1d512ca25c5c1d1812a180438a0046e511d1fb61561d5cdf"},{chainId: vaa.ChainIDSolana, addr: "0a490691c21334ca173d9ce386e2a86774ce173f351db10d5d0cccc5c4875376"},{chainId: vaa.ChainIDEthereum, addr: "00000000000000000000000042D4BA5e542d9FeD87EA657f0295F1968A61c00A"},{chainId: vaa.ChainIDEthereum, addr: "000000000000000000000000c3ef4965b788cc4b905084d01f2eb7d4b6e93abf"},{chainId: vaa.ChainIDBSC, addr: "000000000000000000000000C5aFE31AE505594B190AC71EA689B58139d1C354"},{chainId: vaa.ChainIDBSC, addr: "0000000000000000000000003f4e941ef5071a1d09c2eb4a24da1fc43f76fcff"},', '.wormhole/node/pkg/accountant/ntt_config.go'])
+local(['sed','-i',
+    '/{chainId: vaa.ChainIDEthereum, addr: "000000000000000000000000855FA758c77D68a04990E992aA4dcdeF899F654A"},/i'
+        +' {chainId: vaa.ChainIDSolana, addr: "8bf0b547c96edc5c1d512ca25c5c1d1812a180438a0046e511d1fb61561d5cdf"},'
+        + '{chainId: vaa.ChainIDSolana, addr: "0a490691c21334ca173d9ce386e2a86774ce173f351db10d5d0cccc5c4875376"},'
+        + '{chainId: vaa.ChainIDEthereum, addr: "00000000000000000000000042D4BA5e542d9FeD87EA657f0295F1968A61c00A"},'
+        + '{chainId: vaa.ChainIDEthereum, addr: "000000000000000000000000b4fFe5983B0B748124577Af4d16953bd096b6897"},'
+        + '{chainId: vaa.ChainIDEthereum, addr: "0000000000000000000000003F4E941ef5071a1D09C2eB4a24DA1Fc43F76fcfF"},'
+        + '{chainId: vaa.ChainIDBSC, addr: "000000000000000000000000C5aFE31AE505594B190AC71EA689B58139d1C354"},'
+        + '{chainId: vaa.ChainIDBSC, addr: "000000000000000000000000e93e3B649d4E01e47dd2170CAFEf0651477649Da"},'
+        + '{chainId: vaa.ChainIDBSC, addr: "000000000000000000000000b4fFe5983B0B748124577Af4d16953bd096b6897"},'
+    , '.wormhole/node/pkg/accountant/ntt_config.go'])
 
 load(".wormhole/Tiltfile", "namespace", "k8s_yaml_with_ns")
 
