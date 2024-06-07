@@ -1,12 +1,10 @@
 import fs from "fs";
-import { Connection, Commitment } from "@solana/web3.js";
-import { ChainId } from "@certusone/wormhole-sdk";
+import { Connection, Commitment, Keypair, Transaction } from "@solana/web3.js";
+import { ChainId, sign } from "@certusone/wormhole-sdk";
 import { SolanaLedgerSigner } from "@xlabs-xyz/ledger-signer-solana";
 import { Chain } from "@wormhole-foundation/sdk-base";
-
-if (!process.env.LEDGER_DERIVATION_PATH) {
-  throw new Error("LEDGER_DERIVATION_PATH is not set");
-}
+import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
+import nacl from "tweetnacl";
 
 if (!process.env.ENV) {
   throw new Error("ENV not set");
@@ -14,13 +12,53 @@ if (!process.env.ENV) {
 
 const env = process.env.ENV;
 
-const derivationPath = process.env.LEDGER_DERIVATION_PATH! as string;
+interface SolanaSigner {
+  getAddress(): Promise<Buffer>;
+  signMessage(message: Buffer): Promise<Buffer>;
+  signTransaction(transaction: Buffer): Promise<Buffer>;
+}
+
+export class SolanaLocalSigner implements SolanaSigner {
+  readonly keypair: Keypair;
+  constructor(private privateKey: string) {
+    this.keypair = Keypair.fromSecretKey(bs58.decode(this.privateKey));
+  }
+
+  async getAddress(): Promise<Buffer> {
+    return this.keypair.publicKey.toBuffer();
+  }
+
+  async signMessage(message: Buffer): Promise<Buffer> {
+    return Buffer.from(
+      nacl.sign.detached(new Uint8Array(message), this.keypair.secretKey)
+    );
+  }
+
+  async signTransaction(transaction: Buffer): Promise<Buffer> {
+    const tx = Transaction.from(transaction);
+    tx.sign(this.keypair);
+    return tx.serialize();
+  }
+}
 
 let signer;
-export async function getSigner(): Promise<SolanaLedgerSigner> {
-  if (!signer) {
-    signer = await SolanaLedgerSigner.create(derivationPath);
+export async function getSigner(): Promise<SolanaSigner> {
+  if (signer) return signer;
+
+  if (process.env.LEDGER_DERIVATION_PATH) {
+    signer = await SolanaLedgerSigner.create(
+      process.env.LEDGER_DERIVATION_PATH!
+    );
   }
+
+  if (process.env.SOLANA_PRIVATE_KEY) {
+    signer = new SolanaLocalSigner(process.env.SOLANA_PRIVATE_KEY!);
+  }
+
+  if (!signer)
+    throw new Error(
+      "Either LEDGER_DERIVATION_PATH or SOLANA_PRIVATE_KEY must be set"
+    );
 
   return signer;
 }
@@ -50,11 +88,11 @@ export type NttDeployment = {
 };
 
 export type QuoterManagerRegistrations = {
-    programId: string;
-    tokenAddress: string;
-    gasCost: number;
-    wormholeTransceiverIndex: number;
-    isSupported: boolean;
+  programId: string;
+  tokenAddress: string;
+  gasCost: number;
+  wormholeTransceiverIndex: number;
+  isSupported: boolean;
 }[];
 
 export type QuoterPeerQuotes = Partial<Record<Chain, QuoterPeerQuote>>;
@@ -75,12 +113,12 @@ export type QuoterConfig = {
   solPriceUsd: number;
   peerQuotes: QuoterPeerQuotes;
   managerRegistrations: QuoterManagerRegistrations;
-}
+};
 
 export type NttConfig = {
   outboundLimit: string;
   mode: "locking" | "burning";
-}
+};
 
 export type Programs = {
   mintProgramId: string;
@@ -88,17 +126,17 @@ export type Programs = {
   wormholeProgramId: string;
   quoterProgramId: string;
   governanceProgramId: string;
-}
+};
 
 export type GovernanceVaa = {
   vaa: string;
-}
+};
 
 export function getEvmNttDeployments(): NttDeployment[] {
   return loadScriptConfig("evm-peers");
 }
 
-export function getQuoterConfiguration(): QuoterConfig  {
+export function getQuoterConfiguration(): QuoterConfig {
   return loadScriptConfig("quoter");
 }
 
