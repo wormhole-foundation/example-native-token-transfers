@@ -42,6 +42,7 @@ if (!governanceVaasFileName) {
     const vaaBuff = Buffer.from(vaa.vaa, "base64");
 
     console.log(`Posting VAA ${vaa.id} to Solana...`);
+    console.log(`Vaa: ${vaa.vaa}`);
   
     await postVaaSolana(
       connection,
@@ -61,10 +62,11 @@ if (!governanceVaasFileName) {
       wormholeId: new PublicKey(wormholeProgramId),
     });
 
+    console.log("Parsed VAA Payload", parsedVaa.payload.toString("hex"));
     instructions.push(governanceIx)
   }
 
-  console.log(`Executing governance instructions.`);
+  console.log(`Executing governance instructions.`, instructions);
 
   const signature = await ledgerSignAndSend(instructions, []);
 
