@@ -29,11 +29,11 @@ async function run() {
     }
 
     if (managerConfig.isSupported && (registration === null || needsUpdate)) {
-      if (managerConfig.gasCost === 0) {
-        throw new Error(
-          `Invalid manager configuration: ${inspect(managerConfig)}`
-        );
-      }
+      // if (managerConfig.gasCost === 0) {
+      //   throw new Error(
+      //     `Invalid manager configuration: ${inspect(managerConfig)}`
+      //   );
+      // }
 
       console.log(`Registering manager ${managerConfig.programId}`);
 
@@ -45,6 +45,11 @@ async function run() {
           managerConfig.wormholeTransceiverIndex
         )
       );
+    }
+
+    if (!instructions.length) {
+      console.log("No updates necessary");
+      continue;
     }
 
     try {
