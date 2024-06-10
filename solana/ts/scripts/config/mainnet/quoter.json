@@ -4,8 +4,17 @@
   "solPriceUsd": "150000000",
   "managerRegistrations": [
     {
+      "name": "W",
       "programId": "NTtAaoDJhkeHeaVUHnyhwbPNAN6WgBpHkHBTc6d7vLK",
       "tokenAddress": "85VBFQZC9TZkfaptBWjvUw7YbZjy52A6mjtPGjstQAmQ",
+      "gasCost": 500000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
+    },
+    {
+      "name": "SwissBorg",
+      "programId": "NttBm3HouTCFnUBz32fEs5joQFRjFoJPA8AyhtgjFrw",
+      "tokenAddress": "3dQTr7ror2QPKQ3GbBCokJUmjErGg8kTJzdnYjNfvi3Z",
       "gasCost": 500000,
       "wormholeTransceiverIndex": 0,
       "isSupported": true
@@ -20,7 +29,7 @@
     },
     "Arbitrum": {
       "maxGasDropoffEth": "0",
-      "basePriceUsd": "500000",
+      "basePriceUsd": "0",
       "nativePriceUsd": "3832.16",
       "gasPriceGwei": "0"
     },
