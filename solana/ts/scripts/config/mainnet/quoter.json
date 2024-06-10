@@ -26,6 +26,14 @@
       "gasCost": 500000,
       "wormholeTransceiverIndex": 0,
       "isSupported": true
+    },
+    {
+      "name": "WeatherXM",
+      "programId": "NttWixqwUHAnpXym3UYUySQZtb4C57EZxpH721JfLyF",
+      "tokenAddress": "wxmJYe17a2oGJZJ1wDe6ZyRKUKmrLj2pJsavEdTVhPP",
+      "gasCost": 500000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
     }
   ],
   "peerQuotes": {
