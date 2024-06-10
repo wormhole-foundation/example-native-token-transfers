@@ -11,7 +11,7 @@ import {
 } from "./env";
 import { Governance__factory } from "../contract-bindings";
 
-const processName = "updatePeerAddresses";
+const processName = "executeGovernanceVaas";
 
 type GovernanceConfig = {
   chainId: ChainId;
@@ -37,26 +37,18 @@ async function run() {
   );
 
   for (const result of results) {
+    if (!result) {
+      continue;
+    }
+    
     if ("error" in result) {
       console.error(
-        `Error configuring contract for chain ${result.chainId}: ${inspect(
-          result.error
-        )}`
+        `${processName} failed for chain ${result.chainId}: ${inspect(result.error)}`
       );
       continue;
     }
 
-    console.log(
-      `NttManager set peer txs for chain ${
-        result.chainId
-      }: \n  ${result.peerUpdateTxs.join("\n  ")}`
-    );
-
-    console.log(
-      `NttManager set transceiver peer txs for chain ${
-        result.chainId
-      }: \n  ${result.transceiverUpdateTxs.join("\n  ")}`
-    );
+    console.log(`${processName} succeeded for chain ${result.chainId}`);
   }
 }
 
@@ -73,6 +65,7 @@ async function executeGovernance(
 
   const tx = await governanceContract.performGovernance(
     `0x${vaaHex}`,
+    {} // overrides
   );
 
   log(`Submitted governance transaction: ${tx.hash}`);
