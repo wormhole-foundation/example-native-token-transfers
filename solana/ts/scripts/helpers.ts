@@ -3,6 +3,7 @@ import {
   TransactionInstruction,
   Keypair,
   PublicKey,
+  ComputeBudgetProgram,
 } from "@solana/web3.js";
 
 import { SolanaLedgerSigner } from "@xlabs-xyz/ledger-signer-solana";
@@ -13,6 +14,13 @@ export async function ledgerSignAndSend(instructions: TransactionInstruction[], 
   const deployerPk = new PublicKey(await deployerSigner.getAddress());
 
   const tx = new Transaction();
+
+  const setComputePriceIx = ComputeBudgetProgram.setComputeUnitPrice({
+    microLamports: 1_000_000,
+  });
+
+  tx.add(setComputePriceIx);
+
   tx.add(...instructions);
 
   const recentBlockHash = await connection.getRecentBlockhash();
@@ -26,7 +34,6 @@ export async function ledgerSignAndSend(instructions: TransactionInstruction[], 
 
   return connection.sendRawTransaction(tx.serialize(), {
     skipPreflight: true,
-  
   });
 }
 
