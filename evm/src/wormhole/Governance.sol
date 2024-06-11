@@ -127,7 +127,7 @@ contract Governance {
         bytes memory pauseSig = abi.encodeWithSignature("pause()");
         if (keccak256(message.callData) == keccak256(pauseSig)) {
             // If we're calling the pause() function, only require 2 Guardian signatures
-            (bool valid, string memory reason) = _verifyVMForPause(vm, true);
+            (bool valid, string memory reason) = _verifyVMForPause(vm);
             if (!valid) {
                 revert(reason);
             }
@@ -153,39 +153,14 @@ contract Governance {
     }
 
     /**
-    * @dev COPIED FROM WORMHOLE CORE CONTRACT AND RENAMED TO `verifyVMForPause` 
-    * `verifyVMInternal` serves to validate an arbitrary vm against a valid Guardian set
-    * if checkHash is set then the hash field of the vm is verified against the hash of its contents
-    * in the case that the vm is securely parsed and the hash field can be trusted, checkHash can be set to false
-    * as the check would be redundant
+    * @dev LOGIC COPIED FROM WORMHOLE CORE CONTRACT AND UPDATED TO HANDLE THE PAUSING CASE.
+    * `verifyVMInternal` serves to validate an arbitrary vm against a valid Guardian set.
+    * This function is only meant to be called after `parseVM`, so the hash field can be trusted.
+    * It will return true if the number of signatures on the VAA is at least the number required for either full quorum or pausing quorum.
     */
-    function _verifyVMForPause(IWormhole.VM memory vm, bool checkHash) internal view returns (bool valid, string memory reason) {
+    function _verifyVMForPause(IWormhole.VM memory vm) internal view returns (bool valid, string memory reason) {
         /// @dev Obtain the current guardianSet for the guardianSetIndex provided
         IWormhole.GuardianSet memory guardianSet = wormhole.getGuardianSet(vm.guardianSetIndex);
-
-        /**
-         * Verify that the hash field in the vm matches with the hash of the contents of the vm if checkHash is set
-         * WARNING: This hash check is critical to ensure that the vm.hash provided matches with the hash of the body.
-         * Without this check, it would not be safe to call verifyVM on it's own as vm.hash can be a valid signed hash
-         * but the body of the vm could be completely different from what was actually signed by the guardians
-         */
-        if(checkHash){
-            bytes memory body = abi.encodePacked(
-                vm.timestamp,
-                vm.nonce,
-                vm.emitterChainId,
-                vm.emitterAddress,
-                vm.sequence,
-                vm.consistencyLevel,
-                vm.payload
-            );
-
-            bytes32 vmHash = keccak256(abi.encodePacked(keccak256(body)));
-
-            if(vmHash != vm.hash){
-                return (false, "vm.hash doesn't match body");
-            }
-        }
 
        /**
         * @dev Checks whether the guardianSet has zero keys
