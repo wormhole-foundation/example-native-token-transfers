@@ -37,6 +37,9 @@ interface ITransceiver {
         bytes32 recipientNttManagerAddress, bytes32 expectedRecipientNttManagerAddress
     );
 
+    /// @notice Returns the string type of the transceiver. E.g. "wormhole", "axelar", etc.
+    function getTransceiverType() external view returns (string memory);
+
     /// @notice Fetch the delivery price for a given recipient chain transfer.
     /// @param recipientChain The Wormhole chain ID of the target chain.
     /// @param instruction An additional Instruction provided by the Transceiver to be
