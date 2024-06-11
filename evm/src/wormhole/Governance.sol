@@ -8,7 +8,7 @@ contract Governance {
     using BytesParsing for bytes;
 
     // Only 2 Guardian signatures are required for quorum to call the pause function on governed contracts.
-    uint PAUSER_QUORUM = 2;
+    uint public constant PAUSER_QUORUM = 2;
 
     // "GeneralPurposeGovernance" (left padded)
     bytes32 public constant MODULE =
