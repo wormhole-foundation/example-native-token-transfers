@@ -97,6 +97,14 @@ jobs:
           cargo build-sbf --features "mainnet"
           cargo test-sbf --features "mainnet"
           cargo test
+  check-version:
+    name: Check version
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v4
+        - run: ./scripts/sync-versions --check
+          shell: bash
+
   anchor-test:
     name: Anchor Test
     runs-on: ubuntu-latest

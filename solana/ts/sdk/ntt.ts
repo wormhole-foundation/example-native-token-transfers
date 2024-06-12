@@ -10,8 +10,7 @@ import {
   nativeTokenTransferLayout
 } from './nttLayout'
 import { derivePostedVaaKey, getWormholeDerivedAccounts } from '@certusone/wormhole-sdk/lib/cjs/solana/wormhole'
-import { BN, translateError, type IdlAccounts, Program, AnchorProvider, Wallet, } from '@coral-xyz/anchor'
-import { associatedAddress } from '@coral-xyz/anchor/dist/cjs/utils/token'
+import { BN, translateError, type IdlAccounts, Program, web3, } from '@coral-xyz/anchor'
 import { getAssociatedTokenAddressSync } from '@solana/spl-token'
 import {
   PublicKey, Keypair,
@@ -20,8 +19,13 @@ import {
   sendAndConfirmTransaction,
   type TransactionSignature,
   type Connection,
+  SystemProgram,
   TransactionMessage,
-  VersionedTransaction
+  VersionedTransaction,
+  Commitment,
+  AccountMeta,
+  AddressLookupTableProgram,
+  AddressLookupTableAccount
 } from '@solana/web3.js'
 import { Keccak } from 'sha3'
 import { type ExampleNativeTokenTransfers as RawExampleNativeTokenTransfers } from '../../idl/ts/example_native_token_transfers'
@@ -76,6 +80,7 @@ export class NTT {
   readonly wormholeId: PublicKey
   // mapping from error code to error message. Used for prettifying error messages
   private readonly errors: Map<number, string>
+  addressLookupTable: web3.AddressLookupTableAccount | null = null
 
   constructor(connection: Connection, args: { nttId: NttProgramId, wormholeId: WormholeProgramId }) {
     // TODO: initialise a new Program here with a passed in Connection
@@ -103,6 +108,14 @@ export class NTT {
 
   configAccountAddress(): PublicKey {
     return this.derivePda('config')
+  }
+
+  lutAccountAddress(): PublicKey {
+    return this.derivePda('lut')
+  }
+
+  lutAuthorityAddress(): PublicKey {
+    return this.derivePda('lut_authority')
   }
 
   outboxRateLimitAccountAddress(): PublicKey {
@@ -207,7 +220,7 @@ export class NTT {
     // little endian length prefix.
     const buffer = Buffer.from(txSimulation.value.returnData?.data[0], 'base64')
     const len = buffer.readUInt32LE(0)
-    return buffer.slice(4, len + 4).toString()
+    return buffer.subarray(4, len + 4).toString()
   }
 
   // Instructions
@@ -219,7 +232,7 @@ export class NTT {
     mint: PublicKey
     outboundLimit: BN
     mode: 'burning' | 'locking'
-  }) {
+  }): Promise<void> {
     const mode: any =
       args.mode === 'burning'
         ? { burning: {} }
@@ -232,7 +245,7 @@ export class NTT {
     const tokenProgram = mintInfo.owner
     const ix = await this.program.methods
       .initialize({ chainId, limit: args.outboundLimit, mode })
-      .accounts({
+      .accountsStrict({
         payer: args.payer.publicKey,
         deployer: args.owner.publicKey,
         programData: programDataAddress(this.program.programId),
@@ -241,10 +254,102 @@ export class NTT {
         rateLimit: this.outboxRateLimitAccountAddress(),
         tokenProgram,
         tokenAuthority: this.tokenAuthorityAddress(),
-        custody: await this.custodyAccountAddress(args.mint),
+        custody: await this.custodyAccountAddress(args.mint, tokenProgram),
         bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
+        associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
       }).instruction();
-    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner]);
+    await this.sendAndConfirmTransaction(new Transaction().add(ix), [args.payer, args.owner], false);
+    await this.initializeOrUpdateLUT({ payer: args.payer })
+  }
+
+  // This function should be called after each upgrade. If there's nothing to
+  // do, it won't actually submit a transaction, so it's cheap to call.
+  async initializeOrUpdateLUT(args: {
+    payer: Keypair
+  }): Promise<AddressLookupTableAccount> {
+    // TODO: find a more robust way of fetching a recent slot
+    const slot = await this.program.provider.connection.getSlot() - 1
+
+    const [_, lutAddress] = web3.AddressLookupTableProgram.createLookupTable({
+      authority: this.lutAuthorityAddress(),
+      payer: args.payer.publicKey,
+      recentSlot: slot,
+    });
+
+    const whAccs = getWormholeDerivedAccounts(this.program.programId, this.wormholeId)
+    const config = await this.getConfig()
+
+    const entries = {
+       config: this.configAccountAddress(),
+       custody: await this.custodyAccountAddress(config),
+       tokenProgram: await this.tokenProgram(config),
+       mint: await this.mintAccountAddress(config),
+       tokenAuthority: this.tokenAuthorityAddress(),
+       outboxRateLimit: this.outboxRateLimitAccountAddress(),
+       wormhole: {
+         bridge: whAccs.wormholeBridge,
+         feeCollector: whAccs.wormholeFeeCollector,
+         sequence: whAccs.wormholeSequence,
+         program: this.wormholeId,
+         systemProgram: SystemProgram.programId,
+         clock: web3.SYSVAR_CLOCK_PUBKEY,
+         rent: web3.SYSVAR_RENT_PUBKEY,
+       }
+    };
+
+    // collect all pubkeys in entries recursively
+    const collectPubkeys = (obj: any): Array<PublicKey> => {
+      const pubkeys = new Array<PublicKey>()
+      for (const key in obj) {
+        const value = obj[key]
+        if (value instanceof PublicKey) {
+          pubkeys.push(value)
+        } else if (typeof value === 'object') {
+          pubkeys.push(...collectPubkeys(value, pubkeys))
+        }
+      }
+      return pubkeys
+    }
+    const pubkeys = collectPubkeys(entries).map(pk => pk.toBase58())
+
+    var existingLut: web3.AddressLookupTableAccount | null = null
+    try {
+      existingLut = await this.getAddressLookupTable(false)
+    } catch {
+      // swallow errors here, it just means that lut doesn't exist
+    }
+
+    if (existingLut !== null) {
+      const existingPubkeys = existingLut.state.addresses?.map(a => a.toBase58()) ?? []
+
+      // if pubkeys contains keys that are not in the existing LUT, we need to
+      // add them to the LUT
+      const missingPubkeys = pubkeys.filter(pk => !existingPubkeys.includes(pk))
+
+      if (missingPubkeys.length === 0) {
+        return existingLut
+      }
+    }
+
+    const ix = await this.program.methods
+      .initializeLut(new BN(slot))
+      .accountsStrict({
+        payer: args.payer.publicKey,
+        authority: this.lutAuthorityAddress(),
+        lutAddress,
+        lut: this.lutAccountAddress(),
+        lutProgram: AddressLookupTableProgram.programId,
+        systemProgram: SystemProgram.programId,
+        entries
+      }).instruction();
+
+    const signers = [args.payer]
+    await this.sendAndConfirmTransaction(new Transaction().add(ix), signers, false);
+
+    // NOTE: explicitly invalidate the cache. This is the only operation that
+    // modifies the LUT, so this is the only place we need to invalide.
+    return this.getAddressLookupTable(false)
   }
 
   async transfer(args: {
@@ -298,7 +403,9 @@ export class NTT {
       args.from,
       this.sessionAuthorityAddress(args.fromAuthority.publicKey, transferArgs),
       args.fromAuthority.publicKey,
-      BigInt(args.amount.toString())
+      BigInt(args.amount.toString()),
+      [],
+      config.tokenProgram
     );
     const tx = new Transaction()
     tx.add(approveIx, transferIx, releaseIx)
@@ -310,9 +417,27 @@ export class NTT {
   /**
    * Like `sendAndConfirmTransaction` but parses the anchor error code.
    */
-  private async sendAndConfirmTransaction(tx: Transaction, signers: Keypair[]): Promise<TransactionSignature> {
+  private async sendAndConfirmTransaction(tx: Transaction, signers: Keypair[], useLut = true): Promise<TransactionSignature> {
+    const blockhash = await this.program.provider.connection.getLatestBlockhash()
+    const luts: AddressLookupTableAccount[] = []
+    if (useLut) {
+      luts.push(await this.getAddressLookupTable())
+    }
+
     try {
-      return await sendAndConfirmTransaction(this.program.provider.connection, tx, signers)
+      const messageV0 = new TransactionMessage({
+        payerKey: signers[0].publicKey,
+        recentBlockhash: blockhash.blockhash,
+        instructions: tx.instructions,
+      }).compileToV0Message(luts)
+
+      const transactionV0 = new VersionedTransaction(messageV0)
+      transactionV0.sign(signers)
+
+      // The types for this function are wrong -- the type says it doesn't
+      // support version transactions, but it does 🤫
+      // @ts-ignore
+      return await sendAndConfirmTransaction(this.program.provider.connection, transactionV0)
     } catch (err) {
       throw translateError(err, this.errors)
     }
@@ -349,22 +474,58 @@ export class NTT {
       shouldQueue: args.shouldQueue
     }
 
-    return await this.program.methods
+    const transferIx = await this.program.methods
       .transferBurn(transferArgs)
-      .accounts({
+      .accountsStrict({
         common: {
           payer: args.payer,
           config: { config: this.configAccountAddress() },
           mint,
           from: args.from,
+          tokenProgram: await this.tokenProgram(config),
           outboxItem: args.outboxItem,
-          outboxRateLimit: this.outboxRateLimitAccountAddress()
+          outboxRateLimit: this.outboxRateLimitAccountAddress(),
+          custody: await this.custodyAccountAddress(config),
+          systemProgram: SystemProgram.programId,
         },
         peer: this.peerAccountAddress(args.recipientChain),
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain),
-        sessionAuthority: this.sessionAuthorityAddress(args.fromAuthority, transferArgs)
+        sessionAuthority: this.sessionAuthorityAddress(args.fromAuthority, transferArgs),
+        tokenAuthority: this.tokenAuthorityAddress()
       })
       .instruction()
+
+    const mintInfo = await splToken.getMint(
+      this.program.provider.connection,
+      config.mint,
+      undefined,
+      config.tokenProgram
+    )
+    const transferHook = splToken.getTransferHook(mintInfo)
+
+    if (transferHook) {
+      const source = args.from
+      const mint = config.mint
+      const destination = await this.custodyAccountAddress(config)
+      const owner = this.sessionAuthorityAddress(args.fromAuthority, transferArgs)
+      await addExtraAccountMetasForExecute(
+        this.program.provider.connection,
+        transferIx,
+        transferHook.programId,
+        source,
+        mint,
+        destination,
+        owner,
+        // TODO(csongor): compute the amount that's passed into transfer.
+        // Leaving this 0 is fine unless the transfer hook accounts addresses
+        // depend on the amount (which is unlikely).
+        // If this turns out to be the case, the amount to put here is the
+        // untrimmed amount after removing dust.
+        0,
+      );
+    }
+
+    return transferIx
   }
 
   /**
@@ -398,7 +559,7 @@ export class NTT {
       shouldQueue: args.shouldQueue
     }
 
-    return await this.program.methods
+    const transferIx = await this.program.methods
       .transferLock(transferArgs)
       .accounts({
         common: {
@@ -408,14 +569,47 @@ export class NTT {
           from: args.from,
           tokenProgram: await this.tokenProgram(config),
           outboxItem: args.outboxItem,
-          outboxRateLimit: this.outboxRateLimitAccountAddress()
+          outboxRateLimit: this.outboxRateLimitAccountAddress(),
+          custody: await this.custodyAccountAddress(config)
         },
         peer: this.peerAccountAddress(args.recipientChain),
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.recipientChain),
-        custody: await this.custodyAccountAddress(config),
         sessionAuthority: this.sessionAuthorityAddress(args.fromAuthority, transferArgs)
       })
       .instruction()
+
+    const mintInfo = await splToken.getMint(
+      this.program.provider.connection,
+      config.mint,
+      undefined,
+      config.tokenProgram
+    )
+    const transferHook = splToken.getTransferHook(mintInfo)
+
+    if (transferHook) {
+      const source = args.from
+      const mint = config.mint
+      const destination = await this.custodyAccountAddress(config)
+      const owner = this.sessionAuthorityAddress(args.fromAuthority, transferArgs)
+      await addExtraAccountMetasForExecute(
+        this.program.provider.connection,
+        transferIx,
+        transferHook.programId,
+        source,
+        mint,
+        destination,
+        owner,
+        // TODO(csongor): compute the amount that's passed into transfer.
+        // Leaving this 0 is fine unless the transfer hook accounts addresses
+        // depend on the amount (which is unlikely).
+        // If this turns out to be the case, the amount to put here is the
+        // untrimmed amount after removing dust.
+        0,
+      );
+    }
+
+    return transferIx
+
   }
 
   /**
@@ -468,7 +662,7 @@ export class NTT {
     tx.add(await this.createReleaseOutboundInstruction(txArgs))
 
     const signers = [args.payer]
-    return await sendAndConfirmTransaction(this.program.provider.connection, tx, signers)
+    return await this.sendAndConfirmTransaction(tx, signers)
   }
 
   // TODO: document that if recipient is provided, then the instruction can be
@@ -492,21 +686,50 @@ export class NTT {
 
     const mint = await this.mintAccountAddress(config)
 
-    return await this.program.methods
+    const transferIx = await this.program.methods
       .releaseInboundMint({
         revertOnDelay: args.revertOnDelay
       })
-      .accounts({
+      .accountsStrict({
         common: {
           payer: args.payer,
           config: { config: this.configAccountAddress() },
           inboxItem: this.inboxItemAccountAddress(args.chain, args.nttMessage),
-          recipient: getAssociatedTokenAddressSync(mint, recipientAddress),
+          recipient: getAssociatedTokenAddressSync(mint, recipientAddress, true, config.tokenProgram),
           mint,
-          tokenAuthority: this.tokenAuthorityAddress()
+          tokenAuthority: this.tokenAuthorityAddress(),
+          tokenProgram: config.tokenProgram,
+          custody: await this.custodyAccountAddress(config)
         }
       })
       .instruction()
+
+    const mintInfo = await splToken.getMint(this.program.provider.connection, config.mint, undefined, config.tokenProgram)
+    const transferHook = splToken.getTransferHook(mintInfo)
+
+    if (transferHook) {
+      const source = await this.custodyAccountAddress(config)
+      const mint = config.mint
+      const destination = getAssociatedTokenAddressSync(mint, recipientAddress, true, config.tokenProgram)
+      const owner = this.tokenAuthorityAddress()
+      await addExtraAccountMetasForExecute(
+        this.program.provider.connection,
+        transferIx,
+        transferHook.programId,
+        source,
+        mint,
+        destination,
+        owner,
+        // TODO(csongor): compute the amount that's passed into transfer.
+        // Leaving this 0 is fine unless the transfer hook accounts addresses
+        // depend on the amount (which is unlikely).
+        // If this turns out to be the case, the amount to put here is the
+        // untrimmed amount after removing dust.
+        0,
+      );
+    }
+
+    return transferIx
   }
 
   async releaseInboundMint(args: {
@@ -551,22 +774,50 @@ export class NTT {
 
     const mint = await this.mintAccountAddress(config)
 
-    return await this.program.methods
+    const transferIx = await this.program.methods
       .releaseInboundUnlock({
         revertOnDelay: args.revertOnDelay
       })
-      .accounts({
+      .accountsStrict({
         common: {
           payer: args.payer,
           config: { config: this.configAccountAddress() },
           inboxItem: this.inboxItemAccountAddress(args.chain, args.nttMessage),
-          recipient: getAssociatedTokenAddressSync(mint, recipientAddress),
+          recipient: getAssociatedTokenAddressSync(mint, recipientAddress, true, config.tokenProgram),
           mint,
-          tokenAuthority: this.tokenAuthorityAddress()
+          tokenAuthority: this.tokenAuthorityAddress(),
+          tokenProgram: config.tokenProgram,
+          custody: await this.custodyAccountAddress(config)
         },
-        custody: await this.custodyAccountAddress(config)
       })
       .instruction()
+
+    const mintInfo = await splToken.getMint(this.program.provider.connection, config.mint, undefined, config.tokenProgram)
+    const transferHook = splToken.getTransferHook(mintInfo)
+
+    if (transferHook) {
+      const source = await this.custodyAccountAddress(config)
+      const mint = config.mint
+      const destination = getAssociatedTokenAddressSync(mint, recipientAddress, true, config.tokenProgram)
+      const owner = this.tokenAuthorityAddress()
+      await addExtraAccountMetasForExecute(
+        this.program.provider.connection,
+        transferIx,
+        transferHook.programId,
+        source,
+        mint,
+        destination,
+        owner,
+        // TODO(csongor): compute the amount that's passed into transfer.
+        // Leaving this 0 is fine unless the transfer hook accounts addresses
+        // depend on the amount (which is unlikely).
+        // If this turns out to be the case, the amount to put here is the
+        // untrimmed amount after removing dust.
+        0,
+      );
+    }
+
+    return transferIx
   }
 
   async releaseInboundUnlock(args: {
@@ -614,7 +865,7 @@ export class NTT {
         peer: this.peerAccountAddress(args.chain),
         inboxRateLimit: this.inboxRateLimitAccountAddress(args.chain)
       }).instruction()
-    return await sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.payer, args.owner])
+    return await this.sendAndConfirmTransaction(new Transaction().add(ix), [args.payer, args.owner])
   }
 
   async setWormholeTransceiverPeer(args: {
@@ -651,7 +902,7 @@ export class NTT {
           program: this.wormholeId
         }
       }).instruction()
-    return await sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage])
+    return await this.sendAndConfirmTransaction(new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage])
   }
 
   async registerTransceiver(args: {
@@ -684,8 +935,8 @@ export class NTT {
           program: this.wormholeId
         }
       }).instruction()
-    return await sendAndConfirmTransaction(
-      this.program.provider.connection, new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage])
+    return await this.sendAndConfirmTransaction(
+      new Transaction().add(ix, broadcastIx), [args.payer, args.owner, wormholeMessage])
   }
 
   async setOutboundLimit(args: {
@@ -701,7 +952,7 @@ export class NTT {
         config: this.configAccountAddress(),
         rateLimit: this.outboxRateLimitAccountAddress(),
       }).instruction();
-    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.owner]);
+    return this.sendAndConfirmTransaction(new Transaction().add(ix), [args.owner]);
   }
 
   async setInboundLimit(args: {
@@ -718,7 +969,7 @@ export class NTT {
         config: this.configAccountAddress(),
         rateLimit: this.inboxRateLimitAccountAddress(args.chain),
       }).instruction();
-    return sendAndConfirmTransaction(this.program.provider.connection, new Transaction().add(ix), [args.owner]);
+    return this.sendAndConfirmTransaction(new Transaction().add(ix), [args.owner]);
   }
 
   async createReceiveWormholeMessageInstruction(args: {
@@ -886,20 +1137,118 @@ export class NTT {
     return await this.program.account.inboxItem.fetch(this.inboxItemAccountAddress(chain, nttMessage))
   }
 
+  async getAddressLookupTable(useCache = true): Promise<AddressLookupTableAccount> {
+    if (!useCache || !this.addressLookupTable) {
+      const lut = await this.program.account.lut.fetchNullable(this.lutAccountAddress())
+      if (!lut) {
+        throw new Error('Address lookup table not found. Did you forget to call initializeLUT?')
+      }
+      const response = await this.program.provider.connection.getAddressLookupTable(lut.address)
+      this.addressLookupTable = response.value
+    }
+    if (!this.addressLookupTable) {
+      throw new Error('Address lookup table not found. Did you forget to call initializeLUT?')
+    }
+    return this.addressLookupTable
+  }
+
   /**
    * Returns the address of the custody account. If the config is available
    * (i.e. the program is initialised), the mint is derived from the config.
    * Otherwise, the mint must be provided.
    */
-  async custodyAccountAddress(configOrMint: Config | PublicKey): Promise<PublicKey> {
+  async custodyAccountAddress(configOrMint: Config | PublicKey, tokenProgram = splToken.TOKEN_PROGRAM_ID): Promise<PublicKey> {
     if (configOrMint instanceof PublicKey) {
-      return associatedAddress({ mint: configOrMint, owner: this.tokenAuthorityAddress() })
+      return splToken.getAssociatedTokenAddress(configOrMint, this.tokenAuthorityAddress(), true, tokenProgram)
     } else {
-      return associatedAddress({ mint: await this.mintAccountAddress(configOrMint), owner: this.tokenAuthorityAddress() })
+      return splToken.getAssociatedTokenAddress(configOrMint.mint, this.tokenAuthorityAddress(), true, configOrMint.tokenProgram)
     }
   }
 }
 
 function exhaustive<A>(_: never): A {
   throw new Error('Impossible')
+}
+
+/**
+ * TODO: this is copied from @solana/spl-token, because the most recent released
+ * version (0.4.3) is broken (does object equality instead of structural on the pubkey)
+ *
+ * this version fixes that error, looks like it's also fixed on main:
+ * https://github.com/solana-labs/solana-program-library/blob/ad4eb6914c5e4288ad845f29f0003cd3b16243e7/token/js/src/extensions/transferHook/instructions.ts#L208
+ */
+async function addExtraAccountMetasForExecute(
+    connection: Connection,
+    instruction: TransactionInstruction,
+    programId: PublicKey,
+    source: PublicKey,
+    mint: PublicKey,
+    destination: PublicKey,
+    owner: PublicKey,
+    amount: number | bigint,
+    commitment?: Commitment
+) {
+    const validateStatePubkey = splToken.getExtraAccountMetaAddress(mint, programId);
+    const validateStateAccount = await connection.getAccountInfo(validateStatePubkey, commitment);
+    if (validateStateAccount == null) {
+        return instruction;
+    }
+    const validateStateData = splToken.getExtraAccountMetas(validateStateAccount);
+
+    // Check to make sure the provided keys are in the instruction
+    if (![source, mint, destination, owner].every((key) => instruction.keys.some((meta) => meta.pubkey.equals(key)))) {
+        throw new Error('Missing required account in instruction');
+    }
+
+    const executeInstruction = splToken.createExecuteInstruction(
+        programId,
+        source,
+        mint,
+        destination,
+        owner,
+        validateStatePubkey,
+        BigInt(amount)
+    );
+
+    for (const extraAccountMeta of validateStateData) {
+        executeInstruction.keys.push(
+            deEscalateAccountMeta(
+                await splToken.resolveExtraAccountMeta(
+                    connection,
+                    extraAccountMeta,
+                    executeInstruction.keys,
+                    executeInstruction.data,
+                    executeInstruction.programId
+                ),
+                executeInstruction.keys
+            )
+        );
+    }
+
+    // Add only the extra accounts resolved from the validation state
+    instruction.keys.push(...executeInstruction.keys.slice(5));
+
+    // Add the transfer hook program ID and the validation state account
+    instruction.keys.push({ pubkey: programId, isSigner: false, isWritable: false });
+    instruction.keys.push({ pubkey: validateStatePubkey, isSigner: false, isWritable: false });
+}
+
+// TODO: delete (see above)
+function deEscalateAccountMeta(accountMeta: AccountMeta, accountMetas: AccountMeta[]): AccountMeta {
+    const maybeHighestPrivileges = accountMetas
+        .filter((x) => x.pubkey.equals(accountMeta.pubkey))
+        .reduce<{ isSigner: boolean; isWritable: boolean } | undefined>((acc, x) => {
+            if (!acc) return { isSigner: x.isSigner, isWritable: x.isWritable };
+            return { isSigner: acc.isSigner || x.isSigner, isWritable: acc.isWritable || x.isWritable };
+        }, undefined);
+    if (maybeHighestPrivileges) {
+        const { isSigner, isWritable } = maybeHighestPrivileges;
+        if (!isSigner && isSigner !== accountMeta.isSigner) {
+            accountMeta.isSigner = false;
+        }
+        if (!isWritable && isWritable !== accountMeta.isWritable) {
+            accountMeta.isWritable = false;
+        }
+    }
+    return accountMeta;
 }

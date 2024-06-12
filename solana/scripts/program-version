@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# cd to the solana root (one level up from the script location)
+cd "$(dirname "$0")"/..
+
+version=
+
+# grab all lib.rs files that export a VERSION constant
+# and ensure there is exactly one
+for lib in $(find programs modules -name lib.rs); do
+    if grep -q "pub const VERSION" $lib; then
+        if [[ -n $version ]]; then
+            echo "Error: multiple versions found" >&2
+            exit 1
+        fi
+        version=$(grep "pub const VERSION" $lib | cut -d '"' -f 2)
+        echo "$version"
+    fi
+done
+
+if [[ -z $version ]]; then
+    echo "Error: version not found" >&2
+    exit 1
+fi

@@ -1,14 +1,16 @@
-import { Program } from "@coral-xyz/anchor";
-import { associatedAddress } from "@coral-xyz/anchor/dist/cjs/utils/token.js";
+import { Program, web3 } from "@coral-xyz/anchor";
 import * as splToken from "@solana/spl-token";
 import {
   createAssociatedTokenAccountInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import {
+  AddressLookupTableAccount,
+  AddressLookupTableProgram,
   Connection,
   Keypair,
   PublicKey,
+  SystemProgram,
   Transaction,
   TransactionInstruction,
   TransactionMessage,
@@ -71,6 +73,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   program: Program<NttBindings.NativeTokenTransfer>;
   config?: NttBindings.Config;
   quoter?: NttQuoter<N, C>;
+  addressLookupTable?: AddressLookupTableAccount;
 
   constructor(
     readonly network: N,
@@ -236,16 +239,11 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       );
     }
 
-    const custodyAddress = associatedAddress({
-      mint: args.mint,
-      owner: this.pdas.tokenAuthority(),
-    });
-
     const tokenProgram = mintInfo.owner;
     const limit = new BN(args.outboundLimit.toString());
     const ix = await this.program.methods
       .initialize({ chainId, limit: limit, mode })
-      .accounts({
+      .accountsStrict({
         payer: args.payer.publicKey,
         deployer: args.owner.publicKey,
         programData: programDataAddress(this.program.programId),
@@ -254,8 +252,10 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         rateLimit: this.pdas.outboxRateLimitAccount(),
         tokenProgram,
         tokenAuthority: this.pdas.tokenAuthority(),
-        custody: custodyAddress,
+        custody: await this.custodyAccountAddress(args.mint, tokenProgram),
         bpfLoaderUpgradeableProgram: BPF_LOADER_UPGRADEABLE_PROGRAM_ID,
+        associatedTokenProgram: splToken.ASSOCIATED_TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
       })
       .instruction();
 
@@ -266,6 +266,100 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       { transaction: tx, signers: [] },
       "Ntt.Initialize"
     );
+
+    yield* this.initializeOrUpdateLUT({ payer: args.payer });
+  }
+
+  // This function should be called after each upgrade. If there's nothing to
+  // do, it won't actually submit a transaction, so it's cheap to call.
+  async *initializeOrUpdateLUT(args: { payer: Keypair }) {
+    // TODO: find a more robust way of fetching a recent slot
+    const slot = (await this.program.provider.connection.getSlot()) - 1;
+
+    const [_, lutAddress] = web3.AddressLookupTableProgram.createLookupTable({
+      authority: this.pdas.lutAuthority(),
+      payer: args.payer.publicKey,
+      recentSlot: slot,
+    });
+
+    const whAccs = utils.getWormholeDerivedAccounts(
+      this.program.programId,
+      this.core.address
+    );
+    const config = await this.getConfig();
+
+    const entries = {
+      config: this.pdas.configAccount(),
+      custody: config.custody,
+      tokenProgram: config.tokenProgram,
+      mint: config.mint,
+      tokenAuthority: this.pdas.tokenAuthority(),
+      outboxRateLimit: this.pdas.outboxRateLimitAccount(),
+      wormhole: {
+        bridge: whAccs.wormholeBridge,
+        feeCollector: whAccs.wormholeFeeCollector,
+        sequence: whAccs.wormholeSequence,
+        program: this.core.address,
+        systemProgram: SystemProgram.programId,
+        clock: web3.SYSVAR_CLOCK_PUBKEY,
+        rent: web3.SYSVAR_RENT_PUBKEY,
+      },
+    };
+
+    // collect all pubkeys in entries recursively
+    const collectPubkeys = (obj: any): Array<PublicKey> => {
+      const pubkeys = new Array<PublicKey>();
+      for (const key in obj) {
+        const value = obj[key];
+        if (value instanceof PublicKey) {
+          pubkeys.push(value);
+        } else if (typeof value === "object") {
+          pubkeys.push(...collectPubkeys(value));
+        }
+      }
+      return pubkeys;
+    };
+    const pubkeys = collectPubkeys(entries).map((pk) => pk.toBase58());
+
+    var existingLut: web3.AddressLookupTableAccount | null = null;
+    try {
+      existingLut = await this.getAddressLookupTable(false);
+    } catch {
+      // swallow errors here, it just means that lut doesn't exist
+    }
+
+    if (existingLut !== null) {
+      const existingPubkeys =
+        existingLut.state.addresses?.map((a) => a.toBase58()) ?? [];
+
+      // if pubkeys contains keys that are not in the existing LUT, we need to
+      // add them to the LUT
+      const missingPubkeys = pubkeys.filter(
+        (pk) => !existingPubkeys.includes(pk)
+      );
+
+      if (missingPubkeys.length === 0) {
+        return existingLut;
+      }
+    }
+
+    const ix = await this.program.methods
+      .initializeLut(new BN(slot))
+      .accountsStrict({
+        payer: args.payer.publicKey,
+        authority: this.pdas.lutAuthority(),
+        lutAddress,
+        lut: this.pdas.lutAccount(),
+        lutProgram: AddressLookupTableProgram.programId,
+        systemProgram: SystemProgram.programId,
+        entries,
+      })
+      .instruction();
+
+    const tx = new Transaction().add(ix);
+    tx.feePayer = args.payer.publicKey;
+
+    yield this.createUnsignedTx({ transaction: tx }, "Ntt.InitializeLUT");
   }
 
   async *registerTransceiver(args: {
@@ -278,7 +372,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     const ix = await this.program.methods
       .registerTransceiver()
-      .accounts({
+      .accountsStrict({
         payer: args.payer.publicKey,
         owner: args.owner.publicKey,
         config: this.pdas.configAccount(),
@@ -286,6 +380,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         registeredTransceiver: this.pdas.registeredTransceiver(
           args.transceiver
         ),
+        systemProgram: SystemProgram.programId,
       })
       .instruction();
 
@@ -296,7 +391,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     );
     const broadcastIx = await this.program.methods
       .broadcastWormholeId()
-      .accounts({
+      .accountsStrict({
         payer: args.payer.publicKey,
         config: this.pdas.configAccount(),
         mint: config.mint,
@@ -307,6 +402,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           feeCollector: whAccs.wormholeFeeCollector,
           sequence: whAccs.wormholeSequence,
           program: this.core.address,
+          systemProgram: SystemProgram.programId,
+          clock: web3.SYSVAR_CLOCK_PUBKEY,
+          rent: web3.SYSVAR_RENT_PUBKEY,
         },
       })
       .instruction();
@@ -337,16 +435,17 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           chainId: { id: toChainId(peer.chain) },
           address: Array.from(peer.address.toUniversalAddress().toUint8Array()),
         })
-        .accounts({
+        .accountsStrict({
           payer: sender,
           owner: sender,
           config: this.pdas.configAccount(),
           peer: this.pdas.transceiverPeerAccount(peer.chain),
+          systemProgram: SystemProgram.programId,
         })
         .instruction(),
       this.program.methods
         .broadcastWormholePeer({ chainId: toChainId(peer.chain) })
-        .accounts({
+        .accountsStrict({
           payer: sender,
           config: this.pdas.configAccount(),
           peer: this.pdas.transceiverPeerAccount(peer.chain),
@@ -357,6 +456,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
             feeCollector: whAccs.wormholeFeeCollector,
             sequence: whAccs.wormholeSequence,
             program: this.core.address,
+            clock: web3.SYSVAR_CLOCK_PUBKEY,
+            rent: web3.SYSVAR_RENT_PUBKEY,
+            systemProgram: SystemProgram.programId,
           },
         })
         .instruction(),
@@ -390,12 +492,13 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         limit: new BN(inboundLimit.toString()),
         tokenDecimals: tokenDecimals,
       })
-      .accounts({
+      .accountsStrict({
         payer: sender,
         owner: sender,
         config: this.pdas.configAccount(),
         peer: this.pdas.peerAccount(peer.chain),
         inboxRateLimit: this.pdas.inboxRateLimitAccount(peer.chain),
+        systemProgram: SystemProgram.programId,
       })
       .instruction();
 
@@ -671,7 +774,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         ),
         shouldQueue: args.transferArgs.shouldQueue,
       })
-      .accounts({
+      .accountsStrict({
         common: {
           payer: args.payer,
           config: { config: this.pdas.configAccount() },
@@ -680,10 +783,11 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           tokenProgram: config.tokenProgram,
           outboxItem: args.outboxItem,
           outboxRateLimit: this.pdas.outboxRateLimitAccount(),
+          systemProgram: SystemProgram.programId,
+          custody: config.custody,
         },
         peer: this.pdas.peerAccount(recipientChain),
         inboxRateLimit: this.pdas.inboxRateLimitAccount(recipientChain),
-        custody: config.custody,
         sessionAuthority: sessionAuthority,
       })
       .instruction();
@@ -712,7 +816,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         ),
         shouldQueue: args.transferArgs.shouldQueue,
       })
-      .accounts({
+      .accountsStrict({
         common: {
           payer: args.payer,
           config: { config: this.pdas.configAccount() },
@@ -720,6 +824,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           from: args.from,
           outboxItem: args.outboxItem,
           outboxRateLimit: this.pdas.outboxRateLimitAccount(),
+          custody: config.custody,
+          tokenProgram: config.tokenProgram,
+          systemProgram: SystemProgram.programId,
         },
         peer: this.pdas.peerAccount(recipientChain),
         inboxRateLimit: this.pdas.inboxRateLimitAccount(recipientChain),
@@ -727,6 +834,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           args.fromAuthority,
           args.transferArgs
         ),
+        tokenAuthority: this.pdas.tokenAuthority(),
       })
       .instruction();
   }
@@ -745,7 +853,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       .releaseWormholeOutbound({
         revertOnDelay: args.revertOnDelay,
       })
-      .accounts({
+      .accountsStrict({
         payer: args.payer,
         config: { config: this.pdas.configAccount() },
         outboxItem: args.outboxItem,
@@ -757,6 +865,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           feeCollector: whAccs.wormholeFeeCollector,
           sequence: whAccs.wormholeSequence,
           program: this.core.address,
+          systemProgram: SystemProgram.programId,
+          clock: web3.SYSVAR_CLOCK_PUBKEY,
+          rent: web3.SYSVAR_RENT_PUBKEY,
         },
       })
       .instruction();
@@ -773,7 +884,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const emitterChain = wormholeNTT.emitterChain;
     return await this.program.methods
       .receiveWormholeMessage()
-      .accounts({
+      .accountsStrict({
         payer: payer,
         config: { config: this.pdas.configAccount() },
         peer: this.pdas.transceiverPeerAccount(emitterChain),
@@ -785,6 +896,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           emitterChain,
           nttMessage.id
         ),
+        systemProgram: SystemProgram.programId,
       })
       .instruction();
   }
@@ -805,7 +917,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     return await this.program.methods
       .redeem({})
-      .accounts({
+      .accountsStrict({
         payer: payer,
         config: this.pdas.configAccount(),
         peer: nttManagerPeer,
@@ -818,6 +930,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         inboxItem,
         inboxRateLimit,
         outboxRateLimit: this.pdas.outboxRateLimitAccount(),
+        systemProgram: SystemProgram.programId,
       })
       .instruction();
   }
@@ -847,7 +960,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       .releaseInboundMint({
         revertOnDelay: args.revertOnDelay,
       })
-      .accounts({
+      .accountsStrict({
         common: {
           payer: args.payer,
           config: { config: this.pdas.configAccount() },
@@ -858,6 +971,8 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           ),
           mint: config.mint,
           tokenAuthority: this.pdas.tokenAuthority(),
+          custody: config.custody,
+          tokenProgram: config.tokenProgram,
         },
       })
       .instruction();
@@ -888,7 +1003,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       .releaseInboundUnlock({
         revertOnDelay: args.revertOnDelay,
       })
-      .accounts({
+      .accountsStrict({
         common: {
           payer: args.payer,
           config: { config: this.pdas.configAccount() },
@@ -899,17 +1014,63 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           ),
           mint: config.mint,
           tokenAuthority: this.pdas.tokenAuthority(),
+          custody: config.custody,
+          tokenProgram: config.tokenProgram,
         },
-        custody: config.custody,
       })
       .instruction();
   }
 
-  async custodyAccountAddress(mint: PublicKey): Promise<PublicKey> {
-    return associatedAddress({
-      mint: mint,
-      owner: this.pdas.tokenAuthority(),
-    });
+  /**
+   * Returns the address of the custody account. If the config is available
+   * (i.e. the program is initialised), the mint is derived from the config.
+   * Otherwise, the mint must be provided.
+   */
+  async custodyAccountAddress(
+    configOrMint: NttBindings.Config | PublicKey,
+    tokenProgram = splToken.TOKEN_PROGRAM_ID
+  ): Promise<PublicKey> {
+    if (configOrMint instanceof PublicKey) {
+      return splToken.getAssociatedTokenAddress(
+        configOrMint,
+        this.pdas.tokenAuthority(),
+        true,
+        tokenProgram
+      );
+    } else {
+      return splToken.getAssociatedTokenAddress(
+        configOrMint.mint,
+        this.pdas.tokenAuthority(),
+        true,
+        configOrMint.tokenProgram
+      );
+    }
+  }
+
+  async getAddressLookupTable(
+    useCache = true
+  ): Promise<AddressLookupTableAccount> {
+    if (!useCache || !this.addressLookupTable) {
+      const lut = await this.program.account.lut.fetchNullable(
+        this.pdas.lutAccount()
+      );
+      if (!lut)
+        throw new Error(
+          "Address lookup table not found. Did you forget to call initializeLUT?"
+        );
+
+      const response = await this.connection.getAddressLookupTable(lut.address);
+      if (response.value === null) throw new Error("Could not fetch LUT");
+
+      this.addressLookupTable = response.value;
+    }
+
+    if (!this.addressLookupTable)
+      throw new Error(
+        "Address lookup table not found. Did you forget to call initializeLUT?"
+      );
+
+    return this.addressLookupTable;
   }
 
   createUnsignedTx(

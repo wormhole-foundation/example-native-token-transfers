@@ -1,0 +1,27 @@
+[package]
+name = "dummy-transfer-hook"
+version = "2.0.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "dummy_transfer_hook"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+mainnet = []
+solana-devnet = []
+tilt-devnet = []
+tilt-devnet2 = [ "tilt-devnet" ]
+
+[dependencies]
+anchor-lang.workspace = true
+anchor-spl.workspace = true
+solana-program.workspace = true
+spl-tlv-account-resolution = "0.6.3"
+spl-transfer-hook-interface = "0.6.3"
