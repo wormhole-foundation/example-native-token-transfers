@@ -12,6 +12,10 @@ contract DummyTransceiver is Transceiver, ITransceiverReceiver {
 
     constructor(address nttManager) Transceiver(nttManager) {}
 
+    function getTransceiverType() external pure override returns (string memory) {
+        return "dummy";
+    }
+
     function _quoteDeliveryPrice(
         uint16, /* recipientChain */
         TransceiverStructs.TransceiverInstruction memory /* transceiverInstruction */

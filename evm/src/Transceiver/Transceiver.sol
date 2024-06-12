@@ -90,6 +90,8 @@ abstract contract Transceiver is
         return nttManagerToken;
     }
 
+    function getTransceiverType() external view virtual returns (string memory);
+
     /// =============== TRANSCEIVING LOGIC ===============================================
 
     /// @inheritdoc ITransceiver
