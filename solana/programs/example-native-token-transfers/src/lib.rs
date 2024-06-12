@@ -62,7 +62,7 @@ pub const TOKEN_AUTHORITY_SEED: &[u8] = b"token_authority";
 /// user, atomically).
 pub const SESSION_AUTHORITY_SEED: &[u8] = b"session_authority";
 
-pub const VERSION: &str = "1.0.0";
+pub const VERSION: &str = "2.0.0";
 
 #[program]
 pub mod example_native_token_transfers {
@@ -73,15 +73,25 @@ pub mod example_native_token_transfers {
         instructions::initialize(ctx, args)
     }
 
+    pub fn initialize_lut(ctx: Context<InitializeLUT>, recent_slot: u64) -> Result<()> {
+        instructions::initialize_lut(ctx, recent_slot)
+    }
+
     pub fn version(_ctx: Context<Version>) -> Result<String> {
         Ok(VERSION.to_string())
     }
 
-    pub fn transfer_burn(ctx: Context<TransferBurn>, args: TransferArgs) -> Result<()> {
+    pub fn transfer_burn<'info>(
+        ctx: Context<'_, '_, '_, 'info, TransferBurn<'info>>,
+        args: TransferArgs,
+    ) -> Result<()> {
         instructions::transfer_burn(ctx, args)
     }
 
-    pub fn transfer_lock(ctx: Context<TransferLock>, args: TransferArgs) -> Result<()> {
+    pub fn transfer_lock<'info>(
+        ctx: Context<'_, '_, '_, 'info, TransferLock<'info>>,
+        args: TransferArgs,
+    ) -> Result<()> {
         instructions::transfer_lock(ctx, args)
     }
 
@@ -89,15 +99,15 @@ pub mod example_native_token_transfers {
         instructions::redeem(ctx, args)
     }
 
-    pub fn release_inbound_mint(
-        ctx: Context<ReleaseInboundMint>,
+    pub fn release_inbound_mint<'info>(
+        ctx: Context<'_, '_, '_, 'info, ReleaseInboundMint<'info>>,
         args: ReleaseInboundArgs,
     ) -> Result<()> {
         instructions::release_inbound_mint(ctx, args)
     }
 
-    pub fn release_inbound_unlock(
-        ctx: Context<ReleaseInboundUnlock>,
+    pub fn release_inbound_unlock<'info>(
+        ctx: Context<'_, '_, '_, 'info, ReleaseInboundUnlock<'info>>,
         args: ReleaseInboundArgs,
     ) -> Result<()> {
         instructions::release_inbound_unlock(ctx, args)

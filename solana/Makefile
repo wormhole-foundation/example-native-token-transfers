@@ -25,6 +25,7 @@ idl: target/idl/example_native_token_transfers.json
 	@ mkdir -p $@/ts
 	@ cp -r target/idl/* $@/json/
 	@ cp -r target/types/* $@/ts/
+	@ cd ../sdk/solana && npm run generate
 
 node_modules: package-lock.json
 	npm ci
