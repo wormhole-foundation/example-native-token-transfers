@@ -1,11 +1,12 @@
 import { Provider } from "ethers";
 
-import { _0_1_0, _1_0_0 } from "./ethers-contracts/index.js";
+import { _0_1_0, _1_0_0, _1_1_0 } from "./ethers-contracts/index.js";
 
 export const AbiVersions = {
   "0.1.0": _0_1_0,
   "1.0.0": _1_0_0,
-  default: _1_0_0,
+  "1.1.0": _1_1_0,
+  default: _1_1_0,
 } as const;
 export type AbiVersion = keyof typeof AbiVersions;
 
