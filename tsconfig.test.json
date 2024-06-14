@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowUnreachableCode": true,
+    "allowUnusedLabels": true,
+    "noUnusedLocals": false
+  }
+}

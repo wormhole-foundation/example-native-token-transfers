@@ -3,8 +3,9 @@ import {
   Wormhole,
   canonicalAddress,
   routes,
-  testing,
 } from "@wormhole-foundation/sdk-connect";
+
+import * as testing from "@wormhole-foundation/sdk-definitions/testing";
 
 import "@wormhole-foundation/sdk-definitions-ntt";
 import "@wormhole-foundation/sdk-evm-ntt";

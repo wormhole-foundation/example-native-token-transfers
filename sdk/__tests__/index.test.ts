@@ -56,12 +56,11 @@ describe("Hub and Spoke Tests", function () {
       deploy({ context: spokeChainB, mode: "burning" }),
     ]);
 
-    console.log(
-      "Deployed: ",
-      { chain: hub.context.chain, ...hub.contracts },
-      { chain: spokeA.context.chain, ...spokeA.contracts },
-      { chain: spokeB.context.chain, ...spokeB.contracts }
-    );
+    console.log("Deployed: ", {
+      [hub.context.chain]: hub.contracts,
+      [spokeA.context.chain]: spokeA.contracts,
+      [spokeB.context.chain]: spokeB.contracts,
+    });
 
     // Link contracts
     console.log("Linking Peers");

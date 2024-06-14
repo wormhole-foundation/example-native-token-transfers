@@ -176,9 +176,6 @@ export interface Ntt<N extends Network, C extends Chain> {
     payer?: AccountAddress<C>
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
 
-  /** Get the interface version */
-  getVersion(payer?: AccountAddress<C>): Promise<string>;
-
   /** Get the address for the account that custodies locked tokens  */
   getCustodyAddress(): Promise<string>;
 

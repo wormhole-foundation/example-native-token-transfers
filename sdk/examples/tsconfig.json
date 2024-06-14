@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.esm.json",
+  "include": ["src/**/*.ts", "src/**/*.json"],
+  "compilerOptions": {
+    "rootDir": "src",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "resolveJsonModule": true,
+    "allowUnreachableCode": true,
+    "allowUnusedLabels": true,
+    "noUnusedLocals": false,
+    "esModuleInterop": true,
+  }
+}

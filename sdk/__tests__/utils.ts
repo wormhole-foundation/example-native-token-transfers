@@ -36,8 +36,8 @@ import solanaTiltKey from "./solana-tilt.json"; // from https://github.com/wormh
 
 import { Ntt } from "../definitions/src/index.js";
 import "../evm/src/index.js";
-import "../solana/src/index.js";
-import { SolanaNtt } from "../solana/src/index.js";
+import "../../solana/ts/sdk/index.js";
+import { SolanaNtt } from "../../solana/ts/sdk/index.js";
 import { submitAccountantVAA } from "./accountant.js";
 
 // Note: Currently, in order for this to run, the evm bindings with extra contracts must be build
@@ -494,7 +494,8 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
 async function deploySolana(ctx: Ctx): Promise<Ctx> {
   const { signer, nativeSigner: keypair } = ctx.signers as Signers<"Solana">;
   const connection = (await ctx.context.getRpc()) as Connection;
-  const address = new PublicKey(signer.address());
+  const sender = Wormhole.chainAddress("Solana", signer.address());
+  const address = sender.address.toNative("Solana").unwrap();
   console.log(`Using public key: ${address}`);
 
   const mint = await spl.createMint(connection, keypair, address, null, 9);
@@ -547,10 +548,7 @@ async function deploySolana(ctx: Ctx): Promise<Ctx> {
       manager.pdas.tokenAuthority().toString()
     );
 
-    const initTxs = manager.initialize({
-      payer: keypair,
-      owner: keypair,
-      chain: "Solana",
+    const initTxs = manager.initialize(sender.address, {
       mint,
       outboundLimit: 1000000000n,
       mode: ctx.mode,
