@@ -201,7 +201,7 @@ $ cast --help
 
 #### Environment Setup
 
-Note: **All Chain IDs set in the deployment environment files and configuration files should be the Wormhold Chain ID**
+Note: **All Chain IDs set in the deployment environment files and configuration files should be the Wormhole Chain ID**
 
 Copy the sample environment file located in `env/` into the target subdirectory of your choice (e.g., `testnet` or `mainnet`) and prefix the filename with your blockchain of choice:
 
