@@ -1,7 +1,7 @@
 import { Chain } from "@wormhole-foundation/sdk";
 import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
 import { NttRoute } from "@wormhole-foundation/sdk-route-ntt";
-type NttContracts = {
+export type NttContracts = {
   [key in Chain]?: Ntt.Contracts;
 };
 
@@ -44,6 +44,22 @@ export const TEST_NTT_TOKENS: NttContracts = {
     token: "EetppHswYvV1jjRWoQKC1hejdeBDHR9NNzNtCyRQfrrQ",
     manager: "NTtAaoDJhkeHeaVUHnyhwbPNAN6WgBpHkHBTc6d7vLK",
     transceiver: { wormhole: "NTtAaoDJhkeHeaVUHnyhwbPNAN6WgBpHkHBTc6d7vLK" },
+    quoter: "Nqd6XqA8LbsCuG8MLWWuP865NV6jR1MbXeKxD4HLKDJ",
+  },
+};
+
+export const TEST_NTT_SPL22_TOKENS: NttContracts = {
+  Sepolia: {
+    token: "0x3a84364d27ed3d16022da0f603f3e0f74826c707",
+    manager: "0x46475d067f7c2a388a7bb7fd5a9A4a68D7fA45c5",
+    transceiver: {
+      wormhole: "0x24cb9E1FEcaa40f07feBC0E32Ce16C0bb3ed6443",
+    },
+  },
+  Solana: {
+    token: "BAn1Zcr48bmaK5SmzBDjoju6csFe8AT6bot4ACBJvVwU",
+    manager: "NtTnpY76eiMYqYX9xkag2CSXk9cGi6hinMWbMLMDYUP",
+    transceiver: { wormhole: "NtTnpY76eiMYqYX9xkag2CSXk9cGi6hinMWbMLMDYUP" },
     quoter: "Nqd6XqA8LbsCuG8MLWWuP865NV6jR1MbXeKxD4HLKDJ",
   },
 };

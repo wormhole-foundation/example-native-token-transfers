@@ -1,5 +1,6 @@
 import * as __0_1_0 from "./0_1_0/index.js";
 import * as __1_0_0 from "./1_0_0/index.js";
+import * as __1_1_0 from "./1_1_0/index.js";
 
 const _0_1_0 = {
   NttManager: {
@@ -19,4 +20,13 @@ const _1_0_0 = {
   },
 };
 
-export { _0_1_0, _1_0_0 };
+const _1_1_0 = {
+  NttManager: {
+    connect: __1_1_0.NttManager__factory.connect,
+  },
+  NttTransceiver: {
+    connect: __1_1_0.WormholeTransceiver__factory.connect,
+  },
+};
+
+export { _0_1_0, _1_0_0, _1_1_0 };
