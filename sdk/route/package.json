@@ -3,12 +3,12 @@
   "version": "0.1.0-beta.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wormhole-foundation/connect-sdk.git"
+    "url": "git+https://github.com/wormhole-foundation/example-native-token-transfers.git"
   },
   "bugs": {
-    "url": "https://github.com/wormhole-foundation/connect-sdk/issues"
+    "url": "https://github.com/wormhole-foundation/example-native-token-transfers"
   },
-  "homepage": "https://github.com/wormhole-foundation/connect-sdk#readme",
+  "homepage": "https://github.com/wormhole-foundation/example-native-token-transfers#readme",
   "directories": {
     "test": "__tests__"
   },
@@ -16,7 +16,7 @@
   "main": "./dist/cjs/index.js",
   "types": "./dist/cjs/index.d.ts",
   "module": "./dist/esm/index.js",
-  "description": "SDK for Solana, used in conjunction with @wormhole-foundation/sdk",
+  "description": "Implementation of a Route usable by the Wormhole SDK",
   "files": [
     "dist/esm",
     "dist/cjs"
@@ -25,8 +25,7 @@
     "wormhole",
     "sdk",
     "typescript",
-    "ntt",
-    "solana"
+    "ntt"
   ],
   "engines": {
     "node": ">=16"
