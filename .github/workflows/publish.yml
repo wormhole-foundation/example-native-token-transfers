@@ -1,0 +1,42 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: "npm"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm ci
+      - run: npm run build --if-present
+      - run: npm test
+      - run: |
+          version="$GITHUB_REF_NAME"
+
+          # Sync version number to all package.json files
+          npm run version $version
+
+          if [[ $version == *"beta"* ]]; then
+            tag=beta
+          elif [[ $version == *"alpha"* ]]; then
+            tag=alpha
+          else
+            tag=latest
+          fi
+
+          npm publish --access public --tag $tag \
+            --workspace sdk/definitions \
+            --workspace sdk/evm \
+            --workspace solana \
+            --workspace sdk/route
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages#publishing-packages-to-the-npm-registry
