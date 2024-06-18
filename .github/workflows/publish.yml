@@ -1,11 +1,15 @@
-name: Publish
+name: Publish TS SDK
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish'
+        required: true
+        type: 'string'
 
 jobs:
-  publish:
+  publish-ts-sdk:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,17 +20,13 @@ jobs:
           cache: "npm"
           registry-url: "https://registry.npmjs.org"
       - run: npm ci
+      - run: npm run version ${{ inputs.version }}
       - run: npm run build --if-present
       - run: npm test
       - run: |
-          version="$GITHUB_REF_NAME"
-
-          # Sync version number to all package.json files
-          npm run version $version
-
-          if [[ $version == *"beta"* ]]; then
+          if [[ $VERSION == *"beta"* ]]; then
             tag=beta
-          elif [[ $version == *"alpha"* ]]; then
+          elif [[ $VERSION == *"alpha"* ]]; then
             tag=alpha
           else
             tag=latest
@@ -38,5 +38,6 @@ jobs:
             --workspace solana \
             --workspace sdk/route
         env:
+          VERSION: ${{ inputs.version }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           # https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages#publishing-packages-to-the-npm-registry
