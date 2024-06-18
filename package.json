@@ -14,9 +14,6 @@
     "test:local": "jest --config ./jest.config.ts",
     "generate:test": "npm run generate:test --workspaces --if-present",
     "build:deps": "npm run build:contracts --workspaces --if-present && npm run generate",
-    "publish": "npm publish --access public --tag $TAG --workspace sdk/definitions --workspace sdk/evm --workspace solana --workspace sdk/route",
-    "pub:beta": "TAG=beta npm run publish",
-    "pub:latest": "TAG=latest npm run publish",
     "version": "tsx setSdkVersion.ts"
   },
   "devDependencies": {
