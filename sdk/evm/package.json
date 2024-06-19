@@ -1,22 +1,21 @@
 {
   "name": "@wormhole-foundation/sdk-evm-ntt",
-  "version": "0.0.1-beta.5",
+  "version": "0.1.0-beta.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wormhole-foundation/connect-sdk.git"
+    "url": "git+https://github.com/wormhole-foundation/example-native-token-transfers.git"
   },
   "bugs": {
-    "url": "https://github.com/wormhole-foundation/connect-sdk/issues"
+    "url": "https://github.com/wormhole-foundation/example-native-token-transfers"
   },
-  "homepage": "https://github.com/wormhole-foundation/connect-sdk#readme",
   "directories": {
-    "test": "tests"
+    "test": "__tests__"
   },
   "license": "Apache-2.0",
   "main": "./dist/cjs/index.js",
   "types": "./dist/cjs/index.d.ts",
   "module": "./dist/esm/index.js",
-  "description": "SDK for EVM chains, used in conjunction with @wormhole-foundation/sdk",
+  "description": "NTT SDK for EVM chains",
   "files": [
     "dist/esm",
     "dist/cjs"
@@ -46,7 +45,7 @@
   },
   "dependencies": {
     "@wormhole-foundation/sdk-connect": "0.6.5",
-    "@wormhole-foundation/sdk-definitions-ntt": "0.0.1-beta.5",
+    "@wormhole-foundation/sdk-definitions-ntt": "0.1.0-beta.0",
     "@wormhole-foundation/sdk-evm": "0.6.5",
     "@wormhole-foundation/sdk-evm-core": "0.6.5",
     "ethers": "^6.5.1"

@@ -23,12 +23,6 @@ function updateVersionInPackageJson(
   fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
 }
 
-function getVersion(dir: string): string {
-  const versionFilePath = path.join(dir, "sdk/VERSION");
-  const v = fs.readFileSync(versionFilePath);
-  return v.toString().replace("\n", "");
-}
-
 function getPackageName(dir: string): string {
   const packageJsonPath = path.join(dir, "package.json");
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
@@ -44,9 +38,7 @@ type Workspace = {
   package: string;
 };
 
-function updateVersionsInWorkspaces(dir: string) {
-  const version = getVersion(dir);
-
+function updateVersionsInWorkspaces(dir: string, version: string) {
   const packageJsonPath = path.join(dir, "package.json");
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
 
@@ -70,4 +62,8 @@ function updateVersionsInWorkspaces(dir: string) {
   });
 }
 
-updateVersionsInWorkspaces(path.resolve("."));
+const args = process.argv.slice(2);
+const version = args[0];
+if (!version) throw new Error("A version string must be provided");
+
+updateVersionsInWorkspaces(path.resolve("."), version);
