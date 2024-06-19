@@ -35,8 +35,9 @@ describe("ABI Versions Test", function () {
   });
 
   test("It gets the correct version", async function () {
-    const { manager } = overrides["Sepolia"];
-    const version = await EvmNtt._getVersion(manager, await ctx.getRpc());
+    const version = await EvmNtt.getVersion(await ctx.getRpc(), {
+      ntt: overrides["Sepolia"],
+    });
     expect(version).toBe("1.0.0");
   });
 });
