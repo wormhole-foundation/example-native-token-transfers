@@ -132,7 +132,7 @@ event MessageAlreadyExecuted(bytes32 indexed sourceNttManager, bytes32 indexed m
 
 6. **Mint or Unlock**
 
-Once a transfer has been successfully verified, the tokens can be minted (if the mode is "burning") or unlocked (if the mode is "locking") to the recipient on the destination chain. Note that the source token decimals are bounded betweeen 0 and `TRIMMED_DECIMALS` as enforced in the wire format. The transfer amount is untrimmed (scaled-up) if the destination chain token decimals exceed `TRIMMED_DECIMALS`. Once the approriate number of tokens have been minted or unlocked to the recipient, the `TransferRedeemed` event is emitted.
+Once a transfer has been successfully verified, the tokens can be minted (if the mode is "burning") or unlocked (if the mode is "locking") to the recipient on the destination chain. Note that the source token decimals are bounded between 0 and `TRIMMED_DECIMALS` as enforced in the wire format. The transfer amount is untrimmed (scaled-up) if the destination chain token decimals exceed `TRIMMED_DECIMALS`. Once the appropriate number of tokens have been minted or unlocked to the recipient, the `TransferRedeemed` event is emitted.
 
 _Events_
 
@@ -201,7 +201,7 @@ $ cast --help
 
 #### Environment Setup
 
-Note: **All Chain IDs set in the deployment environment files and configuration files should be the Wormhold Chain ID**
+Note: **All Chain IDs set in the deployment environment files and configuration files should be the Wormhole Chain ID**
 
 Copy the sample environment file located in `env/` into the target subdirectory of your choice (e.g., `testnet` or `mainnet`) and prefix the filename with your blockchain of choice:
 
