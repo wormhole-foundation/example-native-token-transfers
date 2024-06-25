@@ -1,12 +1,14 @@
 #!/bin/bash
 
-while getopts ":n:c:u:k:" opt; do
+while getopts ":n:c:u:e:k:" opt; do
   case $opt in
     n) network="$OPTARG"
     ;;
     c) chain="$OPTARG"
     ;;
     u) rpc="$OPTARG"
+    ;;
+    e) etherscan_key="$OPTARG"
     ;;
     k) private_key="$OPTARG"
     ;;
@@ -54,9 +56,16 @@ then
     rpc=$RPC
 fi
 
+# Use the ETHERSCAN_KEY environment variable if etherscan_key isn't set.
+if [ -z ${etherscan_key+x} ];
+then
+    etherscan_key=$ETHERSCAN_KEY
+fi
+
 forge script $FORGE_SCRIPTS/UpgradeWormholeTransceiver.s.sol \
     --rpc-url $rpc \
     --broadcast \
     --private-key $private_key \
+    --verify --etherscan-api-key $etherscan_key \
     --slow \
     --skip test
