@@ -566,8 +566,8 @@ async function deploySolana(ctx: Ctx): Promise<Ctx> {
     await new Promise((resolve) => setTimeout(resolve, 400));
 
     const registrTxs = manager.registerTransceiver({
-      payer: keypair,
-      owner: keypair,
+      payer: Wormhole.chainAddress("Solana", keypair.publicKey.toBase58()).address,
+      owner: Wormhole.chainAddress("Solana", keypair.publicKey.toBase58()).address,
       transceiver: manager.program.programId,
     });
     await signSendWait(ctx.context, registrTxs, signer);
