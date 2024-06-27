@@ -47,8 +47,7 @@ contract DeployWormholeNttBase is ParseNttConfig {
 
         nttManagerProxy.initialize();
 
-        console2.log("NttManager deployed at: ");
-        console2.logBytes32(toUniversalAddress(address(nttManagerProxy)));
+        console2.log("NttManager:", address(nttManagerProxy));
 
         return address(nttManagerProxy);
     }
@@ -72,8 +71,7 @@ contract DeployWormholeNttBase is ParseNttConfig {
 
         transceiverProxy.initialize();
 
-        console2.log("Wormhole Transceiver deployed at: ");
-        console2.logBytes32(toUniversalAddress(address(transceiverProxy)));
+        console2.log("WormholeTransceiver:", address(transceiverProxy));
 
         return address(transceiverProxy);
     }
