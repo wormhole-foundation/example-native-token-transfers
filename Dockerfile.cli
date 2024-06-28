@@ -1,4 +1,8 @@
-FROM ubuntu:latest as base
+# NOTE: we use the backpackapp base image so we can use solana. You would think
+# that the solana installer script just works, but you would be wrong. It seems
+# to have been broken recently since the migration to the anza url.
+# The old installer url returns a 403. So we instead rely on solana binaries cached on docker hub. Everything is fine.
+FROM backpackapp/build:v0.29.0@sha256:9aee169b2d8b89b4a4243419ae35c176773136e78d751b3e439eff692c9c1293 as base
 
 RUN apt update
 
@@ -49,3 +53,10 @@ FROM cli-local as cli-local-test
 COPY cli/test cli/test
 COPY evm evm
 RUN bash -ci "./cli/test/sepolia-bsc.sh"
+
+FROM cli-local as cli-local-test-solana
+COPY cli/test cli/test
+# evm/script needed for the cli, at least for now
+COPY evm/script evm/script
+COPY solana solana
+RUN bash -ci "./cli/test/solana.sh --use-tmp-dir"
