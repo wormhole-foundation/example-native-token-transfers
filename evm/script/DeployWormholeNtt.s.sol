@@ -26,9 +26,22 @@ contract DeployWormholeNtt is Script, DeployWormholeNttBase {
         console.log("Deploying Wormhole Ntt...");
         IWormhole wh = IWormhole(wormhole);
 
+        (bool success, bytes memory queriedDecimals) =
+            token.staticcall(abi.encodeWithSignature("decimals()"));
+
+        if (!success) {
+            console.log("Failed to query token decimals");
+            vm.stopBroadcast();
+            return;
+        }
+
+        uint8 decimals = abi.decode(queriedDecimals, (uint8));
+
         uint16 chainId = wh.chainId();
 
         console.log("Chain ID: ", chainId);
+
+        uint8 toDecimals = decimals > TRIMMED_DECIMALS ? decimals - TRIMMED_DECIMALS : decimals;
 
         DeploymentParams memory params = DeploymentParams({
             token: token,
@@ -41,7 +54,8 @@ contract DeployWormholeNtt is Script, DeployWormholeNttBase {
             specialRelayerAddr: specialRelayer,
             consistencyLevel: 202,
             gasLimit: 500000,
-            outboundLimit: uint256(type(uint64).max) * 10 ** 10
+            // the trimming will trim this number to uint64.max
+            outboundLimit: uint256(type(uint64).max) * 10 ** toDecimals
         });
 
         // Deploy NttManager.
