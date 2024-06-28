@@ -714,6 +714,23 @@ export namespace NTT {
     return transferIx;
   }
 
+  export async function createTransferOwnershipInstruction(
+    program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
+    args: {
+      newOwner: PublicKey;
+    },
+    pdas?: Pdas
+  ) {
+    pdas = pdas ?? NTT.pdas(program.programId);
+    return await program.methods
+      .transferOwnership()
+      .accounts({
+        config: pdas.configAccount(),
+        newOwner: args.newOwner,
+      })
+      .instruction();
+  }
+
   export async function createSetPeerInstruction(
     program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
     args: {
@@ -740,6 +757,25 @@ export namespace NTT {
         config: pdas.configAccount(),
         peer: pdas.peerAccount(args.chain),
         inboxRateLimit: pdas.inboxRateLimitAccount(args.chain),
+      })
+      .instruction();
+  }
+
+  // TODO: untested
+  export async function createSetPausedInstruction(
+    program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
+    args: {
+      owner: PublicKey;
+      paused: boolean;
+    },
+    pdas?: Pdas
+  ) {
+    pdas = pdas ?? NTT.pdas(program.programId);
+    return await program.methods
+      .setPaused(args.paused)
+      .accountsStrict({
+        owner: args.owner,
+        config: pdas.configAccount(),
       })
       .instruction();
   }
@@ -853,11 +889,10 @@ export namespace NTT {
     };
   }
 
-  export async function createSetOuboundLimitInstruction(
+  export async function createSetOutboundLimitInstruction(
     program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
     args: {
       owner: PublicKey;
-      chain: Chain;
       limit: BN;
     },
     pdas?: Pdas

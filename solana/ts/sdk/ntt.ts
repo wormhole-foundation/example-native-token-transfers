@@ -21,9 +21,11 @@ import {
   Network,
   TokenAddress,
   UnsignedTransaction,
+  toUniversal,
 } from "@wormhole-foundation/sdk-connect";
 import {
   Ntt,
+  NttTransceiver,
   WormholeNttTransceiver,
 } from "@wormhole-foundation/sdk-definitions-ntt";
 import {
@@ -43,9 +45,47 @@ import { NTT, NttQuoter, WEI_PER_GWEI } from "../lib/index.js";
 
 import { IdlVersion, NttBindings, getNttProgram } from "../lib/bindings.js";
 
+export class SolanaNttWormholeTransceiver<N extends Network, C extends SolanaChains>
+  implements NttTransceiver<N, C, WormholeNttTransceiver.VAA> {
+
+  constructor(
+    readonly manager: SolanaNtt<N, C>,
+    readonly address: PublicKey
+  ) {}
+
+  async *receive(_attestation: WormholeNttTransceiver.VAA) {
+    // TODO: this is implemented below (in the transceiver code). it could get
+    // tricky in general with multiple transceivers, as they might return an
+    // instruction, or multiple instructions, etc.
+    // in any case, we should implement this here.
+    throw new Error("Method not implemented.");
+  }
+
+  getAddress(): ChainAddress<C> {
+    return { chain: this.manager.chain, address: toUniversal(this.manager.chain, this.address.toBase58()) };
+  }
+
+  async *setPeer(peer: ChainAddress<C>, payer: AccountAddress<C>) {
+    yield* this.manager.setWormholeTransceiverPeer(peer, payer);
+  }
+
+  async getPeer<C extends Chain>(chain: C): Promise<ChainAddress<C> | null> {
+    const peer =
+      await this.manager.program.account.transceiverPeer.fetchNullable(
+        this.manager.pdas.transceiverPeerAccount(chain)
+      );
+
+    if (!peer) return null;
+
+    return {
+      chain,
+      address: toUniversal(chain, new Uint8Array(peer.address)),
+    };
+  }
+}
+
 export class SolanaNtt<N extends Network, C extends SolanaChains>
-  implements Ntt<N, C>
-{
+  implements Ntt<N, C> {
   core: SolanaWormholeCore<N, C>;
   pdas: NTT.Pdas;
 
@@ -54,6 +94,12 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   config?: NttBindings.Config<IdlVersion>;
   quoter?: NttQuoter;
   addressLookupTable?: AddressLookupTableAccount;
+
+  // NOTE: these are stored from the constructor, but are not used directly
+  // (only in verifyAddresses)
+  private managerAddress: string;
+  private tokenAddress: string;
+  private whTransceiverAddress?: string;
 
   constructor(
     readonly network: N,
@@ -70,6 +116,10 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       version as IdlVersion
     );
 
+    this.managerAddress = contracts.ntt.manager;
+    this.tokenAddress = contracts.ntt.token;
+    this.whTransceiverAddress = contracts.ntt.transceiver.wormhole;
+
     if (this.contracts.ntt?.quoter)
       this.quoter = new NttQuoter(
         connection,
@@ -84,6 +134,71 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       contracts
     );
     this.pdas = NTT.pdas(this.program.programId);
+  }
+
+  async getTransceiver(ix: number): Promise<NttTransceiver<N, C, any> | null> {
+    if (ix !== 0) return null;
+    if (this.whTransceiverAddress === undefined) return null;
+
+    return new SolanaNttWormholeTransceiver(this, new PublicKey(this.whTransceiverAddress));
+  }
+
+  async getMode(): Promise<Ntt.Mode> {
+    const config = await this.getConfig();
+    return config.mode.locking != null ? "locking" : "burning";
+  }
+
+  async isPaused(): Promise<boolean> {
+    const config = await this.getConfig();
+    return config.paused;
+  }
+
+  async *pause(payer: AccountAddress<C>) {
+    const sender = new SolanaAddress(payer).unwrap();
+    const ix = await NTT.createSetPausedInstruction(this.program, {
+      owner: sender,
+      paused: true,
+    });
+
+    const tx = new Transaction();
+    tx.feePayer = sender;
+    tx.add(ix);
+    yield this.createUnsignedTx({ transaction: tx }, "Ntt.Pause");
+  }
+
+  async *unpause(payer: AccountAddress<C>) {
+    const sender = new SolanaAddress(payer).unwrap();
+    const ix = await NTT.createSetPausedInstruction(this.program, {
+      owner: sender,
+      paused: false,
+    });
+
+    const tx = new Transaction();
+    tx.feePayer = sender;
+    tx.add(ix);
+    yield this.createUnsignedTx({ transaction: tx }, "Ntt.Unpause");
+  }
+
+  async getThreshold(): Promise<number> {
+    const config = await this.getConfig();
+    return config.threshold
+  }
+
+  async getOwner(): Promise<AccountAddress<C>> {
+    const config = await this.getConfig();
+    return new SolanaAddress(config.owner) as AccountAddress<C>;
+  }
+
+  async *setOwner(newOwner: AccountAddress<C>, payer: AccountAddress<C>) {
+    const sender = new SolanaAddress(payer).unwrap();
+    const ix = await NTT.createTransferOwnershipInstruction(this.program, {
+      newOwner: new SolanaAddress(newOwner).unwrap(),
+    });
+
+    const tx = new Transaction();
+    tx.feePayer = sender;
+    tx.add(ix);
+    yield this.createUnsignedTx({ transaction: tx }, "Ntt.SetOwner");
   }
 
   async isRelayingAvailable(destination: Chain): Promise<boolean> {
@@ -147,6 +262,18 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     );
   }
 
+  async getPeer<C extends Chain>(chain: C): Promise<Ntt.Peer<C> | null> {
+    const peer = await this.program.account.nttManagerPeer.fetchNullable(this.pdas.peerAccount(chain));
+
+    if (!peer) return null;
+
+    return {
+      address: { chain: chain, address: toUniversal(chain, new Uint8Array(peer.address)) },
+      tokenDecimals: peer.tokenDecimals,
+      inboundLimit: await this.getInboundLimit(chain),
+    };
+  }
+
   async getCustodyAddress(): Promise<string> {
     return (await this.getConfig()).custody.toBase58();
   }
@@ -156,11 +283,18 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     contracts: Contracts & { ntt: Ntt.Contracts },
     sender?: AccountAddress<SolanaChains>
   ): Promise<IdlVersion> {
-    return NTT.getVersion(
-      connection,
-      new PublicKey(contracts.ntt.manager!),
-      sender ? new SolanaAddress(sender).unwrap() : undefined
-    );
+    // TODO: what? the try catch doesn't seem to work. it's not catching the error
+    try {
+      return NTT.getVersion(
+        connection,
+        new PublicKey(contracts.ntt.manager!),
+        sender ? new SolanaAddress(sender).unwrap() : undefined
+      );
+    } catch (e) {
+      const version = "2.0.0"
+      console.error(`Failed to get NTT version. Defaulting to ${version}`);
+      return version;
+    }
   }
 
   async *initialize(
@@ -352,17 +486,17 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const transferIx =
       config.mode.locking != null
         ? NTT.createTransferLockInstruction(
-            this.program,
-            config,
-            txArgs,
-            this.pdas
-          )
+          this.program,
+          config,
+          txArgs,
+          this.pdas
+        )
         : NTT.createTransferBurnInstruction(
-            this.program,
-            config,
-            txArgs,
-            this.pdas
-          );
+          this.program,
+          config,
+          txArgs,
+          this.pdas
+        );
 
     const releaseIx = NTT.createReleaseOutboundInstruction(
       this.program,
@@ -490,6 +624,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       revertOnDelay: false,
     };
 
+    // TODO: loop through transceivers etc.
     const redeemIx = NTT.createRedeemInstruction(this.program, config, {
       payer: senderAddress,
       vaa: wormholeNTT,
@@ -498,15 +633,15 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const releaseIx =
       config.mode.locking != null
         ? NTT.createReleaseInboundUnlockInstruction(
-            this.program,
-            config,
-            releaseArgs
-          )
+          this.program,
+          config,
+          releaseArgs
+        )
         : NTT.createReleaseInboundMintInstruction(
-            this.program,
-            config,
-            releaseArgs
-          );
+          this.program,
+          config,
+          releaseArgs
+        );
 
     const tx = new Transaction();
     tx.feePayer = senderAddress;
@@ -535,11 +670,56 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     return BigInt(rl.rateLimit.capacityAtLastTx.toString());
   }
 
+  async getOutboundLimit(): Promise<bigint> {
+    const rl = await this.program.account.outboxRateLimit.fetch(
+      this.pdas.outboxRateLimitAccount()
+    );
+    return BigInt(rl.rateLimit.limit.toString());
+  }
+
+  async *setOutboundLimit(limit: bigint, payer: AccountAddress<C>) {
+    const sender = new SolanaAddress(payer).unwrap();
+    const ix = await NTT.createSetOutboundLimitInstruction(this.program, {
+      owner: sender,
+      limit: new BN(limit.toString()),
+    });
+
+    const tx = new Transaction();
+    tx.feePayer = sender;
+    tx.add(ix);
+    yield this.createUnsignedTx({ transaction: tx }, "Ntt.SetOutboundLimit");
+  }
+
   async getCurrentInboundCapacity(fromChain: Chain): Promise<bigint> {
     const rl = await this.program.account.inboxRateLimit.fetch(
       this.pdas.inboxRateLimitAccount(fromChain)
     );
     return BigInt(rl.rateLimit.capacityAtLastTx.toString());
+  }
+
+  async getInboundLimit(fromChain: Chain): Promise<bigint> {
+    const rl = await this.program.account.inboxRateLimit.fetch(
+      this.pdas.inboxRateLimitAccount(fromChain)
+    );
+    return BigInt(rl.rateLimit.limit.toString());
+  }
+
+  async *setInboundLimit(
+    fromChain: Chain,
+    limit: bigint,
+    payer: AccountAddress<C>
+  ) {
+    const sender = new SolanaAddress(payer).unwrap();
+    const ix = await NTT.setInboundLimit(this.program, {
+      owner: sender,
+      chain: fromChain,
+      limit: new BN(limit.toString()),
+    });
+
+    const tx = new Transaction();
+    tx.feePayer = sender;
+    tx.add(ix);
+    yield this.createUnsignedTx({ transaction: tx }, "Ntt.SetInboundLimit");
   }
 
   async getIsExecuted(attestation: Ntt.Attestation): Promise<boolean> {
@@ -595,15 +775,15 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     tx.add(
       await (config.mode.locking != null
         ? NTT.createReleaseInboundUnlockInstruction(
-            this.program,
-            config,
-            releaseArgs
-          )
+          this.program,
+          config,
+          releaseArgs
+        )
         : NTT.createReleaseInboundMintInstruction(
-            this.program,
-            config,
-            releaseArgs
-          ))
+          this.program,
+          config,
+          releaseArgs
+        ))
     );
 
     yield this.createUnsignedTx(
@@ -633,6 +813,37 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     };
 
     return xfer;
+  }
+
+  async verifyAddresses(): Promise<Partial<Ntt.Contracts> | null> {
+    const local: Partial<Ntt.Contracts> = {
+      manager: this.managerAddress,
+      token: this.tokenAddress,
+      transceiver: {
+        wormhole: this.whTransceiverAddress,
+      },
+    };
+
+    const remote: Partial<Ntt.Contracts> = {
+      manager: this.program.programId.toBase58(),
+      token: (await this.getConfig()).mint.toBase58(),
+      transceiver: { wormhole: this.pdas.emitterAccount().toBase58() },
+    };
+
+    const deleteMatching = (a: any, b: any) => {
+      for (const k in a) {
+        if (typeof a[k] === "object") {
+          deleteMatching(a[k], b[k]);
+          if (Object.keys(a[k]).length === 0) delete a[k];
+        } else if (a[k] === b[k]) {
+          delete a[k];
+        }
+      }
+    }
+
+    deleteMatching(remote, local);
+
+    return Object.keys(remote).length > 0 ? remote : null;
   }
 
   async getAddressLookupTable(

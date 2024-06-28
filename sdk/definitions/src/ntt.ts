@@ -38,7 +38,7 @@ export namespace Ntt {
     token: string;
     manager: string;
     transceiver: {
-      wormhole: string;
+      wormhole?: string;
     };
     quoter?: string;
   };
@@ -85,6 +85,12 @@ export namespace Ntt {
     payload: Uint8Array;
   };
 
+  export type Peer<C extends Chain> = {
+    address: ChainAddress<C>;
+    tokenDecimals: number;
+    inboundLimit: bigint;
+  };
+
   // TODO: should layoutify this but couldnt immediately figure out how to
   // specify the length of the array as an encoded value
   export function encodeTransceiverInstructions(ixs: TransceiverInstruction[]) {
@@ -126,12 +132,31 @@ export namespace Ntt {
  * @typeparam C the chain
  */
 export interface Ntt<N extends Network, C extends Chain> {
+  getMode(): Promise<Ntt.Mode>;
+
+  isPaused(): Promise<boolean>;
+
+  pause(
+    payer?: AccountAddress<C>
+  ): AsyncGenerator<UnsignedTransaction<N, C>>;
+
+  unpause(
+    payer?: AccountAddress<C>
+  ): AsyncGenerator<UnsignedTransaction<N, C>>;
+
+  getOwner(): Promise<AccountAddress<C>>;
+
+  setOwner(newOwner: AccountAddress<C>, payer?: AccountAddress<C>): AsyncGenerator<UnsignedTransaction<N, C>>;
+
+  getThreshold(): Promise<number>;
+
   setPeer(
     peer: ChainAddress,
     tokenDecimals: number,
     inboundLimit: bigint,
     payer?: AccountAddress<C>
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
+
   setWormholeTransceiverPeer(
     peer: ChainAddress,
     payer?: AccountAddress<C>
@@ -182,15 +207,43 @@ export interface Ntt<N extends Network, C extends Chain> {
   /** Get the number of decimals associated with the token under management */
   getTokenDecimals(): Promise<number>;
 
+  /** Get the peer information for the given chain if it exists */
+  getPeer<C extends Chain>(chain: C): Promise<Ntt.Peer<C> | null>;
+
+  getTransceiver(ix: number): Promise<NttTransceiver<N, C, Ntt.Attestation> | null>;
+
   /**
    * getCurrentOutboundCapacity returns the current outbound capacity of the Ntt manager
    */
   getCurrentOutboundCapacity(): Promise<bigint>;
+
+  /**
+   * getOutboundLimit returns the maximum outbound capacity of the Ntt manager
+   */
+  getOutboundLimit(): Promise<bigint>;
+
+  /**
+   * setOutboundLimit sets the maximum outbound capacity of the Ntt manager
+   */
+  setOutboundLimit(limit: bigint, payer?: AccountAddress<C>): AsyncGenerator<UnsignedTransaction<N, C>>;
+
   /**
    * getCurrentInboundCapacity returns the current inbound capacity of the Ntt manager
    * @param fromChain the chain to check the inbound capacity for
    */
   getCurrentInboundCapacity(fromChain: Chain): Promise<bigint>;
+
+  /**
+   * getInboundLimit returns the maximum inbound capacity of the Ntt manager
+   * @param fromChain the chain to check the inbound limit for
+   */
+  getInboundLimit(fromChain: Chain): Promise<bigint>;
+
+  setInboundLimit(
+    fromChain: Chain,
+    limit: bigint,
+    payer?: AccountAddress<C>
+  ): AsyncGenerator<UnsignedTransaction<N, C>>;
 
   /**
    * getIsApproved returns whether an attestation is approved
@@ -231,6 +284,21 @@ export interface Ntt<N extends Network, C extends Chain> {
     token: TokenAddress<C>,
     payer?: AccountAddress<C>
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
+
+  /**
+   * Given a manager address, the rest of the addresses (token address and
+   * transceiver addresses) can be queried from the manager contract directly.
+   * This method verifies that the addresses that were used to construct the Ntt
+   * instance match the addresses that are stored in the manager contract.
+   *
+   * TODO: perhaps a better way to do this would be by allowing async protocol
+   * initializers so this can be done when constructing the Ntt instance.
+   * That would be a larger change (in the connect sdk) so we do this for now.
+   *
+   * @returns the addresses that don't match the expected addresses, or null if
+   * they all match
+   */
+  verifyAddresses(): Promise<Partial<Ntt.Contracts> | null>;
 }
 
 export interface NttTransceiver<
@@ -238,10 +306,15 @@ export interface NttTransceiver<
   C extends Chain,
   A extends Ntt.Attestation
 > {
+
+  getAddress(): ChainAddress<C>;
+
   /** setPeer sets a peer address for a given chain
    * Note: Admin only
    */
-  setPeer(peer: ChainAddress<Chain>): AsyncGenerator<UnsignedTransaction<N, C>>;
+  setPeer(peer: ChainAddress<Chain>, payer?: AccountAddress<C>): AsyncGenerator<UnsignedTransaction<N, C>>;
+
+  getPeer<C extends Chain>(chain: C): Promise<ChainAddress<C> | null>;
 
   /**
    * receive calls the `receive*` method on the transceiver
