@@ -11,6 +11,7 @@ contract GovernedContract is Ownable {
     error RandomError();
 
     bool public governanceStuffCalled;
+    bool public paused;
 
     function governanceStuff() public onlyOwner {
         governanceStuffCalled = true;
@@ -18,6 +19,10 @@ contract GovernedContract is Ownable {
 
     function governanceRevert() public view onlyOwner {
         revert RandomError();
+    }
+
+    function pause() public onlyOwner {
+        paused = true;
     }
 }
 
@@ -215,4 +220,25 @@ contract GovernanceTest is Test {
 
         assert(myContract.governanceStuffCalled());
     }
+
+    function test_pause_single_guardian() public {
+        // build VAA to call pause
+        // should go through smoothly (requiredQuorum == 1)
+    }
+
+    function test_pause_multi_guardian() public {
+        // hijack vm to overwrite Wormhole Guardian set to be 5 random private keys?
+        // requiredQuorum == 2
+        // build VAA to call pause, sign with 2 Guardians
+        // this should succeed
+    }
+
+    function test_pause_multi_guardian_fail() public {
+        // hijack vm to overwrite Wormhole Guardian set to be 5 random private keys?
+        // requiredQuorum == 2
+        // build VAA to call pause, sign with 1 Guardian
+        // this should fail since it won't hit quorum
+    }
+
+    // copy/paste any other relevant tests from the Wormhole Core Contract 
 }
