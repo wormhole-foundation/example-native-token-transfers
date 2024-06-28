@@ -8,7 +8,12 @@ COPY --from=ntt-solana-contract /usr/src/solana/tsconfig.esm.json solana/tsconfi
 COPY --from=ntt-solana-contract /usr/src/solana/tsconfig.cjs.json solana/tsconfig.cjs.json
 COPY --from=ntt-solana-contract /usr/src/solana/target/idl solana/target/idl
 COPY --from=ntt-solana-contract /usr/src/solana/target/types solana/target/types
+
+COPY --from=ntt-evm-contract ts evm/ts
 COPY --from=ntt-evm-contract . evm/out
+
+RUN rm -rf evm/out/ts
+
 
 COPY . ./ 
 RUN --mount=type=cache,uid=1000,gid=1000,target=/home/node/.npm \

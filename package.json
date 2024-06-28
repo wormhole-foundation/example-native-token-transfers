@@ -30,7 +30,7 @@
   },
   "workspaces": [
     "sdk/definitions",
-    "sdk/evm",
+    "evm/ts",
     "solana",
     "sdk/route",
     "sdk/examples",
