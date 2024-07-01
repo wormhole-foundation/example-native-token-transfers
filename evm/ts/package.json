@@ -37,8 +37,8 @@
     "build": "npm run build:esm && npm run build:cjs",
     "rebuild": "npm run clean && npm run build",
     "clean": "rm -rf ./dist",
-    "generate:test": "typechain --node16-modules --target ethers-v6 --out-dir ethers-ci-contracts '../../evm/out/**/*.json'",
-    "generate:slim": "ABI_VERSION=`tsx scripts/readVersion.ts` && typechain --node16-modules --target ethers-v6 --out-dir src/ethers-contracts/$ABI_VERSION '../../evm/out/?(WormholeTransceiver.sol|NttManager.sol)/*.json'",
+    "generate:test": "typechain --node16-modules --target ethers-v6 --out-dir ethers-ci-contracts '../out/**/*.json'",
+    "generate:slim": "ABI_VERSION=`tsx scripts/readVersion.ts` && typechain --node16-modules --target ethers-v6 --out-dir src/ethers-contracts/$ABI_VERSION '../out/?(WormholeTransceiver.sol|NttManager.sol)/*.json'",
     "generate": "npm run generate:slim",
     "build:contracts": "cd ../.. && make build-evm-prod",
     "test": "jest --config ./jest.config.ts"

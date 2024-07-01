@@ -23,19 +23,19 @@ import solana from "@wormhole-foundation/sdk/platforms/solana";
 
 import { ethers } from "ethers";
 
-import { DummyTokenMintAndBurn__factory } from "../evm/ethers-ci-contracts/factories/DummyToken.sol/DummyTokenMintAndBurn__factory.js";
-import { DummyToken__factory } from "../evm/ethers-ci-contracts/factories/DummyToken.sol/DummyToken__factory.js";
-import { ERC1967Proxy__factory } from "../evm/ethers-ci-contracts/factories/ERC1967Proxy__factory.js";
-import { IWormholeRelayer__factory } from "../evm/ethers-ci-contracts/factories/IWormholeRelayer.sol/IWormholeRelayer__factory.js";
-import { NttManager__factory } from "../evm/ethers-ci-contracts/factories/NttManager__factory.js";
-import { TransceiverStructs__factory } from "../evm/ethers-ci-contracts/factories/TransceiverStructs__factory.js";
-import { TrimmedAmountLib__factory } from "../evm/ethers-ci-contracts/factories/TrimmedAmount.sol/TrimmedAmountLib__factory.js";
-import { WormholeTransceiver__factory } from "../evm/ethers-ci-contracts/factories/WormholeTransceiver__factory.js";
+import { DummyTokenMintAndBurn__factory } from "../../evm/ts/ethers-ci-contracts/factories/DummyToken.sol/DummyTokenMintAndBurn__factory.js";
+import { DummyToken__factory } from "../../evm/ts/ethers-ci-contracts/factories/DummyToken.sol/DummyToken__factory.js";
+import { ERC1967Proxy__factory } from "../../evm/ts/ethers-ci-contracts/factories/ERC1967Proxy__factory.js";
+import { IWormholeRelayer__factory } from "../../evm/ts/ethers-ci-contracts/factories/IWormholeRelayer.sol/IWormholeRelayer__factory.js";
+import { NttManager__factory } from "../../evm/ts/ethers-ci-contracts/factories/NttManager__factory.js";
+import { TransceiverStructs__factory } from "../../evm/ts/ethers-ci-contracts/factories/TransceiverStructs__factory.js";
+import { TrimmedAmountLib__factory } from "../../evm/ts/ethers-ci-contracts/factories/TrimmedAmount.sol/TrimmedAmountLib__factory.js";
+import { WormholeTransceiver__factory } from "../../evm/ts/ethers-ci-contracts/factories/WormholeTransceiver__factory.js";
 
 import solanaTiltKey from "./solana-tilt.json"; // from https://github.com/wormhole-foundation/wormhole/blob/main/solana/keys/solana-devnet.json
 
 import { Ntt } from "../definitions/src/index.js";
-import "../evm/src/index.js";
+import "../../evm/ts/src/index.js";
 import "../../solana/ts/sdk/index.js";
 import { SolanaNtt } from "../../solana/ts/sdk/index.js";
 import { submitAccountantVAA } from "./accountant.js";
