@@ -1,19 +1,15 @@
-# NTT cli
+# NTT cli Installation
 
-To install dependencies:
+Install [bun](https://bun.sh/)
 
-```bash
-bun install --frozen-lockfile
-```
-
-To install `ntt` binary:
+Install `ntt` CLI:
 
 ``` bash
-bun link cli
+curl -fsSL https://raw.githubusercontent.com/wormholelabs-xyz/example-native-token-transfers/cli/cli/install.sh | bash
 ```
 
-To run:
+Verify the NTT CLI is installed:
 
 ```bash
-ntt --help
+ntt --version
 ```
