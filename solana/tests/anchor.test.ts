@@ -48,13 +48,7 @@ async function signSendWait(
 }
 
 const w = new Wormhole("Devnet", [SolanaPlatform], {
-  chains: {
-    Solana: {
-      contracts: {
-        coreBridge: CORE_BRIDGE_ADDRESS,
-      },
-    },
-  },
+  chains: { Solana: { contracts: { coreBridge: CORE_BRIDGE_ADDRESS } } },
 });
 
 const remoteXcvr: ChainAddress = {
