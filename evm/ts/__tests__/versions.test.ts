@@ -1,4 +1,4 @@
-import { Wormhole } from "@wormhole-foundation/sdk-connect";
+import { Wormhole } from "@wormhole-foundation/sdk";
 import { EvmPlatform } from "@wormhole-foundation/sdk-evm";
 import { EvmNtt } from "../src/index.js";
 
