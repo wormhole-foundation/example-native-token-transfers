@@ -6,7 +6,7 @@ import {
   PublicKeyInitData,
   SystemProgram,
 } from "@solana/web3.js";
-import { amount, chainToPlatform } from "@wormhole-foundation/sdk";
+import { amount, chainToPlatform } from "@wormhole-foundation/sdk-base";
 import {
   Chain,
   deserializeLayout,

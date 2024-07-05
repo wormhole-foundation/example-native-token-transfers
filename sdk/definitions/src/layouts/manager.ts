@@ -1,4 +1,4 @@
-import { layoutItems } from "@wormhole-foundation/sdk";
+import { layoutItems } from "@wormhole-foundation/sdk-definitions";
 import {
   CustomizableBytes,
   Layout,

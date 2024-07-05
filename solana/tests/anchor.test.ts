@@ -24,7 +24,7 @@ import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 import * as fs from "fs";
 
 import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
-import { AccountAddress } from "@wormhole-foundation/sdk";
+import { AccountAddress } from "@wormhole-foundation/sdk-definitions";
 import { DummyTransferHook } from "../ts/idl/1_0_0/ts/dummy_transfer_hook.js";
 import { SolanaNtt } from "../ts/sdk/index.js";
 

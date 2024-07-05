@@ -1,4 +1,4 @@
-import { Chain } from "@wormhole-foundation/sdk";
+import { Chain } from "@wormhole-foundation/sdk-base";
 import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
 import { NttRoute } from "@wormhole-foundation/sdk-route-ntt";
 export type NttContracts = {

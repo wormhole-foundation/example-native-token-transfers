@@ -1,4 +1,4 @@
-import { encoding } from "@wormhole-foundation/sdk";
+import { encoding } from "@wormhole-foundation/sdk-base";
 import {
   getWallet,
   getWormchainSigningClient,
