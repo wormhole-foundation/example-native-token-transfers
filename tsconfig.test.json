@@ -5,6 +5,7 @@
     "moduleResolution": "NodeNext",
     "allowUnreachableCode": true,
     "allowUnusedLabels": true,
-    "noUnusedLocals": false
+    "noUnusedLocals": false,
+    "noPropertyAccessFromIndexSignature": false,
   }
 }
