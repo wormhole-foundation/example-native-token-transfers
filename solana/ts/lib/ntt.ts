@@ -23,16 +23,18 @@ import {
 } from "@solana/web3.js";
 import {
   Chain,
-  ChainAddress,
   ChainId,
-  VAA,
   deserializeLayout,
   encoding,
-  keccak256,
   rpc,
   toChain,
   toChainId,
-} from "@wormhole-foundation/sdk-connect";
+} from "@wormhole-foundation/sdk-base";
+import {
+  ChainAddress,
+  VAA,
+  keccak256,
+} from "@wormhole-foundation/sdk-definitions";
 
 import { Ntt } from "@wormhole-foundation/sdk-definitions-ntt";
 

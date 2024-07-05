@@ -1,4 +1,4 @@
-import { registerProtocol } from "@wormhole-foundation/sdk-connect";
+import { registerProtocol } from "@wormhole-foundation/sdk-definitions";
 import { _platform } from "@wormhole-foundation/sdk-solana";
 import { SolanaNtt } from "./ntt.js";
 import "@wormhole-foundation/sdk-definitions-ntt";

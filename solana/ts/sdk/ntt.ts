@@ -11,17 +11,17 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
+
+import { Chain, Network } from "@wormhole-foundation/sdk-base";
 import {
   AccountAddress,
-  Chain,
   ChainAddress,
   ChainsConfig,
   Contracts,
   NativeAddress,
-  Network,
   TokenAddress,
   UnsignedTransaction,
-} from "@wormhole-foundation/sdk-connect";
+} from "@wormhole-foundation/sdk-definitions";
 import {
   Ntt,
   WormholeNttTransceiver,

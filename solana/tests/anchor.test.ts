@@ -14,7 +14,7 @@ import {
   serializePayload,
   signSendWait as ssw,
   AccountAddress,
-} from "@wormhole-foundation/sdk-connect";
+} from "@wormhole-foundation/sdk";
 import * as testing from "@wormhole-foundation/sdk-definitions/testing";
 import {
   SolanaAddress,
