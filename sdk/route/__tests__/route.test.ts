@@ -5,17 +5,15 @@ import {
   routes,
 } from "@wormhole-foundation/sdk-connect";
 
-import * as testing from "@wormhole-foundation/sdk-definitions/testing";
-
 import "@wormhole-foundation/sdk-definitions-ntt";
 import "@wormhole-foundation/sdk-evm-ntt";
 import "@wormhole-foundation/sdk-solana-ntt";
 
 import { EvmPlatform } from "@wormhole-foundation/sdk-evm";
 import { SolanaPlatform } from "@wormhole-foundation/sdk-solana";
+import { nttAutomaticRoute } from "../src/automatic.js";
 import { nttManualRoute } from "../src/manual.js";
 import { NttRoute } from "../src/types.js";
-import { nttAutomaticRoute } from "../src/automatic.js";
 
 const SOL_TOKEN = "EetppHswYvV1jjRWoQKC1hejdeBDHR9NNzNtCyRQfrrQ";
 const SEPOLIA_TOKEN = "0x738141EFf659625F2eAD4feECDfCD94155C67f18";
@@ -92,14 +90,12 @@ describe("Manual Route Tests", function () {
   let found: routes.ManualRoute<Network>;
   it("Should resolve a given route request", async function () {
     const request = await routes.RouteTransferRequest.create(wh, {
-      from: testing.utils.makeChainAddress("Solana"),
-      to: testing.utils.makeChainAddress("Sepolia"),
       source: Wormhole.tokenId("Solana", SOL_TOKEN),
       destination: Wormhole.tokenId("Sepolia", SEPOLIA_TOKEN),
     });
     const foundRoutes = await resolver.findRoutes(request);
     expect(foundRoutes).toHaveLength(1);
-    expect(foundRoutes[0]!.request.from.chain).toEqual("Solana");
+    expect(foundRoutes[0]!.request.fromChain.chain).toEqual("Solana");
 
     const rt = foundRoutes[0]!;
     if (!routes.isManual(rt)) throw new Error("Expected manual route");
@@ -185,14 +181,12 @@ describe("Automatic Route Tests", function () {
   let found: routes.AutomaticRoute<Network>;
   it("Should resolve a given route request", async function () {
     const request = await routes.RouteTransferRequest.create(wh, {
-      from: testing.utils.makeChainAddress("Solana"),
-      to: testing.utils.makeChainAddress("Sepolia"),
       source: Wormhole.tokenId("Solana", SOL_TOKEN),
       destination: Wormhole.tokenId("Sepolia", SEPOLIA_TOKEN),
     });
     const foundRoutes = await resolver.findRoutes(request);
     expect(foundRoutes).toHaveLength(1);
-    expect(foundRoutes[0]!.request.from.chain).toEqual("Solana");
+    expect(foundRoutes[0]!.request.fromChain.chain).toEqual("Solana");
 
     const rt = foundRoutes[0]!;
     if (!routes.isAutomatic(rt)) throw new Error("Expected automatic route");
