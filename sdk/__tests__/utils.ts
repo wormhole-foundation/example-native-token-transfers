@@ -17,7 +17,7 @@ import {
   serialize,
   signSendWait as ssw,
   toChainId,
-} from "@wormhole-foundation/sdk";
+} from "@wormhole-foundation/sdk-connect";
 import evm from "@wormhole-foundation/sdk/platforms/evm";
 import solana from "@wormhole-foundation/sdk/platforms/solana";
 

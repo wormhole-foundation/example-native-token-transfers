@@ -1,17 +1,19 @@
 import {
-  AccountAddress,
   Chain,
+  Network,
+  nativeChainIds,
+  toChainId,
+} from "@wormhole-foundation/sdk-base";
+import {
+  AccountAddress,
   ChainAddress,
   ChainsConfig,
   Contracts,
-  Network,
   TokenAddress,
   VAA,
-  nativeChainIds,
   serialize,
-  toChainId,
   universalAddress,
-} from "@wormhole-foundation/sdk-connect";
+} from "@wormhole-foundation/sdk-definitions";
 import type { EvmChains, EvmPlatformType } from "@wormhole-foundation/sdk-evm";
 import {
   EvmAddress,

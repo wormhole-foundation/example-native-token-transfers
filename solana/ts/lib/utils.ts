@@ -1,11 +1,13 @@
+import { BN } from "@coral-xyz/anchor";
+import { PublicKey, PublicKeyInitData } from "@solana/web3.js";
 import {
+  Chain,
+  ChainId,
   CustomConversion,
   Layout,
   encoding,
+  toChainId,
 } from "@wormhole-foundation/sdk-base";
-import { BN } from "@coral-xyz/anchor";
-import { PublicKey, PublicKeyInitData } from "@solana/web3.js";
-import { Chain, ChainId, toChainId } from "@wormhole-foundation/sdk-connect";
 
 export const BPF_LOADER_UPGRADEABLE_PROGRAM_ID = new PublicKey(
   "BPFLoaderUpgradeab1e11111111111111111111111"

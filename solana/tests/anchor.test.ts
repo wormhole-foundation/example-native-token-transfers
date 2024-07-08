@@ -13,7 +13,8 @@ import {
   serialize,
   serializePayload,
   signSendWait as ssw,
-} from "@wormhole-foundation/sdk-connect";
+  AccountAddress,
+} from "@wormhole-foundation/sdk";
 import * as testing from "@wormhole-foundation/sdk-definitions/testing";
 import {
   SolanaAddress,
@@ -24,7 +25,6 @@ import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 import * as fs from "fs";
 
 import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
-import { AccountAddress } from "@wormhole-foundation/sdk";
 import { DummyTransferHook } from "../ts/idl/1_0_0/ts/dummy_transfer_hook.js";
 import { SolanaNtt } from "../ts/sdk/index.js";
 
@@ -48,13 +48,7 @@ async function signSendWait(
 }
 
 const w = new Wormhole("Devnet", [SolanaPlatform], {
-  chains: {
-    Solana: {
-      contracts: {
-        coreBridge: CORE_BRIDGE_ADDRESS,
-      },
-    },
-  },
+  chains: { Solana: { contracts: { coreBridge: CORE_BRIDGE_ADDRESS } } },
 });
 
 const remoteXcvr: ChainAddress = {

@@ -1,6 +1,7 @@
 import {
   AttestedTransferReceipt,
   Chain,
+  ChainAddress,
   ChainContext,
   CompletedTransferReceipt,
   Network,
@@ -100,7 +101,7 @@ export class NttAutomaticRoute<N extends Network>
       ntt: nttContracts,
     });
 
-    return ntt.isRelayingAvailable(this.request.to.chain);
+    return ntt.isRelayingAvailable(this.request.toChain.chain);
   }
 
   async validate(params: Tp): Promise<Vr> {
@@ -172,9 +173,9 @@ export class NttAutomaticRoute<N extends Network>
     };
   }
 
-  async initiate(signer: Signer, quote: Q): Promise<R> {
+  async initiate(signer: Signer, quote: Q, to: ChainAddress): Promise<R> {
     const { params } = quote;
-    const { fromChain, from, to } = this.request;
+    const { fromChain } = this.request;
     const sender = Wormhole.parseAddress(signer.chain(), signer.address());
 
     const ntt = await fromChain.getProtocol("Ntt", {
@@ -190,7 +191,7 @@ export class NttAutomaticRoute<N extends Network>
     const txids = await signSendWait(fromChain, initXfer, signer);
 
     return {
-      from: from.chain,
+      from: fromChain.chain,
       to: to.chain,
       state: TransferState.SourceInitiated,
       originTxs: txids,

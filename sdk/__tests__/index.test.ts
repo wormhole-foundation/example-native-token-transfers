@@ -1,4 +1,4 @@
-import { Chain } from "@wormhole-foundation/sdk";
+import { Chain } from "@wormhole-foundation/sdk-base";
 import { deploy, link, transferWithChecks, wh } from "./utils.js";
 import { submitAccountantVAA } from "./accountant.js";
 
