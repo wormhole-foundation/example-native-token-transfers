@@ -283,16 +283,15 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     contracts: Contracts & { ntt: Ntt.Contracts },
     sender?: AccountAddress<SolanaChains>
   ): Promise<IdlVersion> {
-    // TODO: what? the try catch doesn't seem to work. it's not catching the error
     try {
-      return NTT.getVersion(
+      return await NTT.getVersion(
         connection,
         new PublicKey(contracts.ntt.manager!),
         sender ? new SolanaAddress(sender).unwrap() : undefined
       );
     } catch (e) {
+      // This might happen if e.g. the program is not deployed yet.
       const version = "2.0.0"
-      console.error(`Failed to get NTT version. Defaulting to ${version}`);
       return version;
     }
   }
