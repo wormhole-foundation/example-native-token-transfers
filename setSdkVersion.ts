@@ -20,6 +20,15 @@ function updateVersionInPackageJson(
     );
   }
 
+  if (packageJson.peerDependencies) {
+    packageJson.peerDependencies = Object.fromEntries(
+      Object.entries(packageJson.peerDependencies).map((entry) => {
+        const [k, v] = entry as [string, string];
+        return [k, packagesInWorkspace.includes(k) ? `${version}` : v];
+      })
+    );
+  }
+
   fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
 }
 
