@@ -184,8 +184,11 @@ export namespace NTT {
     const program = getNttProgram(connection, programId.toString(), "1.0.0");
 
     const ix = await program.methods.version().accountsStrict({}).instruction();
-    const { blockhash } =
-      await program.provider.connection.getLatestBlockhash();
+    // Since we don't need the very very very latest blockhash, using finalized
+    // ensures the blockhash will be found when we immediately simulate the tx
+    const { blockhash } = await program.provider.connection.getLatestBlockhash(
+      "finalized"
+    );
     const msg = new TransactionMessage({
       payerKey: sender,
       recentBlockhash: blockhash,
