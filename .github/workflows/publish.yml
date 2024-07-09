@@ -34,7 +34,7 @@ jobs:
 
           npm publish --access public --tag $tag \
             --workspace sdk/definitions \
-            --workspace sdk/evm \
+            --workspace evm/ts \
             --workspace solana \
             --workspace sdk/route
         env:
