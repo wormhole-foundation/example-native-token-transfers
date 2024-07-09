@@ -5,6 +5,7 @@ import {
   AddressLookupTableAccount,
   Connection,
   Keypair,
+  LAMPORTS_PER_SOL,
   PublicKey,
   SystemProgram,
   Transaction,
@@ -391,7 +392,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         payerAddress,
         outboxItem.publicKey,
         destination.chain,
-        Number(fee),
+        Number(fee) / LAMPORTS_PER_SOL,
         // Note: quoter expects gas dropoff to be in terms of gwei
         Number(options.gasDropoff ?? 0n) / WEI_PER_GWEI
       );
