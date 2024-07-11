@@ -62,15 +62,29 @@ export namespace NttRoute {
     normalizedParams: NormalizedParams;
   }
 
-  export type AttestationReceipt = {
+  export type ManualAttestationReceipt = {
     id: WormholeMessageId;
     attestation: VAA<"Ntt:WormholeTransfer">;
   };
 
-  export type TransferReceipt<
+  export type AutomaticAttestationReceipt = {
+    id: WormholeMessageId;
+    attestation:
+      | VAA<"Ntt:WormholeTransfer">
+      | VAA<"Ntt:WormholeTransferStandardRelayer">;
+  };
+
+  export type ManualTransferReceipt<
     SC extends Chain = Chain,
     DC extends Chain = Chain
-  > = _TransferReceipt<AttestationReceipt, SC, DC> & {
+  > = _TransferReceipt<ManualAttestationReceipt, SC, DC> & {
+    params: ValidatedParams;
+  };
+
+  export type AutomaticTransferReceipt<
+    SC extends Chain = Chain,
+    DC extends Chain = Chain
+  > = _TransferReceipt<AutomaticAttestationReceipt, SC, DC> & {
     params: ValidatedParams;
   };
 

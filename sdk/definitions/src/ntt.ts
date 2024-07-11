@@ -12,8 +12,8 @@ import {
   EmptyPlatformMap,
   ProtocolPayload,
   ProtocolVAA,
-  TokenAddress,
   UnsignedTransaction,
+  VAA,
   keccak256,
 } from "@wormhole-foundation/sdk-definitions";
 
@@ -62,7 +62,9 @@ export namespace Ntt {
   // TODO: what are the set of attestation types for Ntt?
   // can we know this ahead of time or does it need to be
   // flexible enough for folks to add their own somehow?
-  export type Attestation = any;
+  export type Attestation =
+    | VAA<"Ntt:WormholeTransfer">
+    | VAA<"Ntt:WormholeTransferStandardRelayer">;
 
   /**
    * InboundQueuedTransfer is a queued transfer from another chain
@@ -220,15 +222,13 @@ export interface Ntt<N extends Network, C extends Chain> {
   ): Promise<Ntt.InboundQueuedTransfer<C> | null>;
   /**
    * completeInboundQueuedTransfer completes an inbound queued transfer
-   * @param transceiverMessage the transceiver message
-   * @param token the token to transfer
    * @param fromChain the chain the transfer is from
+   * @param transceiverMessage the transceiver message
    * @param payer the address to pay for the transfer
    */
   completeInboundQueuedTransfer(
     fromChain: Chain,
     transceiverMessage: Ntt.Message,
-    token: TokenAddress<C>,
     payer?: AccountAddress<C>
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
 }
@@ -256,7 +256,10 @@ export interface NttTransceiver<
 }
 
 export namespace WormholeNttTransceiver {
-  const _payloads = ["WormholeTransfer"] as const;
+  const _payloads = [
+    "WormholeTransfer",
+    "WormholeTransferStandardRelayer",
+  ] as const;
   export type PayloadNames = (typeof _payloads)[number];
   export type VAA<PayloadName extends PayloadNames = PayloadNames> =
     ProtocolVAA<Ntt.ProtocolName, PayloadName>;

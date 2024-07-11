@@ -67,7 +67,7 @@ export const TEST_NTT_SPL22_TOKENS: NttContracts = {
 // Reformat NTT contracts to fit TokenConfig for Route
 function reformat(contracts: NttContracts) {
   return Object.entries(TEST_NTT_TOKENS).map(([chain, contracts]) => {
-    const { token, manager, transceiver: xcvrs, quoter } = contracts;
+    const { token, manager, transceiver: xcvrs, quoter } = contracts!;
     const transceiver = Object.entries(xcvrs).map(([k, v]) => {
       return { type: k as NttRoute.TransceiverType, address: v };
     });

@@ -30,7 +30,7 @@ type Vp = NttRoute.ValidatedParams;
 type QR = routes.QuoteResult<Op, Vp>;
 type Q = routes.Quote<Op, Vp>;
 
-type R = NttRoute.TransferReceipt;
+type R = NttRoute.ManualTransferReceipt;
 
 export function nttManualRoute(config: NttRoute.Config) {
   class NttRouteImpl<N extends Network> extends NttManualRoute<N> {
@@ -91,14 +91,17 @@ export class NttManualRoute<N extends Network>
     return NttRoute.ManualOptions;
   }
 
-  async validate(params: Tp): Promise<Vr> {
+  async validate(
+    request: routes.RouteTransferRequest<N>,
+    params: Tp
+  ): Promise<Vr> {
     const options = params.options ?? this.getDefaultOptions();
 
-    const amt = amount.parse(params.amount, this.request.source.decimals);
+    const amt = amount.parse(params.amount, request.source.decimals);
     const gasDropoff = amount.units(
       amount.parse(
         options.gasDropoff ?? "0.0",
-        this.request.toChain.config.nativeTokenDecimals
+        request.toChain.config.nativeTokenDecimals
       )
     );
 
@@ -108,11 +111,11 @@ export class NttManualRoute<N extends Network>
         amount: amt,
         sourceContracts: NttRoute.resolveNttContracts(
           this.staticConfig,
-          this.request.source.id
+          request.source.id
         ),
         destinationContracts: NttRoute.resolveNttContracts(
           this.staticConfig,
-          this.request.destination.id
+          request.destination.id
         ),
         options: {
           queue: false,
@@ -125,24 +128,32 @@ export class NttManualRoute<N extends Network>
     return { valid: true, params: validatedParams };
   }
 
-  async quote(params: Vp): Promise<QR> {
+  async quote(
+    request: routes.RouteTransferRequest<N>,
+    params: Vp
+  ): Promise<QR> {
     return {
       success: true,
       params,
       sourceToken: {
-        token: this.request.source.id,
+        token: request.source.id,
         amount: params.normalizedParams.amount,
       },
       destinationToken: {
-        token: this.request.destination.id,
-        amount: amount.parse(params.amount, this.request.destination.decimals),
+        token: request.destination.id,
+        amount: amount.parse(params.amount, request.destination.decimals),
       },
     };
   }
 
-  async initiate(signer: Signer, quote: Q, to: ChainAddress): Promise<R> {
+  async initiate(
+    request: routes.RouteTransferRequest<N>,
+    signer: Signer,
+    quote: Q,
+    to: ChainAddress
+  ): Promise<R> {
     const { params } = quote;
-    const { fromChain } = this.request;
+    const { fromChain } = request;
     const sender = Wormhole.parseAddress(signer.chain(), signer.address());
 
     const ntt = await fromChain.getProtocol("Ntt", {
@@ -173,7 +184,7 @@ export class NttManualRoute<N extends Network>
       );
     }
 
-    const { toChain } = this.request;
+    const toChain = this.wh.getChain(receipt.to);
     const ntt = await toChain.getProtocol("Ntt", {
       ntt: receipt.params.normalizedParams.destinationContracts,
     });
@@ -196,15 +207,16 @@ export class NttManualRoute<N extends Network>
       attestation: { attestation: vaa },
     } = receipt;
 
-    const { toChain } = this.request;
+    const toChain = this.wh.getChain(receipt.to);
     const ntt = await toChain.getProtocol(
       "Ntt",
       receipt.params.normalizedParams.destinationContracts
     );
+    const sender = Wormhole.chainAddress(signer.chain(), signer.address());
     const completeTransfer = ntt.completeInboundQueuedTransfer(
       toChain.chain,
       vaa.payload["nttManagerPayload"],
-      this.request.destination.id.address
+      sender.address
     );
     const finalizeTxids = await signSendWait(toChain, completeTransfer, signer);
     return {
@@ -233,12 +245,12 @@ export class NttManualRoute<N extends Network>
           id: msgId,
           attestation: vaa,
         },
-      } satisfies AttestedTransferReceipt<NttRoute.AttestationReceipt> as R;
+      } satisfies AttestedTransferReceipt<NttRoute.ManualAttestationReceipt> as R;
 
       yield receipt;
     }
 
-    const { toChain } = this.request;
+    const toChain = this.wh.getChain(receipt.to);
     const ntt = await toChain.getProtocol("Ntt", {
       ntt: receipt.params.normalizedParams.destinationContracts,
     });
@@ -253,7 +265,7 @@ export class NttManualRoute<N extends Network>
           ...receipt,
           state: TransferState.DestinationInitiated,
           // TODO: check for destination event transactions to get dest Txids
-        } satisfies RedeemedTransferReceipt<NttRoute.AttestationReceipt>;
+        } satisfies RedeemedTransferReceipt<NttRoute.ManualAttestationReceipt>;
         yield receipt;
       }
     }
@@ -267,7 +279,7 @@ export class NttManualRoute<N extends Network>
         receipt = {
           ...receipt,
           state: TransferState.DestinationFinalized,
-        } satisfies CompletedTransferReceipt<NttRoute.AttestationReceipt>;
+        } satisfies CompletedTransferReceipt<NttRoute.ManualAttestationReceipt>;
         yield receipt;
       }
     }

@@ -9,8 +9,6 @@ import {
   ChainAddress,
   ChainsConfig,
   Contracts,
-  TokenAddress,
-  VAA,
   serialize,
   universalAddress,
 } from "@wormhole-foundation/sdk-definitions";
@@ -143,19 +141,30 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     return enabled.filter((x) => x).length > 0;
   }
 
-  getIsExecuted(attestation: Ntt.Attestation): Promise<boolean> {
-    const { emitterChain: chain, payload } =
-      attestation as VAA<"Ntt:WormholeTransfer">;
-    return this.manager.isMessageExecuted(
-      Ntt.messageDigest(chain, payload["nttManagerPayload"])
+  async getIsExecuted(attestation: Ntt.Attestation): Promise<boolean> {
+    const payload =
+      attestation.payloadName === "WormholeTransfer"
+        ? attestation.payload
+        : attestation.payload.payload;
+    const isExecuted = await this.manager.isMessageExecuted(
+      Ntt.messageDigest(attestation.emitterChain, payload["nttManagerPayload"])
     );
+    if (!isExecuted) return false;
+    // Also check that the transfer is not queued for it to be considered complete
+    const queued = await this.getInboundQueuedTransfer(
+      attestation.emitterChain,
+      payload["nttManagerPayload"]
+    );
+    return queued === null;
   }
 
   getIsApproved(attestation: Ntt.Attestation): Promise<boolean> {
-    const { emitterChain: chain, payload } =
-      attestation as VAA<"Ntt:WormholeTransfer">;
+    const payload =
+      attestation.payloadName === "WormholeTransfer"
+        ? attestation.payload
+        : attestation.payload.payload;
     return this.manager.isMessageApproved(
-      Ntt.messageDigest(chain, payload["nttManagerPayload"])
+      Ntt.messageDigest(attestation.emitterChain, payload["nttManagerPayload"])
     );
   }
 
@@ -311,7 +320,13 @@ export class EvmNtt<N extends Network, C extends EvmChains>
 
     for (const idx in this.xcvrs) {
       const xcvr = this.xcvrs[idx]!;
-      yield* xcvr.receive(attestations[idx]);
+      const attestation = attestations[idx];
+      if (attestation?.payloadName !== "WormholeTransfer") {
+        // TODO: support standard relayer attestations
+        // which must be submitted to the delivery provider
+        throw new Error("Invalid attestation type for redeem");
+      }
+      yield* xcvr.receive(attestation);
     }
   }
 
@@ -349,7 +364,6 @@ export class EvmNtt<N extends Network, C extends EvmChains>
   async *completeInboundQueuedTransfer(
     fromChain: Chain,
     transceiverMessage: Ntt.Message,
-    token: TokenAddress<C>,
     payer?: AccountAddress<C>
   ) {
     const tx = await this.manager.completeInboundQueuedTransfer(

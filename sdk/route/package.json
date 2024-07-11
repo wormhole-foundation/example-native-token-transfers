@@ -45,16 +45,15 @@
     "ts-node": "^10.9.2"
   },
   "dependencies": {
+    "@wormhole-foundation/sdk-connect": "0.8.0-beta.0",
     "@wormhole-foundation/sdk-definitions-ntt": "0.1.0-beta.0",
-    "@wormhole-foundation/sdk-solana-ntt": "0.1.0-beta.0",
     "@wormhole-foundation/sdk-evm-ntt": "0.1.0-beta.0",
-    "@wormhole-foundation/sdk-connect": "^0.7"
+    "@wormhole-foundation/sdk-solana-ntt": "0.1.0-beta.0"
   },
   "peerDependencies": {
-    "@wormhole-foundation/sdk-connect": "^0.7",
     "@wormhole-foundation/sdk-definitions-ntt": "0.1.0-beta.0",
-    "@wormhole-foundation/sdk-solana-ntt": "0.1.0-beta.0",
-    "@wormhole-foundation/sdk-evm-ntt": "0.1.0-beta.0"
+    "@wormhole-foundation/sdk-evm-ntt": "0.1.0-beta.0",
+    "@wormhole-foundation/sdk-solana-ntt": "0.1.0-beta.0"
   },
   "type": "module",
   "exports": {
