@@ -14,9 +14,9 @@
     "test": "tests"
   },
   "license": "Apache-2.0",
-  "main": "./dist/cjs/index.js",
-  "types": "./dist/cjs/index.d.ts",
-  "module": "./dist/esm/index.js",
+  "main": "./dist/cjs/ts/index.js",
+  "types": "./dist/cjs/ts/index.d.ts",
+  "module": "./dist/esm/ts/index.js",
   "description": "NTT SDK for Solana",
   "files": [
     "dist/esm",
