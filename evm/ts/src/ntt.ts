@@ -300,10 +300,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
         this.managerAddress,
         amount
       );
-      yield this.createUnsignedTx(
-        addFrom(txReq, senderAddress),
-        "TokenBridge.Approve"
-      );
+      yield this.createUnsignedTx(addFrom(txReq, senderAddress), "Ntt.Approve");
     }
 
     const receiver = universalAddress(destination);
