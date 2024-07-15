@@ -1505,8 +1505,8 @@ async function checkSolanaBinary(binary: string, wormhole: string, providedProgr
     const wormholeHex = new PublicKey(wormhole).toBuffer().toString("hex");
     const providedProgramIdHex = new PublicKey(providedProgramId).toBuffer().toString("hex");
 
-    execSync(`xxd -p ${binary} | tr -d '\\n' | grep ${wormholeHex}`);
-    execSync(`xxd -p ${binary} | tr -d '\\n' | grep ${providedProgramIdHex}`);
+    execSync(`xxd -p ${binary} | tr -d '\n' | grep ${wormholeHex}`);
+    execSync(`xxd -p ${binary} | tr -d '\n' | grep ${providedProgramIdHex}`);
 
 }
 
