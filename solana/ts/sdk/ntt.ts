@@ -545,6 +545,11 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     return BigInt(rl.rateLimit.capacityAtLastTx.toString());
   }
 
+  async getRateLimitDuration(): Promise<bigint> {
+    // The rate limit duration is hardcoded to 24 hours on Solana
+    return BigInt(24 * 60 * 60);
+  }
+
   async getIsExecuted(attestation: Ntt.Attestation): Promise<boolean> {
     if (attestation.payloadName !== "WormholeTransfer") return false;
     const payload = attestation.payload["nttManagerPayload"];

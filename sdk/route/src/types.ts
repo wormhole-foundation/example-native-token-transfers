@@ -167,4 +167,15 @@ export namespace NttRoute {
     }
     throw new Error("Cannot find Ntt contracts in config for: " + address);
   }
+
+  // returns true if the amount is greater than 95% of the capacity
+  // useful for warning about the possibility of a transfer being queued
+  export function isCapacityThresholdExceeded(
+    amount: bigint,
+    capacity: bigint
+  ): boolean {
+    const threshold = (capacity * 95n) / 100n;
+    console.log(amount, threshold, amount > threshold);
+    return amount > threshold;
+  }
 }

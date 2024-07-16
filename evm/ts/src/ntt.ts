@@ -98,7 +98,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     readonly chain: C,
     readonly provider: Provider,
     readonly contracts: Contracts & { ntt?: Ntt.Contracts },
-    readonly version: string = "default"
+    readonly version: string = "1.0.0"
   ) {
     if (!contracts.ntt) throw new Error("No Ntt Contracts provided");
 
@@ -366,9 +366,10 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     transceiverMessage: Ntt.Message,
     payer?: AccountAddress<C>
   ) {
-    const tx = await this.manager.completeInboundQueuedTransfer(
-      Ntt.messageDigest(fromChain, transceiverMessage)
-    );
+    const tx =
+      await this.manager.completeInboundQueuedTransfer.populateTransaction(
+        Ntt.messageDigest(fromChain, transceiverMessage)
+      );
     yield this.createUnsignedTx(tx, "Ntt.completeInboundQueuedTransfer");
   }
 

@@ -116,6 +116,31 @@ export namespace Ntt {
       )
     );
   }
+
+  // Checks for compatibility between the Contract version in use on chain,
+  // and the ABI version the SDK has. Major version must match, minor version on chain
+  // should be gte SDK's ABI version.
+  //
+  // For example, if the contract is using 1.1.0, we would use 1.0.0 but not 1.2.0.
+  export function abiVersionMatches(
+    targetVersion: string,
+    abiVersion: string
+  ): boolean {
+    const parseVersion = (version: string) => {
+      // allow optional tag on patch version
+      const versionRegex = /^(\d+)\.(\d+)\.(.*)$/;
+      const match = version.match(versionRegex);
+      if (!match) {
+        throw new Error(`Invalid version format: ${version}`);
+      }
+      const [, major, minor, patchAndTag] = match;
+      return { major: Number(major), minor: Number(minor), patchAndTag };
+    };
+    const { major: majorTarget, minor: minorTarget } =
+      parseVersion(targetVersion);
+    const { major: majorAbi, minor: minorAbi } = parseVersion(abiVersion);
+    return majorTarget === majorAbi && minorTarget >= minorAbi;
+  }
 }
 
 /**
@@ -193,6 +218,11 @@ export interface Ntt<N extends Network, C extends Chain> {
    * @param fromChain the chain to check the inbound capacity for
    */
   getCurrentInboundCapacity(fromChain: Chain): Promise<bigint>;
+
+  /**
+   * getRateLimitDuration returns the duration of the rate limit for queued transfers in seconds
+   */
+  getRateLimitDuration(): Promise<bigint>;
 
   /**
    * getIsApproved returns whether an attestation is approved

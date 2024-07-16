@@ -4,6 +4,7 @@ import {
   ChainAddress,
   ChainContext,
   CompletedTransferReceipt,
+  DestinationQueuedTransferReceipt,
   Network,
   RedeemedTransferReceipt,
   Signer,
@@ -14,6 +15,7 @@ import {
   amount,
   chainToPlatform,
   isAttested,
+  isDestinationQueued,
   isRedeemed,
   isSourceFinalized,
   isSourceInitiated,
@@ -155,7 +157,7 @@ export class NttAutomaticRoute<N extends Network>
       params.normalizedParams.options
     );
 
-    return {
+    const result: QR = {
       success: true,
       params,
       sourceToken: {
@@ -178,6 +180,28 @@ export class NttAutomaticRoute<N extends Network>
         toChain.config.nativeTokenDecimals
       ),
     };
+    const dstNtt = await toChain.getProtocol("Ntt", {
+      ntt: params.normalizedParams.destinationContracts,
+    });
+    const duration = await dstNtt.getRateLimitDuration();
+    if (duration > 0n) {
+      const capacity = await dstNtt.getCurrentInboundCapacity(fromChain.chain);
+      const dstAmount = amount.parse(
+        params.amount,
+        request.destination.decimals
+      );
+      if (
+        NttRoute.isCapacityThresholdExceeded(amount.units(dstAmount), capacity)
+      ) {
+        result.warnings = [
+          {
+            type: "DestinationCapacityWarning",
+            delayDurationSec: Number(duration),
+          },
+        ];
+      }
+    }
+    return result;
   }
 
   async initiate(
@@ -208,6 +232,41 @@ export class NttAutomaticRoute<N extends Network>
       state: TransferState.SourceInitiated,
       originTxs: txids,
       params,
+    };
+  }
+
+  // Even though this is an automatic route, the transfer may need to be
+  // manually finalized if it was queued
+  async finalize(signer: Signer, receipt: R): Promise<R> {
+    if (!isDestinationQueued(receipt)) {
+      throw new Error(
+        "The transfer must be destination queued in order to finalize"
+      );
+    }
+
+    const {
+      attestation: { attestation: vaa },
+    } = receipt;
+
+    const toChain = this.wh.getChain(receipt.to);
+    const ntt = await toChain.getProtocol("Ntt", {
+      ntt: receipt.params.normalizedParams.destinationContracts,
+    });
+    const sender = Wormhole.chainAddress(signer.chain(), signer.address());
+    const payload =
+      vaa.payloadName === "WormholeTransfer"
+        ? vaa.payload
+        : vaa.payload.payload;
+    const completeTransfer = ntt.completeInboundQueuedTransfer(
+      receipt.from,
+      payload["nttManagerPayload"],
+      sender.address
+    );
+    const finalizeTxids = await signSendWait(toChain, completeTransfer, signer);
+    return {
+      ...receipt,
+      state: TransferState.DestinationFinalized,
+      destinationTxs: [...(receipt.destinationTxs ?? []), ...finalizeTxids],
     };
   }
 
@@ -264,12 +323,29 @@ export class NttAutomaticRoute<N extends Network>
       }
     }
 
-    if (isRedeemed(receipt)) {
+    if (isRedeemed(receipt) || isDestinationQueued(receipt)) {
       const {
         attestation: { attestation: vaa },
       } = receipt;
 
-      if (await ntt.getIsExecuted(vaa)) {
+      const payload =
+        vaa.payloadName === "WormholeTransfer"
+          ? vaa.payload
+          : vaa.payload.payload;
+      const queuedTransfer = await ntt.getInboundQueuedTransfer(
+        vaa.emitterChain,
+        payload["nttManagerPayload"]
+      );
+      if (queuedTransfer !== null) {
+        receipt = {
+          ...receipt,
+          state: TransferState.DestinationQueued,
+          queueReleaseTime: new Date(
+            queuedTransfer.rateLimitExpiryTimestamp * 1000
+          ),
+        } satisfies DestinationQueuedTransferReceipt<NttRoute.AutomaticAttestationReceipt>;
+        yield receipt;
+      } else if (await ntt.getIsExecuted(vaa)) {
         receipt = {
           ...receipt,
           state: TransferState.DestinationFinalized,

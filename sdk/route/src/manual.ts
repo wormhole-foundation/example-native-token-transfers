@@ -4,6 +4,7 @@ import {
   ChainAddress,
   ChainContext,
   CompletedTransferReceipt,
+  DestinationQueuedTransferReceipt,
   Network,
   RedeemedTransferReceipt,
   Signer,
@@ -13,6 +14,7 @@ import {
   WormholeMessageId,
   amount,
   isAttested,
+  isDestinationQueued,
   isRedeemed,
   isSourceFinalized,
   isSourceInitiated,
@@ -132,7 +134,7 @@ export class NttManualRoute<N extends Network>
     request: routes.RouteTransferRequest<N>,
     params: Vp
   ): Promise<QR> {
-    return {
+    const result: QR = {
       success: true,
       params,
       sourceToken: {
@@ -144,6 +146,29 @@ export class NttManualRoute<N extends Network>
         amount: amount.parse(params.amount, request.destination.decimals),
       },
     };
+    const { fromChain, toChain } = request;
+    const dstNtt = await toChain.getProtocol("Ntt", {
+      ntt: params.normalizedParams.destinationContracts,
+    });
+    const duration = await dstNtt.getRateLimitDuration();
+    if (duration > 0n) {
+      const capacity = await dstNtt.getCurrentInboundCapacity(fromChain.chain);
+      const dstAmount = amount.parse(
+        params.amount,
+        request.destination.decimals
+      );
+      if (
+        NttRoute.isCapacityThresholdExceeded(amount.units(dstAmount), capacity)
+      ) {
+        result.warnings = [
+          {
+            type: "DestinationCapacityWarning",
+            delayDurationSec: Number(duration),
+          },
+        ];
+      }
+    }
+    return result;
   }
 
   async initiate(
@@ -200,21 +225,23 @@ export class NttManualRoute<N extends Network>
   }
 
   async finalize(signer: Signer, receipt: R): Promise<R> {
-    if (!isRedeemed(receipt))
-      throw new Error("The transfer must be redeemed in order to finalize");
+    if (!isDestinationQueued(receipt)) {
+      throw new Error(
+        "The transfer must be destination queued in order to finalize"
+      );
+    }
 
     const {
       attestation: { attestation: vaa },
     } = receipt;
 
     const toChain = this.wh.getChain(receipt.to);
-    const ntt = await toChain.getProtocol(
-      "Ntt",
-      receipt.params.normalizedParams.destinationContracts
-    );
+    const ntt = await toChain.getProtocol("Ntt", {
+      ntt: receipt.params.normalizedParams.destinationContracts,
+    });
     const sender = Wormhole.chainAddress(signer.chain(), signer.address());
     const completeTransfer = ntt.completeInboundQueuedTransfer(
-      toChain.chain,
+      receipt.from,
       vaa.payload["nttManagerPayload"],
       sender.address
     );
@@ -270,12 +297,25 @@ export class NttManualRoute<N extends Network>
       }
     }
 
-    if (isRedeemed(receipt)) {
+    if (isRedeemed(receipt) || isDestinationQueued(receipt)) {
       const {
         attestation: { attestation: vaa },
       } = receipt;
 
-      if (await ntt.getIsExecuted(vaa)) {
+      const queuedTransfer = await ntt.getInboundQueuedTransfer(
+        vaa.emitterChain,
+        vaa.payload["nttManagerPayload"]
+      );
+      if (queuedTransfer !== null) {
+        receipt = {
+          ...receipt,
+          state: TransferState.DestinationQueued,
+          queueReleaseTime: new Date(
+            queuedTransfer.rateLimitExpiryTimestamp * 1000
+          ),
+        } satisfies DestinationQueuedTransferReceipt<NttRoute.ManualAttestationReceipt>;
+        yield receipt;
+      } else if (await ntt.getIsExecuted(vaa)) {
         receipt = {
           ...receipt,
           state: TransferState.DestinationFinalized,
