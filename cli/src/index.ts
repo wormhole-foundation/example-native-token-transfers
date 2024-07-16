@@ -1505,9 +1505,23 @@ async function checkSolanaBinary(binary: string, wormhole: string, providedProgr
     const wormholeHex = new PublicKey(wormhole).toBuffer().toString("hex");
     const providedProgramIdHex = new PublicKey(providedProgramId).toBuffer().toString("hex");
 
-    execSync(`xxd -p ${binary} | tr -d '\n' | grep ${wormholeHex}`);
-    execSync(`xxd -p ${binary} | tr -d '\n' | grep ${providedProgramIdHex}`);
+    if (!searchHexInBinary(binary, wormholeHex)) {
+        console.error(`Wormhole address not found in binary: ${wormhole}`);
+        process.exit(1);
+    }
+    if (!searchHexInBinary(binary, providedProgramIdHex)) {
+        console.error(`Provided program ID not found in binary: ${providedProgramId}`);
+        process.exit(1);
+    }
+}
 
+// not the most efficient, but at least it's definitely portable
+function searchHexInBinary(binaryPath: string, searchHex: string) {
+    const buffer = fs.readFileSync(binaryPath);
+    const hexString = buffer.toString('hex');
+    const found = hexString.includes(searchHex);
+
+    return found;
 }
 
 export function ensureNttRoot(pwd: string = ".") {
