@@ -975,7 +975,7 @@ async function deploySolana<N extends Network, C extends SolanaChains>(
     // grep example_native_token_transfers = ".*"
     // in solana/Anchor.toml
     // TODO: what if they rename the program?
-    const existingProgramId = fs.readFileSync("solana/Anchor.toml").toString().match(/example_native_token_transfers = "(.*)"/)?.[1];
+    const existingProgramId = fs.readFileSync(`${pwd}/solana/Anchor.toml`).toString().match(/example_native_token_transfers = "(.*)"/)?.[1];
     if (!existingProgramId) {
         console.error("Program ID not found in Anchor.toml (looked for example_native_token_transfers = \"(.*)\")");
         process.exit(1);
@@ -1011,11 +1011,16 @@ async function deploySolana<N extends Network, C extends SolanaChains>(
     // to update the latter in the Anchor.toml file and the lib.rs file(s)
     const providedProgramId = programKeypair.publicKey.toBase58();
     if (providedProgramId !== existingProgramId) {
-        console.error(`Program keypair does not match the existing program ID: ${existingProgramId}`);
-        await askForConfirmation(`Do you want to update the program ID in the Anchor.toml file and the lib.rs file to ${providedProgramId}?`);
+        // only ask for confirmation if the current directory is ".". if it's
+        // something else (a worktree) then it's a fresh checkout and we just
+        // override the address anyway.
+        if (pwd === ".") {
+            console.error(`Program keypair does not match the existing program ID: ${existingProgramId}`);
+            await askForConfirmation(`Do you want to update the program ID in the Anchor.toml file and the lib.rs file to ${providedProgramId}?`);
+        }
 
-        const anchorTomlPath = "solana/Anchor.toml";
-        const libRsPath = "solana/programs/example-native-token-transfers/src/lib.rs";
+        const anchorTomlPath = `${pwd}/solana/Anchor.toml`;
+        const libRsPath = `${pwd}/solana/programs/example-native-token-transfers/src/lib.rs`;
 
         const anchorToml = fs.readFileSync(anchorTomlPath).toString();
         const newAnchorToml = anchorToml.replace(existingProgramId, providedProgramId);
