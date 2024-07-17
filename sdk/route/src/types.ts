@@ -175,7 +175,6 @@ export namespace NttRoute {
     capacity: bigint
   ): boolean {
     const threshold = (capacity * 95n) / 100n;
-    console.log(amount, threshold, amount > threshold);
     return amount > threshold;
   }
 }

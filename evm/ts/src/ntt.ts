@@ -151,11 +151,22 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     );
     if (!isExecuted) return false;
     // Also check that the transfer is not queued for it to be considered complete
-    const queued = await this.getInboundQueuedTransfer(
-      attestation.emitterChain,
-      payload["nttManagerPayload"]
+    return !(await this.getIsTransferInboundQueued(attestation));
+  }
+
+  async getIsTransferInboundQueued(
+    attestation: Ntt.Attestation
+  ): Promise<boolean> {
+    const payload =
+      attestation.payloadName === "WormholeTransfer"
+        ? attestation.payload
+        : attestation.payload.payload;
+    return (
+      (await this.getInboundQueuedTransfer(
+        attestation.emitterChain,
+        payload["nttManagerPayload"]
+      )) !== null
     );
-    return queued === null;
   }
 
   getIsApproved(attestation: Ntt.Attestation): Promise<boolean> {
