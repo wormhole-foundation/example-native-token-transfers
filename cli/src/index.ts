@@ -12,7 +12,8 @@ import chalk from "chalk";
 import yargs from "yargs";
 import { $ } from "bun";
 import { hideBin } from "yargs/helpers";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import * as spl from "@solana/spl-token";
 import fs from "fs";
 import readline from "readline";
 import { ChainContext, UniversalAddress, Wormhole, assertChain, canonicalAddress, chainToPlatform, chains, isNetwork, networks, platforms, signSendWait, toUniversal, type AccountAddress, type Chain, type ChainAddress, type ConfigOverrides, type Network, type Platform } from "@wormhole-foundation/sdk";
@@ -966,6 +967,9 @@ async function deploySolana<N extends Network, C extends SolanaChains>(
 ): Promise<ChainAddress<C>> {
     ensureNttRoot(pwd);
 
+    // TODO: if the binary is provided, we should not check addresses in the source tree. (so we should move around the control flow a bit)
+    // TODO: factor out some of this into separate functions to help readability of this function (maybe even move to a different file)
+
     const wormhole = ch.config.contracts.coreBridge;
     if (!wormhole) {
         console.error("Core bridge not found");
@@ -1030,6 +1034,49 @@ async function deploySolana<N extends Network, C extends SolanaChains>(
         fs.writeFileSync(libRsPath, newLibRs);
     }
 
+
+    // First we check that the provided mint's mint authority is the program's token authority PDA when in burning mode.
+    // This is checked in the program initialiser anyway, but we can save some
+    // time by checking it here and failing early (not to mention better
+    // diagnostics).
+
+    const emitter = NTT.pdas(providedProgramId).emitterAccount().toBase58();
+    const payerKeypair = Keypair.fromSecretKey(new Uint8Array(JSON.parse(fs.readFileSync(payer).toString())));
+
+    // can't do this yet.. need to init first.
+    // const {ntt, addresses} = await nttFromManager(ch, providedProgramId);
+    const ntt: SolanaNtt<N, C> = await ch.getProtocol("Ntt", {
+        ntt: {
+            manager: providedProgramId,
+            token: token,
+            transceiver: { wormhole: emitter },
+        }
+    }) as SolanaNtt<N, C>;
+
+    // get the mint authority of 'token'
+    const tokenMint = new PublicKey(token);
+    // const tokenInfo = await ch.connection.getTokenInfo(tokenMint);
+    const connection: Connection = await ch.getRpc();
+    const mintInfo = await connection.getAccountInfo(tokenMint)
+    if (!mintInfo) {
+        console.error(`Mint ${token} not found on ${ch.chain} ${ch.network}`);
+        process.exit(1);
+    }
+    const mint = spl.unpackMint(tokenMint, mintInfo, mintInfo.owner);
+
+    if (mode === "burning") {
+        const expectedMintAuthority = ntt.pdas.tokenAuthority().toBase58();
+        const actualMintAuthority: string | null = mint.mintAuthority?.toBase58() ?? null;
+        if (actualMintAuthority !== expectedMintAuthority) {
+            console.error(`Mint authority mismatch for ${token}`);
+            console.error(`Expected: ${expectedMintAuthority}`);
+            console.error(`Actual: ${actualMintAuthority}`);
+            console.error(`Set the mint authority to the program's token authority PDA with e.g.:`);
+            console.error(`spl-token authorize ${token} mint ${expectedMintAuthority}`);
+            process.exit(1);
+        }
+    }
+
     let binary: string;
 
     const skipDeploy = false;
@@ -1085,20 +1132,6 @@ async function deploySolana<N extends Network, C extends SolanaChains>(
 
     // wait 3 seconds
     await new Promise((resolve) => setTimeout(resolve, 3000));
-
-    const emitter = NTT.pdas(providedProgramId).emitterAccount().toBase58();
-
-    const payerKeypair = Keypair.fromSecretKey(new Uint8Array(JSON.parse(fs.readFileSync(payer).toString())));
-
-    // can't do this yet.. need to init first.
-    // const {ntt, addresses} = await nttFromManager(ch, providedProgramId);
-    const ntt: SolanaNtt<N, C> = await ch.getProtocol("Ntt", {
-        ntt: {
-            manager: providedProgramId,
-            token: token,
-            transceiver: { wormhole: emitter },
-        }
-    }) as SolanaNtt<N, C>;
 
     const tx = ntt.initialize(
         toUniversal(ch.chain, payerKeypair.publicKey.toBase58()),
