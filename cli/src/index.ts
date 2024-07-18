@@ -635,6 +635,8 @@ yargs(hideBin(process.argv))
 
             let errors = 0;
 
+            const extraInfo: any = {};
+
             // diff remote and local configs
             for (const [chain, deployment] of Object.entries(deps)) {
                 assertChain(chain);
@@ -652,9 +654,17 @@ yargs(hideBin(process.argv))
                 if (verbose) {
                     const immutables = await getImmutables(chain, deployment.ntt);
                     if (immutables) {
-                        console.log(JSON.stringify({ [chain]: immutables }, null, 2))
+                        extraInfo[chain] = immutables;
+                    }
+                    const pdas = await getPdas(chain, deployment.ntt);
+                    if (pdas) {
+                        extraInfo[chain] = pdas;
                     }
                 }
+            }
+
+            if (extraInfo) {
+                console.log(chalk.yellow(JSON.stringify(extraInfo, null, 2)));
             }
 
             // verify peers
@@ -1175,9 +1185,9 @@ async function missingConfigs(
                 continue;
             }
             if (verbose) {
-                process.stdout.write(`Verifying registration for ${fromChain} -> ${toChain}\r`);
+                process.stdout.write(`Verifying registration for ${fromChain} -> ${toChain}......\r`);
             }
-            const peer = await from.ntt.getPeer(toChain);
+            const peer = await retryWithExponentialBackoff(() => from.ntt.getPeer(toChain), 5, 5000);
             if (peer === null) {
                 const configLimit = from.config.local?.limits?.inbound?.[toChain]?.replace(".", "");
                 count++;
@@ -1310,7 +1320,7 @@ async function pullDeployments(deployments: Config, network: Network, verbose: b
 
     for (const [chain, deployment] of Object.entries(deployments.chains)) {
         if (verbose) {
-            process.stdout.write(`Fetching config for ${chain}\r`);
+            process.stdout.write(`Fetching config for ${chain}......\r`);
         }
         assertChain(chain);
         const managerAddress: string | undefined = deployment.manager;
@@ -1433,6 +1443,29 @@ async function getImmutables<N extends Network, C extends Chain>(chain: C, ntt: 
     };
 }
 
+async function getPdas<N extends Network, C extends Chain>(chain: C, ntt: Ntt<N, C>) {
+    const platform = chainToPlatform(chain);
+    if (platform !== "Solana") {
+        return null;
+    }
+    const solanaNtt = ntt as SolanaNtt<N, SolanaChains>;
+    const config = solanaNtt.pdas.configAccount();
+    const emitter = solanaNtt.pdas.emitterAccount();
+    const outboxRateLimit = solanaNtt.pdas.outboxRateLimitAccount();
+    const tokenAuthority = solanaNtt.pdas.tokenAuthority();
+    const lutAccount = solanaNtt.pdas.lutAccount();
+    const lutAuthority = solanaNtt.pdas.lutAuthority();
+
+    return {
+        config,
+        emitter,
+        outboxRateLimit,
+        tokenAuthority,
+        lutAccount,
+        lutAuthority,
+    };
+}
+
 function getVersion<N extends Network, C extends Chain>(chain: C, ntt: Ntt<N, C>): string {
     const platform = chainToPlatform(chain);
     switch (platform) {
@@ -1528,7 +1561,7 @@ async function pullInboundLimits(ntts: Partial<{ [C in Chain]: Ntt<Network, C> }
                 continue;
             }
             if (verbose) {
-                process.stdout.write(`Fetching inbound limit for ${c1} -> ${c2}\r`);
+                process.stdout.write(`Fetching inbound limit for ${c1} -> ${c2}.......\r`);
             }
             const peer = await retryWithExponentialBackoff(() => ntt1.getPeer(c2), 5, 5000);
             if (chainConf.limits?.inbound === undefined) {
