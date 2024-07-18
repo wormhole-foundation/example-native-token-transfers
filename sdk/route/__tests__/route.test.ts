@@ -49,6 +49,14 @@ const conf: NttRoute.Config = {
 };
 const network: Network = "Testnet";
 
+const dummyGetProtocol = async function (name: string, params: any) {
+  if (name !== "Ntt") throw new Error("Unexpected protocol");
+  return {
+    getRateLimitDuration: async () => 0n,
+    getCurrentInboundCapacity: async () => 0n,
+  };
+};
+
 describe("Manual Route Tests", function () {
   const wh = new Wormhole("Testnet", [SolanaPlatform, EvmPlatform]);
   const fromChain = wh.getChain("Solana");
@@ -88,14 +96,15 @@ describe("Manual Route Tests", function () {
   });
 
   let found: routes.ManualRoute<Network>;
+  let request: routes.RouteTransferRequest<Network>;
   it("Should resolve a given route request", async function () {
-    const request = await routes.RouteTransferRequest.create(wh, {
+    request = await routes.RouteTransferRequest.create(wh, {
       source: Wormhole.tokenId("Solana", SOL_TOKEN),
       destination: Wormhole.tokenId("Sepolia", SEPOLIA_TOKEN),
     });
     const foundRoutes = await resolver.findRoutes(request);
     expect(foundRoutes).toHaveLength(1);
-    expect(foundRoutes[0]!.request.fromChain.chain).toEqual("Solana");
+    expect(request.fromChain.chain).toEqual("Solana");
 
     const rt = foundRoutes[0]!;
     if (!routes.isManual(rt)) throw new Error("Expected manual route");
@@ -111,7 +120,7 @@ describe("Manual Route Tests", function () {
 
   let vp: routes.ValidationResult<typeof op>;
   it("Should validate a transfer request", async function () {
-    vp = await found.validate({ amount: "1.0", options: op });
+    vp = await found.validate(request, { amount: "1.0", options: op });
     expect(vp.valid).toBeTruthy();
     expect(vp.params.amount).toEqual("1.0");
   });
@@ -119,7 +128,12 @@ describe("Manual Route Tests", function () {
   let qr: Awaited<ReturnType<typeof found.quote>>;
   it("Should fetch a quote given the validated parameters", async function () {
     if (!vp.valid) throw new Error("Invalid transfer params used");
-    qr = await found.quote(vp.params);
+    const getProtocol = request.toChain.getProtocol;
+    // @ts-ignore
+    // TODO: mock instead of monkey patch
+    request.toChain.getProtocol = dummyGetProtocol;
+    qr = await found.quote(request, vp.params);
+    request.toChain.getProtocol = getProtocol;
     if (!qr.success) throw new Error("Failed to fetch quote");
 
     expect(qr.params.amount).toEqual("1.0");
@@ -179,14 +193,15 @@ describe("Automatic Route Tests", function () {
   });
 
   let found: routes.AutomaticRoute<Network>;
+  let request: routes.RouteTransferRequest<Network>;
   it("Should resolve a given route request", async function () {
-    const request = await routes.RouteTransferRequest.create(wh, {
+    request = await routes.RouteTransferRequest.create(wh, {
       source: Wormhole.tokenId("Solana", SOL_TOKEN),
       destination: Wormhole.tokenId("Sepolia", SEPOLIA_TOKEN),
     });
     const foundRoutes = await resolver.findRoutes(request);
     expect(foundRoutes).toHaveLength(1);
-    expect(foundRoutes[0]!.request.fromChain.chain).toEqual("Solana");
+    expect(request.fromChain.chain).toEqual("Solana");
 
     const rt = foundRoutes[0]!;
     if (!routes.isAutomatic(rt)) throw new Error("Expected automatic route");
@@ -202,7 +217,7 @@ describe("Automatic Route Tests", function () {
 
   let vp: routes.ValidationResult<typeof op>;
   it("Should validate a transfer request", async function () {
-    vp = await found.validate({ amount: "1.0", options: op });
+    vp = await found.validate(request, { amount: "1.0", options: op });
     expect(vp.valid).toBeTruthy();
     expect(vp.params.amount).toEqual("1.0");
   });
@@ -210,7 +225,12 @@ describe("Automatic Route Tests", function () {
   let qr: Awaited<ReturnType<typeof found.quote>>;
   it("Should fetch a quote given the validated parameters", async function () {
     if (!vp.valid) throw new Error("Invalid transfer params used");
-    qr = await found.quote(vp.params);
+    const getProtocol = request.toChain.getProtocol;
+    // @ts-ignore
+    // TODO: mock instead of monkey patch
+    request.toChain.getProtocol = dummyGetProtocol;
+    qr = await found.quote(request, vp.params);
+    request.toChain.getProtocol = getProtocol;
     if (!qr.success) throw new Error("Failed to fetch quote");
 
     expect(qr.params.amount).toEqual("1.0");
