@@ -145,7 +145,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     const payload =
       attestation.payloadName === "WormholeTransfer"
         ? attestation.payload
-        : attestation.payload.payload;
+        : attestation.payload["payload"];
     const isExecuted = await this.manager.isMessageExecuted(
       Ntt.messageDigest(attestation.emitterChain, payload["nttManagerPayload"])
     );
@@ -160,7 +160,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     const payload =
       attestation.payloadName === "WormholeTransfer"
         ? attestation.payload
-        : attestation.payload.payload;
+        : attestation.payload["payload"];
     return (
       (await this.getInboundQueuedTransfer(
         attestation.emitterChain,
@@ -173,7 +173,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     const payload =
       attestation.payloadName === "WormholeTransfer"
         ? attestation.payload
-        : attestation.payload.payload;
+        : attestation.payload["payload"];
     return this.manager.isMessageApproved(
       Ntt.messageDigest(attestation.emitterChain, payload["nttManagerPayload"])
     );

@@ -256,7 +256,7 @@ export class NttAutomaticRoute<N extends Network>
     const payload =
       vaa.payloadName === "WormholeTransfer"
         ? vaa.payload
-        : vaa.payload.payload;
+        : vaa.payload["payload"];
     const completeTransfer = ntt.completeInboundQueuedTransfer(
       receipt.from,
       payload["nttManagerPayload"],
@@ -331,7 +331,7 @@ export class NttAutomaticRoute<N extends Network>
       const payload =
         vaa.payloadName === "WormholeTransfer"
           ? vaa.payload
-          : vaa.payload.payload;
+          : vaa.payload["payload"];
       const queuedTransfer = await ntt.getInboundQueuedTransfer(
         vaa.emitterChain,
         payload["nttManagerPayload"]
