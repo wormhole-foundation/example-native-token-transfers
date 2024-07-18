@@ -1,6 +1,7 @@
 import {
   NamedPayloads,
   RegisterPayloadTypes,
+  deliveryInstructionLayout,
 } from "@wormhole-foundation/sdk-definitions";
 import { nttManagerMessageLayout } from "./manager.js";
 import { transceiverInfo, transceiverRegistration } from "./transceiver.js";
@@ -12,6 +13,14 @@ export const nttNamedPayloads = [
     "WormholeTransfer",
     wormholeTransceiverMessageLayout(
       nttManagerMessageLayout(nativeTokenTransferLayout)
+    ),
+  ],
+  [
+    "WormholeTransferStandardRelayer",
+    deliveryInstructionLayout(
+      wormholeTransceiverMessageLayout(
+        nttManagerMessageLayout(nativeTokenTransferLayout)
+      )
     ),
   ],
   ["TransceiverInfo", transceiverInfo],

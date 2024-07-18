@@ -214,8 +214,12 @@ export namespace NTT {
     const data = encoding.b64.decode(txSimulation.value.returnData?.data[0]!);
     const parsed = deserializeLayout(programVersionLayout, data);
     const version = encoding.bytes.decode(parsed.version);
-    if (version in IdlVersions) return version as IdlVersion;
-    else throw new Error("Unknown IDL version: " + version);
+    for (const [idlVersion] of IdlVersions) {
+      if (Ntt.abiVersionMatches(version, idlVersion)) {
+        return idlVersion;
+      }
+    }
+    throw new Error(`Unknown IDL version: ${version}`);
   }
 
   export async function createInitializeInstruction(

@@ -20,7 +20,6 @@ import {
   ChainsConfig,
   Contracts,
   NativeAddress,
-  TokenAddress,
   UnsignedTransaction,
 } from "@wormhole-foundation/sdk-definitions";
 import {
@@ -458,7 +457,10 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     // TODO: not this, we should iterate over the set of enabled xcvrs?
     // if (attestations.length !== this.xcvrs.length) throw "No";
-    const wormholeNTT = attestations[0]! as WormholeNttTransceiver.VAA;
+    const wormholeNTT = attestations[0];
+    if (!wormholeNTT || wormholeNTT.payloadName !== "WormholeTransfer") {
+      throw new Error("Invalid attestation payload");
+    }
 
     // Create the vaa if necessary
     yield* this.createAta(payer);
@@ -543,16 +545,45 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     return BigInt(rl.rateLimit.capacityAtLastTx.toString());
   }
 
+  async getRateLimitDuration(): Promise<bigint> {
+    // The rate limit duration is hardcoded to 24 hours on Solana
+    return BigInt(24 * 60 * 60);
+  }
+
   async getIsExecuted(attestation: Ntt.Attestation): Promise<boolean> {
-    if (!this.getIsApproved(attestation)) return false;
+    if (attestation.payloadName !== "WormholeTransfer") return false;
+    const payload = attestation.payload["nttManagerPayload"];
+    let inboxItem;
+    try {
+      inboxItem = await this.program.account.inboxItem.fetch(
+        this.pdas.inboxItemAccount(attestation.emitterChain, payload)
+      );
+    } catch (e: any) {
+      if (e.message?.includes("Account does not exist")) {
+        return false;
+      }
+      throw e;
+    }
+    return !!inboxItem.releaseStatus.released;
+  }
 
-    const { emitterChain } = attestation as WormholeNttTransceiver.VAA;
-    const inboundQueued = await this.getInboundQueuedTransfer(
-      emitterChain,
-      attestation
-    );
-
-    return inboundQueued === null;
+  async getIsTransferInboundQueued(
+    attestation: Ntt.Attestation
+  ): Promise<boolean> {
+    if (attestation.payloadName !== "WormholeTransfer") return false;
+    const payload = attestation.payload["nttManagerPayload"];
+    let inboxItem;
+    try {
+      inboxItem = await this.program.account.inboxItem.fetch(
+        this.pdas.inboxItemAccount(attestation.emitterChain, payload)
+      );
+    } catch (e: any) {
+      if (e.message?.includes("Account does not exist")) {
+        return false;
+      }
+      throw e;
+    }
+    return !!inboxItem.releaseStatus.releaseAfter;
   }
 
   async getIsApproved(attestation: Ntt.Attestation): Promise<boolean> {
@@ -562,18 +593,13 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       Buffer.from(digest)
     );
 
-    try {
-      const info = this.connection.getAccountInfo(vaaAddress);
-      return info !== null;
-    } catch (_) {}
-
-    return false;
+    const info = await this.connection.getAccountInfo(vaaAddress);
+    return info !== null;
   }
 
   async *completeInboundQueuedTransfer(
     fromChain: Chain,
     transceiverMessage: Ntt.Message,
-    token: TokenAddress<C>,
     payer: AccountAddress<C>
   ) {
     const config = await this.getConfig();
@@ -617,23 +643,29 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     chain: Chain,
     nttMessage: Ntt.Message
   ): Promise<Ntt.InboundQueuedTransfer<C> | null> {
-    const inboxItem = await this.program.account.inboxItem.fetch(
-      this.pdas.inboxItemAccount(chain, nttMessage)
-    );
-    if (!inboxItem) return null;
+    let inboxItem;
+    try {
+      inboxItem = await this.program.account.inboxItem.fetch(
+        this.pdas.inboxItemAccount(chain, nttMessage)
+      );
+    } catch (e: any) {
+      if (e.message?.includes("Account does not exist")) {
+        return null;
+      }
+      throw e;
+    }
 
-    const { recipientAddress, amount, releaseStatus } = inboxItem!;
-    const rateLimitExpiry = releaseStatus.releaseAfter
-      ? releaseStatus.releaseAfter[0].toNumber()
-      : 0;
-
-    const xfer: Ntt.InboundQueuedTransfer<C> = {
-      recipient: new SolanaAddress(recipientAddress) as NativeAddress<C>,
-      amount: BigInt(amount.toString()),
-      rateLimitExpiryTimestamp: rateLimitExpiry,
-    };
-
-    return xfer;
+    if (inboxItem.releaseStatus.releaseAfter) {
+      const { recipientAddress, amount, releaseStatus } = inboxItem;
+      const rateLimitExpiry = releaseStatus.releaseAfter[0].toNumber();
+      const xfer: Ntt.InboundQueuedTransfer<C> = {
+        recipient: new SolanaAddress(recipientAddress) as NativeAddress<C>,
+        amount: BigInt(amount.toString()),
+        rateLimitExpiryTimestamp: rateLimitExpiry,
+      };
+      return xfer;
+    }
+    return null;
   }
 
   async getAddressLookupTable(

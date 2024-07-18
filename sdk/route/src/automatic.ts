@@ -4,6 +4,7 @@ import {
   ChainAddress,
   ChainContext,
   CompletedTransferReceipt,
+  DestinationQueuedTransferReceipt,
   Network,
   RedeemedTransferReceipt,
   Signer,
@@ -12,7 +13,9 @@ import {
   Wormhole,
   WormholeMessageId,
   amount,
+  chainToPlatform,
   isAttested,
+  isDestinationQueued,
   isRedeemed,
   isSourceFinalized,
   isSourceInitiated,
@@ -30,7 +33,7 @@ type Vp = NttRoute.ValidatedParams;
 type QR = routes.QuoteResult<Op, Vp>;
 type Q = routes.Quote<Op, Vp>;
 
-type R = NttRoute.TransferReceipt;
+type R = NttRoute.AutomaticTransferReceipt;
 
 export function nttAutomaticRoute(config: NttRoute.Config) {
   class NttRouteImpl<N extends Network> extends NttAutomaticRoute<N> {
@@ -91,28 +94,31 @@ export class NttAutomaticRoute<N extends Network>
     return NttRoute.AutomaticOptions;
   }
 
-  async isAvailable(): Promise<boolean> {
+  async isAvailable(request: routes.RouteTransferRequest<N>): Promise<boolean> {
     const nttContracts = NttRoute.resolveNttContracts(
       this.staticConfig,
-      this.request.source.id
+      request.source.id
     );
 
-    const ntt = await this.request.fromChain.getProtocol("Ntt", {
+    const ntt = await request.fromChain.getProtocol("Ntt", {
       ntt: nttContracts,
     });
 
-    return ntt.isRelayingAvailable(this.request.toChain.chain);
+    return ntt.isRelayingAvailable(request.toChain.chain);
   }
 
-  async validate(params: Tp): Promise<Vr> {
+  async validate(
+    request: routes.RouteTransferRequest<N>,
+    params: Tp
+  ): Promise<Vr> {
     const options = params.options ?? this.getDefaultOptions();
 
     const gasDropoff = amount.parse(
       options.gasDropoff ?? "0.0",
-      this.request.toChain.config.nativeTokenDecimals
+      request.toChain.config.nativeTokenDecimals
     );
 
-    const amt = amount.parse(params.amount, this.request.source.decimals);
+    const amt = amount.parse(params.amount, request.source.decimals);
 
     const validatedParams: Vp = {
       amount: params.amount,
@@ -120,11 +126,11 @@ export class NttAutomaticRoute<N extends Network>
         amount: amt,
         sourceContracts: NttRoute.resolveNttContracts(
           this.staticConfig,
-          this.request.source.id
+          request.source.id
         ),
         destinationContracts: NttRoute.resolveNttContracts(
           this.staticConfig,
-          this.request.destination.id
+          request.destination.id
         ),
         options: {
           queue: false,
@@ -137,8 +143,11 @@ export class NttAutomaticRoute<N extends Network>
     return { valid: true, params: validatedParams };
   }
 
-  async quote(params: Vp): Promise<QR> {
-    const { fromChain, toChain } = this.request;
+  async quote(
+    request: routes.RouteTransferRequest<N>,
+    params: Vp
+  ): Promise<QR> {
+    const { fromChain, toChain } = request;
     const ntt = await fromChain.getProtocol("Ntt", {
       ntt: params.normalizedParams.sourceContracts,
     });
@@ -148,16 +157,16 @@ export class NttAutomaticRoute<N extends Network>
       params.normalizedParams.options
     );
 
-    return {
+    const result: QR = {
       success: true,
       params,
       sourceToken: {
-        token: this.request.source.id,
+        token: request.source.id,
         amount: params.normalizedParams.amount,
       },
       destinationToken: {
-        token: this.request.destination.id,
-        amount: amount.parse(params.amount, this.request.destination.decimals),
+        token: request.destination.id,
+        amount: amount.parse(params.amount, request.destination.decimals),
       },
       relayFee: {
         token: Wormhole.tokenId(fromChain.chain, "native"),
@@ -171,11 +180,38 @@ export class NttAutomaticRoute<N extends Network>
         toChain.config.nativeTokenDecimals
       ),
     };
+    const dstNtt = await toChain.getProtocol("Ntt", {
+      ntt: params.normalizedParams.destinationContracts,
+    });
+    const duration = await dstNtt.getRateLimitDuration();
+    if (duration > 0n) {
+      const capacity = await dstNtt.getCurrentInboundCapacity(fromChain.chain);
+      const dstAmount = amount.parse(
+        params.amount,
+        request.destination.decimals
+      );
+      if (
+        NttRoute.isCapacityThresholdExceeded(amount.units(dstAmount), capacity)
+      ) {
+        result.warnings = [
+          {
+            type: "DestinationCapacityWarning",
+            delayDurationSec: Number(duration),
+          },
+        ];
+      }
+    }
+    return result;
   }
 
-  async initiate(signer: Signer, quote: Q, to: ChainAddress): Promise<R> {
+  async initiate(
+    request: routes.RouteTransferRequest<N>,
+    signer: Signer,
+    quote: Q,
+    to: ChainAddress
+  ): Promise<R> {
     const { params } = quote;
-    const { fromChain } = this.request;
+    const { fromChain } = request;
     const sender = Wormhole.parseAddress(signer.chain(), signer.address());
 
     const ntt = await fromChain.getProtocol("Ntt", {
@@ -199,11 +235,55 @@ export class NttAutomaticRoute<N extends Network>
     };
   }
 
+  // Even though this is an automatic route, the transfer may need to be
+  // manually finalized if it was queued
+  async finalize(signer: Signer, receipt: R): Promise<R> {
+    if (!isDestinationQueued(receipt)) {
+      throw new Error(
+        "The transfer must be destination queued in order to finalize"
+      );
+    }
+
+    const {
+      attestation: { attestation: vaa },
+    } = receipt;
+
+    const toChain = this.wh.getChain(receipt.to);
+    const ntt = await toChain.getProtocol("Ntt", {
+      ntt: receipt.params.normalizedParams.destinationContracts,
+    });
+    const sender = Wormhole.chainAddress(signer.chain(), signer.address());
+    const payload =
+      vaa.payloadName === "WormholeTransfer"
+        ? vaa.payload
+        : vaa.payload.payload;
+    const completeTransfer = ntt.completeInboundQueuedTransfer(
+      receipt.from,
+      payload["nttManagerPayload"],
+      sender.address
+    );
+    const finalizeTxids = await signSendWait(toChain, completeTransfer, signer);
+    return {
+      ...receipt,
+      state: TransferState.DestinationFinalized,
+      destinationTxs: [...(receipt.destinationTxs ?? []), ...finalizeTxids],
+    };
+  }
+
   public override async *track(receipt: R, timeout?: number) {
     if (isSourceInitiated(receipt) || isSourceFinalized(receipt)) {
       const { txid } = receipt.originTxs[receipt.originTxs.length - 1]!;
-      const vaa = await this.wh.getVaa(txid, "Ntt:WormholeTransfer", timeout);
-      if (!vaa) throw new Error("No VAA found for transaction: " + txid);
+
+      const isEvmPlatform = (chain: Chain) => chainToPlatform(chain) === "Evm";
+      const vaaType =
+        isEvmPlatform(receipt.from) && isEvmPlatform(receipt.to)
+          ? // Automatic NTT transfers between EVM chains use standard relayers
+            "Ntt:WormholeTransferStandardRelayer"
+          : "Ntt:WormholeTransfer";
+      const vaa = await this.wh.getVaa(txid, vaaType, timeout);
+      if (!vaa) {
+        throw new Error(`No VAA found for transaction: ${txid}`);
+      }
 
       const msgId: WormholeMessageId = {
         chain: vaa.emitterChain,
@@ -218,12 +298,12 @@ export class NttAutomaticRoute<N extends Network>
           id: msgId,
           attestation: vaa,
         },
-      } satisfies AttestedTransferReceipt<NttRoute.AttestationReceipt> as R;
+      } satisfies AttestedTransferReceipt<NttRoute.AutomaticAttestationReceipt> as R;
 
       yield receipt;
     }
 
-    const { toChain } = this.request;
+    const toChain = this.wh.getChain(receipt.to);
     const ntt = await toChain.getProtocol("Ntt", {
       ntt: receipt.params.normalizedParams.destinationContracts,
     });
@@ -238,21 +318,38 @@ export class NttAutomaticRoute<N extends Network>
           ...receipt,
           state: TransferState.DestinationInitiated,
           // TODO: check for destination event transactions to get dest Txids
-        } satisfies RedeemedTransferReceipt<NttRoute.AttestationReceipt>;
+        } satisfies RedeemedTransferReceipt<NttRoute.AutomaticAttestationReceipt>;
         yield receipt;
       }
     }
 
-    if (isRedeemed(receipt)) {
+    if (isRedeemed(receipt) || isDestinationQueued(receipt)) {
       const {
         attestation: { attestation: vaa },
       } = receipt;
 
-      if (await ntt.getIsExecuted(vaa)) {
+      const payload =
+        vaa.payloadName === "WormholeTransfer"
+          ? vaa.payload
+          : vaa.payload.payload;
+      const queuedTransfer = await ntt.getInboundQueuedTransfer(
+        vaa.emitterChain,
+        payload["nttManagerPayload"]
+      );
+      if (queuedTransfer !== null) {
+        receipt = {
+          ...receipt,
+          state: TransferState.DestinationQueued,
+          queueReleaseTime: new Date(
+            queuedTransfer.rateLimitExpiryTimestamp * 1000
+          ),
+        } satisfies DestinationQueuedTransferReceipt<NttRoute.AutomaticAttestationReceipt>;
+        yield receipt;
+      } else if (await ntt.getIsExecuted(vaa)) {
         receipt = {
           ...receipt,
           state: TransferState.DestinationFinalized,
-        } satisfies CompletedTransferReceipt<NttRoute.AttestationReceipt>;
+        } satisfies CompletedTransferReceipt<NttRoute.AutomaticAttestationReceipt>;
         yield receipt;
       }
     }
