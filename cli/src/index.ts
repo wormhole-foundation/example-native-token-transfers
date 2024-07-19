@@ -715,6 +715,19 @@ yargs(hideBin(process.argv))
                         const keypair = Keypair.fromSecretKey(new Uint8Array(JSON.parse(fs.readFileSync(argv["keypair"]).toString())));
                         console.log(encoding.b58.encode(keypair.secretKey));
                     })
+                .command("token-authority <programId>",
+                    "print the token authority address for a given program ID",
+                    (yargs) => yargs
+                        .positional("programId", {
+                            describe: "Program ID",
+                            type: "string",
+                            demandOption: true,
+                        }),
+                    (argv) => {
+                        const programId = new PublicKey(argv["programId"]);
+                        const tokenAuthority = NTT.pdas(programId).tokenAuthority();
+                        console.log(tokenAuthority.toBase58());
+                    })
                 .demandCommand()
         }
     )
