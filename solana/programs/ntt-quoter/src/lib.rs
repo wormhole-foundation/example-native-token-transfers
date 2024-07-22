@@ -5,6 +5,14 @@ pub(crate) use processor::*;
 mod error;
 mod state;
 
+/// For external usage.
+pub mod prelude {
+    pub use crate::{
+        state::{Instance, RegisteredChain, RegisteredNtt},
+        processor::check_release_constraint_and_fetch_chain_id,
+        error::NttQuoterError};   
+}
+
 //because Anchor is bat-shit, we can't use aliased types in account definitions due to how
 //  the derive accounts macro is implemented (and I don't have the time to fix it, create a PR,
 //  and wait for a release):
