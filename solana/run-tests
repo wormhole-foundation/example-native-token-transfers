@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 # Run each tests/*.test.ts file separately to avoid account state persisting between tests
 for file in `ls tests/*.test.ts`
 do
     # convert file-name to FILE_NAME
-    declare -u env_flag
     filename=$(basename -- "$file")
     filename="${filename%.test.*}"
-    env_flag=${filename//-/_} 
-    
+    env_flag="$(tr '[:lower:]' '[:upper:]' <<< ${filename//-/_})"
+
     env $env_flag=1 bash -c 'anchor test --skip-build'
 done
