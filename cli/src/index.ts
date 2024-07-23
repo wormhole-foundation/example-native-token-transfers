@@ -158,7 +158,12 @@ const options = {
         describe: "Skip contract verification",
         type: "boolean",
         default: false,
-    }
+    },
+    payerPath: {
+        describe: "Path to the payer json file",
+        default: false,
+        type: "string",
+    },
 } as const;
 
 
@@ -573,6 +578,7 @@ yargs(hideBin(process.argv))
             .option("signer-type", options.signerType)
             .option("verbose", options.verbose)
             .option("skip-verify", options.skipVerify)
+            .option("payer", options.payerPath)
             .example("$0 push", "Push local configuration changes to the blockchain")
             .example("$0 push --signer-type ledger", "Push changes using a Ledger hardware wallet for signing")
             .example("$0 push --skip-verify", "Push changes without verifying contracts on EVM chains"),
@@ -582,6 +588,8 @@ yargs(hideBin(process.argv))
             const network = deployments.network as Network;
             const deps: Partial<{ [C in Chain]: Deployment<Chain> }> = await pullDeployments(deployments, network, verbose);
             const signerType = argv["signer-type"] as SignerType;
+            const payerPath = argv["payer"] === false ? undefined : argv["payer"];
+            console.log(payerPath);
 
             const missing = await missingConfigs(deps, verbose);
 
@@ -589,7 +597,7 @@ yargs(hideBin(process.argv))
                 assertChain(chain);
                 const ntt = deps[chain]!.ntt;
                 const ctx = deps[chain]!.ctx;
-                const signer = await getSigner(ctx, signerType)
+                const signer = await getSigner(ctx, signerType, undefined, payerPath);
                 for (const manager of missingConfig.managerPeers) {
                     const tx = ntt.setPeer(manager.address, manager.tokenDecimals, manager.inboundLimit, signer.address.address)
                     await signSendWait(ctx, tx, signer.signer)

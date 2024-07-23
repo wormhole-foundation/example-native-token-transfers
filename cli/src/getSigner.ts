@@ -1,6 +1,8 @@
 import solana from "@wormhole-foundation/sdk/platforms/solana";
 import * as myEvmSigner from "./evmsigner.js";
 import { ChainContext, Wormhole, chainToPlatform, type Chain, type ChainAddress, type Network, type Signer } from "@wormhole-foundation/sdk";
+import { Keypair } from "@solana/web3.js";
+import fs from "fs";
 
 export type SignerType = "privateKey" | "ledger";
 
@@ -38,7 +40,8 @@ export function forgeSignerArgs(
 export async function getSigner<N extends Network, C extends Chain>(
     chain: ChainContext<N, C>,
     type: SignerType,
-    source?: string
+    source?: string,
+    filePath?: string
 ): Promise<SignerStuff<N, C>> {
     let signer: Signer;
     const platform = chainToPlatform(chain.chain);
@@ -46,15 +49,28 @@ export async function getSigner<N extends Network, C extends Chain>(
         case "Solana":
             switch (type) {
                 case "privateKey":
-                    source = source ?? process.env.SOLANA_PRIVATE_KEY;
-                    if (source === undefined) {
-                        throw new Error("SOLANA_PRIVATE_KEY env var not set");
-                    }
+                    let privateKey: string;
+                    console.log(filePath);
+                    console.log(process.env.SOLANA_PRIVATE_KEY);
+                    //TODO: this should be not the private key, but the keypair
+                    if (filePath) {
+                        // Read the private key from the file if filePath is provided
+                        const keyPair = Keypair.fromSecretKey(new Uint8Array(JSON.parse(fs.readFileSync(filePath, 'utf8'))));
+                        privateKey = keyPair.secretKey.toString();
+                    } else {
+                        const privateKeySource = source ?? process.env.SOLANA_PRIVATE_KEY;
+                        if (privateKeySource === undefined) {
+                            throw new Error("Private key not provided and SOLANA_PRIVATE_KEY env var not set");
+                        }
+                        privateKey = privateKeySource;
+                    } 
+                    console.log(privateKey);
                     signer = await solana.getSigner(
                         await chain.getRpc(),
-                        source,
+                        privateKey,
                         { debug: false }
                     );
+                    console.log(signer);
                     break;
                 case "ledger":
                     throw new Error("Ledger not yet supported on Solana");
