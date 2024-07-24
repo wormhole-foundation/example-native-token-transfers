@@ -356,6 +356,10 @@ export interface NttTransceiver<
 
   getPeer<C extends Chain>(chain: C): Promise<ChainAddress<C> | null>;
 
+  setPauser(newPauser: AccountAddress<C>, payer?: AccountAddress<C>): AsyncGenerator<UnsignedTransaction<N, C>>;
+
+  getPauser(): Promise<AccountAddress<C> | null>;
+
   /**
    * receive calls the `receive*` method on the transceiver
    *

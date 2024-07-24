@@ -68,6 +68,17 @@ export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
     yield this.manager.createUnsignedTx(tx, "WormholeTransceiver.registerPeer");
   }
 
+  async getPauser(): Promise<AccountAddress<C> | null> {
+    const pauser = await this.transceiver.pauser();
+    return new EvmAddress(pauser) as AccountAddress<C>;
+  }
+
+  async *setPauser(pauser: AccountAddress<C>) {
+    const canonicalPauser = canonicalAddress({chain: this.manager.chain, address: pauser});
+    const tx = await this.transceiver.transferPauserCapability.populateTransaction(canonicalPauser);
+    yield this.manager.createUnsignedTx(tx, "WormholeTransceiver.setPauser");
+  }
+
   async getPeer<C extends Chain>(chain: C): Promise<ChainAddress<C> | null> {
     const peer = await this.transceiver.getWormholePeer(toChainId(chain));
     const peerAddress = encoding.hex.decode(peer);

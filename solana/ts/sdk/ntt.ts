@@ -53,6 +53,14 @@ export class SolanaNttWormholeTransceiver<N extends Network, C extends SolanaCha
     readonly address: PublicKey
   ) {}
 
+  async getPauser(): Promise<AccountAddress<C> | null> {
+    return null
+  }
+
+  async *setPauser(_newPauser: AccountAddress<C>, _payer: AccountAddress<C>) {
+    throw new Error("Method not implemented.");
+  }
+
   async *receive(_attestation: WormholeNttTransceiver.VAA) {
     // TODO: this is implemented below (in the transceiver code). it could get
     // tricky in general with multiple transceivers, as they might return an
