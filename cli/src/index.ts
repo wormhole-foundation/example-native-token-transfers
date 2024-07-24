@@ -71,7 +71,7 @@ export type ChainConfig = {
     token: string,
     transceivers: {
         threshold: number,
-        wormhole: string,
+        wormhole: { address: string, pauser?: string },
     },
     limits: {
         outbound: string,
@@ -1312,6 +1312,29 @@ async function pushDeployment<C extends Chain>(deployment: Deployment<C>, signer
                     }
                 }
             }
+        } else if (k === "transceivers") {
+            // TODO: refactor this nested loop stuff into separate functions at least
+            // alternatively we could first recursively collect all the things
+            // to do into a flattened list (with entries like
+            // transceivers.wormhole.pauser), and have a top-level mapping of
+            // these entries to how they should be handled
+            for (const j of Object.keys(diff[k] as object)) {
+                if (j === "wormhole") {
+                    for (const l of Object.keys(diff[k]![j] as object)) {
+                        if (l === "pauser") {
+                            const newTransceiverPauser = toUniversal(deployment.manager.chain, diff[k]![j]![l]!.push!);
+                            txs.push(deployment.whTransceiver.setPauser(newTransceiverPauser, signer.address.address));
+                        } else {
+                            console.error(`Unsupported field: ${k}.${j}.${l}`);
+                            process.exit(1);
+                        }
+                    }
+                } else {
+                    console.error(`Unsupported field: ${k}.${j}`);
+                    process.exit(1);
+
+                }
+            }
         } else {
             console.error(`Unsupported field: ${k}`);
             process.exit(1);
@@ -1404,6 +1427,8 @@ async function pullChainConfig<N extends Network, C extends Chain>(
 
     const version = getVersion(manager.chain, ntt);
 
+    const transceiverPauser = await ntt.getTransceiver(0).then((t) => t?.getPauser() ?? null);
+
     const config: ChainConfig = {
         version,
         mode,
@@ -1413,13 +1438,16 @@ async function pullChainConfig<N extends Network, C extends Chain>(
         token: addresses.token!,
         transceivers: {
             threshold,
-            wormhole: addresses.transceiver!.wormhole!,
+            wormhole: { address: addresses.transceiver!.wormhole! },
         },
         limits: {
             outbound: outboundLimitDecimals,
             inbound: {},
         },
     };
+    if (transceiverPauser) {
+        config.transceivers.wormhole.pauser = transceiverPauser.toString();
+    }
     if (pauser) {
         config.pauser = pauser.toString();
     }
