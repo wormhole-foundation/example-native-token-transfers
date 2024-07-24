@@ -173,7 +173,11 @@ export interface Ntt<N extends Network, C extends Chain> {
 
   getOwner(): Promise<AccountAddress<C>>;
 
+  getPauser(): Promise<AccountAddress<C> | null>;
+
   setOwner(newOwner: AccountAddress<C>, payer?: AccountAddress<C>): AsyncGenerator<UnsignedTransaction<N, C>>;
+
+  setPauser(newOwner: AccountAddress<C>, payer?: AccountAddress<C>): AsyncGenerator<UnsignedTransaction<N, C>>;
 
   getThreshold(): Promise<number>;
 

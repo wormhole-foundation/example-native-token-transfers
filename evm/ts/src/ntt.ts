@@ -202,6 +202,10 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     return new EvmAddress(await this.manager.owner()) as AccountAddress<C>;
   }
 
+  async getPauser(): Promise<AccountAddress<C> | null> {
+    return new EvmAddress(await this.manager.pauser()) as AccountAddress<C>;
+  }
+
   async *setOwner(owner: AccountAddress<C>) {
     const canonicalOwner = canonicalAddress({chain: this.chain, address: owner});
     const tx = await this.manager.transferOwnership.populateTransaction(canonicalOwner);

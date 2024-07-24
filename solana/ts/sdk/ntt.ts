@@ -189,6 +189,10 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     return new SolanaAddress(config.owner) as AccountAddress<C>;
   }
 
+  async getPauser(): Promise<AccountAddress<C> | null> {
+    return null
+  }
+
   async *setOwner(newOwner: AccountAddress<C>, payer: AccountAddress<C>) {
     const sender = new SolanaAddress(payer).unwrap();
     const ix = await NTT.createTransferOwnershipInstruction(this.program, {
@@ -199,6 +203,10 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     tx.feePayer = sender;
     tx.add(ix);
     yield this.createUnsignedTx({ transaction: tx }, "Ntt.SetOwner");
+  }
+
+  async *setPauser(_newPauser: AccountAddress<C>, _payer: AccountAddress<C>) {
+    throw new Error("Pauser role not supported on Solna.");
   }
 
   async isRelayingAvailable(destination: Chain): Promise<boolean> {
