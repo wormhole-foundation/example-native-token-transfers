@@ -397,7 +397,7 @@ describe("example-native-token-transfers", () => {
           { ntt: overrides["Solana"] },
           new SolanaAddress(payer.publicKey.toBase58())
         );
-        expect(version).toBe("1.0.0");
+        expect(version).toBe("2.0.0");
       });
     });
   });
