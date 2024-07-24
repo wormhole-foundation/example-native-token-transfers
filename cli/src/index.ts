@@ -589,7 +589,6 @@ yargs(hideBin(process.argv))
             const deps: Partial<{ [C in Chain]: Deployment<Chain> }> = await pullDeployments(deployments, network, verbose);
             const signerType = argv["signer-type"] as SignerType;
             const payerPath = argv["payer"] === false ? undefined : argv["payer"];
-            console.log(payerPath);
 
             const missing = await missingConfigs(deps, verbose);
 
@@ -1136,6 +1135,7 @@ async function deploySolana<N extends Network, C extends SolanaChains>(
 
             binary = `${pwd}/solana/target/deploy/example_native_token_transfers.so`;
         }
+
 
         await checkSolanaBinary(binary, wormhole, providedProgramId)
 

@@ -3,6 +3,7 @@ import * as myEvmSigner from "./evmsigner.js";
 import { ChainContext, Wormhole, chainToPlatform, type Chain, type ChainAddress, type Network, type Signer } from "@wormhole-foundation/sdk";
 import { Keypair } from "@solana/web3.js";
 import fs from "fs";
+import { encoding } from '@wormhole-foundation/sdk-connect';
 
 export type SignerType = "privateKey" | "ledger";
 
@@ -50,13 +51,10 @@ export async function getSigner<N extends Network, C extends Chain>(
             switch (type) {
                 case "privateKey":
                     let privateKey: string;
-                    console.log(filePath);
-                    console.log(process.env.SOLANA_PRIVATE_KEY);
-                    //TODO: this should be not the private key, but the keypair
                     if (filePath) {
                         // Read the private key from the file if filePath is provided
                         const keyPair = Keypair.fromSecretKey(new Uint8Array(JSON.parse(fs.readFileSync(filePath, 'utf8'))));
-                        privateKey = keyPair.secretKey.toString();
+                        privateKey = encoding.b58.encode(keyPair.secretKey);
                     } else {
                         const privateKeySource = source ?? process.env.SOLANA_PRIVATE_KEY;
                         if (privateKeySource === undefined) {
