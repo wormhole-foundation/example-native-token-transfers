@@ -29,6 +29,7 @@ import {
   WormholeNttTransceiver,
 } from "@wormhole-foundation/sdk-definitions-ntt";
 import {
+    AnySolanaAddress,
   SolanaAddress,
   SolanaChains,
   SolanaPlatform,
@@ -201,7 +202,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     return null
   }
 
-  async *setOwner(newOwner: AccountAddress<C>, payer: AccountAddress<C>) {
+  async *setOwner(newOwner: AnySolanaAddress, payer: AccountAddress<C>) {
     const sender = new SolanaAddress(payer).unwrap();
     const ix = await NTT.createTransferOwnershipInstruction(this.program, {
       newOwner: new SolanaAddress(newOwner).unwrap(),
@@ -213,7 +214,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     yield this.createUnsignedTx({ transaction: tx }, "Ntt.SetOwner");
   }
 
-  async *setPauser(_newPauser: AccountAddress<C>, _payer: AccountAddress<C>) {
+  async *setPauser(_newPauser: AnySolanaAddress, _payer: AccountAddress<C>) {
     throw new Error("Pauser role not supported on Solna.");
   }
 

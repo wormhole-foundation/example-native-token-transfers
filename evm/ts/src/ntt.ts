@@ -15,7 +15,7 @@ import {
   toUniversal,
   universalAddress,
 } from "@wormhole-foundation/sdk-definitions";
-import type { EvmChains, EvmPlatformType } from "@wormhole-foundation/sdk-evm";
+import type { AnyEvmAddress, EvmChains, EvmPlatformType } from "@wormhole-foundation/sdk-evm";
 import {
   EvmAddress,
   EvmPlatform,
@@ -217,14 +217,14 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     return new EvmAddress(await this.manager.pauser()) as AccountAddress<C>;
   }
 
-  async *setOwner(owner: AccountAddress<C>) {
-    const canonicalOwner = canonicalAddress({chain: this.chain, address: owner});
+  async *setOwner(owner: AnyEvmAddress) {
+    const canonicalOwner = new EvmAddress(owner).toString();
     const tx = await this.manager.transferOwnership.populateTransaction(canonicalOwner);
     yield this.createUnsignedTx(tx, "Ntt.setOwner");
   }
 
-  async *setPauser(pauser: AccountAddress<C>) {
-    const canonicalPauser = canonicalAddress({chain: this.chain, address: pauser});
+  async *setPauser(pauser: AnyEvmAddress) {
+    const canonicalPauser = new EvmAddress(pauser).toString();
     const tx = await this.manager.transferPauserCapability.populateTransaction(canonicalPauser);
     yield this.createUnsignedTx(tx, "Ntt.setPauser");
   }
