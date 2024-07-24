@@ -31,7 +31,6 @@ import type { EvmChains } from "@wormhole-foundation/sdk-evm";
 import { getAvailableVersions, getGitTagName } from "./tag";
 import * as configuration from "./configuration";
 
-// TODO: pauser (evm)
 // TODO: contract upgrades on solana
 // TODO: set special relaying?
 // TODO: currently, we just default all evm chains to standard relaying. should we not do that? what's a good way to configure this?
@@ -66,6 +65,7 @@ export type ChainConfig = {
     mode: Ntt.Mode,
     paused: boolean,
     owner: string,
+    pauser?: string,
     manager: string,
     token: string,
     transceivers: {
@@ -1217,6 +1217,8 @@ async function pushDeployment<C extends Chain>(deployment: Deployment<C>, signer
     const signer = await getSigner(ctx, signerType);
 
     let txs = [];
+    // we perform this last to make sure we don't accidentally lock ourselves out
+    let updateOwner: ReturnType<typeof deployment.ntt.setOwner> | undefined = undefined;
     let managerUpgrade: { from: string, to: string } | undefined;
     for (const k of Object.keys(diff)) {
         if (k === "version") {
@@ -1224,7 +1226,10 @@ async function pushDeployment<C extends Chain>(deployment: Deployment<C>, signer
             managerUpgrade = { from: diff[k]!.pull!, to: diff[k]!.push! };
         } else if (k === "owner") {
             const address: AccountAddress<C> = toUniversal(deployment.manager.chain, diff[k]?.push!);
-            txs.push(deployment.ntt.setOwner(address, signer.address.address));
+            updateOwner = deployment.ntt.setOwner(address, signer.address.address);
+        } else if (k === "pauser") {
+            const address: AccountAddress<C> = toUniversal(deployment.manager.chain, diff[k]?.push!);
+            txs.push(deployment.ntt.setPauser(address, signer.address.address));
         } else if (k === "paused") {
             if (diff[k]?.push === true) {
                 txs.push(deployment.ntt.pause(signer.address.address));
@@ -1261,6 +1266,9 @@ async function pushDeployment<C extends Chain>(deployment: Deployment<C>, signer
     }
     for (const tx of txs) {
         await signSendWait(ctx, tx, signer.signer)
+    }
+    if (updateOwner) {
+        await signSendWait(ctx, updateOwner, signer.signer)
     }
 }
 
@@ -1336,6 +1344,7 @@ async function pullChainConfig<N extends Network, C extends Chain>(
 
     const paused = await ntt.isPaused();
     const owner = await ntt.getOwner();
+    const pauser = await ntt.getPauser();
 
     const version = getVersion(manager.chain, ntt);
 
@@ -1355,6 +1364,9 @@ async function pullChainConfig<N extends Network, C extends Chain>(
             inbound: {},
         },
     };
+    if (pauser) {
+        config.pauser = pauser.toString();
+    }
     return [config, ch, ntt, decimals];
 }
 

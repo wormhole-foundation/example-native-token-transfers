@@ -147,7 +147,7 @@ export class EvmNativeSigner<N extends Network, C extends EvmChains = EvmChains>
     for (const txn of tx) {
       const { transaction, description } = txn;
       if (this.opts?.debug)
-        console.log(`Signing: ${description} for ${this.address()} (tx: ${transaction.to}})`);
+        console.log(`Signing: ${description} for ${this.address()}`);
 
       const t: TransactionRequest = {
         ...transaction,
