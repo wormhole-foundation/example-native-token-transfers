@@ -158,7 +158,11 @@ const options = {
         describe: "Skip contract verification",
         type: "boolean",
         default: false,
-    }
+    },
+    payer: {
+        describe: "Path to the payer json file (Solana)",
+        type: "string",
+    },
 } as const;
 
 
@@ -573,15 +577,18 @@ yargs(hideBin(process.argv))
             .option("signer-type", options.signerType)
             .option("verbose", options.verbose)
             .option("skip-verify", options.skipVerify)
+            .option("payer", options.payer)
             .example("$0 push", "Push local configuration changes to the blockchain")
             .example("$0 push --signer-type ledger", "Push changes using a Ledger hardware wallet for signing")
-            .example("$0 push --skip-verify", "Push changes without verifying contracts on EVM chains"),
+            .example("$0 push --skip-verify", "Push changes without verifying contracts on EVM chains")
+            .example("$0 push --payer <SOLANA_KEYPAIR_PATH>", "Path to the payer json file (Solana), instead of setting SOLANA_PRIVATE_KEY env variable"),
         async (argv) => {
             const deployments: Config = loadConfig(argv["path"]);
             const verbose = argv["verbose"];
             const network = deployments.network as Network;
             const deps: Partial<{ [C in Chain]: Deployment<Chain> }> = await pullDeployments(deployments, network, verbose);
             const signerType = argv["signer-type"] as SignerType;
+            const payerPath = argv["payer"];
 
             const missing = await missingConfigs(deps, verbose);
 
@@ -589,7 +596,7 @@ yargs(hideBin(process.argv))
                 assertChain(chain);
                 const ntt = deps[chain]!.ntt;
                 const ctx = deps[chain]!.ctx;
-                const signer = await getSigner(ctx, signerType)
+                const signer = await getSigner(ctx, signerType, undefined, payerPath);
                 for (const manager of missingConfig.managerPeers) {
                     const tx = ntt.setPeer(manager.address, manager.tokenDecimals, manager.inboundLimit, signer.address.address)
                     await signSendWait(ctx, tx, signer.signer)
@@ -613,7 +620,7 @@ yargs(hideBin(process.argv))
 
             for (const [chain, deployment] of Object.entries(depsAfterRegistrations)) {
                 assertChain(chain);
-                await pushDeployment(deployment as any, signerType, !argv["skip-verify"], argv["yes"]);
+                await pushDeployment(deployment as any, signerType, !argv["skip-verify"], argv["yes"], payerPath);
             }
         })
     .command("status",
@@ -1129,6 +1136,7 @@ async function deploySolana<N extends Network, C extends SolanaChains>(
             binary = `${pwd}/solana/target/deploy/example_native_token_transfers.so`;
         }
 
+
         await checkSolanaBinary(binary, wormhole, providedProgramId)
 
         // do the actual deployment
@@ -1254,7 +1262,7 @@ async function missingConfigs(
     return missingConfigs;
 }
 
-async function pushDeployment<C extends Chain>(deployment: Deployment<C>, signerType: SignerType, evmVerify: boolean, yes: boolean): Promise<void> {
+async function pushDeployment<C extends Chain>(deployment: Deployment<C>, signerType: SignerType, evmVerify: boolean, yes: boolean, filePath?: string): Promise<void> {
     const diff = diffObjects(deployment.config.local!, deployment.config.remote!);
     if (Object.keys(diff).length === 0) {
         return;
@@ -1270,7 +1278,7 @@ async function pushDeployment<C extends Chain>(deployment: Deployment<C>, signer
 
     const ctx = deployment.ctx;
 
-    const signer = await getSigner(ctx, signerType);
+    const signer = await getSigner(ctx, signerType, undefined, filePath);
 
     let txs = [];
     // we perform this last to make sure we don't accidentally lock ourselves out
