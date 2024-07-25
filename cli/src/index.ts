@@ -160,7 +160,7 @@ const options = {
         default: false,
     },
     payerPath: {
-        describe: "Path to the payer json file",
+        describe: "Path to the payer json file (Solana)",
         default: false,
         type: "string",
     },
