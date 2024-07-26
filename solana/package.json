@@ -54,16 +54,16 @@
     "@solana/spl-token": "0.4.0",
     "@solana/web3.js": "1.91.7",
     "bn.js": "5.2.1",
-    "@wormhole-foundation/sdk-base": "^0.8",
-    "@wormhole-foundation/sdk-definitions": "^0.8",
-    "@wormhole-foundation/sdk-solana": "^0.8",
-    "@wormhole-foundation/sdk-solana-core": "^0.8"
+    "@wormhole-foundation/sdk-base": "^0.8.2",
+    "@wormhole-foundation/sdk-definitions": "^0.8.2",
+    "@wormhole-foundation/sdk-solana": "^0.8.2",
+    "@wormhole-foundation/sdk-solana-core": "^0.8.2"
   },
   "peerDependencies": {
-    "@wormhole-foundation/sdk-base": "^0.8",
-    "@wormhole-foundation/sdk-definitions": "^0.8",
-    "@wormhole-foundation/sdk-solana": "^0.8",
-    "@wormhole-foundation/sdk-solana-core": "^0.8",
+    "@wormhole-foundation/sdk-base": "^0.8.2",
+    "@wormhole-foundation/sdk-definitions": "^0.8.2",
+    "@wormhole-foundation/sdk-solana": "^0.8.2",
+    "@wormhole-foundation/sdk-solana-core": "^0.8.2",
     "@wormhole-foundation/sdk-definitions-ntt": "0.1.0-beta.0"
   },
   "type": "module",

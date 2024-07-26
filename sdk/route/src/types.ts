@@ -1,5 +1,6 @@
 import {
   Chain,
+  ChainAddress,
   ChainContext,
   Network,
   TokenId,
@@ -164,6 +165,40 @@ export namespace NttRoute {
           },
           quoter: found.quoter,
         };
+    }
+    throw new Error("Cannot find Ntt contracts in config for: " + address);
+  }
+
+  export function resolveDestinationNttContracts<C extends Chain>(
+    config: Config,
+    srcManager: ChainAddress<C>,
+    dstChain: Chain
+  ): Ntt.Contracts {
+    const cfg = Object.values(config.tokens);
+    const address = canonicalAddress(srcManager);
+    for (const tokens of cfg) {
+      const found = tokens.find(
+        (tc) =>
+          tc.manager.toLowerCase() === address.toLowerCase() &&
+          tc.chain === srcManager.chain
+      );
+      if (found) {
+        const remote = tokens.find((tc) => tc.chain === dstChain);
+        if (!remote) {
+          throw new Error(
+            `Cannot find destination Ntt contracts in config for: ${address}`
+          );
+        }
+        return {
+          token: remote.token,
+          manager: remote.manager,
+          transceiver: {
+            wormhole: remote.transceiver.find((v) => v.type === "wormhole")!
+              .address,
+          },
+          quoter: remote.quoter,
+        };
+      }
     }
     throw new Error("Cannot find Ntt contracts in config for: " + address);
   }

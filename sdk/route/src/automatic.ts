@@ -9,10 +9,12 @@ import {
   RedeemedTransferReceipt,
   Signer,
   TokenId,
+  TransactionId,
   TransferState,
   Wormhole,
   WormholeMessageId,
   amount,
+  canonicalAddress,
   chainToPlatform,
   isAttested,
   isDestinationQueued,
@@ -232,6 +234,87 @@ export class NttAutomaticRoute<N extends Network>
       state: TransferState.SourceInitiated,
       originTxs: txids,
       params,
+    };
+  }
+
+  async resume(tx: TransactionId): Promise<R> {
+    const vaa = await this.wh.getVaa(
+      tx.txid,
+      "Ntt:WormholeTransferStandardRelayer"
+    );
+    if (!vaa) throw new Error("No VAA found for transaction: " + tx.txid);
+
+    const msgId: WormholeMessageId = {
+      chain: vaa.emitterChain,
+      emitter: vaa.emitterAddress,
+      sequence: vaa.sequence,
+    };
+
+    const { payload } = vaa.payload;
+    const { recipientChain, trimmedAmount } =
+      payload["nttManagerPayload"].payload;
+
+    const token = canonicalAddress({
+      chain: vaa.emitterChain,
+      address: payload["nttManagerPayload"].payload.sourceToken,
+    });
+    const manager = canonicalAddress({
+      chain: vaa.emitterChain,
+      address: payload["sourceNttManager"],
+    });
+    const whTransceiver =
+      vaa.emitterChain === "Solana"
+        ? manager
+        : canonicalAddress({
+            chain: vaa.emitterChain,
+            address: vaa.emitterAddress,
+          });
+
+    const dstInfo = NttRoute.resolveDestinationNttContracts(
+      this.staticConfig,
+      {
+        chain: vaa.emitterChain,
+        address: payload["sourceNttManager"],
+      },
+      recipientChain
+    );
+
+    const amt = amount.fromBaseUnits(
+      trimmedAmount.amount,
+      trimmedAmount.decimals
+    );
+
+    return {
+      from: vaa.emitterChain,
+      to: recipientChain,
+      state: TransferState.Attested,
+      originTxs: [tx],
+      attestation: {
+        id: msgId,
+        attestation: vaa,
+      },
+      params: {
+        amount: amount.display(amt),
+        options: { automatic: true },
+        normalizedParams: {
+          amount: amt,
+          options: { queue: false, automatic: true },
+          sourceContracts: {
+            token,
+            manager,
+            transceiver: {
+              wormhole: whTransceiver,
+            },
+          },
+          destinationContracts: {
+            token: dstInfo.token,
+            manager: dstInfo.manager,
+            transceiver: {
+              wormhole: dstInfo.transceiver.wormhole,
+            },
+          },
+        },
+      },
     };
   }
 

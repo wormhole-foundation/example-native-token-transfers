@@ -49,12 +49,12 @@
     "test": "jest --config ./jest.config.ts"
   },
   "dependencies": {
-    "@wormhole-foundation/sdk-base": "^0.8",
-    "@wormhole-foundation/sdk-definitions": "^0.8"
+    "@wormhole-foundation/sdk-base": "^0.8.2",
+    "@wormhole-foundation/sdk-definitions": "^0.8.2"
   },
   "peerDependencies": {
-    "@wormhole-foundation/sdk-base": "^0.8",
-    "@wormhole-foundation/sdk-definitions": "^0.8"
+    "@wormhole-foundation/sdk-base": "^0.8.2",
+    "@wormhole-foundation/sdk-definitions": "^0.8.2"
   },
   "type": "module"
 }
