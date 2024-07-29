@@ -32,7 +32,10 @@ use crate::{
     sdk::{
         instructions::{
             admin::{set_paused, SetPaused},
-            transfer::{approve_token_authority, transfer},
+            transfer::{
+                approve_token_authority, approve_token_authority_with_token_program_id, transfer,
+                transfer_with_token_program_id,
+            },
         },
         transceivers::wormhole::instructions::release_outbound::{
             release_outbound, ReleaseOutbound,
@@ -43,7 +46,7 @@ use crate::{
 pub mod common;
 pub mod sdk;
 
-use crate::common::setup::setup;
+use crate::common::setup::{setup, setup_with_transfer_fee};
 
 // TODO: some more tests
 // - unregistered peer can't transfer
@@ -91,6 +94,30 @@ pub async fn test_transfer_locking() {
 pub async fn test_transfer_burning() {
     let (mut ctx, test_data) = setup(Mode::Burning).await;
     test_transfer(&mut ctx, &test_data, Mode::Burning).await;
+}
+
+#[tokio::test]
+pub async fn test_transfer_locking_with_transfer_fee() {
+    let (mut ctx, test_data) = setup_with_transfer_fee(Mode::Locking).await;
+    test_transfer_with_transfer_fee(
+        &mut ctx,
+        &test_data,
+        Mode::Locking,
+        NTTError::BadAmountAfterTransfer.into(),
+    )
+    .await;
+}
+
+#[tokio::test]
+pub async fn test_transfer_burning_with_transfer_fee() {
+    let (mut ctx, test_data) = setup_with_transfer_fee(Mode::Burning).await;
+    test_transfer_with_transfer_fee(
+        &mut ctx,
+        &test_data,
+        Mode::Burning,
+        spl_token::error::TokenError::InsufficientFunds as u32,
+    )
+    .await;
 }
 
 /// This tests the happy path of a transfer, with all the relevant account checks.
@@ -192,6 +219,37 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
             },
             vec![]
         )
+    );
+}
+
+async fn test_transfer_with_transfer_fee(
+    ctx: &mut ProgramTestContext,
+    test_data: &TestData,
+    mode: Mode,
+    error_code: u32,
+) {
+    let outbox_item = Keypair::new();
+
+    let (accs, args) = init_accs_args(ctx, test_data, outbox_item.pubkey(), 154, false);
+
+    approve_token_authority_with_token_program_id(
+        &test_data.ntt,
+        &test_data.user_token_account,
+        &test_data.user.pubkey(),
+        &args,
+        &spl_token_2022::id(),
+    )
+    .submit_with_signers(&[&test_data.user], ctx)
+    .await
+    .unwrap();
+    let err =
+        transfer_with_token_program_id(&test_data.ntt, accs, args, mode, &spl_token_2022::id())
+            .submit_with_signers(&[&outbox_item], ctx)
+            .await
+            .unwrap_err();
+    assert_eq!(
+        err.unwrap(),
+        TransactionError::InstructionError(0, InstructionError::Custom(error_code))
     );
 }
 
