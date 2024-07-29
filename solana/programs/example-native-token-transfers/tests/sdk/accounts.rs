@@ -182,10 +182,18 @@ impl NTT {
     }
 
     pub fn custody(&self, mint: &Pubkey) -> Pubkey {
+        self.custody_with_token_program_id(mint, &spl_token::ID)
+    }
+
+    pub fn custody_with_token_program_id(
+        &self,
+        mint: &Pubkey,
+        token_program_id: &Pubkey,
+    ) -> Pubkey {
         anchor_spl::associated_token::get_associated_token_address_with_program_id(
             &self.token_authority(),
             mint,
-            &spl_token::ID,
+            token_program_id,
         )
     }
 
