@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+RPC_PORT_NUMBER=8899
+FAUCET_PORT_NUMBER=9900
+
 # Run each tests/*.test.ts file separately to avoid account state persisting between tests
 for file in `ls tests/*.test.ts`
 do
@@ -14,4 +17,6 @@ do
 
     # kill solana validator if still running to avoid port already in use error
     if pgrep solana-test-validator; then pkill solana-test-validator; fi
+    lsof -i tcp:${RPC_PORT_NUMBER} | awk 'NR!=1 {print $2}' | xargs kill
+    lsof -i tcp:${FAUCET_PORT_NUMBER} | awk 'NR!=1 {print $2}' | xargs kill
 done
