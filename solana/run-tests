@@ -11,4 +11,7 @@ do
     env_flag="$(tr '[:lower:]' '[:upper:]' <<< ${filename//-/_})"
 
     env $env_flag=1 bash -c 'anchor test --skip-build'
+
+    # kill solana validator if still running to avoid port already in use error
+    if pgrep solana-test-validator; then pkill solana-test-validator; fi
 done
