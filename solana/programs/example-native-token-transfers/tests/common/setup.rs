@@ -15,14 +15,13 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use spl_associated_token_account::get_associated_token_address_with_program_id;
-use spl_token::instruction::AuthorityType;
 use wormhole_anchor_sdk::wormhole::{BridgeData, FeeCollector};
 
 use crate::sdk::{
     accounts::{Governance, Wormhole, NTT},
     instructions::{
         admin::{register_transceiver, set_peer, RegisterTransceiver, SetPeer},
-        initialize::{initialize, Initialize},
+        initialize::{initialize_with_token_program_id, Initialize},
     },
     transceivers::wormhole::instructions::admin::{set_transceiver_peer, SetTransceiverPeer},
 };
@@ -73,8 +72,31 @@ pub async fn setup_with_extra_accounts(
     (ctx, test_data)
 }
 
+pub async fn setup_with_extra_accounts_with_transfer_fee(
+    mode: Mode,
+    accounts: &[(Pubkey, Account)],
+) -> (ProgramTestContext, TestData) {
+    let program_owner = Keypair::new();
+    let mut program_test = setup_programs(program_owner.pubkey()).await.unwrap();
+
+    for (pubkey, account) in accounts {
+        program_test.add_account(*pubkey, account.clone());
+    }
+
+    let mut ctx = program_test.start_with_context().await;
+
+    let test_data = setup_accounts_with_transfer_fee(&mut ctx, program_owner).await;
+    setup_ntt_with_token_program_id(&mut ctx, &test_data, mode, &spl_token_2022::id()).await;
+
+    (ctx, test_data)
+}
+
 pub async fn setup(mode: Mode) -> (ProgramTestContext, TestData) {
     setup_with_extra_accounts(mode, &[]).await
+}
+
+pub async fn setup_with_transfer_fee(mode: Mode) -> (ProgramTestContext, TestData) {
+    setup_with_extra_accounts_with_transfer_fee(mode, &[]).await
 }
 
 fn prefer_bpf() -> bool {
@@ -126,13 +148,22 @@ pub async fn setup_programs(program_owner: Pubkey) -> Result<ProgramTest, Error>
 /// Set up test accounts, and mint MINT_AMOUNT to the user's token account
 /// Set up the program for locking mode, and registers a peer
 pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode: Mode) {
+    setup_ntt_with_token_program_id(ctx, test_data, mode, &Token::id()).await;
+}
+
+pub async fn setup_ntt_with_token_program_id(
+    ctx: &mut ProgramTestContext,
+    test_data: &TestData,
+    mode: Mode,
+    token_program_id: &Pubkey,
+) {
     if mode == Mode::Burning {
         // we set the mint authority to the ntt contract in burn/mint mode
-        spl_token::instruction::set_authority(
-            &spl_token::ID,
+        spl_token_2022::instruction::set_authority(
+            token_program_id,
             &test_data.mint,
             Some(&test_data.ntt.token_authority()),
-            AuthorityType::MintTokens,
+            spl_token_2022::instruction::AuthorityType::MintTokens,
             &test_data.mint_authority.pubkey(),
             &[],
         )
@@ -142,7 +173,7 @@ pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
         .unwrap();
     }
 
-    initialize(
+    initialize_with_token_program_id(
         &test_data.ntt,
         Initialize {
             payer: ctx.payer.pubkey(),
@@ -155,6 +186,7 @@ pub async fn setup_ntt(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
             limit: OUTBOUND_LIMIT,
             mode,
         },
+        token_program_id,
     )
     .submit_with_signers(&[&test_data.program_owner], ctx)
     .await
@@ -265,6 +297,71 @@ pub async fn setup_accounts(ctx: &mut ProgramTestContext, program_owner: Keypair
     }
 }
 
+pub async fn setup_accounts_with_transfer_fee(
+    ctx: &mut ProgramTestContext,
+    program_owner: Keypair,
+) -> TestData {
+    // create mint
+    let mint = Keypair::new();
+    let mint_authority = Keypair::new();
+
+    let user = Keypair::new();
+    let payer = ctx.payer.pubkey();
+
+    create_mint_with_transfer_fee(ctx, &mint, &mint_authority.pubkey(), 9, 500, 5000)
+        .await
+        .submit(ctx)
+        .await
+        .unwrap();
+
+    // create associated token account for user
+    let user_token_account = get_associated_token_address_with_program_id(
+        &user.pubkey(),
+        &mint.pubkey(),
+        &spl_token_2022::id(),
+    );
+
+    spl_associated_token_account::instruction::create_associated_token_account(
+        &payer,
+        &user.pubkey(),
+        &mint.pubkey(),
+        &spl_token_2022::id(),
+    )
+    .submit(ctx)
+    .await
+    .unwrap();
+
+    spl_token_2022::instruction::mint_to(
+        &spl_token_2022::id(),
+        &mint.pubkey(),
+        &user_token_account,
+        &mint_authority.pubkey(),
+        &[],
+        MINT_AMOUNT,
+    )
+    .unwrap()
+    .submit_with_signers(&[&mint_authority], ctx)
+    .await
+    .unwrap();
+
+    TestData {
+        ntt: NTT {
+            program: example_native_token_transfers::ID,
+            wormhole: Wormhole {
+                program: wormhole_anchor_sdk::wormhole::program::ID,
+            },
+        },
+        governance: Governance {
+            program: wormhole_governance::ID,
+        },
+        program_owner,
+        mint_authority,
+        mint: mint.pubkey(),
+        user,
+        user_token_account,
+    }
+}
+
 pub async fn create_mint(
     ctx: &mut ProgramTestContext,
     mint: &Keypair,
@@ -296,6 +393,57 @@ pub async fn create_mint(
         ],
         Some(&ctx.payer.pubkey()),
         &[&ctx.payer, mint],
+        blockhash,
+    )
+}
+
+pub async fn create_mint_with_transfer_fee(
+    ctx: &mut ProgramTestContext,
+    mint: &Keypair,
+    mint_authority: &Pubkey,
+    decimals: u8,
+    transfer_fee_basis_points: u16,
+    maximum_fee: u64,
+) -> Transaction {
+    let rent = ctx.banks_client.get_rent().await.unwrap();
+    let extension_types = vec![spl_token_2022::extension::ExtensionType::TransferFeeConfig];
+    let space = spl_token_2022::extension::ExtensionType::try_calculate_account_len::<
+        spl_token_2022::state::Mint,
+    >(&extension_types)
+    .unwrap();
+    let mint_rent = rent.minimum_balance(space);
+
+    let blockhash = ctx.banks_client.get_latest_blockhash().await.unwrap();
+
+    Transaction::new_signed_with_payer(
+        &[
+            system_instruction::create_account(
+                &ctx.payer.pubkey(),
+                &mint.pubkey(),
+                mint_rent,
+                space as u64,
+                &spl_token_2022::id(),
+            ),
+            spl_token_2022::extension::transfer_fee::instruction::initialize_transfer_fee_config(
+                &spl_token_2022::id(),
+                &mint.pubkey(),
+                None,
+                None,
+                transfer_fee_basis_points,
+                maximum_fee,
+            )
+            .unwrap(),
+            spl_token_2022::instruction::initialize_mint2(
+                &spl_token_2022::id(),
+                &mint.pubkey(),
+                mint_authority,
+                None,
+                decimals,
+            )
+            .unwrap(),
+        ],
+        Some(&ctx.payer.pubkey()),
+        &[&ctx.payer, &mint],
         blockhash,
     )
 }
