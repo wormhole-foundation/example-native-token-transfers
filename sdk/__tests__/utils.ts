@@ -127,7 +127,7 @@ export async function link(chainInfos: Ctx[]) {
     chain: hubChain,
     emitter: Wormhole.chainAddress(
       hubChain,
-      hub.contracts!.transceiver.wormhole
+      hub.contracts!.transceiver.wormhole!
     ).address.toUniversalAddress(),
     sequence: 0n,
   };
@@ -595,7 +595,7 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
   } = peerCtx.contracts!;
 
   const peerManager = Wormhole.chainAddress(peer.chain, manager);
-  const peerTransceiver = Wormhole.chainAddress(peer.chain, transceiver);
+  const peerTransceiver = Wormhole.chainAddress(peer.chain, transceiver!);
 
   const tokenDecimals = target.config.nativeTokenDecimals;
   const inboundLimit = amount.units(amount.parse("1000", tokenDecimals));
@@ -625,7 +625,7 @@ async function setupPeer(targetCtx: Ctx, peerCtx: Ctx) {
   ) {
     const nativeSigner = (signer as NativeSigner).unwrap();
     const xcvr = WormholeTransceiver__factory.connect(
-      targetCtx.contracts!.transceiver.wormhole,
+      targetCtx.contracts!.transceiver.wormhole!,
       nativeSigner.signer
     );
     const peerChainId = toChainId(peer.chain);
