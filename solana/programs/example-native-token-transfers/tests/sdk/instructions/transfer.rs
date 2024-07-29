@@ -17,19 +17,38 @@ pub struct Transfer {
 }
 
 pub fn transfer(ntt: &NTT, transfer: Transfer, args: TransferArgs, mode: Mode) -> Instruction {
+    transfer_with_token_program_id(ntt, transfer, args, mode, &Token::id())
+}
+
+pub fn transfer_with_token_program_id(
+    ntt: &NTT,
+    transfer: Transfer,
+    args: TransferArgs,
+    mode: Mode,
+    token_program_id: &Pubkey,
+) -> Instruction {
     match mode {
-        Mode::Burning => transfer_burn(ntt, transfer, args),
-        Mode::Locking => transfer_lock(ntt, transfer, args),
+        Mode::Burning => transfer_burn_with_token_program_id(ntt, transfer, args, token_program_id),
+        Mode::Locking => transfer_lock_with_token_program_id(ntt, transfer, args, token_program_id),
     }
 }
 
 pub fn transfer_burn(ntt: &NTT, transfer: Transfer, args: TransferArgs) -> Instruction {
+    transfer_burn_with_token_program_id(ntt, transfer, args, &Token::id())
+}
+
+pub fn transfer_burn_with_token_program_id(
+    ntt: &NTT,
+    transfer: Transfer,
+    args: TransferArgs,
+    token_program_id: &Pubkey,
+) -> Instruction {
     let chain_id = args.recipient_chain.id;
     let session_authority = ntt.session_authority(&transfer.from_authority, &args);
     let data = example_native_token_transfers::instruction::TransferBurn { args };
 
     let accounts = example_native_token_transfers::accounts::TransferBurn {
-        common: common(ntt, &transfer),
+        common: common_with_token_program_id(ntt, &transfer, token_program_id),
         inbox_rate_limit: ntt.inbox_rate_limit(chain_id),
         peer: transfer.peer,
         session_authority,
@@ -44,12 +63,21 @@ pub fn transfer_burn(ntt: &NTT, transfer: Transfer, args: TransferArgs) -> Instr
 }
 
 pub fn transfer_lock(ntt: &NTT, transfer: Transfer, args: TransferArgs) -> Instruction {
+    transfer_lock_with_token_program_id(ntt, transfer, args, &Token::id())
+}
+
+pub fn transfer_lock_with_token_program_id(
+    ntt: &NTT,
+    transfer: Transfer,
+    args: TransferArgs,
+    token_program_id: &Pubkey,
+) -> Instruction {
     let chain_id = args.recipient_chain.id;
     let session_authority = ntt.session_authority(&transfer.from_authority, &args);
     let data = example_native_token_transfers::instruction::TransferLock { args };
 
     let accounts = example_native_token_transfers::accounts::TransferLock {
-        common: common(ntt, &transfer),
+        common: common_with_token_program_id(ntt, &transfer, token_program_id),
         inbox_rate_limit: ntt.inbox_rate_limit(chain_id),
         peer: transfer.peer,
         session_authority,
@@ -67,8 +95,18 @@ pub fn approve_token_authority(
     user: &Pubkey,
     args: &TransferArgs,
 ) -> Instruction {
+    approve_token_authority_with_token_program_id(ntt, user_token_account, user, args, &Token::id())
+}
+
+pub fn approve_token_authority_with_token_program_id(
+    ntt: &NTT,
+    user_token_account: &Pubkey,
+    user: &Pubkey,
+    args: &TransferArgs,
+    token_program_id: &Pubkey,
+) -> Instruction {
     spl_token_2022::instruction::approve(
-        &spl_token::id(), // TODO: look into how token account was originally created
+        token_program_id,
         user_token_account,
         &ntt.session_authority(user, args),
         user,
@@ -78,7 +116,11 @@ pub fn approve_token_authority(
     .unwrap()
 }
 
-fn common(ntt: &NTT, transfer: &Transfer) -> example_native_token_transfers::accounts::Transfer {
+fn common_with_token_program_id(
+    ntt: &NTT,
+    transfer: &Transfer,
+    token_program_id: &Pubkey,
+) -> example_native_token_transfers::accounts::Transfer {
     example_native_token_transfers::accounts::Transfer {
         payer: transfer.payer,
         config: NotPausedConfig {
@@ -86,10 +128,10 @@ fn common(ntt: &NTT, transfer: &Transfer) -> example_native_token_transfers::acc
         },
         mint: transfer.mint,
         from: transfer.from,
-        token_program: Token::id(),
+        token_program: *token_program_id,
         outbox_item: transfer.outbox_item,
         outbox_rate_limit: ntt.outbox_rate_limit(),
         system_program: System::id(),
-        custody: ntt.custody(&transfer.mint),
+        custody: ntt.custody_with_token_program_id(&transfer.mint, token_program_id),
     }
 }
