@@ -1,15 +1,20 @@
-# Solana 
+# Solana
 
 ## Prequisities
 
 Ensure that you are using the correct version of the Solana and Anchor CLI tools by consulting `Anchor.toml`.
+
 ```toml
 [toolchain]
 anchor_version = "0.29.0"   # CLI
-solana_version = "1.17.2"
+solana_version = "1.18.10"
 ```
 
-You will also need to install the toolchain listed in `rust-toolchain`.
+You will also need to install the toolchain listed in `rust-toolchain`. You can verify this by running:
+
+```sh
+rustup show
+```
 
 ## Design Overview
 
@@ -92,8 +97,6 @@ Program log: Instruction: ReleaseInboundMint
 Program log: Instruction: ReleaseInboundUnlock
 ```
 
-
-
 ## Testing
 
 The test files are loacated in the `sdk/solana/__tests__/` directory
@@ -103,5 +106,40 @@ In order to run them, the Solana programs must be built and their IDL made avail
 To ensure the SDK has the generated IDL, run the tests with the make command:
 
 ```sh
-make anchor-test
+make test
 ```
+
+### Troubleshooting
+
+<details>
+<summary><code>make: *** No rule to make target `test'.  Stop.</code></summary>
+
+- Ensure `Makefile` has target `test`
+</details>
+
+<details>
+<summary><code>tsx: command not found</code></summary>
+
+- Screenshot:
+- Update `Makefile` ([line #29](https://github.com/wormhole-foundation/example-native-token-transfers/blob/main/solana/Makefile#L29)) from:
+
+  ```sh
+  tsx scripts/regenerateIdl.ts $$jsonfile > $$tsfile; \
+  ```
+
+  to:
+
+  ```sh
+  npx tsx scripts/regenerateIdl.ts $$jsonfile > $$tsfile; \
+  ```
+
+  </details>
+
+  <details>
+  <summary><code>Lifecycle script `build:esm` failed with error</code></summary>
+
+  - Screenshot:
+  - This occurs due to Typescript files failing compilation.
+  - [`patch-idl` script](https://github.com/wormhole-foundation/example-native-token-transfers/blob/main/solana/scripts/patch-idl) requires [`jq`](https://jqlang.github.io/jq/) to be installed. Install `jq` and retry.
+
+  </details>
