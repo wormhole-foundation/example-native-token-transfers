@@ -121,6 +121,7 @@ make test
 <summary><code>tsx: command not found</code></summary>
 
 - Screenshot:
+  <img src="images/tsx-command-not-found.png" alt="tsx command not found screenshot">
 - Update `Makefile` ([line #29](https://github.com/wormhole-foundation/example-native-token-transfers/blob/main/solana/Makefile#L29)) from:
 
   ```sh
@@ -139,6 +140,7 @@ make test
   <summary><code>Lifecycle script `build:esm` failed with error</code></summary>
 
   - Screenshot:
+    <img src="images/lifecycle-script.png" alt="lifecycle script screenshot">
   - This occurs due to Typescript files failing compilation.
   - [`patch-idl` script](https://github.com/wormhole-foundation/example-native-token-transfers/blob/main/solana/scripts/patch-idl) requires [`jq`](https://jqlang.github.io/jq/) to be installed. Install `jq` and retry.
 
