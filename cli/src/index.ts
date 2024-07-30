@@ -481,7 +481,7 @@ yargs(hideBin(process.argv))
 
                 const peer = await retryWithExponentialBackoff(() => ntt.getPeer(c), 5, 5000);
 
-                process.stdout.write(`\r`);
+                process.stdout.write(`\n`);
                 if (peer === null) {
                     continue;
                 }
@@ -613,6 +613,19 @@ yargs(hideBin(process.argv))
                     const tx = (await ntt.getTransceiver(0) as EvmNttWormholeTranceiver<Network, EvmChains>).setIsWormholeRelayingEnabled(relaying, true)
                     await signSendWait(ctx, tx, signer.signer)
                 }
+                if (missingConfig.solanaWormholeTransceiver) {
+                    if (chainToPlatform(chain) !== "Solana") {
+                        console.error("Solana wormhole transceiver can only be set on Solana chains");
+                        continue;
+                    }
+                    const solanaNtt = ntt as SolanaNtt<Network, SolanaChains>;
+                    const tx = solanaNtt.registerTransceiver({
+                        payer: signer.address.address as AccountAddress<SolanaChains>,
+                        owner: signer.address.address as AccountAddress<SolanaChains>,
+                        transceiver: solanaNtt.program.programId
+                    })
+                    await signSendWait(ctx, tx, signer.signer)
+                }
             }
 
             // pull deps again
@@ -695,6 +708,9 @@ yargs(hideBin(process.argv))
                 for (const relaying of peers.standardRelaying) {
                     console.warn(`  No standard relaying: ${relaying}`);
                 }
+                if (peers.solanaWormholeTransceiver) {
+                    console.error("  Missing Solana wormhole transceiver");
+                }
             }
 
             if (errors > 0) {
@@ -754,6 +770,7 @@ type MissingImplicitConfig = {
     transceiverPeers: ChainAddress<Chain>[];
     evmChains: Chain[];
     standardRelaying: Chain[];
+    solanaWormholeTransceiver: boolean;
 }
 
 function createWorkTree(platform: Platform, version: string): string {
@@ -1198,7 +1215,18 @@ async function missingConfigs(
             transceiverPeers: [],
             evmChains: [],
             standardRelaying: [],
+            solanaWormholeTransceiver: false,
         };
+
+        if (chainToPlatform(fromChain) === "Solana") {
+            const solanaNtt = from.ntt as SolanaNtt<Network, SolanaChains>;
+            const selfWormholeTransceiver = solanaNtt.pdas.registeredTransceiver(new PublicKey(solanaNtt.contracts.ntt!.manager)).toBase58();
+            const registeredSelfTransceiver = await retryWithExponentialBackoff(() => solanaNtt.connection.getAccountInfo(new PublicKey(selfWormholeTransceiver)), 5, 5000);
+            if (registeredSelfTransceiver === null) {
+                count++;
+                missing.solanaWormholeTransceiver = true;
+            }
+        }
 
         for (const [toChain, to] of Object.entries(deps)) {
             assertChain(toChain);
@@ -1206,7 +1234,7 @@ async function missingConfigs(
                 continue;
             }
             if (verbose) {
-                process.stdout.write(`Verifying registration for ${fromChain} -> ${toChain}......\r`);
+                process.stdout.write(`Verifying registration for ${fromChain} -> ${toChain}......\n`);
             }
             const peer = await retryWithExponentialBackoff(() => from.ntt.getPeer(toChain), 5, 5000);
             if (peer === null) {
@@ -1243,7 +1271,7 @@ async function missingConfigs(
                 }
             }
 
-            const transceiverPeer = await from.whTransceiver.getPeer(toChain);
+            const transceiverPeer = await retryWithExponentialBackoff(() => from.whTransceiver.getPeer(toChain), 5, 5000);
             if (transceiverPeer === null) {
                 count++;
                 missing.transceiverPeers.push(to.whTransceiver.getAddress());
@@ -1364,7 +1392,7 @@ async function pullDeployments(deployments: Config, network: Network, verbose: b
 
     for (const [chain, deployment] of Object.entries(deployments.chains)) {
         if (verbose) {
-            process.stdout.write(`Fetching config for ${chain}......\r`);
+            process.stdout.write(`Fetching config for ${chain}......\n`);
         }
         assertChain(chain);
         const managerAddress: string | undefined = deployment.manager;
@@ -1610,7 +1638,7 @@ async function pullInboundLimits(ntts: Partial<{ [C in Chain]: Ntt<Network, C> }
                 continue;
             }
             if (verbose) {
-                process.stdout.write(`Fetching inbound limit for ${c1} -> ${c2}.......\r`);
+                process.stdout.write(`Fetching inbound limit for ${c1} -> ${c2}.......\n`);
             }
             const peer = await retryWithExponentialBackoff(() => ntt1.getPeer(c2), 5, 5000);
             if (chainConf.limits?.inbound === undefined) {
