@@ -9,29 +9,53 @@ if ! command -v bun > /dev/null; then
   exit 1
 fi
 
+REPO="https://github.com/wormhole-foundation/example-native-token-transfers.git"
+
 function main {
+  branch=""
+
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+
+    case $key in
+      -b|--branch)
+        branch="$2"
+        shift
+        shift
+        ;;
+      *)
+        echo "Unknown option $key"
+        exit 1
+        ;;
+    esac
+  done
+
   path=""
 
   # check if there's a package.json in the parent directory, with "name": "@wormhole-foundation/ntt-cli"
   if [ -f "$(dirname $0)/package.json" ] && grep -q '"name": "@wormhole-foundation/ntt-cli"' "$(dirname $0)/package.json"; then
   path="$(dirname $0)/.."
   else
+    # if branch is set, use it. otherwise use the latest tag of the form "vX.Y.Z+cli" or the 'cli' branch
+    if [ -z "$branch" ]; then
+      branch="$(select_branch)"
+    fi
+
     # clone to $HOME/.ntt-cli if it doesn't exist, otherwise update it
-    repo_ref="$(select_repo)"
-    repo="$(echo "$repo_ref" | awk '{print $1}')"
-    ref="$(echo "$repo_ref" | awk '{print $2}')"
-    echo "Cloning $repo $ref"
+    echo "Cloning $REPO $branch"
 
     mkdir -p "$HOME/.ntt-cli"
     path="$HOME/.ntt-cli/.checkout"
 
     if [ ! -d "$path" ]; then
-      git clone --branch "$ref" "$repo" "$path"
+      git clone --branch "$branch" "$REPO" "$path"
     else
       pushd "$path"
+      # update origin url to REPO
+      git remote set-url origin "$REPO"
       git fetch origin
       # reset hard
-      git reset --hard "origin/$ref"
+      git reset --hard "origin/$branch"
       popd
     fi
 
@@ -40,28 +64,21 @@ function main {
   install_cli "$path"
 }
 
-# function that determines which repo to clone
-function select_repo {
-  foundation_repo="https://github.com/wormhole-foundation/example-native-token-transfers.git"
-  labs_repo="https://github.com/wormholelabs-xyz/example-native-token-transfers.git"
-  # if the foundation repo has a tag of the form "vX.Y.Z+cli", use that (the latest one)
-  # otherwise we'll use the 'cli' branch from the labs repo
-  ref=""
-  repo=""
+# function that determines which branch/tag to clone
+function select_branch {
+  # if the repo has a tag of the form "vX.Y.Z+cli", use that (the latest one)
+  # otherwise we'll use the 'cli' branch
+  branch=""
   regex="refs/tags/v[0-9]*\.[0-9]*\.[0-9]*+cli"
-  if git ls-remote --tags "$foundation_repo" | grep -q "$regex"; then
-    repo="$foundation_repo"
-    ref="$(git ls-remote --tags "$foundation_repo" | grep "$regex" | sort -V | tail -n 1 | awk '{print $2}')"
+  if git ls-remote --tags "$REPO" | grep -q "$regex"; then
+    branch="$(git ls-remote --tags "$REPO" | grep "$regex" | sort -V | tail -n 1 | awk '{print $2}')"
   else
-    repo="$labs_repo"
-    ref="cli"
+    branch="cli"
   fi
 
-  echo "$repo $ref"
+  echo "$branch"
 }
 
-# the above but as a function. takes a single argument: the path to the package.json file
-# TODO: should just take the path to the repo root as an argument...
 function install_cli {
   cd "$1"
 
@@ -107,4 +124,4 @@ function install_cli {
   bun link @wormhole-foundation/ntt-cli
 }
 
-main
+main "$@"

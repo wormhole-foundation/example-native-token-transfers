@@ -203,7 +203,43 @@ yargs(hideBin(process.argv))
         "configuration commands",
         configuration.command
     )
-    // new
+    .command("update",
+        "update the NTT CLI",
+        (yargs) => yargs
+            .option("path", {
+                describe: "Path to a local NTT repo to install from. If not specified, the latest version will be installed.",
+                type: "string",
+            })
+            .option("branch", {
+                describe: "Git branch to install from",
+                type: "string",
+            })
+            .example("$0 update", "Update the NTT CLI to the latest version")
+            .example("$0 update --path /path/to/ntt", "Update the NTT CLI from a local repo")
+            .example("$0 update --branch cli", "Update the NTT CLI to the cli branch"),
+        async (argv) => {
+            const localPath = argv["path"];
+            if (localPath) {
+                if (argv["ref"]) {
+                    console.error("Cannot specify both --path and --ref");
+                    process.exit(1);
+                }
+                await $`${localPath}/cli/install.sh`;
+            } else {
+                let branchArg = "";
+                if (argv["branch"]) {
+                    branchArg = `--branch ${argv["branch"]}`;
+                }
+                const installScript = "https://raw.githubusercontent.com/wormhole-foundation/example-native-token-transfers/cli/cli/install.sh";
+                // save it to "$HOME/.ntt-cli/install.sh"
+                const nttDir = `${process.env.HOME}/.ntt-cli`;
+                const installer = `${nttDir}/install.sh`;
+                execSync(`mkdir -p ${nttDir}`);
+                execSync(`curl -s ${installScript} > ${installer}`);
+                execSync(`chmod +x ${installer}`);
+                execSync(`${installer} ${branchArg}`, { stdio: "inherit" });
+            }
+        })
     .command("new <path>",
         "create a new NTT project",
         (yargs) => yargs
