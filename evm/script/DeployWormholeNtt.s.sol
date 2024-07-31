@@ -19,6 +19,7 @@ contract DeployWormholeNtt is Script, DeployWormholeNttBase {
         address token,
         address wormholeRelayer,
         address specialRelayer,
+        uint8 decimals,
         IManagerBase.Mode mode
     ) public {
         vm.startBroadcast();
@@ -26,16 +27,27 @@ contract DeployWormholeNtt is Script, DeployWormholeNttBase {
         console.log("Deploying Wormhole Ntt...");
         IWormhole wh = IWormhole(wormhole);
 
+        // sanity check decimals
         (bool success, bytes memory queriedDecimals) =
             token.staticcall(abi.encodeWithSignature("decimals()"));
 
-        if (!success) {
-            console.log("Failed to query token decimals");
-            vm.stopBroadcast();
-            return;
+        if (success) {
+            uint8 queriedDecimals = abi.decode(queriedDecimals, (uint8));
+            if (queriedDecimals != decimals) {
+                console.log("Decimals mismatch: ", queriedDecimals, " != ", decimals);
+                vm.stopBroadcast();
+                return;
+            }
+        } else {
+            // NOTE: this might not be a critical error. It could just mean that
+            // the token contract was compiled against a different EVM version than what the forge script is running on.
+            // In this case, it's the responsibility of the caller to ensure that the provided decimals are correct
+            // and that the token contract is valid.
+            // The best way to ensure that is by calling this script with the queried token decimals (which is what the NTT CLI does).
+            console.log(
+                "Failed to query token decimals. Proceeding with provided decimals.", decimals
+            );
         }
-
-        uint8 decimals = abi.decode(queriedDecimals, (uint8));
 
         uint16 chainId = wh.chainId();
 

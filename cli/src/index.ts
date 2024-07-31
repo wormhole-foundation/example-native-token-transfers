@@ -31,6 +31,7 @@ import type { EvmNtt, EvmNttWormholeTranceiver } from "@wormhole-foundation/sdk-
 import type { EvmChains } from "@wormhole-foundation/sdk-evm";
 import { getAvailableVersions, getGitTagName } from "./tag";
 import * as configuration from "./configuration";
+import { ethers } from "ethers";
 
 // TODO: contract upgrades on solana
 // TODO: set special relaying?
@@ -983,8 +984,13 @@ async function deployEvm<N extends Network, C extends Chain>(
     const rpc = ch.config.rpc;
     const specialRelayer = "0x63BE47835c7D66c4aA5B2C688Dc6ed9771c94C74"; // TODO: how to configure this?
 
+    const provider = new ethers.JsonRpcProvider(rpc);
+    const abi = ["function decimals() external view returns (uint8)"];
+    const tokenContract = new ethers.Contract(token, abi, provider);
+    const decimals: number = await tokenContract.decimals();
+
     // TODO: should actually make these ENV variables.
-    const sig = "run(address,address,address,address,uint8)";
+    const sig = "run(address,address,address,address,uint8,uint8)";
     const modeUint = mode === "locking" ? 0 : 1;
     const signer = await getSigner(ch, signerType);
     const signerArgs = forgeSignerArgs(signer.source);
@@ -1011,7 +1017,7 @@ async function deployEvm<N extends Network, C extends Chain>(
             execSync(`
 forge script --via-ir script/DeployWormholeNtt.s.sol \
 --rpc-url ${rpc} \
---sig "${sig}" ${wormhole} ${token} ${relayer} ${specialRelayer} ${modeUint} \
+--sig "${sig}" ${wormhole} ${token} ${relayer} ${specialRelayer} ${decimals} ${modeUint} \
 --broadcast ${verifyArgs.join(' ')} ${signerArgs} | tee last-run.stdout`, {
                 cwd: `${pwd}/evm`,
                 encoding: 'utf8',
