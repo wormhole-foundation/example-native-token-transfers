@@ -52,7 +52,9 @@ contract DeployWormholeNtt is Script, DeployWormholeNttBase {
             // This is a bit of a hack, but in the worst case (i.e. if the token contract is actually broken), the
             // NTT manager initialiser will fail anyway.
             vm.mockCall(
-                token, abi.encodeWithSelector(ERC20.decimals.selector, ()), abi.encode(decimals)
+                token,
+                abi.encodeWithSelector(ERC20.decimals.selector),
+                abi.encode(decimals)
             );
         }
 
