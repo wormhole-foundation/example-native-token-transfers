@@ -47,6 +47,13 @@ contract DeployWormholeNtt is Script, DeployWormholeNttBase {
             console.log(
                 "Failed to query token decimals. Proceeding with provided decimals.", decimals
             );
+            // the NTT manager initialiser calls the token contract to get the
+            // decimals as well. We're just going to mock that call to return the provided decimals.
+            // This is a bit of a hack, but in the worst case (i.e. if the token contract is actually broken), the
+            // NTT manager initialiser will fail anyway.
+            vm.mockCall(
+                token, abi.encodeWithSelector(ERC20.decimals.selector, ()), abi.encode(decimals)
+            );
         }
 
         uint16 chainId = wh.chainId();
