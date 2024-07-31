@@ -225,7 +225,9 @@ pub fn transfer_burn<'info>(
     // would be lost.
     // To support fee tokens, we would first transfer the amount, _then_ assert
     // that the resulting amount has no dust (instead of removing dust before
-    // the transfer like we do now).
+    // the transfer like we do now). We would also need to burn the new amount
+    // _after_ paying fees so as to not burn more than what was transferred to
+    // the custody.
     if after != before {
         return Err(NTTError::BadAmountAfterBurn.into());
     }
