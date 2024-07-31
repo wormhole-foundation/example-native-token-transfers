@@ -1012,25 +1012,43 @@ async function deployEvm<N extends Network, C extends Chain>(
     });
 
     console.log("Deploying manager...");
-    await withCustomEvmDeployerScript(pwd, async () => {
-        try {
-            execSync(`
+    const deploy = async (simulate: boolean): Promise<string> => {
+        const simulateArg = simulate ? "" : "--skip-simulation";
+        await withCustomEvmDeployerScript(pwd, async () => {
+            try {
+                execSync(`
 forge script --via-ir script/DeployWormholeNtt.s.sol \
 --rpc-url ${rpc} \
+${simulateArg} \
 --sig "${sig}" ${wormhole} ${token} ${relayer} ${specialRelayer} ${decimals} ${modeUint} \
---broadcast ${verifyArgs.join(' ')} ${signerArgs} | tee last-run.stdout`, {
-                cwd: `${pwd}/evm`,
-                encoding: 'utf8',
-                stdio: 'inherit'
-            });
-        } catch (error) {
-            console.error("Failed to deploy manager");
-            // NOTE: we don't exit here. instead, we check if the manager was
-            // deployed successfully (below) and proceed if it was.
-            // process.exit(1);
+--broadcast ${verifyArgs.join(' ')} ${signerArgs} 2>&1 | tee last-run.stdout`, {
+                    cwd: `${pwd}/evm`,
+                    encoding: 'utf8',
+                    stdio: 'inherit'
+                });
+            } catch (error) {
+                console.error("Failed to deploy manager");
+                // NOTE: we don't exit here. instead, we check if the manager was
+                // deployed successfully (below) and proceed if it was.
+                // process.exit(1);
+            }
+        });
+        return fs.readFileSync(`${pwd}/evm/last-run.stdout`).toString();
+    }
+
+    // we attempt to deploy with simulation first, then without if it fails
+    let out = await deploy(true);
+    if (out.includes("Simulated execution failed")) {
+        if (out.includes("NotActivated")) {
+            console.error("Simulation failed, likely because the token contract is compiled against a different EVM version. It's probably safe to continue without simulation.")
+            await askForConfirmation("Do you want to proceed with the deployment without simulation?");
+        } else {
+            console.error("Simulation failed. Please read the error message carefully, and proceed with caution.");
+            await askForConfirmation("Do you want to proceed with the deployment without simulation?");
         }
-    });
-    const out = fs.readFileSync(`${pwd}/evm/last-run.stdout`).toString();
+        out = await deploy(false);
+    }
+
     if (!out) {
         console.error("Failed to deploy manager");
         process.exit(1);
