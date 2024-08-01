@@ -25,10 +25,19 @@ abstract contract ManagerBase is
 {
     // =============== Immutables ============================================================
 
+    /// @dev Address of the token that this NTT Manager is tied to
     address public immutable token;
+    /// @dev Contract deployer address
     address immutable deployer;
+    /// @dev Mode of the NTT Manager -- this is either LOCKING (Mode = 1) or BURNING (Mode = 2)
+    /// In LOCKING mode, tokens are locked/unlocked by the NTT Manager contract when sending/redeeming cross-chain transfers.
+    /// In BURNING mode, tokens are burned/minted by the NTT Manager contract when sending/redeeming cross-chain transfers. 
     Mode public immutable mode;
+    /// @dev Wormhole chain ID that the NTT Manager is deployed on.
+    /// This chain ID is formatted Wormhole Chain IDs -- https://docs.wormhole.com/wormhole/reference/constants
     uint16 public immutable chainId;
+    /// @dev EVM chain ID that the NTT Manager is deployed on.
+    /// This chain ID is formatted based on standardized chain IDs, e.g. Ethereum mainnet is 1, Sepolia is 11155111, etc.
     uint256 immutable evmChainId;
 
     // =============== Setup =================================================================
