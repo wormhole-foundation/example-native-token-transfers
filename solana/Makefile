@@ -17,7 +17,7 @@ build:
 
 
 test: idl sdk node_modules
-	anchor test --skip-build
+	./run-tests
 
 idl: build
 	@echo "IDL Version: $(VERSION)"

@@ -1,6 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
 import {
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js";
+import {
+  AccountAddress,
   ChainAddress,
   ChainContext,
   Signer,
@@ -12,8 +19,6 @@ import {
   encoding,
   serialize,
   serializePayload,
-  signSendWait as ssw,
-  AccountAddress,
 } from "@wormhole-foundation/sdk";
 import * as testing from "@wormhole-foundation/sdk-definitions/testing";
 import {
@@ -23,10 +28,11 @@ import {
 } from "@wormhole-foundation/sdk-solana";
 import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 import * as fs from "fs";
-
-import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { DummyTransferHook } from "../ts/idl/1_0_0/ts/dummy_transfer_hook.js";
 import { SolanaNtt } from "../ts/sdk/index.js";
+import { handleTestSkip, signSendWait } from "./utils/index.js";
+
+handleTestSkip(__filename);
 
 const solanaRootDir = `${__dirname}/../`;
 
@@ -34,18 +40,6 @@ const GUARDIAN_KEY =
   "cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0";
 const CORE_BRIDGE_ADDRESS = contracts.coreBridge("Mainnet", "Solana");
 const NTT_ADDRESS = anchor.workspace.ExampleNativeTokenTransfers.programId;
-
-async function signSendWait(
-  chain: ChainContext<any, any, any>,
-  txs: AsyncGenerator<any>,
-  signer: Signer
-) {
-  try {
-    await ssw(chain, txs, signer);
-  } catch (e) {
-    console.error(e);
-  }
-}
 
 const w = new Wormhole("Devnet", [SolanaPlatform], {
   chains: { Solana: { contracts: { coreBridge: CORE_BRIDGE_ADDRESS } } },
@@ -73,19 +67,19 @@ const payerSecretKey = Uint8Array.from(
 );
 const payer = anchor.web3.Keypair.fromSecretKey(payerSecretKey);
 
-const owner = anchor.web3.Keypair.generate();
 const connection = new anchor.web3.Connection(
   "http://localhost:8899",
   "confirmed"
 );
 
-// Make sure we're using the exact same Connection obj for rpc
+// make sure we're using the exact same Connection obj for rpc
 const ctx: ChainContext<"Devnet", "Solana"> = w
   .getPlatform("Solana")
   .getChain("Solana", connection);
 
 let tokenAccount: anchor.web3.PublicKey;
 
+const mintAuthority = anchor.web3.Keypair.generate();
 const mint = anchor.web3.Keypair.generate();
 
 const dummyTransferHook = anchor.workspace
@@ -130,7 +124,6 @@ describe("example-native-token-transfers", () => {
       const lamports = await connection.getMinimumBalanceForRentExemption(
         mintLen
       );
-
       const transaction = new Transaction().add(
         SystemProgram.createAccount({
           fromPubkey: payer.publicKey,
@@ -141,26 +134,24 @@ describe("example-native-token-transfers", () => {
         }),
         spl.createInitializeTransferHookInstruction(
           mint.publicKey,
-          owner.publicKey,
+          mintAuthority.publicKey,
           dummyTransferHook.programId,
           TOKEN_PROGRAM
         ),
         spl.createInitializeMintInstruction(
           mint.publicKey,
           9,
-          owner.publicKey,
+          mintAuthority.publicKey,
           null,
           TOKEN_PROGRAM
         )
       );
-
-      const { blockhash } = await connection.getRecentBlockhash();
-
+      const { blockhash } = await connection.getLatestBlockhash();
       transaction.feePayer = payer.publicKey;
       transaction.recentBlockhash = blockhash;
-
-      const txid = await connection.sendTransaction(transaction, [payer, mint]);
-      await connection.confirmTransaction(txid, "confirmed");
+      await sendAndConfirmTransaction(connection, transaction, [payer, mint], {
+        commitment: "confirmed",
+      });
 
       tokenAccount = await spl.createAssociatedTokenAccount(
         connection,
@@ -177,15 +168,15 @@ describe("example-native-token-transfers", () => {
         payer,
         mint.publicKey,
         tokenAccount,
-        owner,
+        mintAuthority,
         10_000_000n,
         undefined,
         undefined,
         TOKEN_PROGRAM
       );
 
+      // create our contract client
       tokenAddress = mint.publicKey.toBase58();
-      // Create our contract client
       ntt = new SolanaNtt("Devnet", "Solana", connection, {
         ...ctx.config.contracts,
         ntt: {
@@ -203,11 +194,12 @@ describe("example-native-token-transfers", () => {
   describe("Locking", () => {
     beforeAll(async () => {
       try {
+        // transfer mint authority to ntt
         await spl.setAuthority(
           connection,
           payer,
           mint.publicKey,
-          owner,
+          mintAuthority,
           spl.AuthorityType.MintTokens,
           ntt.pdas.tokenAuthority(),
           [],
@@ -219,7 +211,7 @@ describe("example-native-token-transfers", () => {
         const initTxs = ntt.initialize(sender, {
           mint: mint.publicKey,
           outboundLimit: 1000000n,
-          mode: "burning",
+          mode: "locking",
         });
         await signSendWait(ctx, initTxs, signer);
 
@@ -231,14 +223,14 @@ describe("example-native-token-transfers", () => {
         });
         await signSendWait(ctx, registerTxs, signer);
 
-        // Set Wormhole xcvr peer
+        // set Wormhole xcvr peer
         const setXcvrPeerTxs = ntt.setWormholeTransceiverPeer(
           remoteXcvr,
           sender
         );
         await signSendWait(ctx, setXcvrPeerTxs, signer);
 
-        // Set manager peer
+        // set manager peer
         const setPeerTxs = ntt.setPeer(remoteMgr, 18, 1000000n, sender);
         await signSendWait(ctx, setPeerTxs, signer);
       } catch (e) {
@@ -265,13 +257,13 @@ describe("example-native-token-transfers", () => {
       const transaction = new Transaction().add(
         initializeExtraAccountMetaListInstruction
       );
+      const { blockhash } = await connection.getLatestBlockhash();
       transaction.feePayer = payer.publicKey;
-      const { blockhash } = await connection.getRecentBlockhash();
       transaction.recentBlockhash = blockhash;
-
       transaction.sign(payer);
-      const txid = await connection.sendTransaction(transaction, [payer]);
-      await connection.confirmTransaction(txid, "confirmed");
+      await sendAndConfirmTransaction(connection, transaction, [payer], {
+        commitment: "confirmed",
+      });
     });
 
     test("Can send tokens", async () => {
@@ -362,7 +354,6 @@ describe("example-native-token-transfers", () => {
         throw e;
       }
 
-      // expect(released).toEqual(true);
       expect((await counterValue()).toString()).toEqual("2");
     });
   });
