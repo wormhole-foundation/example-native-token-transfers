@@ -106,11 +106,11 @@ interface IManagerBase {
 
     /// @notice Error when the manager doesn't have a peer registered for the destination chain
     /// @dev Selector 0x3af256bc.
-    /// @param chainId The target chain id
+    /// @param chainId The target Wormhole chain id
     error PeerNotRegistered(uint16 chainId);
 
     /// @notice Fetch the delivery price for a given recipient chain transfer.
-    /// @param recipientChain The chain ID of the transfer destination.
+    /// @param recipientChain The Wormhole chain ID of the transfer destination.
     /// @param transceiverInstructions The transceiver specific instructions for quoting and sending
     /// @return - The delivery prices associated with each enabled endpoint and the total price.
     function quoteDeliveryPrice(
@@ -120,7 +120,7 @@ interface IManagerBase {
 
     /// @notice Sets the threshold for the number of attestations required for a message
     /// to be considered valid.
-    /// @param threshold The new threshold.
+    /// @param threshold The new threshold (number of attestations).
     /// @dev This method can only be executed by the `owner`.
     function setThreshold(uint8 threshold) external;
 
@@ -166,12 +166,17 @@ interface IManagerBase {
     function getThreshold() external view returns (uint8);
 
     /// @notice Returns a boolean indicating if the transceiver has attested to the message.
+    /// @param digest The digest of the message.
+    /// @param index The index of the transceiver
+    /// @return - Boolean indicating whether the transceiver at index `index` attested to a message digest
     function transceiverAttestedToMessage(
         bytes32 digest,
         uint8 index
     ) external view returns (bool);
 
     /// @notice Returns the number of attestations for a given message.
+    /// @param digest The digest of the message.
+    /// @return count The number of attestations received for the given message digest
     function messageAttestations(bytes32 digest) external view returns (uint8 count);
 
     /// @notice Returns of the address of the token managed by this contract.
