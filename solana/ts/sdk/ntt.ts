@@ -369,18 +369,20 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   }
 
   async *registerTransceiver(args: {
-    payer: Keypair;
-    owner: Keypair;
+    payer: AccountAddress<C>;
+    owner: AccountAddress<C>;
     transceiver: PublicKey;
   }) {
     const config = await this.getConfig();
+    const payer = new SolanaAddress(args.payer).unwrap();
+    const owner = new SolanaAddress(args.owner).unwrap();
     if (config.paused) throw new Error("Contract is paused");
 
     const ix = await this.program.methods
       .registerTransceiver()
       .accountsStrict({
-        payer: args.payer.publicKey,
-        owner: args.owner.publicKey,
+        payer,
+        owner,
         config: this.pdas.configAccount(),
         transceiver: args.transceiver,
         registeredTransceiver: this.pdas.registeredTransceiver(
@@ -398,7 +400,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const broadcastIx = await this.program.methods
       .broadcastWormholeId()
       .accountsStrict({
-        payer: args.payer.publicKey,
+        payer,
         config: this.pdas.configAccount(),
         mint: config.mint,
         wormholeMessage: wormholeMessage.publicKey,
@@ -416,7 +418,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       .instruction();
 
     const tx = new Transaction();
-    tx.feePayer = args.payer.publicKey;
+    tx.feePayer = payer;
     tx.add(ix, broadcastIx);
     yield this.createUnsignedTx(
       { transaction: tx, signers: [wormholeMessage] },

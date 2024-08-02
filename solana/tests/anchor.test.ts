@@ -225,8 +225,8 @@ describe("example-native-token-transfers", () => {
 
         // register
         const registerTxs = ntt.registerTransceiver({
-          payer,
-          owner: payer,
+          payer: new SolanaAddress(payer.publicKey),
+          owner: new SolanaAddress(payer.publicKey),
           transceiver: ntt.program.programId,
         });
         await signSendWait(ctx, registerTxs, signer);

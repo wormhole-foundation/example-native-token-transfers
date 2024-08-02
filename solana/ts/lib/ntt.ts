@@ -875,7 +875,7 @@ export namespace NTT {
     );
     const broadcastIx = await program.methods
       .broadcastWormholeId()
-      .accounts({
+      .accountsStrict({
         payer: args.payer,
         config: pdas.configAccount(),
         mint: config.mint,
@@ -886,6 +886,9 @@ export namespace NTT {
           feeCollector: whAccs.wormholeFeeCollector,
           sequence: whAccs.wormholeSequence,
           program: args.wormholeId,
+          systemProgram: SystemProgram.programId,
+          clock: web3.SYSVAR_CLOCK_PUBKEY,
+          rent: web3.SYSVAR_RENT_PUBKEY,
         },
       })
       .instruction();
