@@ -32,20 +32,6 @@ jobs:
           SOLANA_VERSION="$(awk '/solana-program =/ { print substr($3, 3, length($3)-3) }' Cargo.toml)"
           echo "::set-output name=version::${SOLANA_VERSION}"
 
-      - name: Cache rust toolchain
-        uses: actions/cache@v3
-        env:
-          cache-name: solana-toolchain
-        with:
-          path: |
-            ~/.cargo/bin
-            ~/.rustup
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ steps.toolchain.outputs.version }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
       - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@55c7845fad90d0ae8b2e83715cb900e5e861e8cb
         with:
