@@ -22,6 +22,7 @@ import {
   isSourceInitiated,
   routes,
   signSendWait,
+  finality,
 } from "@wormhole-foundation/sdk-connect";
 import "@wormhole-foundation/sdk-definitions-ntt";
 import { NttRoute } from "./types.js";
@@ -147,6 +148,7 @@ export class NttManualRoute<N extends Network>
         token: request.destination.id,
         amount: amount.parse(params.amount, request.destination.decimals),
       },
+      eta: finality.estimateFinalityTime(request.fromChain.chain),
     };
     const { fromChain, toChain } = request;
     const dstNtt = await toChain.getProtocol("Ntt", {

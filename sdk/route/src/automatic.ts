@@ -16,6 +16,7 @@ import {
   amount,
   canonicalAddress,
   chainToPlatform,
+  finality,
   isAttested,
   isDestinationQueued,
   isRedeemed,
@@ -181,6 +182,7 @@ export class NttAutomaticRoute<N extends Network>
         params.normalizedParams.options.gasDropoff ?? 0n,
         toChain.config.nativeTokenDecimals
       ),
+      eta: finality.estimateFinalityTime(request.fromChain.chain),
     };
     const dstNtt = await toChain.getProtocol("Ntt", {
       ntt: params.normalizedParams.destinationContracts,
