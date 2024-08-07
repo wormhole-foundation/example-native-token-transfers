@@ -150,6 +150,7 @@ describe("Manual Route Tests", function () {
       "params",
       "sourceToken",
       "destinationToken",
+      "eta",
     ]);
   });
 });
@@ -249,6 +250,7 @@ describe("Automatic Route Tests", function () {
       "destinationToken",
       "relayFee",
       "destinationNativeGas",
+      "eta",
     ]);
   });
 });
