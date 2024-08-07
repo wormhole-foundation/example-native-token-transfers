@@ -48,10 +48,10 @@
     "@wormhole-foundation/sdk-definitions-ntt": "0.1.0-beta.0",
     "@wormhole-foundation/sdk-solana-ntt": "0.1.0-beta.0",
     "@wormhole-foundation/sdk-evm-ntt": "0.1.0-beta.0",
-    "@wormhole-foundation/sdk-connect": "^0.9.0"
+    "@wormhole-foundation/sdk-connect": "^0.9.1"
   },
   "peerDependencies": {
-    "@wormhole-foundation/sdk-connect": "^0.9.0",
+    "@wormhole-foundation/sdk-connect": "^0.9.1",
     "@wormhole-foundation/sdk-definitions-ntt": "0.1.0-beta.0",
     "@wormhole-foundation/sdk-solana-ntt": "0.1.0-beta.0",
     "@wormhole-foundation/sdk-evm-ntt": "0.1.0-beta.0"
