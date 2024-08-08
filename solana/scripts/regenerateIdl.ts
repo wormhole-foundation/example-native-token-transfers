@@ -20,9 +20,17 @@ const idl: Idl = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
 const name = titleCase(idl["name"]);
 
 idl.accounts?.forEach((account) => {
-  account.name = account.name.replace(/^[A-Z]+/, (match) =>
-    match.toLowerCase()
-  );
+  // NOTE: here we translate PascalCase to camelCase, with the exception of all
+  // uppercase account names, such as 'LUT', which we want to preserve.
+  //
+  // The translation needs to be done because anchor generates an invalid IDL file, so we patch it.
+  // Anchor handles all uppercase account names specially (when generating the account discriminator),
+  // so we need to preserve them.
+  if (!account.name.match(/^[A-Z]+$/)) {
+    account.name = account.name.replace(/^[A-Z]+/, (match) =>
+      match.toLowerCase()
+    );
+  }
 });
 
 // heredoc
