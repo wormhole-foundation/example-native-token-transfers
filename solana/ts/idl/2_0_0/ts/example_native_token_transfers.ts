@@ -1246,7 +1246,7 @@ export type ExampleNativeTokenTransfers = {
       }
     },
     {
-      "name": "lut",
+      "name": "LUT",
       "type": {
         "kind": "struct",
         "fields": [
@@ -3178,7 +3178,7 @@ export const IDL: ExampleNativeTokenTransfers = {
       }
     },
     {
-      "name": "lut",
+      "name": "LUT",
       "type": {
         "kind": "struct",
         "fields": [
