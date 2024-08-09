@@ -84,15 +84,24 @@ interface IRateLimiter {
         address recipient;
     }
 
+    /// @notice Returns the currently remaining outbound capacity allowed
+    ///         before transfers are queued (if desired)
     function getCurrentOutboundCapacity() external view returns (uint256);
 
+    /// @notice Returns the queued transfer details for a given sequence in the outbound queue
+    /// @param queueSequence The position of the transfer in the outbound queue
     function getOutboundQueuedTransfer(uint64 queueSequence)
         external
         view
         returns (OutboundQueuedTransfer memory);
 
+    /// @notice Returns the currently remaining inbound capacity allowed from a given chain
+    ///         before transfers are queued auutomatically
+    /// @param chainId The Wormhole chain ID of the peer
     function getCurrentInboundCapacity(uint16 chainId) external view returns (uint256);
 
+    /// @notice Returns the queued transfer details for a given message digest in the inbound queue
+    /// @param digest The digest of the transfer in the inbound queue
     function getInboundQueuedTransfer(bytes32 digest)
         external
         view

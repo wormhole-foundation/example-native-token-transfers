@@ -140,8 +140,9 @@ interface INttManager is IManagerBase {
     ///         sender's tokens. Finally, this function will call into registered `Endpoint` contracts
     ///         to send a message with the incrementing sequence number and the token transfer payload.
     /// @param amount The amount to transfer.
-    /// @param recipientChain The chain ID for the destination.
+    /// @param recipientChain The Wormhole chain ID for the destination.
     /// @param recipient The recipient address.
+    /// @return msgId The resulting message ID of the transfer
     function transfer(
         uint256 amount,
         uint16 recipientChain,
@@ -154,11 +155,12 @@ interface INttManager is IManagerBase {
     ///         to send a message with the incrementing sequence number and the token transfer payload.
     /// @dev Transfers are queued if the outbound limit is hit and must be completed by the client.
     /// @param amount The amount to transfer.
-    /// @param recipientChain The chain ID for the destination.
+    /// @param recipientChain The Wormhole chain ID for the destination.
     /// @param recipient The recipient address.
     /// @param refundAddress The address to which a refund for unussed gas is issued on the recipient chain.
     /// @param shouldQueue Whether the transfer should be queued if the outbound limit is hit.
     /// @param encodedInstructions Additional instructions to be forwarded to the recipient chain.
+    /// @return msgId The resulting message ID of the transfer
     function transfer(
         uint256 amount,
         uint16 recipientChain,
@@ -190,8 +192,8 @@ interface INttManager is IManagerBase {
     /// @dev This function enforces attestation threshold and replay logic for messages. Once all
     ///      validations are complete, this function calls `executeMsg` to execute the command specified
     ///      by the message.
-    /// @param sourceChainId The chain id of the sender.
-    /// @param sourceNttManagerAddress The address of the sender's nttManager contract.
+    /// @param sourceChainId The Wormhole chain id of the sender.
+    /// @param sourceNttManagerAddress The address of the sender's NTT Manager contract.
     /// @param payload The VAA payload.
     function attestationReceived(
         uint16 sourceChainId,
@@ -204,7 +206,7 @@ interface INttManager is IManagerBase {
     ///         as an NttManagerMessage to extract the sequence, msgType, and other parameters.
     /// @dev This function is exposed as a fallback for when an `Transceiver` is deregistered
     ///      when a message is in flight.
-    /// @param sourceChainId The chain id of the sender.
+    /// @param sourceChainId The Wormhole chain id of the sender.
     /// @param sourceNttManagerAddress The address of the sender's nttManager contract.
     /// @param message The message to execute.
     function executeMsg(
@@ -218,15 +220,16 @@ interface INttManager is IManagerBase {
     function tokenDecimals() external view returns (uint8);
 
     /// @notice Returns registered peer contract for a given chain.
-    /// @param chainId_ chain ID.
+    /// @param chainId_ Wormhole chain ID.
     function getPeer(uint16 chainId_) external view returns (NttManagerPeer memory);
 
     /// @notice Sets the corresponding peer.
     /// @dev The nttManager that executes the message sets the source nttManager as the peer.
-    /// @param peerChainId The chain ID of the peer.
+    /// @param peerChainId The Wormhole chain ID of the peer.
     /// @param peerContract The address of the peer nttManager contract.
     /// @param decimals The number of decimals of the token on the peer chain.
-    /// @param inboundLimit The inbound rate limit for the peer chain id
+    /// @param inboundLimit The inbound rate limit for the peer chain id. This is formatted in the normal
+    ///                     token representation. e.g. a limit of 100 for a token with 6 decimals = 100_000_000
     function setPeer(
         uint16 peerChainId,
         bytes32 peerContract,
@@ -236,12 +239,14 @@ interface INttManager is IManagerBase {
 
     /// @notice Sets the outbound transfer limit for a given chain.
     /// @dev This method can only be executed by the `owner`.
-    /// @param limit The new outbound limit.
+    /// @param limit The new outbound limit. This is formatted in the normal
+    ///              token representation. e.g. a limit of 100 for a token with 6 decimals = 100_000_000
     function setOutboundLimit(uint256 limit) external;
 
     /// @notice Sets the inbound transfer limit for a given chain.
     /// @dev This method can only be executed by the `owner`.
-    /// @param limit The new limit.
-    /// @param chainId The chain to set the limit for.
+    /// @param limit The new limit. This is formatted in the normal
+    ///              token representation. e.g. a limit of 100 for a token with 6 decimals = 100_000_000
+    /// @param chainId The Wormhole chain ID to set the limit for.
     function setInboundLimit(uint256 limit, uint16 chainId) external;
 }
