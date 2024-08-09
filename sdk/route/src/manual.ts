@@ -48,8 +48,8 @@ export class NttManualRoute<N extends Network>
   extends routes.FinalizableRoute<N, Op, Vp, R>
   implements routes.StaticRouteMethods<typeof NttManualRoute>
 {
-  override NATIVE_GAS_DROPOFF_SUPPORTED: boolean = false;
-  override IS_AUTOMATIC: boolean = false;
+  static NATIVE_GAS_DROPOFF_SUPPORTED = false;
+  static IS_AUTOMATIC = false;
 
   // @ts-ignore
   // Since we set the config on the static class, access it with this param
