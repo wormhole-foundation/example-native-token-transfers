@@ -40,18 +40,18 @@ cast_abs_to_unsigned = "deny"
 
 [workspace.dependencies]
 wormhole-io = "0.1.3"
-wormhole-solana-utils = "0.2.0-alpha.15"
+wormhole-solana-utils = "0.2.0-alpha.16"
 
-anchor-lang = "0.29.0"
-anchor-spl = "0.29.0"
-solana-program = "=1.18.10"
-solana-program-runtime = "=1.18.10"
-solana-program-test = "=1.18.10"
-solana-address-lookup-table-program = "=1.18.10"
+anchor-lang = "0.30"
+anchor-spl = "0.30"
+solana-program = "1.18.17"
+solana-program-runtime = "1.18.17"
+solana-program-test = "1.18.17"
+solana-address-lookup-table-program = "1.18.17"
 spl-token = "4.0.0"
 spl-token-2022 = "3.0.2"
 
-wormhole-anchor-sdk = { version = "0.29.0-alpha.1", default-features = false }
+wormhole-anchor-sdk = { git = "https://github.com/wormhole-foundation/wormhole-scaffolding.git", rev = "8765beb", features = ["token-bridge"] }
 wormhole-sdk = { git = "https://github.com/wormhole-foundation/wormhole", rev = "eee4641" }
 serde_wormhole = { git = "https://github.com/wormhole-foundation/wormhole", rev = "eee4641" }
 

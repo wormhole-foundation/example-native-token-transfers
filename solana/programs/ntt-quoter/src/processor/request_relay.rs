@@ -12,7 +12,7 @@ use crate::{
 use std::result::Result as StdResult;
 
 //TODO eventually drop the released constraint and instead implement release by relayer
-fn check_release_constraint_and_fetch_chain_id(
+pub fn check_release_constraint_and_fetch_chain_id(
     outbox_item: &AccountInfo,
     registered_ntt: &RegisteredNtt,
 ) -> Result<u16> {
