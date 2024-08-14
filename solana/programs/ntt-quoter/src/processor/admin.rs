@@ -79,12 +79,14 @@ pub struct SetAssistant<'info> {
     pub assistant: Option<UncheckedAccount<'info>>,
 }
 
+// Allow the redundant closure in arguments to map_or_else
+#[allow(clippy::redundant_closure)]
 pub fn set_assistant(ctx: Context<SetAssistant>) -> Result<()> {
     ctx.accounts.instance.assistant = ctx
         .accounts
         .assistant
         .as_deref()
-        .map_or_else(|| { Pubkey::default() }, |val| val.key());
+        .map_or_else(|| Pubkey::default(), |val| val.key());
     Ok(())
 }
 
