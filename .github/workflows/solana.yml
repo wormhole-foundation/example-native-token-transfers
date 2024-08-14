@@ -132,5 +132,5 @@ jobs:
           run: |
             git diff --exit-code ts/idl
         - name: Run tests
-          run: anchor test --skip-build
+          run: ./run-tests
           shell: bash
