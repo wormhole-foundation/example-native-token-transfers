@@ -107,11 +107,9 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         return trimmedCapacity.untrim(decimals);
     }
 
-    function getOutboundQueuedTransfer(uint64 queueSequence)
-        public
-        view
-        returns (OutboundQueuedTransfer memory)
-    {
+    function getOutboundQueuedTransfer(
+        uint64 queueSequence
+    ) public view returns (OutboundQueuedTransfer memory) {
         return _getOutboundQueueStorage()[queueSequence];
     }
 
@@ -129,22 +127,18 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         return trimmedCapacity.untrim(decimals);
     }
 
-    function getInboundQueuedTransfer(bytes32 digest)
-        public
-        view
-        returns (InboundQueuedTransfer memory)
-    {
+    function getInboundQueuedTransfer(
+        bytes32 digest
+    ) public view returns (InboundQueuedTransfer memory) {
         return _getInboundQueueStorage()[digest];
     }
 
     /**
      * @dev Gets the current capacity for a parameterized rate limits struct
      */
-    function _getCurrentCapacity(RateLimitParams memory rateLimitParams)
-        internal
-        view
-        returns (TrimmedAmount capacity)
-    {
+    function _getCurrentCapacity(
+        RateLimitParams memory rateLimitParams
+    ) internal view returns (TrimmedAmount capacity) {
         // If the rate limit duration is 0 then the rate limiter is skipped
         if (rateLimitDuration == 0) {
             return

@@ -261,13 +261,9 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     }
 
     /// @inheritdoc INttManager
-    function completeOutboundQueuedTransfer(uint64 messageSequence)
-        external
-        payable
-        nonReentrant
-        whenNotPaused
-        returns (uint64)
-    {
+    function completeOutboundQueuedTransfer(
+        uint64 messageSequence
+    ) external payable nonReentrant whenNotPaused returns (uint64) {
         // find the message in the queue
         OutboundQueuedTransfer memory queuedTransfer = _getOutboundQueueStorage()[messageSequence];
         if (queuedTransfer.txTimestamp == 0) {
@@ -295,11 +291,9 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     }
 
     /// @inheritdoc INttManager
-    function cancelOutboundQueuedTransfer(uint64 messageSequence)
-        external
-        nonReentrant
-        whenNotPaused
-    {
+    function cancelOutboundQueuedTransfer(
+        uint64 messageSequence
+    ) external nonReentrant whenNotPaused {
         // find the message in the queue
         OutboundQueuedTransfer memory queuedTransfer = _getOutboundQueueStorage()[messageSequence];
         if (queuedTransfer.txTimestamp == 0) {

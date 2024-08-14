@@ -172,10 +172,9 @@ interface INttManager is IManagerBase {
     /// @dev This method is called by the client to complete an outbound transfer that's been queued.
     /// @param queueSequence The sequence of the message in the queue.
     /// @return msgSequence The sequence of the message.
-    function completeOutboundQueuedTransfer(uint64 queueSequence)
-        external
-        payable
-        returns (uint64 msgSequence);
+    function completeOutboundQueuedTransfer(
+        uint64 queueSequence
+    ) external payable returns (uint64 msgSequence);
 
     /// @notice Cancels an outbound transfer that's been queued.
     /// @dev This method is called by the client to cancel an outbound transfer that's been queued.

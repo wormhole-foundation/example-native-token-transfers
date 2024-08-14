@@ -66,16 +66,14 @@ interface IWormholeTransceiver is IWormholeTransceiverState {
     ///         This instruction is specific to the WormholeTransceiver contract.
     /// @param encoded The encoded instruction.
     /// @return instruction The parsed `WormholeTransceiverInstruction`.
-    function parseWormholeTransceiverInstruction(bytes memory encoded)
-        external
-        pure
-        returns (WormholeTransceiverInstruction memory instruction);
+    function parseWormholeTransceiverInstruction(
+        bytes memory encoded
+    ) external pure returns (WormholeTransceiverInstruction memory instruction);
 
     /// @notice Encodes the `WormholeTransceiverInstruction` into a byte array.
     /// @param instruction The `WormholeTransceiverInstruction` to encode.
     /// @return encoded The encoded instruction.
-    function encodeWormholeTransceiverInstruction(WormholeTransceiverInstruction memory instruction)
-        external
-        pure
-        returns (bytes memory);
+    function encodeWormholeTransceiverInstruction(
+        WormholeTransceiverInstruction memory instruction
+    ) external pure returns (bytes memory);
 }

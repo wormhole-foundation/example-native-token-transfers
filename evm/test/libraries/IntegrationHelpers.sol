@@ -24,11 +24,9 @@ contract IntegrationHelpers is Test {
     WormholeTransceiver wormholeTransceiverChain2;
     WormholeTransceiver wormholeTransceiverChain2Other;
 
-    function buildTransceiverInstruction(bool relayer_off)
-        public
-        view
-        returns (TransceiverStructs.TransceiverInstruction memory)
-    {
+    function buildTransceiverInstruction(
+        bool relayer_off
+    ) public view returns (TransceiverStructs.TransceiverInstruction memory) {
         WormholeTransceiver.WormholeTransceiverInstruction memory instruction =
             IWormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
 
