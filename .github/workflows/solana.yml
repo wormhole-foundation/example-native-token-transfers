@@ -14,7 +14,7 @@ defaults:
 jobs:
   solana-sbf:
     name: Solana Cargo SBF
-    runs-on: ubuntu-20.04
+    runs-on: tilt-kube-public
     env:
       RUSTFLAGS: -Dwarnings
 
@@ -80,9 +80,9 @@ jobs:
 
           mkdir -p "${BPF_OUT_DIR}"
 
-          cargo build-sbf --features "mainnet" -j 1
-          cargo test-sbf --features "mainnet" -j 1
-          cargo test -j 1
+          cargo build-sbf --features "mainnet"
+          cargo test-sbf --features "mainnet"
+          cargo test
   check-version:
     name: Check version
     runs-on: ubuntu-latest
