@@ -80,9 +80,9 @@ jobs:
 
           mkdir -p "${BPF_OUT_DIR}"
 
-          cargo build-sbf --features "mainnet" -j 2
-          cargo test-sbf --features "mainnet" -j 2
-          cargo test -j 2
+          cargo build-sbf --features "mainnet" -j 1
+          cargo test-sbf --features "mainnet" -j 1
+          cargo test -j 1
   check-version:
     name: Check version
     runs-on: ubuntu-latest
