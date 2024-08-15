@@ -49,7 +49,8 @@ export class NttAutomaticRoute<N extends Network>
   extends routes.AutomaticRoute<N, Op, Vp, R>
   implements routes.StaticRouteMethods<typeof NttAutomaticRoute>
 {
-  static NATIVE_GAS_DROPOFF_SUPPORTED: boolean = true;
+  // ntt does not support gas drop-off currently
+  static NATIVE_GAS_DROPOFF_SUPPORTED: boolean = false;
 
   // @ts-ignore
   // Since we set the config on the static class, access it with this param
