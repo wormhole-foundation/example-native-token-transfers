@@ -8,8 +8,8 @@ on:
       - dev
 
 defaults:
- run:
-  working-directory: ./solana
+  run:
+    working-directory: ./solana
 
 jobs:
   solana-sbf:
@@ -80,57 +80,57 @@ jobs:
 
           mkdir -p "${BPF_OUT_DIR}"
 
-          cargo build-sbf --features "mainnet"
-          cargo test-sbf --features "mainnet"
-          cargo test
+          cargo build-sbf --features "mainnet" -j 2
+          cargo test-sbf --features "mainnet" -j 2
+          cargo test -j 2
   check-version:
     name: Check version
     runs-on: ubuntu-latest
     steps:
-        - uses: actions/checkout@v4
-        - run: ./scripts/sync-versions --check
-          shell: bash
+      - uses: actions/checkout@v4
+      - run: ./scripts/sync-versions --check
+        shell: bash
 
   anchor-test:
     name: Anchor Test
     runs-on: ubuntu-latest
     steps:
-        - uses: actions/checkout@v4
-        - uses: metadaoproject/setup-anchor@v2
-          with:
-            node-version: '20.11.0'
-            solana-cli-version: '1.18.10'
-            anchor-version: '0.29.0'
-        - name: Cache node_modules
-          uses: actions/cache@v3
-          with:
-            path: ./solana/node_modules/
-            key: node-modules-${{ runner.os }}-build-${{ inputs.node-version }}
-        - name: Install node_modules
-          run: make node_modules
-          shell: bash
-        - name: Create keypair
-          run: solana-keygen new --no-bip39-passphrase
-          shell: bash
-        - name: Make Anchor.toml compatible with runner
-          run: sed -i 's:/user/:/runner/:' Anchor.toml
-          shell: bash
-        - name: Install Cargo toolchain
-          uses: actions-rs/toolchain@v1
-          with:
-            toolchain: stable
-            profile: minimal
-            components: rustc
-        - name: Cache Cargo dependencies
-          uses: Swatinem/rust-cache@v2
-          with:
-            workspaces: "solana"
-        - name: Setup SDK
-          run: make sdk
-          shell: bash
-        - name: Check idl
-          run: |
-            git diff --exit-code ts/idl
-        - name: Run tests
-          run: anchor test --skip-build
-          shell: bash
+      - uses: actions/checkout@v4
+      - uses: metadaoproject/setup-anchor@v2
+        with:
+          node-version: "20.11.0"
+          solana-cli-version: "1.18.10"
+          anchor-version: "0.29.0"
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: ./solana/node_modules/
+          key: node-modules-${{ runner.os }}-build-${{ inputs.node-version }}
+      - name: Install node_modules
+        run: make node_modules
+        shell: bash
+      - name: Create keypair
+        run: solana-keygen new --no-bip39-passphrase
+        shell: bash
+      - name: Make Anchor.toml compatible with runner
+        run: sed -i 's:/user/:/runner/:' Anchor.toml
+        shell: bash
+      - name: Install Cargo toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          components: rustc
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "solana"
+      - name: Setup SDK
+        run: make sdk
+        shell: bash
+      - name: Check idl
+        run: |
+          git diff --exit-code ts/idl
+      - name: Run tests
+        run: anchor test --skip-build
+        shell: bash
