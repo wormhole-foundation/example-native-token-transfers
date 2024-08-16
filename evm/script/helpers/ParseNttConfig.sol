@@ -31,11 +31,9 @@ contract ParseNttConfig is Script {
         }
     }
 
-    function fromUniversalAddress(bytes32 universalAddr)
-        internal
-        pure
-        returns (address converted)
-    {
+    function fromUniversalAddress(
+        bytes32 universalAddr
+    ) internal pure returns (address converted) {
         require(bytes12(universalAddr) == 0, "Address overflow");
 
         assembly ("memory-safe") {
@@ -43,7 +41,9 @@ contract ParseNttConfig is Script {
         }
     }
 
-    function _parseAndValidateConfigFile(uint16 wormholeChainId)
+    function _parseAndValidateConfigFile(
+        uint16 wormholeChainId
+    )
         internal
         returns (
             ChainConfig[] memory config,

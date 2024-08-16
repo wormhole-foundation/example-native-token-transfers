@@ -48,9 +48,7 @@ contract DummyTransceiver is Transceiver, ITransceiverReceiver {
         );
     }
 
-    function parseMessageFromLogs(Vm.Log[] memory logs)
-        public
-        pure
-        returns (uint16 recipientChain, bytes memory payload)
-    {}
+    function parseMessageFromLogs(
+        Vm.Log[] memory logs
+    ) public pure returns (uint16 recipientChain, bytes memory payload) {}
 }

@@ -37,11 +37,9 @@ library Utils {
     }
 
     // Fetches the queued transfer digests from the logs when an inbound transfer is queued
-    function fetchQueuedTransferDigestsFromLogs(Vm.Log[] memory logs)
-        public
-        pure
-        returns (bytes32[] memory)
-    {
+    function fetchQueuedTransferDigestsFromLogs(
+        Vm.Log[] memory logs
+    ) public pure returns (bytes32[] memory) {
         uint256 count = 0;
         for (uint256 i = 0; i < logs.length; i++) {
             if (logs[i].topics[0] == keccak256("InboundTransferQueued(bytes32)")) {

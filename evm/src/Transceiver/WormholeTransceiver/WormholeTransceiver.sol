@@ -123,11 +123,9 @@ contract WormholeTransceiver is
     }
 
     /// @inheritdoc IWormholeTransceiver
-    function parseWormholeTransceiverInstruction(bytes memory encoded)
-        public
-        pure
-        returns (WormholeTransceiverInstruction memory instruction)
-    {
+    function parseWormholeTransceiverInstruction(
+        bytes memory encoded
+    ) public pure returns (WormholeTransceiverInstruction memory instruction) {
         // If the user doesn't pass in any transceiver instructions then the default is false
         if (encoded.length == 0) {
             instruction.shouldSkipRelayerSend = false;
@@ -140,11 +138,9 @@ contract WormholeTransceiver is
     }
 
     /// @inheritdoc IWormholeTransceiver
-    function encodeWormholeTransceiverInstruction(WormholeTransceiverInstruction memory instruction)
-        public
-        pure
-        returns (bytes memory)
-    {
+    function encodeWormholeTransceiverInstruction(
+        WormholeTransceiverInstruction memory instruction
+    ) public pure returns (bytes memory) {
         return abi.encodePacked(instruction.shouldSkipRelayerSend);
     }
 

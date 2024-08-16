@@ -111,10 +111,9 @@ contract Governance {
         $[digest] = true;
     }
 
-    function _verifyGovernanceVAA(bytes memory encodedVM)
-        internal
-        returns (IWormhole.VM memory parsedVM)
-    {
+    function _verifyGovernanceVAA(
+        bytes memory encodedVM
+    ) internal returns (IWormhole.VM memory parsedVM) {
         (IWormhole.VM memory vm, bool valid, string memory reason) =
             wormhole.parseAndVerifyVM(encodedVM);
 
@@ -135,11 +134,9 @@ contract Governance {
         return vm;
     }
 
-    function encodeGeneralPurposeGovernanceMessage(GeneralPurposeGovernanceMessage memory m)
-        public
-        pure
-        returns (bytes memory encoded)
-    {
+    function encodeGeneralPurposeGovernanceMessage(
+        GeneralPurposeGovernanceMessage memory m
+    ) public pure returns (bytes memory encoded) {
         if (m.callData.length > type(uint16).max) {
             revert PayloadTooLong(m.callData.length);
         }
@@ -155,11 +152,9 @@ contract Governance {
         );
     }
 
-    function parseGeneralPurposeGovernanceMessage(bytes memory encoded)
-        public
-        pure
-        returns (GeneralPurposeGovernanceMessage memory message)
-    {
+    function parseGeneralPurposeGovernanceMessage(
+        bytes memory encoded
+    ) public pure returns (GeneralPurposeGovernanceMessage memory message) {
         uint256 offset = 0;
 
         bytes32 module;

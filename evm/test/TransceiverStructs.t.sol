@@ -31,9 +31,9 @@ contract TestTransceiverStructs is Test {
         assertEq(encodedTransceiverInit, encodedExpected);
     }
 
-    function test_SerdeRoundtrip_TransceiverInit(TransceiverStructs.TransceiverInit memory ti)
-        public
-    {
+    function test_SerdeRoundtrip_TransceiverInit(
+        TransceiverStructs.TransceiverInit memory ti
+    ) public {
         bytes memory message = TransceiverStructs.encodeTransceiverInit(ti);
         TransceiverStructs.TransceiverInit memory parsed =
             TransceiverStructs.decodeTransceiverInit(message);
@@ -121,9 +121,9 @@ contract TestTransceiverStructs is Test {
         assertEq(abi.encode(nttParsed), abi.encode(ntt));
     }
 
-    function test_SerdeRoundtrip_NttManagerMessage(TransceiverStructs.NttManagerMessage memory m)
-        public
-    {
+    function test_SerdeRoundtrip_NttManagerMessage(
+        TransceiverStructs.NttManagerMessage memory m
+    ) public {
         bytes memory message = TransceiverStructs.encodeNttManagerMessage(m);
 
         TransceiverStructs.NttManagerMessage memory parsed =
@@ -134,9 +134,9 @@ contract TestTransceiverStructs is Test {
         assertEq(m.payload, parsed.payload);
     }
 
-    function test_SerdeJunk_NttManagerMessage(TransceiverStructs.NttManagerMessage memory m)
-        public
-    {
+    function test_SerdeJunk_NttManagerMessage(
+        TransceiverStructs.NttManagerMessage memory m
+    ) public {
         bytes memory message = TransceiverStructs.encodeNttManagerMessage(m);
 
         bytes memory junk = "junk";
@@ -162,9 +162,9 @@ contract TestTransceiverStructs is Test {
         assertEq(m.toChain, parsed.toChain);
     }
 
-    function test_SerdeJunk_NativeTokenTransfer(TransceiverStructs.NativeTokenTransfer memory m)
-        public
-    {
+    function test_SerdeJunk_NativeTokenTransfer(
+        TransceiverStructs.NativeTokenTransfer memory m
+    ) public {
         bytes memory message = TransceiverStructs.encodeNativeTokenTransfer(m);
 
         bytes memory junk = "junk";

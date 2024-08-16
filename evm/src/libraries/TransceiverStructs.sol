@@ -62,11 +62,9 @@ library TransceiverStructs {
         return keccak256(abi.encodePacked(sourceChainId, encodeNttManagerMessage(m)));
     }
 
-    function encodeNttManagerMessage(NttManagerMessage memory m)
-        public
-        pure
-        returns (bytes memory encoded)
-    {
+    function encodeNttManagerMessage(
+        NttManagerMessage memory m
+    ) public pure returns (bytes memory encoded) {
         if (m.payload.length > type(uint16).max) {
             revert PayloadTooLong(m.payload.length);
         }
@@ -77,11 +75,9 @@ library TransceiverStructs {
     /// @notice Parse a NttManagerMessage.
     /// @param encoded The byte array corresponding to the encoded message
     /// @return nttManagerMessage The parsed NttManagerMessage struct.
-    function parseNttManagerMessage(bytes memory encoded)
-        public
-        pure
-        returns (NttManagerMessage memory nttManagerMessage)
-    {
+    function parseNttManagerMessage(
+        bytes memory encoded
+    ) public pure returns (NttManagerMessage memory nttManagerMessage) {
         uint256 offset = 0;
         (nttManagerMessage.id, offset) = encoded.asBytes32Unchecked(offset);
         (nttManagerMessage.sender, offset) = encoded.asBytes32Unchecked(offset);
@@ -110,11 +106,9 @@ library TransceiverStructs {
         uint16 toChain;
     }
 
-    function encodeNativeTokenTransfer(NativeTokenTransfer memory m)
-        public
-        pure
-        returns (bytes memory encoded)
-    {
+    function encodeNativeTokenTransfer(
+        NativeTokenTransfer memory m
+    ) public pure returns (bytes memory encoded) {
         // The `amount` and `decimals` fields are encoded in reverse order compared to how they are declared in the
         // `TrimmedAmount` type. This is consistent with the Rust NTT implementation.
         TrimmedAmount transferAmount = m.amount;
@@ -131,11 +125,9 @@ library TransceiverStructs {
     /// @dev Parse a NativeTokenTransfer.
     /// @param encoded The byte array corresponding to the encoded message
     /// @return nativeTokenTransfer The parsed NativeTokenTransfer struct.
-    function parseNativeTokenTransfer(bytes memory encoded)
-        public
-        pure
-        returns (NativeTokenTransfer memory nativeTokenTransfer)
-    {
+    function parseNativeTokenTransfer(
+        bytes memory encoded
+    ) public pure returns (NativeTokenTransfer memory nativeTokenTransfer) {
         uint256 offset = 0;
         bytes4 prefix;
         (prefix, offset) = encoded.asBytes4Unchecked(offset);
@@ -289,11 +281,9 @@ library TransceiverStructs {
         bytes payload;
     }
 
-    function encodeTransceiverInstruction(TransceiverInstruction memory instruction)
-        public
-        pure
-        returns (bytes memory)
-    {
+    function encodeTransceiverInstruction(
+        TransceiverInstruction memory instruction
+    ) public pure returns (bytes memory) {
         if (instruction.payload.length > type(uint8).max) {
             revert PayloadTooLong(instruction.payload.length);
         }
@@ -311,11 +301,9 @@ library TransceiverStructs {
         (instruction.payload, nextOffset) = encoded.sliceUnchecked(nextOffset, instructionLength);
     }
 
-    function parseTransceiverInstructionChecked(bytes memory encoded)
-        public
-        pure
-        returns (TransceiverInstruction memory instruction)
-    {
+    function parseTransceiverInstructionChecked(
+        bytes memory encoded
+    ) public pure returns (TransceiverInstruction memory instruction) {
         uint256 offset = 0;
         (instruction, offset) = parseTransceiverInstructionUnchecked(encoded, offset);
         encoded.checkLength(offset);
@@ -325,11 +313,9 @@ library TransceiverStructs {
     ///      The serialization format is:
     ///      - instructionsLength - 1 byte
     ///      - `instructionsLength` number of serialized `TransceiverInstruction` types.
-    function encodeTransceiverInstructions(TransceiverInstruction[] memory instructions)
-        public
-        pure
-        returns (bytes memory)
-    {
+    function encodeTransceiverInstructions(
+        TransceiverInstruction[] memory instructions
+    ) public pure returns (bytes memory) {
         if (instructions.length > type(uint8).max) {
             revert PayloadTooLong(instructions.length);
         }
@@ -392,11 +378,9 @@ library TransceiverStructs {
         uint8 tokenDecimals;
     }
 
-    function encodeTransceiverInit(TransceiverInit memory init)
-        public
-        pure
-        returns (bytes memory)
-    {
+    function encodeTransceiverInit(
+        TransceiverInit memory init
+    ) public pure returns (bytes memory) {
         return abi.encodePacked(
             init.transceiverIdentifier,
             init.nttManagerAddress,
@@ -406,11 +390,9 @@ library TransceiverStructs {
         );
     }
 
-    function decodeTransceiverInit(bytes memory encoded)
-        public
-        pure
-        returns (TransceiverInit memory init)
-    {
+    function decodeTransceiverInit(
+        bytes memory encoded
+    ) public pure returns (TransceiverInit memory init) {
         uint256 offset = 0;
         (init.transceiverIdentifier, offset) = encoded.asBytes4Unchecked(offset);
         (init.nttManagerAddress, offset) = encoded.asBytes32Unchecked(offset);
@@ -426,11 +408,9 @@ library TransceiverStructs {
         bytes32 transceiverAddress;
     }
 
-    function encodeTransceiverRegistration(TransceiverRegistration memory registration)
-        public
-        pure
-        returns (bytes memory)
-    {
+    function encodeTransceiverRegistration(
+        TransceiverRegistration memory registration
+    ) public pure returns (bytes memory) {
         return abi.encodePacked(
             registration.transceiverIdentifier,
             registration.transceiverChainId,
@@ -438,11 +418,9 @@ library TransceiverStructs {
         );
     }
 
-    function decodeTransceiverRegistration(bytes memory encoded)
-        public
-        pure
-        returns (TransceiverRegistration memory registration)
-    {
+    function decodeTransceiverRegistration(
+        bytes memory encoded
+    ) public pure returns (TransceiverRegistration memory registration) {
         uint256 offset = 0;
         (registration.transceiverIdentifier, offset) = encoded.asBytes4Unchecked(offset);
         (registration.transceiverChainId, offset) = encoded.asUint16Unchecked(offset);

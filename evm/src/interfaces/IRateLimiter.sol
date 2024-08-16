@@ -86,15 +86,13 @@ interface IRateLimiter {
 
     function getCurrentOutboundCapacity() external view returns (uint256);
 
-    function getOutboundQueuedTransfer(uint64 queueSequence)
-        external
-        view
-        returns (OutboundQueuedTransfer memory);
+    function getOutboundQueuedTransfer(
+        uint64 queueSequence
+    ) external view returns (OutboundQueuedTransfer memory);
 
     function getCurrentInboundCapacity(uint16 chainId) external view returns (uint256);
 
-    function getInboundQueuedTransfer(bytes32 digest)
-        external
-        view
-        returns (InboundQueuedTransfer memory);
+    function getInboundQueuedTransfer(
+        bytes32 digest
+    ) external view returns (InboundQueuedTransfer memory);
 }
