@@ -5,6 +5,9 @@ members = [
 ]
 resolver = "2"
 
+[workspace.lints.rust]
+warnings = "deny"
+
 # Lints to improve security
 [workspace.lints.clippy]
 # The following rules should be enabled but conflict with other open PRs.
@@ -63,6 +66,7 @@ cfg-if = "1.0"
 overflow-checks = true
 lto = "fat"
 codegen-units = 1
+
 [profile.release.build-override]
 opt-level = 3
 incremental = false
