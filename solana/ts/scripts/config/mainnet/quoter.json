@@ -34,6 +34,30 @@
       "gasCost": 500000,
       "wormholeTransceiverIndex": 0,
       "isSupported": true
+    },
+    {
+      "name": "Xborg",
+      "programId": "NttXP2tPLxGkNA3yrSfFZbtDbfKPKBrJUR6Jcqh6sRi",
+      "tokenAddress": "XBGdqJ9P175hCC1LangCEyXWNeCPHaKWA17tymz2PrY",
+      "gasCost": 500000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
+    },
+    {
+      "name": "Agora",
+      "programId": "NttADdCvGLUhukNyePei9CkmHoe6S9xjqgqfQv51PQg",
+      "tokenAddress": "AGAxefyrPTi63FGL2ukJUTBtLJStDpiXMdtLRWvzambv",
+      "gasCost": 500000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
+    },
+    {
+      "name": "Renzo",
+      "programId": "NtTtwqVX4SCNECrZ8ZmEaxAPFcm5r7Szx4tBmYLU17p",
+      "tokenAddress": "3DK98MXPz8TRuim7rfQnebSLpA7VSoc79Bgiee1m4Zw5",
+      "gasCost": 500000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
     }
   ],
   "peerQuotes": {
