@@ -162,7 +162,9 @@ impl GovernanceMessage {
             acc.is_signer.write(writer)?;
             acc.is_writable.write(writer)?;
         }
-        (data.len() as u16).write(writer)?;
+        u16::try_from(data.len())
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "data length overflow"))?
+            .write(writer)?;
         writer.write_all(data)
     }
 }
