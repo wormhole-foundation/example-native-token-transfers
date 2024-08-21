@@ -1,9 +1,7 @@
-all: build
-
 #######################
 ## BUILD
 
-.PHONY: build
+.PHONY: build-evm
 build-evm:
 	cd evm && forge build
 
