@@ -25,7 +25,7 @@ build-solana:
 
 .PHONY: build-anchor
 build-anchor:
-	cd solana; make _anchor-build
+	cd solana; make build
 
 #######################
 ## TESTS
@@ -56,7 +56,7 @@ test-solana-unit:
 
 .PHONY: test-anchor
 test-anchor:
-	cd solana; make anchor-test
+	cd solana; make test
 
 .PHONY: test-solana
 test-solana: build-solana test-solana-unit build-anchor test-anchor
@@ -66,4 +66,4 @@ test-solana: build-solana test-solana-unit build-anchor test-anchor
 lint-solana:
 	cargo fmt --check --all --manifest-path solana/Cargo.toml
 	cargo check --workspace --tests --manifest-path solana/Cargo.toml
-	cargo clippy --workspace --tests --manifest-path solana/Cargo.toml
+	cargo clippy --workspace --tests --manifest-path solana/Cargo.toml -- -Dclippy::cast_possible_truncation
