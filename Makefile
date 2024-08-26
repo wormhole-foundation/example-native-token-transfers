@@ -1,5 +1,11 @@
+all: build
+
 #######################
 ## BUILD
+
+.PHONY: build
+build: build-evm build-solana build-anchor
+
 
 .PHONY: build-evm
 build-evm:
@@ -19,27 +25,26 @@ gen-evm-bindings: build-evm-prod
 
 .PHONY: build-solana
 build-solana:
-	cd solana; BPF_OUT_DIR="$(pwd)/target/deploy" cargo build-sbf
+	cd solana && BPF_OUT_DIR="$(pwd)/target/deploy" cargo build-sbf
 
 .PHONY: build-anchor
 build-anchor:
-	cd solana; make build
+	cd solana && make build
+
+.PHONY: build-solana-prod
+build-solana-prod:
+	cd solana && anchor build --verifiable
 
 #######################
 ## TESTS
 
-.PHONY: check-format
-check-format:
-	cd evm && forge fmt --check
+.PHONY: test
+test: test-evm test-push0 test-solana
 
-.PHONY: fix-format
-fix-format:
-	cd evm && forge fmt
 
 .PHONY: test-evm
 test-evm:
 	cd evm && forge test -vvv
-
 
 # Verify that the contracts do not include PUSH0 opcodes
 .PHONY: test-push0
@@ -49,20 +54,38 @@ test-push0:
 
 .PHONY: test-solana-unit
 test-solana-unit:
-	cd solana; cargo build-sbf --features "mainnet"
-	cd solana; cargo test-sbf --features "mainnet"
-	cd solana; cargo test
+	cd solana && cargo build-sbf --features "mainnet"
+	cd solana && cargo test-sbf --features "mainnet"
+	cd solana && cargo test
 
 .PHONY: test-anchor
 test-anchor:
-	cd solana; make test
+	cd solana && make test
 
 .PHONY: test-solana
 test-solana: build-solana test-solana-unit build-anchor test-anchor
 
+#######################
+## LINT
 
-.PHONY: lint-solana
-lint-solana:
-	cargo fmt --check --all --manifest-path solana/Cargo.toml
-	cargo check --workspace --tests --manifest-path solana/Cargo.toml
-	cargo clippy --workspace --tests --manifest-path solana/Cargo.toml -- -Dclippy::cast_possible_truncation
+.PHONY: lint
+lint: check-evm-format check-solana-format
+
+
+.PHONY: check-evm-format
+check-evm-format:
+	cd evm && forge fmt --check
+
+.PHONY: fix-evm-format
+fix-evm-format:
+	cd evm && forge fmt
+
+.PHONY: check-solana-format
+check-solana-format:
+	cd solana && cargo fmt --check --all --manifest-path Cargo.toml
+	cd solana && cargo check --workspace --tests --manifest-path Cargo.toml
+	cd solana && cargo clippy --workspace --tests --manifest-path Cargo.toml -- -Dclippy::cast_possible_truncation
+
+.PHONY: fix-solana-format
+fix-solana-format:
+	cd solana && cargo fmt --all --manifest-path Cargo.toml
