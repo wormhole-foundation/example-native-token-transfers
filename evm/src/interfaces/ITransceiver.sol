@@ -62,6 +62,8 @@ interface ITransceiver {
     /// @param instruction An additional Instruction provided by the Transceiver to be
     /// executed on the recipient chain.
     /// @param nttManagerMessage A message to be sent to the nttManager on the recipient chain.
+    /// @param recipientNttManagerAddress The Wormhole formatted address of the peer NTT Manager on the recipient chain.
+    /// @param refundAddress The Wormhole formatted address of the refund recipient
     function sendMessage(
         uint16 recipientChain,
         TransceiverStructs.TransceiverInstruction memory instruction,
@@ -71,8 +73,10 @@ interface ITransceiver {
     ) external payable;
 
     /// @notice Upgrades the transceiver to a new implementation.
+    /// @param newImplementation The address of the new implementation contract
     function upgrade(address newImplementation) external;
 
     /// @notice Transfers the ownership of the transceiver to a new address.
+    /// @param newOwner The address of the new owner
     function transferTransceiverOwnership(address newOwner) external;
 }
