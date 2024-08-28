@@ -10,6 +10,10 @@ on:
 env:
   FOUNDRY_PROFILE: ci
 
+defaults:
+  run:
+    working-directory: ./evm
+
 jobs:
   check:
     strategy:
@@ -29,17 +33,17 @@ jobs:
 
       - name: Run Forge build
         run: |
-          make -C evm push0-test
+          make push0-test
         id: build
 
       - name: Run Forge tests
         run: |
-          make -C evm forge-test
+          make forge-test
         id: test
 
       - name: Run Forge fmt
         run: |
-          make -C evm lint
+          make lint
         id: check
 
   echidna:
@@ -57,7 +61,7 @@ jobs:
 
       - name: Run Forge build
         run: |
-          make -C evm build
+          make build
         id: build
 
       - name: Install Echidna
@@ -68,5 +72,4 @@ jobs:
 
       - name: Run Echidna
         run: |
-          cd evm
           ../echidna ./echidna --config echidna.yaml
