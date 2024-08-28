@@ -10,6 +10,10 @@ on:
 env:
   FOUNDRY_PROFILE: ci
 
+defaults:
+  run:
+    working-directory: ./evm
+
 jobs:
   check:
     strategy:
@@ -29,19 +33,19 @@ jobs:
 
       - name: Run Forge build
         run: |
-          make test-push0
+          make push0-test
         id: build
 
       - name: Run Forge tests
         run: |
-          make test-evm
+          make forge-test
         id: test
 
       - name: Run Forge fmt
         run: |
-          make check-format
+          make lint
         id: check
-    
+
   echidna:
     name: echidna
     runs-on: ubuntu-latest
@@ -49,7 +53,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-      
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -57,16 +61,16 @@ jobs:
 
       - name: Run Forge build
         run: |
-          make test-push0
+          make build
         id: build
 
       - name: Install Echidna
         run: |
           curl -LO https://github.com/crytic/echidna/releases/download/v2.2.3/echidna-2.2.3-x86_64-linux.tar.gz
-          tar -xzf echidna-2.2.3-x86_64-linux.tar.gz
+          mkdir echidna-bin
+          tar -xzf echidna-2.2.3-x86_64-linux.tar.gz -C echidna-bin
           pip install crytic-compile
-      
+
       - name: Run Echidna
         run: |
-          cd evm
-          ../echidna ./echidna --config echidna.yaml
+          echidna-bin/echidna ./echidna --config echidna.yaml
