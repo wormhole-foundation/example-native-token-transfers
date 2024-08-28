@@ -67,9 +67,10 @@ jobs:
       - name: Install Echidna
         run: |
           curl -LO https://github.com/crytic/echidna/releases/download/v2.2.3/echidna-2.2.3-x86_64-linux.tar.gz
-          tar -xzf echidna-2.2.3-x86_64-linux.tar.gz -C /usr/bin
+          mkdir echidna-bin
+          tar -xzf echidna-2.2.3-x86_64-linux.tar.gz -C echidna-bin
           pip install crytic-compile
 
       - name: Run Echidna
         run: |
-          echidna ./echidna --config echidna.yaml
+          echidna-bin/echidna ./echidna --config echidna.yaml
