@@ -29,17 +29,17 @@ jobs:
 
       - name: Run Forge build
         run: |
-          make test-push0
+          make -C evm push0-test
         id: build
 
       - name: Run Forge tests
         run: |
-          make test-evm
+          make -C evm forge-test
         id: test
 
       - name: Run Forge fmt
         run: |
-          make check-evm-format
+          make -C evm lint
         id: check
 
   echidna:
@@ -57,7 +57,7 @@ jobs:
 
       - name: Run Forge build
         run: |
-          make test-push0
+          make -C evm build
         id: build
 
       - name: Install Echidna
