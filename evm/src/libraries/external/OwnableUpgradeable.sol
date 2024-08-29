@@ -53,11 +53,15 @@ abstract contract OwnableUpgradeable is Initializable, ContextUpgradeable, IOwna
     /**
      * @dev Initializes the contract setting the address provided by the deployer as the initial owner.
      */
-    function __Ownable_init(address initialOwner) internal onlyInitializing {
+    function __Ownable_init(
+        address initialOwner
+    ) internal onlyInitializing {
         __Ownable_init_unchained(initialOwner);
     }
 
-    function __Ownable_init_unchained(address initialOwner) internal onlyInitializing {
+    function __Ownable_init_unchained(
+        address initialOwner
+    ) internal onlyInitializing {
         if (initialOwner == address(0)) {
             revert OwnableInvalidOwner(address(0));
         }
@@ -93,7 +97,9 @@ abstract contract OwnableUpgradeable is Initializable, ContextUpgradeable, IOwna
      * @dev Transfers ownership of the contract to a new account (`newOwner`).
      * Can only be called by the current owner.
      */
-    function transferOwnership(address newOwner) public virtual onlyOwner {
+    function transferOwnership(
+        address newOwner
+    ) public virtual onlyOwner {
         if (newOwner == address(0)) {
             revert OwnableInvalidOwner(address(0));
         }
@@ -104,7 +110,9 @@ abstract contract OwnableUpgradeable is Initializable, ContextUpgradeable, IOwna
      * @dev Transfers ownership of the contract to a new account (`newOwner`).
      * Internal function without access restriction.
      */
-    function _transferOwnership(address newOwner) internal virtual {
+    function _transferOwnership(
+        address newOwner
+    ) internal virtual {
         OwnableStorage storage $ = _getOwnableStorage();
         address oldOwner = $._owner;
         $._owner = newOwner;

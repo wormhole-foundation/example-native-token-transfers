@@ -93,7 +93,9 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         rateLimitParams.lastTxTimestamp = uint64(block.timestamp);
     }
 
-    function _setOutboundLimit(TrimmedAmount limit) internal {
+    function _setOutboundLimit(
+        TrimmedAmount limit
+    ) internal {
         _setLimit(limit, _getOutboundLimitParamsStorage());
     }
 
@@ -117,11 +119,15 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         _setLimit(limit, _getInboundLimitParamsStorage()[chainId_]);
     }
 
-    function getInboundLimitParams(uint16 chainId_) public view returns (RateLimitParams memory) {
+    function getInboundLimitParams(
+        uint16 chainId_
+    ) public view returns (RateLimitParams memory) {
         return _getInboundLimitParamsStorage()[chainId_];
     }
 
-    function getCurrentInboundCapacity(uint16 chainId_) public view returns (uint256) {
+    function getCurrentInboundCapacity(
+        uint16 chainId_
+    ) public view returns (uint256) {
         TrimmedAmount trimmedCapacity = _getCurrentCapacity(getInboundLimitParams(chainId_));
         uint8 decimals = tokenDecimals();
         return trimmedCapacity.untrim(decimals);
@@ -199,14 +205,18 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         }
     }
 
-    function _consumeOutboundAmount(TrimmedAmount amount) internal {
+    function _consumeOutboundAmount(
+        TrimmedAmount amount
+    ) internal {
         if (rateLimitDuration == 0) return;
         _consumeRateLimitAmount(
             amount, _getCurrentCapacity(getOutboundLimitParams()), _getOutboundLimitParamsStorage()
         );
     }
 
-    function _backfillOutboundAmount(TrimmedAmount amount) internal {
+    function _backfillOutboundAmount(
+        TrimmedAmount amount
+    ) internal {
         if (rateLimitDuration == 0) return;
         _backfillRateLimitAmount(
             amount, _getCurrentCapacity(getOutboundLimitParams()), _getOutboundLimitParamsStorage()
@@ -251,7 +261,9 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         rateLimitParams.currentCapacity = capacity.saturatingAdd(amount).min(rateLimitParams.limit);
     }
 
-    function _isOutboundAmountRateLimited(TrimmedAmount amount) internal view returns (bool) {
+    function _isOutboundAmountRateLimited(
+        TrimmedAmount amount
+    ) internal view returns (bool) {
         return rateLimitDuration != 0
             ? _isAmountRateLimited(_getCurrentCapacity(getOutboundLimitParams()), amount)
             : false;

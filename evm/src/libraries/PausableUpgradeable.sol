@@ -75,15 +75,21 @@ abstract contract PausableUpgradeable is Initializable {
         }
     }
 
-    function _setPauseStorage(uint256 pauseFlag) internal {
+    function _setPauseStorage(
+        uint256 pauseFlag
+    ) internal {
         _getPauseStorage()._pauseFlag = pauseFlag;
     }
 
-    function __Paused_init(address initialPauser) internal onlyInitializing {
+    function __Paused_init(
+        address initialPauser
+    ) internal onlyInitializing {
         __Paused_init_unchained(initialPauser);
     }
 
-    function __Paused_init_unchained(address initialPauser) internal onlyInitializing {
+    function __Paused_init_unchained(
+        address initialPauser
+    ) internal onlyInitializing {
         // set pause flag to false initially
         PauseStorage storage $ = _getPauseStorage();
         $._pauseFlag = NOT_PAUSED;

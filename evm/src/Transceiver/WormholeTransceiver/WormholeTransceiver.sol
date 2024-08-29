@@ -60,7 +60,9 @@ contract WormholeTransceiver is
     }
 
     /// @inheritdoc IWormholeTransceiver
-    function receiveMessage(bytes memory encodedMessage) external {
+    function receiveMessage(
+        bytes memory encodedMessage
+    ) external {
         uint16 sourceChainId;
         bytes memory payload;
         (sourceChainId, payload) = _verifyMessage(encodedMessage);
@@ -240,7 +242,9 @@ contract WormholeTransceiver is
         emit SendTransceiverMessage(recipientChain, transceiverMessage);
     }
 
-    function _verifyMessage(bytes memory encodedMessage) internal returns (uint16, bytes memory) {
+    function _verifyMessage(
+        bytes memory encodedMessage
+    ) internal returns (uint16, bytes memory) {
         // verify VAA against Wormhole Core Bridge contract
         (IWormhole.VM memory vm, bool valid, string memory reason) =
             wormhole.parseAndVerifyVM(encodedMessage);
@@ -267,7 +271,9 @@ contract WormholeTransceiver is
         return (vm.emitterChainId, vm.payload);
     }
 
-    function _verifyBridgeVM(IWormhole.VM memory vm) internal view returns (bool) {
+    function _verifyBridgeVM(
+        IWormhole.VM memory vm
+    ) internal view returns (bool) {
         checkFork(wormholeTransceiver_evmChainId);
         return getWormholePeer(vm.emitterChainId) == vm.emitterAddress;
     }

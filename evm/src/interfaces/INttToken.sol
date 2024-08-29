@@ -27,10 +27,14 @@ interface INttToken {
     function mint(address account, uint256 amount) external;
 
     // NOTE: the `setMinter` method is not present in the standard ERC20 interface.
-    function setMinter(address newMinter) external;
+    function setMinter(
+        address newMinter
+    ) external;
 
     // NOTE: NttTokens in `burn` mode require the `burn` method to be present.
     //       This method is not present in the standard ERC20 interface, but is
     //       found in the `ERC20Burnable` interface.
-    function burn(uint256 amount) external;
+    function burn(
+        uint256 amount
+    ) external;
 }

@@ -122,28 +122,38 @@ interface IManagerBase {
     /// to be considered valid.
     /// @param threshold The new threshold (number of attestations).
     /// @dev This method can only be executed by the `owner`.
-    function setThreshold(uint8 threshold) external;
+    function setThreshold(
+        uint8 threshold
+    ) external;
 
     /// @notice Sets the transceiver for the given chain.
     /// @param transceiver The address of the transceiver.
     /// @dev This method can only be executed by the `owner`.
-    function setTransceiver(address transceiver) external;
+    function setTransceiver(
+        address transceiver
+    ) external;
 
     /// @notice Removes the transceiver for the given chain.
     /// @param transceiver The address of the transceiver.
     /// @dev This method can only be executed by the `owner`.
-    function removeTransceiver(address transceiver) external;
+    function removeTransceiver(
+        address transceiver
+    ) external;
 
     /// @notice Checks if a message has been approved. The message should have at least
     /// the minimum threshold of attestations from distinct endpoints.
     /// @param digest The digest of the message.
     /// @return - Boolean indicating if message has been approved.
-    function isMessageApproved(bytes32 digest) external view returns (bool);
+    function isMessageApproved(
+        bytes32 digest
+    ) external view returns (bool);
 
     /// @notice Checks if a message has been executed.
     /// @param digest The digest of the message.
     /// @return - Boolean indicating if message has been executed.
-    function isMessageExecuted(bytes32 digest) external view returns (bool);
+    function isMessageExecuted(
+        bytes32 digest
+    ) external view returns (bool);
 
     /// @notice Returns the next message sequence.
     function nextMessageSequence() external view returns (uint64);
@@ -152,7 +162,9 @@ interface IManagerBase {
     /// @dev This is upgraded via a proxy, and can only be executed
     /// by the `owner`.
     /// @param newImplementation The address of the new implementation.
-    function upgrade(address newImplementation) external;
+    function upgrade(
+        address newImplementation
+    ) external;
 
     /// @notice Pauses the manager.
     function pause() external;
@@ -177,7 +189,9 @@ interface IManagerBase {
     /// @notice Returns the number of attestations for a given message.
     /// @param digest The digest of the message.
     /// @return count The number of attestations received for the given message digest
-    function messageAttestations(bytes32 digest) external view returns (uint8 count);
+    function messageAttestations(
+        bytes32 digest
+    ) external view returns (uint8 count);
 
     /// @notice Returns of the address of the token managed by this contract.
     function token() external view returns (address);

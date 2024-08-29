@@ -60,7 +60,9 @@ interface IWormholeTransceiver is IWormholeTransceiverState {
     ///         This function should verify the `encodedVm` and then deliver the attestation
     /// to the transceiver NttManager contract.
     /// @param encodedMessage The attested message.
-    function receiveMessage(bytes memory encodedMessage) external;
+    function receiveMessage(
+        bytes memory encodedMessage
+    ) external;
 
     /// @notice Parses the encoded instruction and returns the instruction struct.
     ///         This instruction is specific to the WormholeTransceiver contract.

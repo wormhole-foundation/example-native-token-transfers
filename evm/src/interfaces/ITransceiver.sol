@@ -74,9 +74,13 @@ interface ITransceiver {
 
     /// @notice Upgrades the transceiver to a new implementation.
     /// @param newImplementation The address of the new implementation contract
-    function upgrade(address newImplementation) external;
+    function upgrade(
+        address newImplementation
+    ) external;
 
     /// @notice Transfers the ownership of the transceiver to a new address.
     /// @param newOwner The address of the new owner
-    function transferTransceiverOwnership(address newOwner) external;
+    function transferTransceiverOwnership(
+        address newOwner
+    ) external;
 }

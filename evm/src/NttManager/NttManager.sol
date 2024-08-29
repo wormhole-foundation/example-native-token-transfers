@@ -92,7 +92,9 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     // =============== Public Getters ========================================================
 
     /// @inheritdoc INttManager
-    function getPeer(uint16 chainId_) external view returns (NttManagerPeer memory) {
+    function getPeer(
+        uint16 chainId_
+    ) external view returns (NttManagerPeer memory) {
         return _getPeersStorage()[chainId_];
     }
 
@@ -132,7 +134,9 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     }
 
     /// @inheritdoc INttManager
-    function setOutboundLimit(uint256 limit) external onlyOwner {
+    function setOutboundLimit(
+        uint256 limit
+    ) external onlyOwner {
         uint8 toDecimals = tokenDecimals();
         _setOutboundLimit(limit.trim(toDecimals, toDecimals));
     }
@@ -241,7 +245,9 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     }
 
     /// @inheritdoc INttManager
-    function completeInboundQueuedTransfer(bytes32 digest) external nonReentrant whenNotPaused {
+    function completeInboundQueuedTransfer(
+        bytes32 digest
+    ) external nonReentrant whenNotPaused {
         // find the message in the queue
         InboundQueuedTransfer memory queuedTransfer = getInboundQueuedTransfer(digest);
         if (queuedTransfer.txTimestamp == 0) {

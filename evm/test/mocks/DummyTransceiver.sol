@@ -10,7 +10,9 @@ contract DummyTransceiver is Transceiver, ITransceiverReceiver {
     uint16 constant SENDING_CHAIN_ID = 1;
     bytes4 constant TEST_TRANSCEIVER_PAYLOAD_PREFIX = 0x99455454;
 
-    constructor(address nttManager) Transceiver(nttManager) {}
+    constructor(
+        address nttManager
+    ) Transceiver(nttManager) {}
 
     function getTransceiverType() external pure override returns (string memory) {
         return "dummy";
@@ -35,7 +37,9 @@ contract DummyTransceiver is Transceiver, ITransceiverReceiver {
         // do nothing
     }
 
-    function receiveMessage(bytes memory encodedMessage) external {
+    function receiveMessage(
+        bytes memory encodedMessage
+    ) external {
         TransceiverStructs.TransceiverMessage memory parsedTransceiverMessage;
         TransceiverStructs.NttManagerMessage memory parsedNttManagerMessage;
         (parsedTransceiverMessage, parsedNttManagerMessage) = TransceiverStructs
