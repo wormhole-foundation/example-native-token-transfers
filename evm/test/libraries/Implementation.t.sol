@@ -16,7 +16,9 @@ contract TestImplementation is Implementation {
 
     function _checkImmutables() internal view override {}
 
-    function upgrade(address newImplementation) external {
+    function upgrade(
+        address newImplementation
+    ) external {
         _upgrade(newImplementation);
     }
 
@@ -42,7 +44,9 @@ contract TestImplementation2 is Implementation {
 
     function _checkImmutables() internal view override {}
 
-    function upgrade(address newImplementation) external {
+    function upgrade(
+        address newImplementation
+    ) external {
         _upgrade(newImplementation);
     }
 

@@ -585,7 +585,9 @@ contract TestUpgrades is Test, IRateLimiterEvents {
         vm.stopPrank();
     }
 
-    function encodeTransceiverInstruction(bool relayer_off) public view returns (bytes memory) {
+    function encodeTransceiverInstruction(
+        bool relayer_off
+    ) public view returns (bytes memory) {
         WormholeTransceiver.WormholeTransceiverInstruction memory instruction =
             IWormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
         bytes memory encodedInstructionWormhole =

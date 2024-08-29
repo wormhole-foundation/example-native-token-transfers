@@ -74,11 +74,15 @@ contract Governance {
         bytes callData;
     }
 
-    constructor(address _wormhole) {
+    constructor(
+        address _wormhole
+    ) {
         wormhole = IWormhole(_wormhole);
     }
 
-    function performGovernance(bytes calldata vaa) external {
+    function performGovernance(
+        bytes calldata vaa
+    ) external {
         IWormhole.VM memory verified = _verifyGovernanceVAA(vaa);
         GeneralPurposeGovernanceMessage memory message =
             parseGeneralPurposeGovernanceMessage(verified.payload);
@@ -103,7 +107,9 @@ contract Governance {
         }
     }
 
-    function _replayProtect(bytes32 digest) internal {
+    function _replayProtect(
+        bytes32 digest
+    ) internal {
         mapping(bytes32 => bool) storage $ = _getConsumedGovernanceActionsStorage();
         if ($[digest]) {
             revert GovernanceActionAlreadyConsumed(digest);

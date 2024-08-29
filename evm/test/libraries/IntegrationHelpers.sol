@@ -45,7 +45,9 @@ contract IntegrationHelpers is Test {
         });
     }
 
-    function encodeTransceiverInstruction(bool relayer_off) public view returns (bytes memory) {
+    function encodeTransceiverInstruction(
+        bool relayer_off
+    ) public view returns (bytes memory) {
         TransceiverStructs.TransceiverInstruction memory TransceiverInstruction =
             buildTransceiverInstruction(relayer_off);
         TransceiverStructs.TransceiverInstruction[] memory TransceiverInstructions =

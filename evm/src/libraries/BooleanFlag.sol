@@ -15,18 +15,24 @@ library BooleanFlagLib {
     uint256 constant FALSE = 0;
     uint256 constant TRUE = 1;
 
-    function isSet(BooleanFlag value) internal pure returns (bool) {
+    function isSet(
+        BooleanFlag value
+    ) internal pure returns (bool) {
         return BooleanFlag.unwrap(value) == TRUE;
     }
 
-    function toBool(BooleanFlag value) internal pure returns (bool) {
+    function toBool(
+        BooleanFlag value
+    ) internal pure returns (bool) {
         if (BooleanFlag.unwrap(value) == 0) return false;
         if (BooleanFlag.unwrap(value) == 1) return true;
 
         revert InvalidBoolValue(value);
     }
 
-    function toWord(bool value) internal pure returns (BooleanFlag) {
+    function toWord(
+        bool value
+    ) internal pure returns (BooleanFlag) {
         if (value) {
             return BooleanFlag.wrap(TRUE);
         } else {

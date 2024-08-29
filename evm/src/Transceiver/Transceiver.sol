@@ -33,7 +33,9 @@ abstract contract Transceiver is
     address public immutable nttManagerToken;
     address immutable deployer;
 
-    constructor(address _nttManager) {
+    constructor(
+        address _nttManager
+    ) {
         nttManager = _nttManager;
         nttManagerToken = INttManager(nttManager).token();
         deployer = msg.sender;
@@ -63,11 +65,15 @@ abstract contract Transceiver is
 
     /// @dev transfer the ownership of the transceiver to a new address
     /// the nttManager should be able to update transceiver ownership.
-    function transferTransceiverOwnership(address newOwner) external onlyNttManager {
+    function transferTransceiverOwnership(
+        address newOwner
+    ) external onlyNttManager {
         _transferOwnership(newOwner);
     }
 
-    function upgrade(address newImplementation) external onlyOwner {
+    function upgrade(
+        address newImplementation
+    ) external onlyOwner {
         _upgrade(newImplementation);
     }
 

@@ -23,7 +23,9 @@ error NumberOfDecimalsNotEqual(uint8 decimals, uint8 decimalsOther);
 
 uint8 constant TRIMMED_DECIMALS = 8;
 
-function unwrap(TrimmedAmount a) pure returns (uint72) {
+function unwrap(
+    TrimmedAmount a
+) pure returns (uint72) {
     return TrimmedAmount.unwrap(a);
 }
 
@@ -93,7 +95,9 @@ library TrimmedAmountLib {
     /// @param amount The amount to be trimmed.
     error AmountTooLarge(uint256 amount);
 
-    function getAmount(TrimmedAmount a) internal pure returns (uint64) {
+    function getAmount(
+        TrimmedAmount a
+    ) internal pure returns (uint64) {
         // Extract the raw integer value from TrimmedAmount
         uint72 rawValue = TrimmedAmount.unwrap(a);
 
@@ -102,7 +106,9 @@ library TrimmedAmountLib {
         return result;
     }
 
-    function getDecimals(TrimmedAmount a) internal pure returns (uint8) {
+    function getDecimals(
+        TrimmedAmount a
+    ) internal pure returns (uint8) {
         return uint8(TrimmedAmount.unwrap(a) & 0xFF);
     }
 
@@ -114,7 +120,9 @@ library TrimmedAmountLib {
         return TrimmedAmount.wrap((TrimmedAmount.unwrap(a) & ~uint72(0xFF)) | decimals);
     }
 
-    function isNull(TrimmedAmount a) internal pure returns (bool) {
+    function isNull(
+        TrimmedAmount a
+    ) internal pure returns (bool) {
         return (getAmount(a) == 0 && getDecimals(a) == 0);
     }
 
@@ -160,7 +168,9 @@ library TrimmedAmountLib {
         );
     }
 
-    function max(uint8 decimals) internal pure returns (TrimmedAmount) {
+    function max(
+        uint8 decimals
+    ) internal pure returns (TrimmedAmount) {
         uint8 actualDecimals = minUint8(TRIMMED_DECIMALS, decimals);
         return packTrimmedAmount(type(uint64).max, actualDecimals);
     }

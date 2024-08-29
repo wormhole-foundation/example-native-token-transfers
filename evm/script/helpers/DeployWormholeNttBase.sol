@@ -31,7 +31,9 @@ contract DeployWormholeNttBase is ParseNttConfig {
     // gas on testnet, pick up the phone and start dialing!
     uint256 constant MIN_WORMHOLE_GAS_LIMIT = 150000;
 
-    function deployNttManager(DeploymentParams memory params) internal returns (address) {
+    function deployNttManager(
+        DeploymentParams memory params
+    ) internal returns (address) {
         // Deploy the Manager Implementation.
         NttManager implementation = new NttManager(
             params.token,

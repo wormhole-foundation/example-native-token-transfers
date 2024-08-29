@@ -97,7 +97,9 @@ interface IRateLimiter {
     /// @notice Returns the currently remaining inbound capacity allowed from a given chain
     ///         before transfers are queued auutomatically
     /// @param chainId The Wormhole chain ID of the peer
-    function getCurrentInboundCapacity(uint16 chainId) external view returns (uint256);
+    function getCurrentInboundCapacity(
+        uint16 chainId
+    ) external view returns (uint256);
 
     /// @notice Returns the queued transfer details for a given message digest in the inbound queue
     /// @param digest The digest of the transfer in the inbound queue

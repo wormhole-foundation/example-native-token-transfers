@@ -17,7 +17,9 @@ abstract contract PausableOwnable is PausableUpgradeable, OwnableUpgradeable {
     /*
      * @dev Modifier to allow only the Pauser to access some functionality
      */
-    function _checkOwnerOrPauser(address owner) internal view {
+    function _checkOwnerOrPauser(
+        address owner
+    ) internal view {
         if (pauser() != msg.sender && owner != msg.sender) {
             revert InvalidPauser(msg.sender);
         }
@@ -31,7 +33,9 @@ abstract contract PausableOwnable is PausableUpgradeable, OwnableUpgradeable {
     /**
      * @dev Transfers the ability to pause to a new account (`newPauser`).
      */
-    function transferPauserCapability(address newPauser) public virtual onlyOwnerOrPauser {
+    function transferPauserCapability(
+        address newPauser
+    ) public virtual onlyOwnerOrPauser {
         PauserStorage storage $ = _getPauserStorage();
         address oldPauser = $._pauser;
         $._pauser = newPauser;

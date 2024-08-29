@@ -26,7 +26,9 @@ contract DummyToken is ERC20, ERC1967Upgrade {
         revert("Locking nttManager should not call 'burn()'");
     }
 
-    function upgrade(address newImplementation) public {
+    function upgrade(
+        address newImplementation
+    ) public {
         _upgradeTo(newImplementation);
     }
 }
@@ -37,7 +39,9 @@ contract DummyTokenMintAndBurn is DummyToken {
         _mint(to, amount);
     }
 
-    function burn(uint256 amount) public {
+    function burn(
+        uint256 amount
+    ) public {
         // TODO - add access control here?
         _burn(msg.sender, amount);
     }
@@ -46,7 +50,9 @@ contract DummyTokenMintAndBurn is DummyToken {
 contract DummyTokenDifferentDecimals is DummyTokenMintAndBurn {
     uint8 private immutable _decimals;
 
-    constructor(uint8 newDecimals) {
+    constructor(
+        uint8 newDecimals
+    ) {
         _decimals = newDecimals;
     }
 
@@ -60,7 +66,9 @@ contract DummyTokenBroken is DummyToken {
         revert("broken decimals");
     }
 
-    function balanceOf(address) public pure override returns (uint256) {
+    function balanceOf(
+        address
+    ) public pure override returns (uint256) {
         revert("broken balanceOf");
     }
 }

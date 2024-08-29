@@ -153,7 +153,9 @@ abstract contract Initializable {
      *
      * Emits an {Initialized} event.
      */
-    modifier reinitializer(uint64 version) {
+    modifier reinitializer(
+        uint64 version
+    ) {
         // solhint-disable-next-line var-name-mixedcase
         InitializableStorage storage $ = _getInitializableStorage();
 

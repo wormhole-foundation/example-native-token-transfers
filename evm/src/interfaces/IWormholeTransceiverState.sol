@@ -72,23 +72,33 @@ interface IWormholeTransceiverState {
     /// @dev that peers are registered under Wormhole chain ID values.
     /// @param chainId The Wormhole chain ID of the peer to get.
     /// @return peerContract The address of the peer contract on the given chain.
-    function getWormholePeer(uint16 chainId) external view returns (bytes32);
+    function getWormholePeer(
+        uint16 chainId
+    ) external view returns (bytes32);
 
     /// @notice Returns a boolean indicating whether the given VAA hash has been consumed.
     /// @param hash The VAA hash to check.
-    function isVAAConsumed(bytes32 hash) external view returns (bool);
+    function isVAAConsumed(
+        bytes32 hash
+    ) external view returns (bool);
 
     /// @notice Returns a boolean indicating whether Wormhole relaying is enabled for the given chain.
     /// @param chainId The Wormhole chain ID to check.
-    function isWormholeRelayingEnabled(uint16 chainId) external view returns (bool);
+    function isWormholeRelayingEnabled(
+        uint16 chainId
+    ) external view returns (bool);
 
     /// @notice Returns a boolean indicating whether special relaying is enabled for the given chain.
     /// @param chainId The Wormhole chain ID to check.
-    function isSpecialRelayingEnabled(uint16 chainId) external view returns (bool);
+    function isSpecialRelayingEnabled(
+        uint16 chainId
+    ) external view returns (bool);
 
     /// @notice Returns a boolean indicating whether the given chain is EVM compatible.
     /// @param chainId The Wormhole chain ID to check.
-    function isWormholeEvmChain(uint16 chainId) external view returns (bool);
+    function isWormholeEvmChain(
+        uint16 chainId
+    ) external view returns (bool);
 
     /// @notice Set the Wormhole peer contract for the given chain.
     /// @dev This function is only callable by the `owner`.

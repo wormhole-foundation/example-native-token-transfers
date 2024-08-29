@@ -181,11 +181,15 @@ interface INttManager is IManagerBase {
     /// @notice Cancels an outbound transfer that's been queued.
     /// @dev This method is called by the client to cancel an outbound transfer that's been queued.
     /// @param queueSequence The sequence of the message in the queue.
-    function cancelOutboundQueuedTransfer(uint64 queueSequence) external;
+    function cancelOutboundQueuedTransfer(
+        uint64 queueSequence
+    ) external;
 
     /// @notice Complete an inbound queued transfer.
     /// @param digest The digest of the message to complete.
-    function completeInboundQueuedTransfer(bytes32 digest) external;
+    function completeInboundQueuedTransfer(
+        bytes32 digest
+    ) external;
 
     /// @notice Called by an Endpoint contract to deliver a verified attestation.
     /// @dev This function enforces attestation threshold and replay logic for messages. Once all
@@ -220,7 +224,9 @@ interface INttManager is IManagerBase {
 
     /// @notice Returns registered peer contract for a given chain.
     /// @param chainId_ Wormhole chain ID.
-    function getPeer(uint16 chainId_) external view returns (NttManagerPeer memory);
+    function getPeer(
+        uint16 chainId_
+    ) external view returns (NttManagerPeer memory);
 
     /// @notice Sets the corresponding peer.
     /// @dev The nttManager that executes the message sets the source nttManager as the peer.
@@ -240,7 +246,9 @@ interface INttManager is IManagerBase {
     /// @dev This method can only be executed by the `owner`.
     /// @param limit The new outbound limit. This is formatted in the normal
     ///              token representation. e.g. a limit of 100 for a token with 6 decimals = 100_000_000
-    function setOutboundLimit(uint256 limit) external;
+    function setOutboundLimit(
+        uint256 limit
+    ) external;
 
     /// @notice Sets the inbound transfer limit for a given chain.
     /// @dev This method can only be executed by the `owner`.

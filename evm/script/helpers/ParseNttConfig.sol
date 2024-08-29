@@ -25,7 +25,9 @@ contract ParseNttConfig is Script {
 
     mapping(uint16 => bool) duplicateChainIds;
 
-    function toUniversalAddress(address evmAddr) internal pure returns (bytes32 converted) {
+    function toUniversalAddress(
+        address evmAddr
+    ) internal pure returns (bytes32 converted) {
         assembly ("memory-safe") {
             converted := and(0xffffffffffffffffffffffffffffffffffffffff, evmAddr)
         }

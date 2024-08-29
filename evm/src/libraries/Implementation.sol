@@ -77,7 +77,9 @@ abstract contract Implementation is Initializable, ERC1967Upgrade {
 
     function _checkImmutables() internal view virtual;
 
-    function _upgrade(address newImplementation) internal {
+    function _upgrade(
+        address newImplementation
+    ) internal {
         _checkDelegateCall();
         _upgradeTo(newImplementation);
 
@@ -98,7 +100,9 @@ abstract contract Implementation is Initializable, ERC1967Upgrade {
         return _getMigratesImmutablesStorage().value;
     }
 
-    function _setMigratesImmutables(bool value) internal {
+    function _setMigratesImmutables(
+        bool value
+    ) internal {
         _getMigratesImmutablesStorage().value = value;
     }
 }

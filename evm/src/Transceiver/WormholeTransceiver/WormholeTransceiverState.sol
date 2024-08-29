@@ -174,27 +174,37 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     // =============== Public Getters ======================================================
 
     /// @inheritdoc IWormholeTransceiverState
-    function isVAAConsumed(bytes32 hash) public view returns (bool) {
+    function isVAAConsumed(
+        bytes32 hash
+    ) public view returns (bool) {
         return _getWormholeConsumedVAAsStorage()[hash];
     }
 
     /// @inheritdoc IWormholeTransceiverState
-    function getWormholePeer(uint16 chainId) public view returns (bytes32) {
+    function getWormholePeer(
+        uint16 chainId
+    ) public view returns (bytes32) {
         return _getWormholePeersStorage()[chainId];
     }
 
     /// @inheritdoc IWormholeTransceiverState
-    function isWormholeRelayingEnabled(uint16 chainId) public view returns (bool) {
+    function isWormholeRelayingEnabled(
+        uint16 chainId
+    ) public view returns (bool) {
         return _getWormholeRelayingEnabledChainsStorage()[chainId].toBool();
     }
 
     /// @inheritdoc IWormholeTransceiverState
-    function isSpecialRelayingEnabled(uint16 chainId) public view returns (bool) {
+    function isSpecialRelayingEnabled(
+        uint16 chainId
+    ) public view returns (bool) {
         return _getSpecialRelayingEnabledChainsStorage()[chainId].toBool();
     }
 
     /// @inheritdoc IWormholeTransceiverState
-    function isWormholeEvmChain(uint16 chainId) public view returns (bool) {
+    function isWormholeEvmChain(
+        uint16 chainId
+    ) public view returns (bool) {
         return _getWormholeEvmChainIdsStorage()[chainId].toBool();
     }
 
@@ -266,15 +276,21 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
 
     // ============= Internal ===============================================================
 
-    function _checkInvalidRelayingConfig(uint16 chainId) internal view returns (bool) {
+    function _checkInvalidRelayingConfig(
+        uint16 chainId
+    ) internal view returns (bool) {
         return isWormholeRelayingEnabled(chainId) && !isWormholeEvmChain(chainId);
     }
 
-    function _shouldRelayViaStandardRelaying(uint16 chainId) internal view returns (bool) {
+    function _shouldRelayViaStandardRelaying(
+        uint16 chainId
+    ) internal view returns (bool) {
         return isWormholeRelayingEnabled(chainId) && isWormholeEvmChain(chainId);
     }
 
-    function _setVAAConsumed(bytes32 hash) internal {
+    function _setVAAConsumed(
+        bytes32 hash
+    ) internal {
         _getWormholeConsumedVAAsStorage()[hash] = true;
     }
 

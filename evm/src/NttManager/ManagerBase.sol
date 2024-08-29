@@ -260,7 +260,9 @@ abstract contract ManagerBase is
         return (enabledTransceivers, instructions, priceQuotes, totalPriceQuote);
     }
 
-    function _refundToSender(uint256 refundAmount) internal {
+    function _refundToSender(
+        uint256 refundAmount
+    ) internal {
         // refund the price quote back to sender
         (bool refundSuccessful,) = payable(msg.sender).call{value: refundAmount}("");
 
@@ -283,7 +285,9 @@ abstract contract ManagerBase is
     }
 
     /// @inheritdoc IManagerBase
-    function isMessageApproved(bytes32 digest) public view returns (bool) {
+    function isMessageApproved(
+        bytes32 digest
+    ) public view returns (bool) {
         uint8 threshold = getThreshold();
         return messageAttestations(digest) >= threshold && threshold > 0;
     }
@@ -294,7 +298,9 @@ abstract contract ManagerBase is
     }
 
     /// @inheritdoc IManagerBase
-    function isMessageExecuted(bytes32 digest) public view returns (bool) {
+    function isMessageExecuted(
+        bytes32 digest
+    ) public view returns (bool) {
         return _getMessageAttestationsStorage()[digest].executed;
     }
 
@@ -305,14 +311,18 @@ abstract contract ManagerBase is
     }
 
     /// @inheritdoc IManagerBase
-    function messageAttestations(bytes32 digest) public view returns (uint8 count) {
+    function messageAttestations(
+        bytes32 digest
+    ) public view returns (uint8 count) {
         return countSetBits(_getMessageAttestations(digest));
     }
 
     // =============== Admin ==============================================================
 
     /// @inheritdoc IManagerBase
-    function upgrade(address newImplementation) external onlyOwner {
+    function upgrade(
+        address newImplementation
+    ) external onlyOwner {
         _upgrade(newImplementation);
     }
 
@@ -326,7 +336,9 @@ abstract contract ManagerBase is
     }
 
     /// @notice Transfer ownership of the Manager contract and all Transceiver contracts to a new owner.
-    function transferOwnership(address newOwner) public override onlyOwner {
+    function transferOwnership(
+        address newOwner
+    ) public override onlyOwner {
         super.transferOwnership(newOwner);
         // loop through all the registered transceivers and set the new owner of each transceiver to the newOwner
         address[] storage _registeredTransceivers = _getRegisteredTransceiversStorage();
@@ -338,7 +350,9 @@ abstract contract ManagerBase is
     }
 
     /// @inheritdoc IManagerBase
-    function setTransceiver(address transceiver) external onlyOwner {
+    function setTransceiver(
+        address transceiver
+    ) external onlyOwner {
         _setTransceiver(transceiver);
 
         _Threshold storage _threshold = _getThresholdStorage();
@@ -365,7 +379,9 @@ abstract contract ManagerBase is
     }
 
     /// @inheritdoc IManagerBase
-    function removeTransceiver(address transceiver) external onlyOwner {
+    function removeTransceiver(
+        address transceiver
+    ) external onlyOwner {
         _removeTransceiver(transceiver);
 
         _Threshold storage _threshold = _getThresholdStorage();
@@ -381,7 +397,9 @@ abstract contract ManagerBase is
     }
 
     /// @inheritdoc IManagerBase
-    function setThreshold(uint8 threshold) external onlyOwner {
+    function setThreshold(
+        uint8 threshold
+    ) external onlyOwner {
         if (threshold == 0) {
             revert ZeroThreshold();
         }
@@ -410,7 +428,9 @@ abstract contract ManagerBase is
     }
 
     /// @dev Returns the bitmap of attestations from enabled transceivers for a given message.
-    function _getMessageAttestations(bytes32 digest) internal view returns (uint64) {
+    function _getMessageAttestations(
+        bytes32 digest
+    ) internal view returns (uint64) {
         uint64 enabledTransceiverBitmap = _getEnabledTransceiversBitmap();
         return
             _getMessageAttestationsStorage()[digest].attestedTransceivers & enabledTransceiverBitmap;
@@ -425,7 +445,9 @@ abstract contract ManagerBase is
 
     // @dev Mark a message as executed.
     // This function will retuns `true` if the message has already been executed.
-    function _replayProtect(bytes32 digest) internal returns (bool) {
+    function _replayProtect(
+        bytes32 digest
+    ) internal returns (bool) {
         // check if this message has already been executed
         if (isMessageExecuted(digest)) {
             return true;

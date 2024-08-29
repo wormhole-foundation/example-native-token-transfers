@@ -25,7 +25,9 @@ contract MockWormholeTransceiverContract is WormholeTransceiver {
 
     /// @dev Override the [`transferOwnership`] method from OwnableUpgradeable
     /// to ensure owner of this contract is in sync with the onwer of the NttManager contract.
-    function transferOwnership(address newOwner) public view override onlyOwner {
+    function transferOwnership(
+        address newOwner
+    ) public view override onlyOwner {
         revert CannotTransferTransceiverOwnership(owner(), newOwner);
     }
 }

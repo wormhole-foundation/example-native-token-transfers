@@ -138,7 +138,9 @@ abstract contract TransceiverRegistry {
 
     // =============== Storage Getters/Setters ========================================
 
-    function _setTransceiver(address transceiver) internal returns (uint8 index) {
+    function _setTransceiver(
+        address transceiver
+    ) internal returns (uint8 index) {
         mapping(address => TransceiverInfo) storage transceiverInfos = _getTransceiverInfosStorage();
         _EnabledTransceiverBitmap storage _enabledTransceiverBitmap = _getTransceiverBitmapStorage();
         address[] storage _enabledTransceivers = _getEnabledTransceiversStorage();
@@ -181,7 +183,9 @@ abstract contract TransceiverRegistry {
         return transceiverInfos[transceiver].index;
     }
 
-    function _removeTransceiver(address transceiver) internal {
+    function _removeTransceiver(
+        address transceiver
+    ) internal {
         mapping(address => TransceiverInfo) storage transceiverInfos = _getTransceiverInfosStorage();
         _EnabledTransceiverBitmap storage _enabledTransceiverBitmap = _getTransceiverBitmapStorage();
         address[] storage _enabledTransceivers = _getEnabledTransceiversStorage();
@@ -276,7 +280,9 @@ abstract contract TransceiverRegistry {
     }
 
     // @dev Check that the transceiver is in a valid state.
-    function _checkTransceiverInvariants(address transceiver) private view {
+    function _checkTransceiverInvariants(
+        address transceiver
+    ) private view {
         mapping(address => TransceiverInfo) storage transceiverInfos = _getTransceiverInfosStorage();
         _EnabledTransceiverBitmap storage _enabledTransceiverBitmap = _getTransceiverBitmapStorage();
         _NumTransceivers storage _numTransceivers = _getNumTransceiversStorage();

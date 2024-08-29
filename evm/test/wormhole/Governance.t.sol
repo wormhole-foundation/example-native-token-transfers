@@ -91,7 +91,9 @@ contract GovernanceTest is Test {
         return guardian.encodeAndSignMessage(vaa);
     }
 
-    function buildVaa(bytes memory payload) public view returns (IWormhole.VM memory) {
+    function buildVaa(
+        bytes memory payload
+    ) public view returns (IWormhole.VM memory) {
         return IWormhole.VM({
             version: 1,
             timestamp: uint32(block.timestamp),
