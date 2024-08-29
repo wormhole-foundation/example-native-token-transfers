@@ -2,7 +2,7 @@
 # that the solana installer script just works, but you would be wrong. It seems
 # to have been broken recently since the migration to the anza url.
 # The old installer url returns a 403. So we instead rely on solana binaries cached on docker hub. Everything is fine.
-FROM backpackapp/build:v0.29.0@sha256:9aee169b2d8b89b4a4243419ae35c176773136e78d751b3e439eff692c9c1293 as base
+FROM backpackapp/build:v0.30.1@sha256:c160fe32cba7c463981110b2aac2924de4833c06a0af6473a830ead880c4ef3b as base
 
 RUN apt update
 
@@ -19,6 +19,12 @@ RUN bash -ci "foundryup"
 
 RUN apt install -y jq
 
+FROM base as base-solana
+
+RUN cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+RUN avm install 0.29.0
+RUN avm use 0.29.0
+
 FROM base as cli-remote
 # NOTE: when invoking the installer outside of the source tree, it clones the
 # repo and installs that way.
@@ -27,7 +33,7 @@ COPY cli/install.sh cli/install.sh
 RUN bash -ci "./cli/install.sh"
 RUN bash -ci "which ntt"
 
-FROM base as cli-local
+FROM base-solana as cli-local
 # NOTE: when invoking the installer inside of the source tree, it installs from
 # the local source tree.
 # This build stage tests that path.
