@@ -257,7 +257,7 @@ yargs(hideBin(process.argv))
                 if (argv["repo"]) {
                     repoArg = `--repo ${argv["repo"]}`;
                 }
-                const installScript = "https://raw.githubusercontent.com/wormhole-foundation/example-native-token-transfers/cli/cli/install.sh";
+                const installScript = "https://raw.githubusercontent.com/wormhole-foundation/example-native-token-transfers/main/cli/install.sh";
                 // save it to "$HOME/.ntt-cli/install.sh"
                 const nttDir = `${process.env.HOME}/.ntt-cli`;
                 const installer = `${nttDir}/install.sh`;
