@@ -144,7 +144,8 @@ pub struct TransferBurn<'info> {
         seeds = [crate::TOKEN_AUTHORITY_SEED],
         bump,
     )]
-    pub token_authority: AccountInfo<'info>,
+    /// CHECK: The seeds constraint enforces that this is the correct account.
+    pub token_authority: UncheckedAccount<'info>,
 }
 
 pub fn transfer_burn<'info>(
