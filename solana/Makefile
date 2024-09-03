@@ -1,5 +1,5 @@
 .DEFAULT_GOAL = build
-.PHONY: build cargo-build anchor-build prod-build test cargo-test anchor-test idl sdk clean node_modules lint fix-lint
+.PHONY: build cargo-build anchor-build prod-build test cargo-test anchor-test idl sdk clean node_modules lint cargo-lint anchor-lint fix-lint
 
 #find and convert version line:
 #  turn `const VERSION: &str = "major.minor.patch";` into `major_minor_patch`
@@ -68,11 +68,20 @@ anchor-test: idl sdk node_modules
 #######################
 ## LINT
 
-lint:
+lint: cargo-lint anchor-lint
+
+
+cargo-lint:
 	cargo fmt --check --all --manifest-path Cargo.toml
 	cargo check --workspace --tests --manifest-path Cargo.toml
 	cargo clippy --workspace --tests --manifest-path Cargo.toml -- -Dclippy::cast_possible_truncation
 
+# Run anchor's linter on all Rust files in the current directory via `anchor idl parse`
+# Results written to /dev/null because we're just calling parse for the linting capabilities and we don't care about
+# the JSON output.
+# anchor-cli v0.29.0 doesn't seem to do linting on the command-line during the build process so this is a workaround
+anchor-lint:
+	bash scripts/anchor-lint.sh
 
 fix-lint:
 	cargo fmt --all --manifest-path Cargo.toml

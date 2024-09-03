@@ -45,7 +45,8 @@ pub struct InitializeLUT<'info> {
         seeds = [b"lut_authority"],
         bump
     )]
-    pub authority: AccountInfo<'info>,
+    /// CHECK: The seeds constraint enforces that this is the correct account.
+    pub authority: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -53,7 +54,8 @@ pub struct InitializeLUT<'info> {
         seeds::program = solana_address_lookup_table_program::id(),
         bump
     )]
-    pub lut_address: AccountInfo<'info>,
+    /// CHECK: The seeds constraint enforces that this is the correct account.
+    pub lut_address: UncheckedAccount<'info>,
 
     #[account(
         init_if_needed,
@@ -81,23 +83,27 @@ pub struct Entries<'info> {
     #[account(
         constraint = custody.key() == config.custody,
     )]
-    pub custody: AccountInfo<'info>,
+    /// CHECK: The constraint enforces that this is the correct account.
+    pub custody: UncheckedAccount<'info>,
 
     #[account(
         constraint = token_program.key() == config.token_program,
     )]
-    pub token_program: AccountInfo<'info>,
+    /// CHECK: The constraint enforces that this is the correct account.
+    pub token_program: UncheckedAccount<'info>,
 
     #[account(
         constraint = mint.key() == config.mint,
     )]
-    pub mint: AccountInfo<'info>,
+    /// CHECK: The constraint enforces that this is the correct account.
+    pub mint: UncheckedAccount<'info>,
 
     #[account(
         seeds = [crate::TOKEN_AUTHORITY_SEED],
         bump,
     )]
-    pub token_authority: AccountInfo<'info>,
+    /// CHECK: The seeds constraint enforces that this is the correct account.
+    pub token_authority: UncheckedAccount<'info>,
 
     pub outbox_rate_limit: Account<'info, OutboxRateLimit>,
 
