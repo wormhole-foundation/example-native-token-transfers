@@ -61,7 +61,7 @@ pub struct Initialize<'info> {
     /// CHECK: [`token_authority`] is checked against the custody account and the [`mint`]'s mint_authority
     /// In any case, this function is used to set the Config and initialize the program so we
     /// assume the caller of this function will have total control over the program.
-    pub token_authority: UncheckedAccount<'info>,
+    pub token_authority: AccountInfo<'info>,
 
     #[account(
         init_if_needed,
