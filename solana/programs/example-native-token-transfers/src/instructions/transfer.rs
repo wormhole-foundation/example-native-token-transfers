@@ -39,7 +39,6 @@ pub struct Transfer<'info> {
 
     // Ensure that there exists at least one enabled transceiver
     #[account(
-        constraint = config.next_transceiver_id != 0 @ NTTError::NoRegisteredTransceivers,
         constraint = !config.enabled_transceivers.is_empty() @ NTTError::NoRegisteredTransceivers,
     )]
     pub config: NotPausedConfig<'info>,
