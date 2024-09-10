@@ -38,7 +38,14 @@ export type ExampleNativeTokenTransfers = {
         {
           "name": "tokenAuthority",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "In any case, this function is used to set the Config and initialize the program so we",
+            "assume the caller of this function will have total control over the program.",
+            "",
+            "TODO: Using `UncheckedAccount` here leads to \"Access violation in stack frame ...\".",
+            "Could refactor code to use `Box<_>` to reduce stack size."
+          ]
         },
         {
           "name": "custody",
@@ -508,7 +515,10 @@ export type ExampleNativeTokenTransfers = {
             {
               "name": "tokenAuthority",
               "isMut": false,
-              "isSigner": false
+              "isSigner": false,
+              "docs": [
+                "CHECK The seeds constraint ensures that this is the correct address"
+              ]
             },
             {
               "name": "mint",
@@ -571,7 +581,10 @@ export type ExampleNativeTokenTransfers = {
             {
               "name": "tokenAuthority",
               "isMut": false,
-              "isSigner": false
+              "isSigner": false,
+              "docs": [
+                "CHECK The seeds constraint ensures that this is the correct address"
+              ]
             },
             {
               "name": "mint",
@@ -752,7 +765,10 @@ export type ExampleNativeTokenTransfers = {
         {
           "name": "transceiver",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "used here that wraps the Transceiver account type."
+          ]
         },
         {
           "name": "registeredTransceiver",
@@ -1927,6 +1943,11 @@ export type ExampleNativeTokenTransfers = {
       "code": 6022,
       "name": "BitmapIndexOutOfBounds",
       "msg": "BitmapIndexOutOfBounds"
+    },
+    {
+      "code": 6023,
+      "name": "NoRegisteredTransceivers",
+      "msg": "NoRegisteredTransceivers"
     }
   ]
 }
@@ -1970,7 +1991,14 @@ export const IDL: ExampleNativeTokenTransfers = {
         {
           "name": "tokenAuthority",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "In any case, this function is used to set the Config and initialize the program so we",
+            "assume the caller of this function will have total control over the program.",
+            "",
+            "TODO: Using `UncheckedAccount` here leads to \"Access violation in stack frame ...\".",
+            "Could refactor code to use `Box<_>` to reduce stack size."
+          ]
         },
         {
           "name": "custody",
@@ -2440,7 +2468,10 @@ export const IDL: ExampleNativeTokenTransfers = {
             {
               "name": "tokenAuthority",
               "isMut": false,
-              "isSigner": false
+              "isSigner": false,
+              "docs": [
+                "CHECK The seeds constraint ensures that this is the correct address"
+              ]
             },
             {
               "name": "mint",
@@ -2503,7 +2534,10 @@ export const IDL: ExampleNativeTokenTransfers = {
             {
               "name": "tokenAuthority",
               "isMut": false,
-              "isSigner": false
+              "isSigner": false,
+              "docs": [
+                "CHECK The seeds constraint ensures that this is the correct address"
+              ]
             },
             {
               "name": "mint",
@@ -2684,7 +2718,10 @@ export const IDL: ExampleNativeTokenTransfers = {
         {
           "name": "transceiver",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "used here that wraps the Transceiver account type."
+          ]
         },
         {
           "name": "registeredTransceiver",
@@ -3859,6 +3896,11 @@ export const IDL: ExampleNativeTokenTransfers = {
       "code": 6022,
       "name": "BitmapIndexOutOfBounds",
       "msg": "BitmapIndexOutOfBounds"
+    },
+    {
+      "code": 6023,
+      "name": "NoRegisteredTransceivers",
+      "msg": "NoRegisteredTransceivers"
     }
   ]
 }
