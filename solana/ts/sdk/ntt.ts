@@ -29,7 +29,7 @@ import {
   WormholeNttTransceiver,
 } from "@wormhole-foundation/sdk-definitions-ntt";
 import {
-    AnySolanaAddress,
+  AnySolanaAddress,
   SolanaAddress,
   SolanaChains,
   SolanaPlatform,
@@ -46,16 +46,15 @@ import { NTT, NttQuoter, WEI_PER_GWEI } from "../lib/index.js";
 
 import { IdlVersion, NttBindings, getNttProgram } from "../lib/bindings.js";
 
-export class SolanaNttWormholeTransceiver<N extends Network, C extends SolanaChains>
-  implements NttTransceiver<N, C, WormholeNttTransceiver.VAA> {
-
-  constructor(
-    readonly manager: SolanaNtt<N, C>,
-    readonly address: PublicKey
-  ) {}
+export class SolanaNttWormholeTransceiver<
+  N extends Network,
+  C extends SolanaChains
+> implements NttTransceiver<N, C, WormholeNttTransceiver.VAA>
+{
+  constructor(readonly manager: SolanaNtt<N, C>, readonly address: PublicKey) {}
 
   async getPauser(): Promise<AccountAddress<C> | null> {
-    return null
+    return null;
   }
 
   async *setPauser(_newPauser: AccountAddress<C>, _payer: AccountAddress<C>) {
@@ -71,7 +70,10 @@ export class SolanaNttWormholeTransceiver<N extends Network, C extends SolanaCha
   }
 
   getAddress(): ChainAddress<C> {
-    return { chain: this.manager.chain, address: toUniversal(this.manager.chain, this.address.toBase58()) };
+    return {
+      chain: this.manager.chain,
+      address: toUniversal(this.manager.chain, this.address.toBase58()),
+    };
   }
 
   async *setPeer(peer: ChainAddress<C>, payer: AccountAddress<C>) {
@@ -94,7 +96,8 @@ export class SolanaNttWormholeTransceiver<N extends Network, C extends SolanaCha
 }
 
 export class SolanaNtt<N extends Network, C extends SolanaChains>
-  implements Ntt<N, C> {
+  implements Ntt<N, C>
+{
   core: SolanaWormholeCore<N, C>;
   pdas: NTT.Pdas;
 
@@ -149,7 +152,10 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     if (ix !== 0) return null;
     if (this.whTransceiverAddress === undefined) return null;
 
-    return new SolanaNttWormholeTransceiver(this, new PublicKey(this.whTransceiverAddress));
+    return new SolanaNttWormholeTransceiver(
+      this,
+      new PublicKey(this.whTransceiverAddress)
+    );
   }
 
   async getMode(): Promise<Ntt.Mode> {
@@ -190,7 +196,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
   async getThreshold(): Promise<number> {
     const config = await this.getConfig();
-    return config.threshold
+    return config.threshold;
   }
 
   async getOwner(): Promise<AccountAddress<C>> {
@@ -199,7 +205,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   }
 
   async getPauser(): Promise<AccountAddress<C> | null> {
-    return null
+    return null;
   }
 
   async *setOwner(newOwner: AnySolanaAddress, payer: AccountAddress<C>) {
@@ -280,12 +286,17 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   }
 
   async getPeer<C extends Chain>(chain: C): Promise<Ntt.Peer<C> | null> {
-    const peer = await this.program.account.nttManagerPeer.fetchNullable(this.pdas.peerAccount(chain));
+    const peer = await this.program.account.nttManagerPeer.fetchNullable(
+      this.pdas.peerAccount(chain)
+    );
 
     if (!peer) return null;
 
     return {
-      address: { chain: chain, address: toUniversal(chain, new Uint8Array(peer.address)) },
+      address: {
+        chain: chain,
+        address: toUniversal(chain, new Uint8Array(peer.address)),
+      },
       tokenDecimals: peer.tokenDecimals,
       inboundLimit: await this.getInboundLimit(chain),
     };
@@ -308,7 +319,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       );
     } catch (e) {
       // This might happen if e.g. the program is not deployed yet.
-      const version = "2.0.0"
+      const version = "2.0.0";
       return version;
     }
   }
@@ -504,17 +515,17 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const transferIx =
       config.mode.locking != null
         ? NTT.createTransferLockInstruction(
-          this.program,
-          config,
-          txArgs,
-          this.pdas
-        )
+            this.program,
+            config,
+            txArgs,
+            this.pdas
+          )
         : NTT.createTransferBurnInstruction(
-          this.program,
-          config,
-          txArgs,
-          this.pdas
-        );
+            this.program,
+            config,
+            txArgs,
+            this.pdas
+          );
 
     const releaseIx = NTT.createReleaseOutboundInstruction(
       this.program,
@@ -555,10 +566,12 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       luts.push(await this.getAddressLookupTable());
     } catch {}
 
+    const { blockhash } = await this.connection.getLatestBlockhash();
+
     const messageV0 = new TransactionMessage({
       payerKey: payerAddress,
       instructions: tx.instructions,
-      recentBlockhash: (await this.connection.getRecentBlockhash()).blockhash,
+      recentBlockhash: blockhash,
     }).compileToV0Message(luts);
 
     const vtx = new VersionedTransaction(messageV0);
@@ -654,15 +667,15 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const releaseIx =
       config.mode.locking != null
         ? NTT.createReleaseInboundUnlockInstruction(
-          this.program,
-          config,
-          releaseArgs
-        )
+            this.program,
+            config,
+            releaseArgs
+          )
         : NTT.createReleaseInboundMintInstruction(
-          this.program,
-          config,
-          releaseArgs
-        );
+            this.program,
+            config,
+            releaseArgs
+          );
 
     const tx = new Transaction();
     tx.feePayer = senderAddress;
@@ -673,10 +686,12 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       luts.push(await this.getAddressLookupTable());
     } catch {}
 
+    const { blockhash } = await this.connection.getLatestBlockhash();
+
     const messageV0 = new TransactionMessage({
       payerKey: senderAddress,
       instructions: tx.instructions,
-      recentBlockhash: (await this.connection.getRecentBlockhash()).blockhash,
+      recentBlockhash: blockhash,
     }).compileToV0Message(luts);
 
     const vtx = new VersionedTransaction(messageV0);
@@ -820,15 +835,15 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     tx.add(
       await (config.mode.locking != null
         ? NTT.createReleaseInboundUnlockInstruction(
-          this.program,
-          config,
-          releaseArgs
-        )
+            this.program,
+            config,
+            releaseArgs
+          )
         : NTT.createReleaseInboundMintInstruction(
-          this.program,
-          config,
-          releaseArgs
-        ))
+            this.program,
+            config,
+            releaseArgs
+          ))
     );
 
     yield this.createUnsignedTx(
@@ -890,7 +905,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           delete a[k];
         }
       }
-    }
+    };
 
     deleteMatching(remote, local);
 

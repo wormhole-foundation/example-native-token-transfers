@@ -154,7 +154,7 @@ describe("example-native-token-transfers", () => {
         )
       );
 
-      const { blockhash } = await connection.getRecentBlockhash();
+      const { blockhash } = await connection.getLatestBlockhash();
 
       transaction.feePayer = payer.publicKey;
       transaction.recentBlockhash = blockhash;
@@ -266,7 +266,7 @@ describe("example-native-token-transfers", () => {
         initializeExtraAccountMetaListInstruction
       );
       transaction.feePayer = payer.publicKey;
-      const { blockhash } = await connection.getRecentBlockhash();
+      const { blockhash } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
 
       transaction.sign(payer);
