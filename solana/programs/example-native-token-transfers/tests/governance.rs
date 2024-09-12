@@ -102,6 +102,9 @@ async fn test_governance() {
         data: inner_ix_data.data(),
     };
 
+    let config_account: Config = ctx.get_account_data_anchor(test_data.ntt.config()).await;
+    assert!(!config_account.paused); // make sure not paused before
+
     wrap_governance(
         &mut ctx,
         &test_data.governance,
@@ -138,7 +141,7 @@ async fn test_governance_one_step_transfer() {
     let governance_pda = test_data.governance.governance();
 
     // step 1. transfer ownership to governance (1 step)
-    let ix = example_native_token_transfers::instruction::TransferOwnershipOneStep;
+    let ix = example_native_token_transfers::instruction::TransferOwnershipOneStepUnchecked;
 
     let accs = example_native_token_transfers::accounts::TransferOwnership {
         config: test_data.ntt.config(),
@@ -157,6 +160,9 @@ async fn test_governance_one_step_transfer() {
     .submit_with_signers(&[&test_data.program_owner], &mut ctx)
     .await
     .unwrap();
+
+    let config_account: Config = ctx.get_account_data_anchor(test_data.ntt.config()).await;
+    assert!(!config_account.paused); // make sure not paused before
 
     // step 2. set paused
     wrap_governance(

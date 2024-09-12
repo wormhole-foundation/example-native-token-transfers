@@ -24,7 +24,7 @@ use crate::{
 /// instruction.
 ///
 /// Alternatively, the ownership can be transferred in a single step by calling the
-/// [`transfer_ownership_one_step`] instruction. This can be dangerous because if the new owner
+/// [`transfer_ownership_one_step_unchecked`] instruction. This can be dangerous because if the new owner
 /// cannot actually sign transactions (due to setting the wrong address), the program will be
 /// permanently locked. If the intention is to transfer ownership to a program using this instruction,
 /// take extra care to ensure that the owner is a PDA, not the program address itself.
@@ -79,7 +79,7 @@ pub fn transfer_ownership(ctx: Context<TransferOwnership>) -> Result<()> {
     )
 }
 
-pub fn transfer_ownership_one_step(ctx: Context<TransferOwnership>) -> Result<()> {
+pub fn transfer_ownership_one_step_unchecked(ctx: Context<TransferOwnership>) -> Result<()> {
     ctx.accounts.config.pending_owner = None;
     ctx.accounts.config.owner = ctx.accounts.new_owner.key();
 
