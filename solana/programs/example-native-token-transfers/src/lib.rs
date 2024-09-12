@@ -117,6 +117,10 @@ pub mod example_native_token_transfers {
         instructions::transfer_ownership(ctx)
     }
 
+    pub fn transfer_ownership_one_step(ctx: Context<TransferOwnership>) -> Result<()> {
+        instructions::transfer_ownership_one_step(ctx)
+    }
+
     pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
         instructions::claim_ownership(ctx)
     }

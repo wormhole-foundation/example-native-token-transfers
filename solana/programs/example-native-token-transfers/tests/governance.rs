@@ -132,6 +132,50 @@ async fn test_governance() {
 }
 
 #[tokio::test]
+async fn test_governance_one_step_transfer() {
+    let (mut ctx, test_data) = setup(Mode::Locking).await;
+
+    let governance_pda = test_data.governance.governance();
+
+    // step 1. transfer ownership to governance (1 step)
+    let ix = example_native_token_transfers::instruction::TransferOwnershipOneStep;
+
+    let accs = example_native_token_transfers::accounts::TransferOwnership {
+        config: test_data.ntt.config(),
+        owner: test_data.program_owner.pubkey(),
+        new_owner: governance_pda,
+        upgrade_lock: test_data.ntt.upgrade_lock(),
+        program_data: test_data.ntt.program_data(),
+        bpf_loader_upgradeable_program: bpf_loader_upgradeable::id(),
+    };
+
+    Instruction {
+        program_id: test_data.ntt.program,
+        accounts: accs.to_account_metas(None),
+        data: ix.data(),
+    }
+    .submit_with_signers(&[&test_data.program_owner], &mut ctx)
+    .await
+    .unwrap();
+
+    // step 2. set paused
+    wrap_governance(
+        &mut ctx,
+        &test_data.governance,
+        &test_data.ntt.wormhole,
+        set_paused(&test_data.ntt, SetPaused { owner: OWNER }, true),
+        None,
+        None,
+        None,
+    )
+    .await
+    .unwrap();
+
+    let config_account: Config = ctx.get_account_data_anchor(test_data.ntt.config()).await;
+    assert!(config_account.paused);
+}
+
+#[tokio::test]
 async fn test_governance_bad_emitter() {
     let (mut ctx, test_data) = setup(Mode::Locking).await;
 
