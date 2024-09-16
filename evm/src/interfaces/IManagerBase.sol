@@ -48,6 +48,14 @@ interface IManagerBase {
     /// @param oldThreshold The old threshold.
     /// @param threshold The new threshold.
     event ThresholdChanged(uint8 oldThreshold, uint8 threshold);
+    
+    /// @notice Emmitted when the per-chain threshold required transceivers is changed.
+    /// @dev Topic0
+    ///      0x2a855b929b9a53c6fb5b5ed248b27e502b709c088e036a5aa17620c8fc5085a9.
+    /// @param chainId The chain to which the threshold applies
+    /// @param oldThreshold The old threshold.
+    /// @param threshold The new threshold.
+    event PerChainThresholdChanged(uint16 chainId, uint8 oldThreshold, uint8 threshold);
 
     /// @notice Emitted when an transceiver is removed from the nttManager.
     /// @dev Topic0
@@ -126,6 +134,16 @@ interface IManagerBase {
     /// @param threshold The new threshold (number of attestations).
     /// @dev This method can only be executed by the `owner`.
     function setThreshold(
+        uint8 threshold
+    ) external;
+    
+    /// @notice Sets the per-chain threshold for the number of attestations required for a message
+    /// to be considered valid. Note that if a threshold is not specified for a chain, the default applies.
+    /// @param chainId The chain for which the threshold applies
+    /// @param threshold The new threshold.
+    /// @dev This method can only be executed by the `owner`.
+    function setThresholdPerChain(
+        uint16 chainId,
         uint8 threshold
     ) external;
 

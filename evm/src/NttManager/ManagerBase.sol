@@ -443,6 +443,21 @@ abstract contract ManagerBase is
 
         emit ThresholdChanged(oldThreshold, threshold);
     }
+    
+    /// @inheritdoc IManagerBase
+    function setThresholdPerChain(uint16 forChainId, uint8 threshold) external onlyOwner {
+        if (threshold == 0) {
+            revert ZeroThreshold();
+        }
+
+        mapping(uint16 => _Threshold) storage _threshold = _getThresholdStoragePerChain();
+        uint8 oldThreshold = _threshold[forChainId].num;
+
+        _threshold[forChainId].num = threshold;
+        _checkThresholdInvariants(_threshold[forChainId].num);
+
+        emit PerChainThresholdChanged(forChainId, oldThreshold, threshold);
+    }
 
     // =============== Internal ==============================================================
 
@@ -515,7 +530,10 @@ abstract contract ManagerBase is
     }
 
     function _checkThresholdInvariants() internal view {
-        uint8 threshold = _getThresholdStorage().num;
+        _checkThresholdInvariants(_getThresholdStorage().num);
+    }
+    
+    function _checkThresholdInvariants(uint8 threshold) internal pure {
         _NumTransceivers memory numTransceivers = _getNumTransceiversStorage();
 
         // invariant: threshold <= enabledTransceivers.length
