@@ -24,7 +24,12 @@ import {
 import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 import * as fs from "fs";
 
-import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import {
+  PublicKey,
+  sendAndConfirmTransaction,
+  SystemProgram,
+  Transaction,
+} from "@solana/web3.js";
 import { DummyTransferHook } from "../ts/idl/1_0_0/ts/dummy_transfer_hook.js";
 import { SolanaNtt } from "../ts/sdk/index.js";
 
@@ -159,8 +164,9 @@ describe("example-native-token-transfers", () => {
       transaction.feePayer = payer.publicKey;
       transaction.recentBlockhash = blockhash;
 
-      const txid = await connection.sendTransaction(transaction, [payer, mint]);
-      await connection.confirmTransaction(txid, "confirmed");
+      await sendAndConfirmTransaction(connection, transaction, [payer, mint], {
+        commitment: "confirmed",
+      });
 
       tokenAccount = await spl.createAssociatedTokenAccount(
         connection,
@@ -270,8 +276,9 @@ describe("example-native-token-transfers", () => {
       transaction.recentBlockhash = blockhash;
 
       transaction.sign(payer);
-      const txid = await connection.sendTransaction(transaction, [payer]);
-      await connection.confirmTransaction(txid, "confirmed");
+      await sendAndConfirmTransaction(connection, transaction, [payer], {
+        commitment: "confirmed",
+      });
     });
 
     test("Can send tokens", async () => {
