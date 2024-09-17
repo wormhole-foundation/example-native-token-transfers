@@ -52,7 +52,7 @@ interface IManagerBase {
     /// @notice Emmitted when the per-chain threshold required transceivers is changed.
     /// @dev Topic0
     ///      0x2a855b929b9a53c6fb5b5ed248b27e502b709c088e036a5aa17620c8fc5085a9.
-    /// @param chainId The chain to which the threshold applies
+    /// @param chainId The chain to which the threshold applies.
     /// @param oldThreshold The old threshold.
     /// @param threshold The new threshold.
     event PerChainThresholdChanged(uint16 chainId, uint8 oldThreshold, uint8 threshold);
@@ -64,6 +64,13 @@ interface IManagerBase {
     /// @param transceiversNum The current number of transceivers.
     /// @param threshold The current threshold of transceivers.
     event TransceiverAdded(address transceiver, uint256 transceiversNum, uint8 threshold);
+    
+    /// @notice Emitted when a transceiver is enabled for a chain.
+    /// @dev Topic0
+    ///      0xf05962b5774c658e85ed80c91a75af9d66d2af2253dda480f90bce78aff5eda5.
+    /// @param transceiver The address of the transceiver.
+    /// @param chainId The chain to which the threshold applies.
+    event TransceiverEnabledForChain(address transceiver, uint16 chainId);
 
     /// @notice Emitted when an transceiver is removed from the nttManager.
     /// @dev Topic0
@@ -139,7 +146,7 @@ interface IManagerBase {
     
     /// @notice Sets the per-chain threshold for the number of attestations required for a message
     /// to be considered valid. Note that if a threshold is not specified for a chain, the default applies.
-    /// @param chainId The chain for which the threshold applies
+    /// @param chainId The chain for which the threshold applies.
     /// @param threshold The new threshold.
     /// @dev This method can only be executed by the `owner`.
     function setThresholdPerChain(
@@ -159,6 +166,15 @@ interface IManagerBase {
     /// @dev This method can only be executed by the `owner`.
     function removeTransceiver(
         address transceiver
+    ) external;
+        
+    /// @notice Enables the transceiver for the given chain.
+    /// @param transceiver The address of the transceiver.
+    /// @param chainId The chain for which the threshold applies.
+    /// @dev This method can only be executed by the `owner`.
+    function enableTransceiverForChain(
+        address transceiver,
+        uint16 chainId
     ) external;
 
     /// @notice Checks if a message has been approved. The message should have at least

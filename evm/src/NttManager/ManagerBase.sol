@@ -379,6 +379,15 @@ abstract contract ManagerBase is
             ITransceiver(_registeredTransceivers[i]).transferTransceiverOwnership(newOwner);
         }
     }
+    
+    /// @inheritdoc IManagerBase
+    function enableTransceiverForChain(
+        address transceiver,
+        uint16 forChainId
+    ) external onlyOwner {
+        _enableTransceiverForChain(transceiver, forChainId);
+        emit TransceiverEnabledForChain(transceiver, forChainId);
+    }
 
     /// @inheritdoc IManagerBase
     function setTransceiver(

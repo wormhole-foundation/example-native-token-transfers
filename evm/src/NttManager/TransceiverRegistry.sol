@@ -159,6 +159,24 @@ abstract contract TransceiverRegistry {
         uint8 index = _getTransceiverInfosStorage()[transceiver].index;
         return (bitmap & uint64(1 << index)) != 0;
     }
+    
+    function _enableTransceiverForChain(
+        address transceiver,
+        uint16 chainId
+    ) internal {
+        if (transceiver == address(0)) {
+            revert InvalidTransceiverZeroAddress();
+        }
+
+        mapping(address => TransceiverInfo) storage transceiverInfos = _getTransceiverInfosStorage();
+        if (!transceiverInfos[transceiver].registered) {
+            revert NonRegisteredTransceiver(transceiver);
+        }
+
+        uint8 index = _getTransceiverInfosStorage()[transceiver].index;
+        mapping(uint16 => _EnabledTransceiverBitmap)storage _bitmaps = _getPerChainTransceiverBitmapStorage();
+        _bitmaps[chainId].bitmap |= uint64(1 << index);
+    }
 
     function _setTransceiver(
         address transceiver
