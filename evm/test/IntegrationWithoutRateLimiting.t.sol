@@ -304,6 +304,22 @@ contract TestEndToEndNoRateLimiting is Test {
         vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
         nttManagerChain1.setInboundLimit(0, chainId2);
 
+        require(
+            nttManagerChain1.getCurrentOutboundCapacity() == type(uint256).max,
+            "getCurrentOutboundCapacity returned unexpected value"
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
+        nttManagerChain1.getOutboundQueuedTransfer(0);
+
+        require(
+            nttManagerChain1.getCurrentInboundCapacity(chainId2) == type(uint256).max,
+            "getCurrentInboundCapacity returned unexpected value"
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
+        nttManagerChain1.getInboundQueuedTransfer(bytes32(0));
+
         vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
         nttManagerChain1.completeInboundQueuedTransfer(bytes32(0));
 

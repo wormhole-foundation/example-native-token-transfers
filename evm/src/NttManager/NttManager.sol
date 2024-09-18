@@ -14,7 +14,7 @@ import "../interfaces/INttToken.sol";
 import "../interfaces/ITransceiver.sol";
 
 import {ManagerBase} from "./ManagerBase.sol";
-import {NttManagerWithoutRateLimiting} from "./NttManagerWithoutRateLimiting.sol";
+import {NttManagerBase} from "./NttManagerBase.sol";
 
 /// @title NttManager
 /// @author Wormhole Project Contributors.
@@ -36,11 +36,13 @@ import {NttManagerWithoutRateLimiting} from "./NttManagerWithoutRateLimiting.sol
 ///    to be too high, users will be refunded the difference.
 ///  - (optional) a flag to indicate whether the transfer should be queued
 ///    if the rate limit is exceeded
-contract NttManager is NttManagerWithoutRateLimiting, RateLimiter {
+contract NttManager is NttManagerBase, RateLimiter {
     using BytesParsing for bytes;
     using SafeERC20 for IERC20;
     using TrimmedAmountLib for uint256;
     using TrimmedAmountLib for TrimmedAmount;
+
+    string public constant NTT_MANAGER_VERSION = "1.1.0";
 
     // =============== Setup =================================================================
 
@@ -50,10 +52,7 @@ contract NttManager is NttManagerWithoutRateLimiting, RateLimiter {
         uint16 _chainId,
         uint64 _rateLimitDuration,
         bool _skipRateLimiting
-    )
-        RateLimiter(_rateLimitDuration, _skipRateLimiting)
-        NttManagerWithoutRateLimiting(_token, _mode, _chainId)
-    {}
+    ) RateLimiter(_rateLimitDuration, _skipRateLimiting) NttManagerBase(_token, _mode, _chainId) {}
 
     function __NttManager_init() internal override onlyInitializing {
         super.__NttManager_init();
@@ -117,10 +116,10 @@ contract NttManager is NttManagerWithoutRateLimiting, RateLimiter {
 
         {
             // Check inbound rate limits
-            bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, sourceChainId); // BOINK
+            bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, sourceChainId);
             if (isRateLimited) {
                 // queue up the transfer
-                _enqueueInboundTransfer(digest, nativeTransferAmount, transferRecipient); // BOINK
+                _enqueueInboundTransfer(digest, nativeTransferAmount, transferRecipient);
 
                 // end execution early
                 return;
@@ -128,10 +127,10 @@ contract NttManager is NttManagerWithoutRateLimiting, RateLimiter {
         }
 
         // consume the amount for the inbound rate limit
-        _consumeInboundAmount(nativeTransferAmount, sourceChainId); // BOINK
+        _consumeInboundAmount(nativeTransferAmount, sourceChainId);
         // When receiving a transfer, we refill the outbound rate limit
         // by the same amount (we call this "backflow")
-        _backfillOutboundAmount(nativeTransferAmount); // BOINK
+        _backfillOutboundAmount(nativeTransferAmount);
 
         super._executeMsg2(digest, transferRecipient, nativeTransferAmount);
     }
@@ -141,7 +140,7 @@ contract NttManager is NttManagerWithoutRateLimiting, RateLimiter {
         bytes32 digest
     ) external override nonReentrant whenNotPaused {
         // find the message in the queue
-        InboundQueuedTransfer memory queuedTransfer = getInboundQueuedTransfer(digest); // BOINK
+        InboundQueuedTransfer memory queuedTransfer = getInboundQueuedTransfer(digest);
         if (queuedTransfer.txTimestamp == 0) {
             revert InboundQueuedTransferNotFound(digest);
         }
@@ -277,12 +276,7 @@ contract NttManager is NttManagerWithoutRateLimiting, RateLimiter {
         );
     }
 
-    function tokenDecimals()
-        public
-        view
-        override(NttManagerWithoutRateLimiting, RateLimiter)
-        returns (uint8)
-    {
-        return NttManagerWithoutRateLimiting.tokenDecimals();
+    function tokenDecimals() public view override(NttManagerBase, RateLimiter) returns (uint8) {
+        return NttManagerBase.tokenDecimals();
     }
 }
