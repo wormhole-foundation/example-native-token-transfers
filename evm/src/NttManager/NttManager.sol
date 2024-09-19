@@ -136,13 +136,13 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     /// @inheritdoc INttManager
     function setOutboundLimit(
         uint256 limit
-    ) external onlyOwner {
+    ) external virtual onlyOwner {
         uint8 toDecimals = tokenDecimals();
         _setOutboundLimit(limit.trim(toDecimals, toDecimals));
     }
 
     /// @inheritdoc INttManager
-    function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
+    function setInboundLimit(uint256 limit, uint16 chainId_) external virtual onlyOwner {
         uint8 toDecimals = tokenDecimals();
         _setInboundLimit(limit.trim(toDecimals, toDecimals), chainId_);
     }
@@ -150,7 +150,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     /// ============== Invariants =============================================
 
     /// @dev When we add new immutables, this function should be updated
-    function _checkImmutables() internal view override {
+    function _checkImmutables() internal view virtual override {
         super._checkImmutables();
         assert(this.rateLimitDuration() == rateLimitDuration);
     }
@@ -202,7 +202,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
         TransceiverStructs.NttManagerMessage memory message
-    ) public whenNotPaused {
+    ) public virtual whenNotPaused {
         (bytes32 digest, bool alreadyExecuted) =
             _isMessageExecuted(sourceChainId, sourceNttManagerAddress, message);
 
@@ -223,6 +223,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
+        //////////////////////////
         {
             // Check inbound rate limits
             bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, sourceChainId);
@@ -240,6 +241,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         // When receiving a transfer, we refill the outbound rate limit
         // by the same amount (we call this "backflow")
         _backfillOutboundAmount(nativeTransferAmount);
+        //////////////////////////
 
         _mintOrUnlockToRecipient(digest, transferRecipient, nativeTransferAmount, false);
     }
@@ -247,7 +249,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     /// @inheritdoc INttManager
     function completeInboundQueuedTransfer(
         bytes32 digest
-    ) external nonReentrant whenNotPaused {
+    ) external virtual nonReentrant whenNotPaused {
         // find the message in the queue
         InboundQueuedTransfer memory queuedTransfer = getInboundQueuedTransfer(digest);
         if (queuedTransfer.txTimestamp == 0) {
@@ -269,7 +271,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     /// @inheritdoc INttManager
     function completeOutboundQueuedTransfer(
         uint64 messageSequence
-    ) external payable nonReentrant whenNotPaused returns (uint64) {
+    ) external payable virtual nonReentrant whenNotPaused returns (uint64) {
         // find the message in the queue
         OutboundQueuedTransfer memory queuedTransfer = _getOutboundQueueStorage()[messageSequence];
         if (queuedTransfer.txTimestamp == 0) {
@@ -299,7 +301,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     /// @inheritdoc INttManager
     function cancelOutboundQueuedTransfer(
         uint64 messageSequence
-    ) external nonReentrant whenNotPaused {
+    ) external virtual nonReentrant whenNotPaused {
         // find the message in the queue
         OutboundQueuedTransfer memory queuedTransfer = _getOutboundQueueStorage()[messageSequence];
         if (queuedTransfer.txTimestamp == 0) {
@@ -329,7 +331,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         bytes32 refundAddress,
         bool shouldQueue,
         bytes memory transceiverInstructions
-    ) internal returns (uint64) {
+    ) internal virtual returns (uint64) {
         if (amount == 0) {
             revert ZeroAmount();
         }
