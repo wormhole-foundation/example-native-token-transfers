@@ -12,6 +12,7 @@ import "../libraries/RateLimiter.sol";
 import "../interfaces/INttManager.sol";
 import "../interfaces/INttToken.sol";
 import "../interfaces/IRateLimiter.sol";
+import "../interfaces/IRateLimiterEvents.sol";
 import "../interfaces/ITransceiver.sol";
 
 import {ManagerBase} from "./ManagerBase.sol";
@@ -38,13 +39,14 @@ import {NttManagerBase} from "./NttManagerBase.sol";
 ///    to be too high, users will be refunded the difference.
 ///  - (optional) a flag to indicate whether the transfer should be queued
 ///    if the rate limit is exceeded
-contract NttManagerWithoutRateLimiting is NttManagerBase, IRateLimiter {
+contract NttManagerWithoutRateLimiting is NttManagerBase, IRateLimiter, IRateLimiterEvents {
     using BytesParsing for bytes;
     using SafeERC20 for IERC20;
     using TrimmedAmountLib for uint256;
     using TrimmedAmountLib for TrimmedAmount;
 
     string public constant NTT_MANAGER_VERSION = "1.1.0";
+    uint64 public immutable rateLimitDuration = 0;
 
     // =============== Setup =================================================================
 
@@ -112,6 +114,18 @@ contract NttManagerWithoutRateLimiting is NttManagerBase, IRateLimiter {
     function cancelOutboundQueuedTransfer(
         uint64 /*messageSequence*/
     ) external nonReentrant whenNotPaused {
+        revert NotImplemented();
+    }
+
+    /// @notice Not used, always reverts with NotImplemented.
+    function getInboundLimitParams(
+        uint16 /*chainId_*/
+    ) public pure returns (RateLimitParams memory) {
+        revert NotImplemented();
+    }
+
+    /// @notice Not used, always reverts with NotImplemented.
+    function getOutboundLimitParams() public pure returns (RateLimitParams memory) {
         revert NotImplemented();
     }
 }
