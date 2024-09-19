@@ -263,7 +263,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
 
     function _isOutboundAmountRateLimited(
         TrimmedAmount amount
-    ) internal view returns (bool) {
+    ) internal virtual view returns (bool) {
         return rateLimitDuration != 0
             ? _isAmountRateLimited(_getCurrentCapacity(getOutboundLimitParams()), amount)
             : false;
