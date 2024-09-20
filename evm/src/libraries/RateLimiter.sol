@@ -207,7 +207,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
 
     function _consumeOutboundAmount(
         TrimmedAmount amount
-    ) internal {
+    ) internal virtual {
         if (rateLimitDuration == 0) return;
         _consumeRateLimitAmount(
             amount, _getCurrentCapacity(getOutboundLimitParams()), _getOutboundLimitParamsStorage()
@@ -293,7 +293,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         bytes32 refundAddress,
         address senderAddress,
         bytes memory transceiverInstructions
-    ) internal {
+    ) internal virtual {
         _getOutboundQueueStorage()[sequence] = OutboundQueuedTransfer({
             amount: amount,
             recipientChain: recipientChain,

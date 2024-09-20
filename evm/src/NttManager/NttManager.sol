@@ -202,7 +202,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint16 sourceChainId,
         bytes32 sourceNttManagerAddress,
         TransceiverStructs.NttManagerMessage memory message
-    ) public virtual whenNotPaused {
+    ) public whenNotPaused {
         (bytes32 digest, bool alreadyExecuted) =
             _isMessageExecuted(sourceChainId, sourceNttManagerAddress, message);
 
@@ -223,7 +223,23 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
-        //////////////////////////
+        bool enqueued = _executeMsgRateLimitChecks(
+            digest, sourceChainId, nativeTransferAmount, transferRecipient
+        );
+
+        if (enqueued) {
+            return;
+        }
+
+        _mintOrUnlockToRecipient(digest, transferRecipient, nativeTransferAmount, false);
+    }
+
+    function _executeMsgRateLimitChecks(
+        bytes32 digest,
+        uint16 sourceChainId,
+        TrimmedAmount nativeTransferAmount,
+        address transferRecipient
+    ) internal virtual whenNotPaused returns (bool) {
         {
             // Check inbound rate limits
             bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, sourceChainId);
@@ -232,7 +248,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
                 _enqueueInboundTransfer(digest, nativeTransferAmount, transferRecipient);
 
                 // end execution early
-                return;
+                return true;
             }
         }
 
@@ -241,9 +257,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         // When receiving a transfer, we refill the outbound rate limit
         // by the same amount (we call this "backflow")
         _backfillOutboundAmount(nativeTransferAmount);
-        //////////////////////////
-
-        _mintOrUnlockToRecipient(digest, transferRecipient, nativeTransferAmount, false);
+        return false;
     }
 
     /// @inheritdoc INttManager
@@ -331,7 +345,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         bytes32 refundAddress,
         bool shouldQueue,
         bytes memory transceiverInstructions
-    ) internal virtual returns (uint64) {
+    ) internal returns (uint64) {
         if (amount == 0) {
             revert ZeroAmount();
         }
@@ -384,10 +398,47 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
 
         // trim amount after burning to ensure transfer amount matches (amount - fee)
         TrimmedAmount trimmedAmount = _trimTransferAmount(amount, recipientChain);
-        TrimmedAmount internalAmount = trimmedAmount.shift(tokenDecimals());
 
         // get the sequence for this transfer
         uint64 sequence = _useMessageSequence();
+
+        bool enqueued = _transferEntryPointRateLimitChecks(
+            amount,
+            recipientChain,
+            recipient,
+            refundAddress,
+            shouldQueue,
+            transceiverInstructions,
+            trimmedAmount,
+            sequence
+        );
+
+        if (enqueued) {
+            return sequence;
+        }
+
+        return _transfer(
+            sequence,
+            trimmedAmount,
+            recipientChain,
+            recipient,
+            refundAddress,
+            msg.sender,
+            transceiverInstructions
+        );
+    }
+
+    function _transferEntryPointRateLimitChecks(
+        uint256 amount,
+        uint16 recipientChain,
+        bytes32 recipient,
+        bytes32 refundAddress,
+        bool shouldQueue,
+        bytes memory transceiverInstructions,
+        TrimmedAmount trimmedAmount,
+        uint64 sequence
+    ) internal virtual returns (bool enqueued) {
+        TrimmedAmount internalAmount = trimmedAmount.shift(tokenDecimals());
 
         {
             // now check rate limits
@@ -418,8 +469,8 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
                 // refund price quote back to sender
                 _refundToSender(msg.value);
 
-                // return the sequence in the queue
-                return sequence;
+                // return that the transfer has been enqued
+                return true;
             }
         }
 
@@ -428,16 +479,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         // When sending a transfer, we refill the inbound rate limit for
         // that chain by the same amount (we call this "backflow")
         _backfillInboundAmount(internalAmount, recipientChain);
-
-        return _transfer(
-            sequence,
-            trimmedAmount,
-            recipientChain,
-            recipient,
-            refundAddress,
-            msg.sender,
-            transceiverInstructions
-        );
+        return false;
     }
 
     function _transfer(
