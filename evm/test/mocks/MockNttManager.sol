@@ -31,9 +31,7 @@ contract MockNttManagerNoRateLimitingContract is NttManagerNoRateLimiting {
     constructor(
         address token,
         Mode mode,
-        uint16 chainId,
-        uint64 rateLimitDuration,
-        bool skipRateLimiting
+        uint16 chainId
     ) NttManagerNoRateLimiting(token, mode, chainId) {}
 
     /// We create a dummy storage variable here with standard solidity slot assignment.

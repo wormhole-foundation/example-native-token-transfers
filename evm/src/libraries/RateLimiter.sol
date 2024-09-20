@@ -99,7 +99,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         _setLimit(limit, _getOutboundLimitParamsStorage());
     }
 
-    function getOutboundLimitParams() public pure returns (RateLimitParams memory) {
+    function getOutboundLimitParams() public pure virtual returns (RateLimitParams memory) {
         return _getOutboundLimitParamsStorage();
     }
 
@@ -121,7 +121,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
 
     function getInboundLimitParams(
         uint16 chainId_
-    ) public view returns (RateLimitParams memory) {
+    ) public view virtual returns (RateLimitParams memory) {
         return _getInboundLimitParamsStorage()[chainId_];
     }
 
@@ -207,7 +207,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
 
     function _consumeOutboundAmount(
         TrimmedAmount amount
-    ) internal virtual {
+    ) internal {
         if (rateLimitDuration == 0) return;
         _consumeRateLimitAmount(
             amount, _getCurrentCapacity(getOutboundLimitParams()), _getOutboundLimitParamsStorage()
@@ -216,14 +216,14 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
 
     function _backfillOutboundAmount(
         TrimmedAmount amount
-    ) internal virtual {
+    ) internal {
         if (rateLimitDuration == 0) return;
         _backfillRateLimitAmount(
             amount, _getCurrentCapacity(getOutboundLimitParams()), _getOutboundLimitParamsStorage()
         );
     }
 
-    function _consumeInboundAmount(TrimmedAmount amount, uint16 chainId_) internal virtual {
+    function _consumeInboundAmount(TrimmedAmount amount, uint16 chainId_) internal {
         if (rateLimitDuration == 0) return;
         _consumeRateLimitAmount(
             amount,
@@ -263,7 +263,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
 
     function _isOutboundAmountRateLimited(
         TrimmedAmount amount
-    ) internal view virtual returns (bool) {
+    ) internal view returns (bool) {
         return rateLimitDuration != 0
             ? _isAmountRateLimited(_getCurrentCapacity(getOutboundLimitParams()), amount)
             : false;
@@ -293,7 +293,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         bytes32 refundAddress,
         address senderAddress,
         bytes memory transceiverInstructions
-    ) internal virtual {
+    ) internal {
         _getOutboundQueueStorage()[sequence] = OutboundQueuedTransfer({
             amount: amount,
             recipientChain: recipientChain,
@@ -311,7 +311,7 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         bytes32 digest,
         TrimmedAmount amount,
         address recipient
-    ) internal virtual {
+    ) internal {
         _getInboundQueueStorage()[digest] = InboundQueuedTransfer({
             amount: amount,
             recipient: recipient,

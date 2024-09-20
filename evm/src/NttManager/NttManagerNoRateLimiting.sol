@@ -10,11 +10,6 @@ contract NttManagerNoRateLimiting is NttManager {
         uint16 _chainId
     ) NttManager(_token, _mode, _chainId, 0, true) {}
 
-    /// @dev When we add new immutables, this function should be updated
-    function _checkImmutables() internal view override {
-        ManagerBase._checkImmutables();
-    }
-
     // ==================== Override RateLimiter functions =========================
 
     function _setOutboundLimit(
@@ -23,42 +18,13 @@ contract NttManagerNoRateLimiting is NttManager {
 
     function _setInboundLimit(TrimmedAmount limit, uint16 chainId_) internal override {}
 
-    function _isOutboundAmountRateLimited(
-        TrimmedAmount // amount
-    ) internal pure override returns (bool) {
-        return false;
-    }
-
-    function _enqueueOutboundTransfer(
-        uint64, // sequence
-        TrimmedAmount, // amount
-        uint16, // recipientChain
-        bytes32, // recipient
-        bytes32, // refundAddress
-        address, // senderAddress
-        bytes memory // transceiverInstructions
-    ) internal override {}
-
-    function _enqueueInboundTransfer(
-        bytes32, // digest
-        TrimmedAmount, // amount
-        address // recipient
-    ) internal override {}
-
-    function _consumeOutboundAmount(
-        TrimmedAmount // amount
-    ) internal override {}
-
-    function _backfillOutboundAmount(
-        TrimmedAmount // amount
-    ) internal override {}
-
-    function _consumeInboundAmount(
-        TrimmedAmount, // amount
-        uint16 // chainId_
-    ) internal override {}
-
     // ==================== Unimplemented External Interface =================================
+
+    function getInboundLimitParams(
+        uint16 chainId_
+    ) public view override returns (RateLimitParams memory rateLimitParams) {}
+
+    function getOutboundLimitParams() public pure override returns (RateLimitParams memory) {}
 
     /// @notice Not used, always returns max value of uint256.
     function getCurrentOutboundCapacity() public pure override returns (uint256) {
@@ -89,21 +55,21 @@ contract NttManagerNoRateLimiting is NttManager {
     /// @notice Not used, always reverts with NotImplemented.
     function completeInboundQueuedTransfer(
         bytes32 // digest
-    ) external pure override {
+    ) external view override whenNotPaused {
         revert NotImplemented();
     }
 
     /// @notice Not used, always reverts with NotImplemented.
     function completeOutboundQueuedTransfer(
         uint64 // messageSequence
-    ) external payable override returns (uint64) {
+    ) external payable override whenNotPaused returns (uint64) {
         revert NotImplemented();
     }
 
     /// @notice Not used, always reverts with NotImplemented.
     function cancelOutboundQueuedTransfer(
         uint64 // messageSequence
-    ) external pure override {
+    ) external view override whenNotPaused {
         revert NotImplemented();
     }
 

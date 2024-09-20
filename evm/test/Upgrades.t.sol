@@ -184,6 +184,49 @@ contract TestUpgrades is Test, IRateLimiterEvents {
         basicFunctionality();
     }
 
+    function test_cannotUpgradeToNoRateLimitingIfItWasEnabled() public {
+        // The default set up has rate limiting enabled. When we attempt to upgrade to no rate limiting, the immutable check should panic.
+        NttManager rateLimitingImplementation = new MockNttManagerNoRateLimitingContract(
+            address(nttManagerChain1.token()), IManagerBase.Mode.LOCKING, chainId1
+        );
+
+        vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
+        nttManagerChain1.upgrade(address(rateLimitingImplementation));
+    }
+
+    function test_upgradeToNoRateLimiting() public {
+        // Create a standard manager with rate limiting disabled.
+        DummyToken t = new DummyToken();
+        NttManager implementation =
+            new MockNttManagerContract(address(t), IManagerBase.Mode.LOCKING, chainId1, 0, true);
+
+        MockNttManagerContract thisNttManager =
+            MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
+        thisNttManager.initialize();
+
+        thisNttManager.setPeer(chainId2, toWormholeFormat(address(0x1)), 9, type(uint64).max);
+
+        // Upgrade from NttManager with rate limiting disabled to NttManagerNoRateLimiting.
+        NttManager rateLimitingImplementation = new MockNttManagerNoRateLimitingContract(
+            address(t), IManagerBase.Mode.LOCKING, chainId1
+        );
+        thisNttManager.upgrade(address(rateLimitingImplementation));
+        basicFunctionality();
+
+        // Upgrade from NttManagerNoRateLimiting to NttManagerNoRateLimiting.
+        rateLimitingImplementation = new MockNttManagerNoRateLimitingContract(
+            address(t), IManagerBase.Mode.LOCKING, chainId1
+        );
+        thisNttManager.upgrade(address(rateLimitingImplementation));
+        basicFunctionality();
+
+        // Upgrade from NttManagerNoRateLimiting back to NttManager.
+        NttManager nttManagerImplementation =
+            new MockNttManagerContract(address(t), IManagerBase.Mode.LOCKING, chainId1, 0, true);
+        thisNttManager.upgrade(address(nttManagerImplementation));
+        basicFunctionality();
+    }
+
     //Upgradability stuff for transceivers is real borked because of some missing implementation. Test this later once fixed.
     function test_doubleUpgradeTransceiver() public {
         // Basic call to upgrade with the same contact as well
