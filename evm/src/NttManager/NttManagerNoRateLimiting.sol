@@ -82,7 +82,7 @@ contract NttManagerNoRateLimiting is NttManager {
 
     // ==================== Overridden NttManager Implementations =================================
 
-    function _transferEntryPointRateLimitChecks(
+    function _enqueueOrConsumeOutboundRateLimit(
         uint256, // amount
         uint16, // recipientChain
         bytes32, // recipient
@@ -95,7 +95,7 @@ contract NttManagerNoRateLimiting is NttManager {
         return false;
     }
 
-    function _executeMsgRateLimitChecks(
+    function _enqueueOrConsumeIndboundRateLimit(
         bytes32, // digest
         uint16, // sourceChainId
         TrimmedAmount, // nativeTransferAmount

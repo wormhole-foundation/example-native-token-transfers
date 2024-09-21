@@ -223,7 +223,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
-        bool enqueued = _executeMsgRateLimitChecks(
+        bool enqueued = _enqueueOrConsumeIndboundRateLimit(
             digest, sourceChainId, nativeTransferAmount, transferRecipient
         );
 
@@ -234,22 +234,20 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         _mintOrUnlockToRecipient(digest, transferRecipient, nativeTransferAmount, false);
     }
 
-    function _executeMsgRateLimitChecks(
+    function _enqueueOrConsumeIndboundRateLimit(
         bytes32 digest,
         uint16 sourceChainId,
         TrimmedAmount nativeTransferAmount,
         address transferRecipient
     ) internal virtual whenNotPaused returns (bool) {
-        {
-            // Check inbound rate limits
-            bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, sourceChainId);
-            if (isRateLimited) {
-                // queue up the transfer
-                _enqueueInboundTransfer(digest, nativeTransferAmount, transferRecipient);
+        // Check inbound rate limits
+        bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, sourceChainId);
+        if (isRateLimited) {
+            // queue up the transfer
+            _enqueueInboundTransfer(digest, nativeTransferAmount, transferRecipient);
 
-                // end execution early
-                return true;
-            }
+            // end execution early
+            return true;
         }
 
         // consume the amount for the inbound rate limit
@@ -402,7 +400,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         // get the sequence for this transfer
         uint64 sequence = _useMessageSequence();
 
-        bool enqueued = _transferEntryPointRateLimitChecks(
+        bool enqueued = _enqueueOrConsumeOutboundRateLimit(
             amount,
             recipientChain,
             recipient,
@@ -428,7 +426,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         );
     }
 
-    function _transferEntryPointRateLimitChecks(
+    function _enqueueOrConsumeOutboundRateLimit(
         uint256 amount,
         uint16 recipientChain,
         bytes32 recipient,
@@ -440,38 +438,36 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     ) internal virtual returns (bool enqueued) {
         TrimmedAmount internalAmount = trimmedAmount.shift(tokenDecimals());
 
-        {
-            // now check rate limits
-            bool isAmountRateLimited = _isOutboundAmountRateLimited(internalAmount);
-            if (!shouldQueue && isAmountRateLimited) {
-                revert NotEnoughCapacity(getCurrentOutboundCapacity(), amount);
-            }
-            if (shouldQueue && isAmountRateLimited) {
-                // verify chain has not forked
-                checkFork(evmChainId);
+        // now check rate limits
+        bool isAmountRateLimited = _isOutboundAmountRateLimited(internalAmount);
+        if (!shouldQueue && isAmountRateLimited) {
+            revert NotEnoughCapacity(getCurrentOutboundCapacity(), amount);
+        }
+        if (shouldQueue && isAmountRateLimited) {
+            // verify chain has not forked
+            checkFork(evmChainId);
 
-                // emit an event to notify the user that the transfer is rate limited
-                emit OutboundTransferRateLimited(
-                    msg.sender, sequence, amount, getCurrentOutboundCapacity()
-                );
+            // emit an event to notify the user that the transfer is rate limited
+            emit OutboundTransferRateLimited(
+                msg.sender, sequence, amount, getCurrentOutboundCapacity()
+            );
 
-                // queue up and return
-                _enqueueOutboundTransfer(
-                    sequence,
-                    trimmedAmount,
-                    recipientChain,
-                    recipient,
-                    refundAddress,
-                    msg.sender,
-                    transceiverInstructions
-                );
+            // queue up and return
+            _enqueueOutboundTransfer(
+                sequence,
+                trimmedAmount,
+                recipientChain,
+                recipient,
+                refundAddress,
+                msg.sender,
+                transceiverInstructions
+            );
 
-                // refund price quote back to sender
-                _refundToSender(msg.value);
+            // refund price quote back to sender
+            _refundToSender(msg.value);
 
-                // return that the transfer has been enqued
-                return true;
-            }
+            // return that the transfer has been enqued
+            return true;
         }
 
         // otherwise, consume the outbound amount
