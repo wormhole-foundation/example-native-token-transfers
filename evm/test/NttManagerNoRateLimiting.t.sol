@@ -627,12 +627,20 @@ contract TestNttManagerNoRateLimiting is Test, IRateLimiterEvents {
         vm.startPrank(user_A);
         token.approve(address(nttManager), type(uint256).max);
 
-        // When transferring to a chain with 6 decimals the amount will get trimmed to 6 decimals
-        // and then scaled back up to 8 for local accounting. If we get the trimmed amount to be
-        // type(uint64).max, then when scaling up we could overflow. We safely cast to prevent this.
-
+        // When transferring to a chain with 6 decimals the amount will get trimmed to 6 decimals.
+        // Without rate limiting, this won't be scaled back up to 8 for local accounting.
         uint256 amount = type(uint64).max * 10 ** (decimals - 6);
+        nttManager.transfer(
+            amount,
+            chainId2,
+            toWormholeFormat(user_B),
+            toWormholeFormat(user_A),
+            false,
+            new bytes(1)
+        );
 
+        // However, attempting to transfer an amount higher than the destination chain can handle will revert.
+        amount = type(uint64).max * 10 ** (decimals - 4);
         vm.expectRevert("SafeCast: value doesn't fit in 64 bits");
         nttManager.transfer(
             amount,
@@ -741,12 +749,12 @@ contract TestNttManagerNoRateLimiting is Test, IRateLimiterEvents {
 
         vm.chainId(chainId);
 
-        // Queued outbound transfers can't be completed
-        vm.expectRevert(abi.encodeWithSelector(InvalidFork.selector, evmChainId, chainId));
+        // Queued outbound transfers can't be completed, per usual
+        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
         nttManager.completeOutboundQueuedTransfer(sequence);
 
-        // Queued outbound transfers can't be cancelled
-        vm.expectRevert(abi.encodeWithSelector(InvalidFork.selector, evmChainId, chainId));
+        // Queued outbound transfers can't be cancelled, per usual
+        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
         nttManager.cancelOutboundQueuedTransfer(sequence);
 
         // Outbound transfers fail when queued
@@ -800,7 +808,7 @@ contract TestNttManagerNoRateLimiting is Test, IRateLimiterEvents {
         vm.expectRevert(abi.encodeWithSelector(InvalidFork.selector, evmChainId, chainId));
         dummyTransceiver.receiveMessage(transceiverMessage);
 
-        // Inbound queued transfers can't be completed
+        // Inbound queued transfers can't be completed, per usual
         nttManager.setInboundLimit(0, TransceiverHelpersLib.SENDING_CHAIN_ID);
 
         vm.chainId(evmChainId);
@@ -814,7 +822,7 @@ contract TestNttManagerNoRateLimiting is Test, IRateLimiterEvents {
 
         vm.warp(vm.getBlockTimestamp() + 1 days);
 
-        vm.expectRevert(abi.encodeWithSelector(InvalidFork.selector, evmChainId, chainId));
+        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
         nttManager.completeInboundQueuedTransfer(hash);
     }
 
@@ -1036,8 +1044,8 @@ contract TestNttManagerNoRateLimiting is Test, IRateLimiterEvents {
         );
 
         e1.receiveMessage(transceiverMessage);
-        uint256 userBBalanceBefore = t.balanceOf(address(user_B));
-        assertEq(userBBalanceBefore, transferAmount.untrim(t.decimals()));
+        uint256 userBExpectedBalance = transferAmount.untrim(t.decimals());
+        assertEq(t.balanceOf(address(user_B)), userBExpectedBalance);
 
         // If the token decimals change to the same trimmed amount, we should safely receive the correct number of tokens
         DummyTokenDifferentDecimals dummy2 = new DummyTokenDifferentDecimals(10); // 10 gets trimmed to 8
@@ -1062,16 +1070,15 @@ contract TestNttManagerNoRateLimiting is Test, IRateLimiterEvents {
             tokenTransferMessage
         );
         e1.receiveMessage(transceiverMessage);
-        assertEq(
-            t.balanceOf(address(user_B)), userBBalanceBefore + transferAmount.untrim(t.decimals())
-        );
+        userBExpectedBalance = userBExpectedBalance + transferAmount.untrim(t.decimals());
+        assertEq(t.balanceOf(address(user_B)), userBExpectedBalance);
 
-        // Now if the token decimals change to a different trimmed amount, we shouldn't be able to send or receive
+        // If the token decimals change to a different trimmed amount, we should still be able
+        // to send and receive, as this only errored in the RateLimiter.
         DummyTokenDifferentDecimals dummy3 = new DummyTokenDifferentDecimals(7); // 7 is 7 trimmed
         t.upgrade(address(dummy3));
 
         vm.startPrank(user_A);
-        vm.expectRevert(abi.encodeWithSelector(NumberOfDecimalsNotEqual.selector, 8, 7));
         newNttManagerNoRateLimiting.transfer(
             1 * 10 ** 7,
             TransceiverHelpersLib.SENDING_CHAIN_ID,
@@ -1089,8 +1096,9 @@ contract TestNttManagerNoRateLimiting is Test, IRateLimiterEvents {
             toWormholeFormat(address(newNttManagerNoRateLimiting)),
             tokenTransferMessage
         );
-        vm.expectRevert(abi.encodeWithSelector(NumberOfDecimalsNotEqual.selector, 8, 7));
         e1.receiveMessage(transceiverMessage);
+        userBExpectedBalance = userBExpectedBalance + transferAmount.untrim(t.decimals());
+        assertEq(t.balanceOf(address(user_B)), userBExpectedBalance);
     }
 
     function test_transferWithInstructionIndexOutOfBounds() public {
