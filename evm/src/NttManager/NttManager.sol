@@ -136,13 +136,13 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     /// @inheritdoc INttManager
     function setOutboundLimit(
         uint256 limit
-    ) external virtual onlyOwner {
+    ) external onlyOwner {
         uint8 toDecimals = tokenDecimals();
         _setOutboundLimit(limit.trim(toDecimals, toDecimals));
     }
 
     /// @inheritdoc INttManager
-    function setInboundLimit(uint256 limit, uint16 chainId_) external virtual onlyOwner {
+    function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
         uint8 toDecimals = tokenDecimals();
         _setInboundLimit(limit.trim(toDecimals, toDecimals), chainId_);
     }
@@ -150,7 +150,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     /// ============== Invariants =============================================
 
     /// @dev When we add new immutables, this function should be updated
-    function _checkImmutables() internal view virtual override {
+    function _checkImmutables() internal view override {
         super._checkImmutables();
         assert(this.rateLimitDuration() == rateLimitDuration);
     }
