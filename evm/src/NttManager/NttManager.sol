@@ -263,7 +263,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         bytes32 digest
     ) external virtual nonReentrant whenNotPaused {
         // find the message in the queue
-        InboundQueuedTransfer memory queuedTransfer = getInboundQueuedTransfer(digest);
+        InboundQueuedTransfer memory queuedTransfer = RateLimiter.getInboundQueuedTransfer(digest);
         if (queuedTransfer.txTimestamp == 0) {
             revert InboundQueuedTransferNotFound(digest);
         }
