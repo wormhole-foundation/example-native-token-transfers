@@ -501,7 +501,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint64 seq = sequence;
 
         TransceiverStructs.NativeTokenTransfer memory ntt = TransceiverStructs.NativeTokenTransfer(
-            amount, toWormholeFormat(token), recipient, recipientChain
+            amount, toWormholeFormat(token), recipient, recipientChain, ""
         );
 
         // construct the NttManagerMessage payload

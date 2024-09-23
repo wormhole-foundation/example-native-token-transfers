@@ -919,7 +919,8 @@ contract TestNttManager is Test, IRateLimiterEvents {
                 amount: packTrimmedAmount(100, 8),
                 sourceToken: toWormholeFormat(address(token)),
                 to: toWormholeFormat(user_B),
-                toChain: chainId
+                toChain: chainId,
+                additionalPayload: ""
             })
         );
 
@@ -1159,7 +1160,8 @@ contract TestNttManager is Test, IRateLimiterEvents {
                 amount: transferAmount,
                 sourceToken: toWormholeFormat(address(t)),
                 to: toWormholeFormat(user_B),
-                toChain: chainId
+                toChain: chainId,
+                additionalPayload: ""
             })
         );
 
