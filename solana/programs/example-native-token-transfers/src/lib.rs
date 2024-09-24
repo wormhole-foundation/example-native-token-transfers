@@ -95,7 +95,10 @@ pub mod example_native_token_transfers {
         instructions::transfer_lock(ctx, args)
     }
 
-    pub fn redeem(ctx: Context<Redeem>, args: RedeemArgs) -> Result<()> {
+    pub fn redeem<'info>(
+        ctx: Context<'_, '_, '_, 'info, Redeem<'info>>,
+        args: RedeemArgs,
+    ) -> Result<()> {
         instructions::redeem(ctx, args)
     }
 
