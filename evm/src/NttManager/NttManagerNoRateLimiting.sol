@@ -3,6 +3,13 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import "./NttManager.sol";
 
+/// @title NttManagerNoRateLimiting
+/// @author Wormhole Project Contributors.
+/// @notice The NttManagerNoRateLimiting contract is an implementation of
+///         NttManager that eliminates most of the rate limiting code to
+///         free up code space.
+///
+/// @dev    All of the developer notes from `NttManager` apply here.
 contract NttManagerNoRateLimiting is NttManager {
     constructor(
         address _token,
@@ -95,7 +102,7 @@ contract NttManagerNoRateLimiting is NttManager {
         return false;
     }
 
-    function _enqueueOrConsumeIndboundRateLimit(
+    function _enqueueOrConsumeInboundRateLimit(
         bytes32, // digest
         uint16, // sourceChainId
         TrimmedAmount, // nativeTransferAmount

@@ -975,6 +975,48 @@ contract TestNttManagerNoRateLimiting is Test, IRateLimiterEvents {
         assertEq(token.balanceOf(address(user_B)), transferAmount.untrim(token.decimals()) * 2);
     }
 
+    // NOTE: There are additional tests in `Upgrades.t.sol` to verifying upgrading from `NttManager` to `NttManagerNoRateLimiting`.
+
+    function test_canUpgradeFromNoRateLimitingToRateLimitingDisabled() public {
+        // Create a standard manager with rate limiting disabled.
+        DummyToken t = new DummyToken();
+        NttManager implementation =
+            new MockNttManagerContract(address(t), IManagerBase.Mode.LOCKING, chainId, 0, true);
+
+        MockNttManagerContract thisNttManager =
+            MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
+        thisNttManager.initialize();
+
+        thisNttManager.setPeer(chainId2, toWormholeFormat(address(0x1)), 9, type(uint64).max);
+
+        // Upgrade from NttManagerNoRateLimiting to NttManager with rate limiting enabled. This should work.
+        NttManager rateLimitingImplementation =
+            new MockNttManagerNoRateLimitingContract(address(t), IManagerBase.Mode.LOCKING, chainId);
+
+        thisNttManager.upgrade(address(rateLimitingImplementation));
+    }
+
+    function test_cannotUpgradeFromNoRateLimitingToRateLimitingEnaabled() public {
+        // Create a standard manager with rate limiting enabled.
+        DummyToken t = new DummyToken();
+        NttManager implementation = new MockNttManagerContract(
+            address(t), IManagerBase.Mode.LOCKING, chainId, 1 days, false
+        );
+
+        MockNttManagerContract thisNttManager =
+            MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
+        thisNttManager.initialize();
+
+        thisNttManager.setPeer(chainId2, toWormholeFormat(address(0x1)), 9, type(uint64).max);
+
+        // Upgrade from NttManagerNoRateLimiting to NttManager with rate limiting enabled. The immutable check should panic.
+        NttManager rateLimitingImplementation =
+            new MockNttManagerNoRateLimitingContract(address(t), IManagerBase.Mode.LOCKING, chainId);
+
+        vm.expectRevert(); // Reverts with a panic on the assert. So, no way to tell WHY this happened.
+        thisNttManager.upgrade(address(rateLimitingImplementation));
+    }
+
     function test_tokenUpgradedAndDecimalsChanged() public {
         DummyToken dummy1 = new DummyTokenMintAndBurn();
 

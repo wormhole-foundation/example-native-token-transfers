@@ -223,7 +223,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
 
         address transferRecipient = fromWormholeFormat(nativeTokenTransfer.to);
 
-        bool enqueued = _enqueueOrConsumeIndboundRateLimit(
+        bool enqueued = _enqueueOrConsumeInboundRateLimit(
             digest, sourceChainId, nativeTransferAmount, transferRecipient
         );
 
@@ -234,7 +234,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         _mintOrUnlockToRecipient(digest, transferRecipient, nativeTransferAmount, false);
     }
 
-    function _enqueueOrConsumeIndboundRateLimit(
+    function _enqueueOrConsumeInboundRateLimit(
         bytes32 digest,
         uint16 sourceChainId,
         TrimmedAmount nativeTransferAmount,

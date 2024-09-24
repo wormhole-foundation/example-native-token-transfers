@@ -184,6 +184,8 @@ contract TestUpgrades is Test, IRateLimiterEvents {
         basicFunctionality();
     }
 
+    // NOTE: There are additional tests in `Upgrades.t.sol` to verifying downgrading from `NttManagerNoRateLimiting` to `NttManager`.
+
     function test_cannotUpgradeToNoRateLimitingIfItWasEnabled() public {
         // The default set up has rate limiting enabled. When we attempt to upgrade to no rate limiting, the immutable check should panic.
         NttManager rateLimitingImplementation = new MockNttManagerNoRateLimitingContract(
