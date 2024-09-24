@@ -285,12 +285,12 @@ contract TestEndToEndNoRateLimiting is Test {
         nttManagerChain1.setInboundLimit(0, chainId2);
 
         require(
-            nttManagerChain1.getCurrentOutboundCapacity() == type(uint256).max,
+            nttManagerChain1.getCurrentOutboundCapacity() == 0,
             "getCurrentOutboundCapacity returned unexpected value"
         );
 
         require(
-            nttManagerChain1.getCurrentInboundCapacity(chainId2) == type(uint256).max,
+            nttManagerChain1.getCurrentInboundCapacity(chainId2) == 0,
             "getCurrentInboundCapacity returned unexpected value"
         );
 

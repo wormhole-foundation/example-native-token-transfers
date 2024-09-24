@@ -239,7 +239,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint16 sourceChainId,
         TrimmedAmount nativeTransferAmount,
         address transferRecipient
-    ) internal virtual whenNotPaused returns (bool) {
+    ) internal virtual returns (bool) {
         // Check inbound rate limits
         bool isRateLimited = _isInboundAmountRateLimited(nativeTransferAmount, sourceChainId);
         if (isRateLimited) {

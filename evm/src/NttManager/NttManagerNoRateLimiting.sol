@@ -22,9 +22,9 @@ contract NttManagerNoRateLimiting is NttManager {
     /// @notice Not used, always returns empty RateLimitParams.
     function getOutboundLimitParams() public pure override returns (RateLimitParams memory) {}
 
-    /// @notice Not used, always returns max value of uint256.
+    /// @notice Not used, always returns zero.
     function getCurrentOutboundCapacity() public pure override returns (uint256) {
-        return type(uint256).max;
+        return 0;
     }
 
     /// @notice Not used, always reverts with NotImplemented.
@@ -39,11 +39,11 @@ contract NttManagerNoRateLimiting is NttManager {
         uint16 // chainId_
     ) public pure override returns (RateLimitParams memory) {}
 
-    /// @notice Not used, always returns max value of uint256.
+    /// @notice Not used, always returns zero.
     function getCurrentInboundCapacity(
         uint16 // chainId_
     ) public pure override returns (uint256) {
-        return type(uint256).max;
+        return 0;
     }
 
     /// @notice Not used, always reverts with NotImplemented.
@@ -107,7 +107,7 @@ contract NttManagerNoRateLimiting is NttManager {
         uint16, // sourceChainId
         TrimmedAmount, // nativeTransferAmount
         address // transferRecipient
-    ) internal view override whenNotPaused returns (bool) {
+    ) internal pure override returns (bool) {
         return false;
     }
 }
