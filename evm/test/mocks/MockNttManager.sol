@@ -111,3 +111,24 @@ contract MockNttManagerStorageLayoutChange is NttManager {
         c = address(0x3);
     }
 }
+
+contract MockNttManagerNoRateLimitingContractForTest is NttManagerNoRateLimiting {
+    constructor(
+        address token,
+        Mode mode,
+        uint16 chainId
+    ) NttManagerNoRateLimiting(token, mode, chainId) {}
+
+    function isSendTransceiverEnabledForChain(
+        address transceiver,
+        uint16 forChainId
+    ) external view returns (bool) {
+        return _isSendTransceiverEnabledForChain(transceiver, forChainId);
+    }
+
+    function getEnabledRecvTransceiversForChain(
+        uint16 forChainId
+    ) external view returns (uint64 bitmap) {
+        return _getEnabledRecvTransceiversForChain(forChainId);
+    }
+}

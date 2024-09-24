@@ -48,7 +48,7 @@ interface IManagerBase {
     /// @param oldThreshold The old threshold.
     /// @param threshold The new threshold.
     event ThresholdChanged(uint8 oldThreshold, uint8 threshold);
-    
+
     /// @notice Emmitted when the per-chain threshold required transceivers is changed.
     /// @dev Topic0
     ///      0x2a855b929b9a53c6fb5b5ed248b27e502b709c088e036a5aa17620c8fc5085a9.
@@ -64,7 +64,7 @@ interface IManagerBase {
     /// @param transceiversNum The current number of transceivers.
     /// @param threshold The current threshold of transceivers.
     event TransceiverAdded(address transceiver, uint256 transceiversNum, uint8 threshold);
-    
+
     /// @notice Emitted when a transceiver is enabled for a chain.
     /// @dev Topic0
     ///      0xf05962b5774c658e85ed80c91a75af9d66d2af2253dda480f90bce78aff5eda5.
@@ -127,6 +127,9 @@ interface IManagerBase {
     /// @param chainId The target Wormhole chain id
     error PeerNotRegistered(uint16 chainId);
 
+    /// @notice Feature is not implemented.
+    error NotImplemented();
+
     /// @notice Fetch the delivery price for a given recipient chain transfer.
     /// @param recipientChain The Wormhole chain ID of the transfer destination.
     /// @param transceiverInstructions The transceiver specific instructions for quoting and sending
@@ -143,16 +146,13 @@ interface IManagerBase {
     function setThreshold(
         uint8 threshold
     ) external;
-    
+
     /// @notice Sets the per-chain threshold for the number of attestations required for a message
     /// to be considered valid. Note that if a threshold is not specified for a chain, the default applies.
     /// @param chainId The chain for which the threshold applies.
     /// @param threshold The new threshold.
     /// @dev This method can only be executed by the `owner`.
-    function setThresholdPerChain(
-        uint16 chainId,
-        uint8 threshold
-    ) external;
+    function setPerChainThreshold(uint16 chainId, uint8 threshold) external;
 
     /// @notice Sets the transceiver for the given chain.
     /// @param transceiver The address of the transceiver.
@@ -167,15 +167,18 @@ interface IManagerBase {
     function removeTransceiver(
         address transceiver
     ) external;
-        
-    /// @notice Enables the transceiver for the given chain.
+
+    /// @notice Enables the transceiver for sending on the given chain.
     /// @param transceiver The address of the transceiver.
     /// @param chainId The chain for which the threshold applies.
     /// @dev This method can only be executed by the `owner`.
-    function enableTransceiverForChain(
-        address transceiver,
-        uint16 chainId
-    ) external;
+    function enableSendTransceiverForChain(address transceiver, uint16 chainId) external;
+
+    /// @notice Enables the transceiver for receiving on the given chain.
+    /// @param transceiver The address of the transceiver.
+    /// @param chainId The chain for which the threshold applies.
+    /// @dev This method can only be executed by the `owner`.
+    function enableRecvTransceiverForChain(address transceiver, uint16 chainId) external;
 
     /// @notice Checks if a message has been approved. The message should have at least
     /// the minimum threshold of attestations from distinct endpoints.
@@ -213,6 +216,13 @@ interface IManagerBase {
     /// @notice Returns the number of Transceivers that must attest to a msgId for
     /// it to be considered valid and acted upon.
     function getThreshold() external view returns (uint8);
+
+    /// @notice Returns the number of Transceivers that must attest to a msgId for
+    /// it to be considered valid and acted upon.
+    /// @param chainId The chain for which the threshold applies.
+    function getPerChainThreshold(
+        uint16 chainId
+    ) external view returns (uint8);
 
     /// @notice Returns a boolean indicating if the transceiver has attested to the message.
     /// @param digest The digest of the message.

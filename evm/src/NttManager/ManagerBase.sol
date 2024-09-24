@@ -64,24 +64,11 @@ abstract contract ManagerBase is
     bytes32 private constant MESSAGE_SEQUENCE_SLOT =
         bytes32(uint256(keccak256("ntt.messageSequence")) - 1);
 
-    bytes32 private constant THRESHOLD_SLOT = bytes32(uint256(keccak256("ntt.threshold")) - 1);
+    bytes32 internal constant THRESHOLD_SLOT = bytes32(uint256(keccak256("ntt.threshold")) - 1);
 
     // =============== Storage Getters/Setters ==============================================
 
-    function _getThresholdStorage() private pure returns (_Threshold storage $) {
-        uint256 slot = uint256(THRESHOLD_SLOT);
-        assembly ("memory-safe") {
-            $.slot := slot
-        }
-    }
-
-    function _getThresholdStoragePerChain()
-        private
-        pure
-        returns (mapping(uint16 => _Threshold) storage $)
-    {
-        // TODO: this is safe (reusing the storage slot, because the mapping
-        // doesn't write into the slot itself) buy maybe we shouldn't?
+    function _getThresholdStorage() internal pure returns (_Threshold storage $) {
         uint256 slot = uint256(THRESHOLD_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
@@ -135,7 +122,7 @@ abstract contract ManagerBase is
         uint256 totalPriceQuote = 0;
         for (uint256 i = 0; i < numEnabledTransceivers; i++) {
             address transceiverAddr = enabledTransceivers[i];
-            if (!_isTransceiverEnabledForChain(transceiverAddr, recipientChain)) {
+            if (!_isSendTransceiverEnabledForChain(transceiverAddr, recipientChain)) {
                 continue;
             }
             uint8 registeredTransceiverIndex = transceiverInfos[transceiverAddr].index;
@@ -217,7 +204,7 @@ abstract contract ManagerBase is
         // call into transceiver contracts to send the message
         for (uint256 i = 0; i < numEnabledTransceivers; i++) {
             address transceiverAddr = enabledTransceivers[i];
-            if (!_isTransceiverEnabledForChain(transceiverAddr, recipientChain)) {
+            if (!_isSendTransceiverEnabledForChain(transceiverAddr, recipientChain)) {
                 continue;
             }
 
@@ -304,14 +291,11 @@ abstract contract ManagerBase is
         return _getThresholdStorage().num;
     }
 
-    function getThreshold(
-        uint16 forChainId
-    ) public view returns (uint8) {
-        uint8 threshold = _getThresholdStoragePerChain()[forChainId].num;
-        if (threshold == 0) {
-            return _getThresholdStorage().num;
-        }
-        return threshold;
+    /// @inheritdoc IManagerBase
+    function getPerChainThreshold(
+        uint16 // forChainId
+    ) public view virtual returns (uint8) {
+        return _getThresholdStorage().num;
     }
 
     /// @inheritdoc IManagerBase
@@ -319,7 +303,7 @@ abstract contract ManagerBase is
         bytes32 digest
     ) public view returns (bool) {
         uint16 sourceChainId = _getMessageAttestationsStorage()[digest].sourceChainId;
-        uint8 threshold = getThreshold(sourceChainId);
+        uint8 threshold = getPerChainThreshold(sourceChainId);
         return messageAttestations(digest) >= threshold && threshold > 0;
     }
 
@@ -379,15 +363,6 @@ abstract contract ManagerBase is
             ITransceiver(_registeredTransceivers[i]).transferTransceiverOwnership(newOwner);
         }
     }
-    
-    /// @inheritdoc IManagerBase
-    function enableTransceiverForChain(
-        address transceiver,
-        uint16 forChainId
-    ) external onlyOwner {
-        _enableTransceiverForChain(transceiver, forChainId);
-        emit TransceiverEnabledForChain(transceiver, forChainId);
-    }
 
     /// @inheritdoc IManagerBase
     function setTransceiver(
@@ -437,6 +412,22 @@ abstract contract ManagerBase is
     }
 
     /// @inheritdoc IManagerBase
+    function enableSendTransceiverForChain(
+        address, // transceiver,
+        uint16 // forChainId
+    ) external virtual onlyOwner {
+        revert NotImplemented();
+    }
+
+    /// @inheritdoc IManagerBase
+    function enableRecvTransceiverForChain(
+        address, // transceiver,
+        uint16 // forChainId
+    ) external virtual onlyOwner {
+        revert NotImplemented();
+    }
+
+    /// @inheritdoc IManagerBase
     function setThreshold(
         uint8 threshold
     ) external onlyOwner {
@@ -452,20 +443,13 @@ abstract contract ManagerBase is
 
         emit ThresholdChanged(oldThreshold, threshold);
     }
-    
+
     /// @inheritdoc IManagerBase
-    function setThresholdPerChain(uint16 forChainId, uint8 threshold) external onlyOwner {
-        if (threshold == 0) {
-            revert ZeroThreshold();
-        }
-
-        mapping(uint16 => _Threshold) storage _threshold = _getThresholdStoragePerChain();
-        uint8 oldThreshold = _threshold[forChainId].num;
-
-        _threshold[forChainId].num = threshold;
-        _checkThresholdInvariants(_threshold[forChainId].num);
-
-        emit PerChainThresholdChanged(forChainId, oldThreshold, threshold);
+    function setPerChainThreshold(
+        uint16, // forChainId,
+        uint8 // threshold
+    ) external virtual onlyOwner {
+        revert NotImplemented();
     }
 
     // =============== Internal ==============================================================
@@ -488,7 +472,7 @@ abstract contract ManagerBase is
     ) internal view returns (uint64) {
         uint64 enabledTransceiverBitmap = _getEnabledTransceiversBitmap();
         uint16 sourceChainId = _getMessageAttestationsStorage()[digest].sourceChainId;
-        uint64 enabledTransceiversForChain = _getEnabledTransceiversBitmapForChain(sourceChainId);
+        uint64 enabledTransceiversForChain = _getEnabledRecvTransceiversForChain(sourceChainId);
         return _getMessageAttestationsStorage()[digest].attestedTransceivers
             & enabledTransceiverBitmap & enabledTransceiversForChain;
     }
@@ -521,6 +505,19 @@ abstract contract ManagerBase is
         _getMessageSequenceStorage().num++;
     }
 
+    function _isSendTransceiverEnabledForChain(
+        address, // transceiver,
+        uint16 // chainId
+    ) internal view virtual returns (bool) {
+        return true;
+    }
+
+    function _getEnabledRecvTransceiversForChain(
+        uint16 // forChainId
+    ) internal view virtual returns (uint64 bitmap) {
+        return type(uint64).max;
+    }
+
     /// ============== Invariants =============================================
 
     /// @dev When we add new immutables, this function should be updated
@@ -541,8 +538,10 @@ abstract contract ManagerBase is
     function _checkThresholdInvariants() internal view {
         _checkThresholdInvariants(_getThresholdStorage().num);
     }
-    
-    function _checkThresholdInvariants(uint8 threshold) internal pure {
+
+    function _checkThresholdInvariants(
+        uint8 threshold
+    ) internal pure {
         _NumTransceivers memory numTransceivers = _getNumTransceiversStorage();
 
         // invariant: threshold <= enabledTransceivers.length

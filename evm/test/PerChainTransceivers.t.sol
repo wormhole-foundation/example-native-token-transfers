@@ -4,13 +4,14 @@ pragma solidity >=0.8.8 <0.9.0;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import "../src/NttManager/NttManager.sol";
+import "../src/NttManager/NttManagerNoRateLimiting.sol";
 import "../src/Transceiver/Transceiver.sol";
 import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
 import "../src/interfaces/ITransceiver.sol";
 import "../src/interfaces/IManagerBase.sol";
 import "../src/interfaces/IRateLimiterEvents.sol";
+import "../src/NttManager/TransceiverRegistry.sol";
 import {Utils} from "./libraries/Utils.sol";
 import {DummyToken, DummyTokenMintAndBurn} from "./NttManager.t.sol";
 import "../src/interfaces/IWormholeTransceiver.sol";
@@ -27,9 +28,9 @@ import "wormhole-solidity-sdk/Utils.sol";
 //import "wormhole-solidity-sdk/testing/WormholeRelayerTest.sol";
 
 contract TestPerChainTransceivers is Test, IRateLimiterEvents {
-    NttManager nttManagerChain1;
-    NttManager nttManagerChain2;
-    NttManager nttManagerChain3;
+    MockNttManagerNoRateLimitingContractForTest nttManagerChain1;
+    NttManagerNoRateLimiting nttManagerChain2;
+    NttManagerNoRateLimiting nttManagerChain3;
 
     using TrimmedAmountLib for uint256;
     using TrimmedAmountLib for TrimmedAmount;
@@ -75,12 +76,13 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
-        NttManager implementation = new MockNttManagerContract(
-            address(t1), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
+        NttManager implementation = new MockNttManagerNoRateLimitingContractForTest(
+            address(t1), IManagerBase.Mode.LOCKING, chainId1
         );
 
-        nttManagerChain1 =
-            MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
+        nttManagerChain1 = MockNttManagerNoRateLimitingContractForTest(
+            address(new ERC1967Proxy(address(implementation), ""))
+        );
         nttManagerChain1.initialize();
 
         // Create the first transceiver, from chain 1 to chain 2.
@@ -106,6 +108,8 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
         // Actually initialize properly now
         wormholeTransceiverChain1.initialize();
 
+        nttManagerChain1.setTransceiver(address(wormholeTransceiverChain1));
+
         // Create the second transceiver for chain 1.
         WormholeTransceiver secondWormholeTransceiverChain1Implementation = new MockWormholeTransceiverContract(
             address(nttManagerChain1),
@@ -120,16 +124,18 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
         );
 
         secondWormholeTransceiverChain1.initialize();
+        nttManagerChain1.setTransceiver(address(secondWormholeTransceiverChain1));
 
         // Chain 2 setup
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
-        NttManager implementationChain2 = new MockNttManagerContract(
-            address(t2), IManagerBase.Mode.BURNING, chainId2, 1 days, false
+        NttManager implementationChain2 = new MockNttManagerNoRateLimitingContract(
+            address(t2), IManagerBase.Mode.BURNING, chainId2
         );
 
-        nttManagerChain2 =
-            MockNttManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
+        nttManagerChain2 = MockNttManagerNoRateLimitingContract(
+            address(new ERC1967Proxy(address(implementationChain2), ""))
+        );
         nttManagerChain2.initialize();
 
         WormholeTransceiver wormholeTransceiverChain2Implementation = new MockWormholeTransceiverContract(
@@ -144,6 +150,8 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
             address(new ERC1967Proxy(address(wormholeTransceiverChain2Implementation), ""))
         );
         wormholeTransceiverChain2.initialize();
+
+        nttManagerChain2.setTransceiver(address(wormholeTransceiverChain2));
 
         // Register peer contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of peers here.
         nttManagerChain1.setPeer(
@@ -167,6 +175,7 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
         );
 
         secondWormholeTransceiverChain2.initialize();
+        nttManagerChain2.setTransceiver(address(secondWormholeTransceiverChain2));
 
         // Set peers for the transceivers
         wormholeTransceiverChain1.setWormholePeer(
@@ -185,12 +194,13 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
         // Chain 3 setup
         vm.chainId(chainId3);
         DummyToken t3 = new DummyTokenMintAndBurn();
-        NttManager implementationChain3 = new MockNttManagerContract(
-            address(t3), IManagerBase.Mode.BURNING, chainId3, 1 days, false
+        NttManager implementationChain3 = new MockNttManagerNoRateLimitingContract(
+            address(t3), IManagerBase.Mode.BURNING, chainId3
         );
 
-        nttManagerChain3 =
-            MockNttManagerContract(address(new ERC1967Proxy(address(implementationChain3), "")));
+        nttManagerChain3 = MockNttManagerNoRateLimitingContract(
+            address(new ERC1967Proxy(address(implementationChain3), ""))
+        );
         nttManagerChain3.initialize();
 
         WormholeTransceiver wormholeTransceiverChain3Implementation = new MockWormholeTransceiverContract(
@@ -205,6 +215,8 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
             address(new ERC1967Proxy(address(wormholeTransceiverChain3Implementation), ""))
         );
         wormholeTransceiverChain3.initialize();
+
+        nttManagerChain3.setTransceiver(address(wormholeTransceiverChain3));
 
         // Register peer contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of peers here.
         nttManagerChain1.setPeer(
@@ -230,6 +242,8 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
         // Actually initialize properly now
         secondWormholeTransceiverChain3.initialize();
 
+        nttManagerChain3.setTransceiver(address(secondWormholeTransceiverChain3));
+
         // Set peers for the transceivers
         wormholeTransceiverChain1.setWormholePeer(
             chainId3, bytes32(uint256(uint160(address(wormholeTransceiverChain3))))
@@ -255,29 +269,100 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
         secondWormholeTransceiverChain3.setWormholePeer(
             chainId2, bytes32(uint256(uint160(address(secondWormholeTransceiverChain2))))
         );
-    }
 
-    // This test does a transfer between chain one and chain two where there are two transceivers.
-    // Since chain two uses the default threshold of one, posting a VAA from only one transceiver completes the transfer.
-    function test_defaultThresholds() public {
-        nttManagerChain1.setTransceiver(address(wormholeTransceiverChain1));
-        nttManagerChain1.setTransceiver(address(secondWormholeTransceiverChain1));
-        nttManagerChain2.setTransceiver(address(wormholeTransceiverChain2));
-        nttManagerChain2.setTransceiver(address(secondWormholeTransceiverChain2));
-        nttManagerChain3.setTransceiver(address(wormholeTransceiverChain3));
-        nttManagerChain3.setTransceiver(address(secondWormholeTransceiverChain3));
+        // Set the thresholds.
+        require(nttManagerChain1.getThreshold() != 0, "Threshold is zero with active transceivers");
 
+        // Actually set it
         nttManagerChain1.setThreshold(1);
         nttManagerChain2.setThreshold(1);
         nttManagerChain3.setThreshold(1);
 
         // On chain 1, set the threshold to chain 3 to be different.
-        nttManagerChain1.setThresholdPerChain(chainId3, 2);
-        nttManagerChain3.setThresholdPerChain(chainId1, 2);
+        nttManagerChain1.setPerChainThreshold(chainId3, 2);
+        nttManagerChain3.setPerChainThreshold(chainId1, 2);
 
         require(nttManagerChain1.getThreshold() == 1, "Default threshold is wrong");
-        require(nttManagerChain1.getThreshold(chainId3) == 2, "Threshold for chain 3 is wrong");
+        require(
+            nttManagerChain1.getPerChainThreshold(chainId3) == 2, "Threshold for chain 3 is wrong"
+        );
 
+        // Since we haven't set the per-chain threshold for chain 2, it should return the default
+        require(
+            nttManagerChain1.getPerChainThreshold(chainId2) == 1, "Threshold for chain 2 is wrong"
+        );
+    }
+
+    function test_transceiverSetters() public {
+        // If we haven't enabled per-chain send transceivers for this chain, the getter should return true.
+        require(
+            nttManagerChain1.isSendTransceiverEnabledForChain(address(nttManagerChain3), chainId3),
+            "Send transceiver should be enabled by default"
+        );
+
+        // If we haven't enabled per-chain receive transceivers, the getter should return everything is enabled.
+        require(
+            nttManagerChain1.getEnabledRecvTransceiversForChain(chainId3) == type(uint64).max,
+            "Receive transceiver should be enabled by default"
+        );
+
+        nttManagerChain1.enableSendTransceiverForChain(address(wormholeTransceiverChain1), chainId2);
+        nttManagerChain1.enableRecvTransceiverForChain(
+            address(secondWormholeTransceiverChain1), chainId3
+        );
+
+        // Once we enable a transceiver for a chain, that is the only one enabled for that chain.
+        require(
+            nttManagerChain1.isSendTransceiverEnabledForChain(
+                address(wormholeTransceiverChain1), chainId2
+            ),
+            "First transceiver should be enabled for sending on chain 2"
+        );
+        require(
+            !nttManagerChain1.isSendTransceiverEnabledForChain(
+                address(secondWormholeTransceiverChain1), chainId2
+            ),
+            "Second transceiver should not be enabled for sending on chain 2"
+        );
+        require(
+            nttManagerChain1.getEnabledRecvTransceiversForChain(chainId3) == 0x2,
+            "Only second transceiver should be enabled for receiving on chain 3"
+        );
+
+        // And for chains we didn't touch, the defaults should still be in place.
+        require(
+            nttManagerChain1.isSendTransceiverEnabledForChain(address(nttManagerChain3), chainId3),
+            "Send transceiver should be enabled by default for untouched chain"
+        );
+        require(
+            nttManagerChain1.getEnabledRecvTransceiversForChain(chainId2) == type(uint64).max,
+            "Receive transceiver should be enabled by default for untouched chain"
+        );
+    }
+
+    function test_someReverts() public {
+        // Can't enable transceiver with address zero.
+        vm.expectRevert(
+            abi.encodeWithSelector(TransceiverRegistry.InvalidTransceiverZeroAddress.selector)
+        );
+        nttManagerChain1.enableSendTransceiverForChain(address(0), chainId2);
+
+        // Can't enable transceiver for an unknown address.
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                TransceiverRegistry.NonRegisteredTransceiver.selector, address(this)
+            )
+        );
+        nttManagerChain1.enableSendTransceiverForChain(address(this), chainId2);
+
+        // Can set the per-chain threshold to zero.
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.ZeroThreshold.selector));
+        nttManagerChain1.setPerChainThreshold(chainId2, 0);
+    }
+
+    // This test does a transfer between chain one and chain two.
+    // Since chain two uses the default threshold, posting a VAA from only one transceiver completes the transfer.
+    function test_defaultThreshold() public {
         vm.chainId(chainId1);
 
         // Setting up the transfer
@@ -374,9 +459,9 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
             encodedVMs[i] = guardian.fetchSignedMessageFromLogs(entries[i], chainId2);
         }
 
+        // Chain1 verification and checks with the receiving of the message
         vm.chainId(chainId1);
 
-        // Receive the first message. Since the threshold is set to one, the transfer should complete.
         {
             uint256 supplyBefore = token1.totalSupply();
             wormholeTransceiverChain1.receiveMessage(encodedVMs[0]);
@@ -388,40 +473,12 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
             require(token1.balanceOf(userD) == sendingAmount, "User received funds");
         }
 
-        // Receive the second message. That should do nothing since we've already processed the transfer.
-        {
-            uint256 supplyBefore = token1.totalSupply();
-            secondWormholeTransceiverChain1.receiveMessage(encodedVMs[1]);
-            uint256 supplyAfter = token1.totalSupply();
-
-            require(supplyBefore == supplyAfter, "Supplies don't match between operations");
-            require(token1.balanceOf(userB) == 0, "OG user receive tokens");
-            require(token1.balanceOf(userC) == 0, "Sending user didn't receive tokens");
-            require(token1.balanceOf(userD) == sendingAmount, "User received funds");
-        }
+        //////////////////////// receive message 1.
     }
 
-    // This test does a transfer between chain one and chain three where there are two transceivers and the per-chain threshold is two.
-    // The transfer is not completed until both VAAs are posted.
+    // This test does a transfer between chain one and chain three.
+    // Since the threshold for these two chains is two, the transfer is not completed until both VAAs are posted.
     function test_perChainThreshold() public {
-        nttManagerChain1.setTransceiver(address(wormholeTransceiverChain1));
-        nttManagerChain1.setTransceiver(address(secondWormholeTransceiverChain1));
-        nttManagerChain2.setTransceiver(address(wormholeTransceiverChain2));
-        nttManagerChain2.setTransceiver(address(secondWormholeTransceiverChain2));
-        nttManagerChain3.setTransceiver(address(wormholeTransceiverChain3));
-        nttManagerChain3.setTransceiver(address(secondWormholeTransceiverChain3));
-
-        nttManagerChain1.setThreshold(1);
-        nttManagerChain2.setThreshold(1);
-        nttManagerChain3.setThreshold(1);
-
-        // On chain 1, set the threshold to chain 3 to be different.
-        nttManagerChain1.setThresholdPerChain(chainId3, 2);
-        nttManagerChain3.setThresholdPerChain(chainId1, 2);
-
-        require(nttManagerChain1.getThreshold() == 1, "Default threshold is wrong");
-        require(nttManagerChain1.getThreshold(chainId3) == 2, "Threshold for chain 3 is wrong");
-
         vm.chainId(chainId1);
 
         // Setting up the transfer
@@ -547,159 +604,9 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
         require(token1.balanceOf(userD) == sendingAmount, "User received funds");
     }
 
-    // This test does a transfer between chain one and chain three where there there is only one transceiver and the per-chain threshold is one.
-    // The transfer is not completed until both VAAs are posted.
-    function test_perChainTransceiver() public {
-        // By default, there are two transceivers and a threshold of two.
-        nttManagerChain1.setTransceiver(address(wormholeTransceiverChain1));
-        nttManagerChain1.setTransceiver(address(secondWormholeTransceiverChain1));
-        nttManagerChain2.setTransceiver(address(wormholeTransceiverChain2));
-        nttManagerChain2.setTransceiver(address(secondWormholeTransceiverChain2));
-        nttManagerChain3.setTransceiver(address(wormholeTransceiverChain3));
-        nttManagerChain3.setTransceiver(address(secondWormholeTransceiverChain3));
-        
-        nttManagerChain1.setThreshold(2);
-        nttManagerChain2.setThreshold(2);
-        nttManagerChain3.setThreshold(2);
-
-        // Between chains one and three, there is only a single transceiver with a threshold of one.
-        nttManagerChain1.enableTransceiverForChain(address(wormholeTransceiverChain1), chainId3);
-        nttManagerChain3.enableTransceiverForChain(address(wormholeTransceiverChain3), chainId1);
-        nttManagerChain1.setThresholdPerChain(chainId3, 1);
-        nttManagerChain3.setThresholdPerChain(chainId1, 1);
-
-        require(nttManagerChain1.getThreshold() == 2, "Default threshold is wrong on chain 1");
-        require(nttManagerChain1.getThreshold(chainId3) == 1, "Threshold for chain 3 is wrong on chain 1");
-        require(nttManagerChain1.getThreshold() == 2, "Default threshold is wrong on chain 3");
-        require(nttManagerChain3.getThreshold(chainId1) == 1, "Threshold for chain 1 is wrong on chain 3");
-
-        vm.chainId(chainId1);
-
-        // Setting up the transfer
-        DummyToken token1 = DummyToken(nttManagerChain1.token());
-        DummyToken token3 = DummyTokenMintAndBurn(nttManagerChain3.token());
-
-        uint8 decimals = token1.decimals();
-        uint256 sendingAmount = 5 * 10 ** decimals;
-        token1.mintDummy(address(userA), 5 * 10 ** decimals);
-        vm.startPrank(userA);
-        token1.approve(address(nttManagerChain1), sendingAmount);
-
-        vm.recordLogs();
-
-        // Send token from chain 1 to chain 3, userB.
-        {
-            uint256 nttManagerBalanceBefore = token1.balanceOf(address(nttManagerChain1));
-            uint256 userBalanceBefore = token1.balanceOf(address(userA));
-            nttManagerChain1.transfer(sendingAmount, chainId3, bytes32(uint256(uint160(userB))));
-
-            // Balance check on funds going in and out working as expected
-            uint256 nttManagerBalanceAfter = token1.balanceOf(address(nttManagerChain1));
-            uint256 userBalanceAfter = token1.balanceOf(address(userB));
-            require(
-                nttManagerBalanceBefore + sendingAmount == nttManagerBalanceAfter,
-                "Should be locking the tokens"
-            );
-            require(
-                userBalanceBefore - sendingAmount == userBalanceAfter,
-                "User should have sent tokens"
-            );
-        }
-
-        vm.stopPrank();
-
-        // Get and sign the log to go down the other pipes. There should be two messages since we have two transceivers.
-        Vm.Log[] memory entries = guardian.fetchWormholeMessageFromLog(vm.getRecordedLogs());
-        require(2 == entries.length, "Unexpected number of log entries 3");
-        bytes[] memory encodedVMs = new bytes[](entries.length);
-        for (uint256 i = 0; i < encodedVMs.length; i++) {
-            encodedVMs[i] = guardian.fetchSignedMessageFromLogs(entries[i], chainId1);
-        }
-
-        // Chain3 verification and checks
-        vm.chainId(chainId3);
-
-        uint256 supplyBefore = token3.totalSupply();
-/*
-        // Submit the first message on chain 3. The numbers shouldn't change yet since the threshold is two.
-        wormholeTransceiverChain3.receiveMessage(encodedVMs[0]);
-        uint256 supplyAfter = token3.totalSupply();
-
-        require(supplyBefore == supplyAfter, "Supplies changed early");
-        require(token3.balanceOf(userB) == 0, "User receive tokens early");
-        require(token3.balanceOf(address(nttManagerChain3)) == 0, "NttManager has unintended funds");
-
-        // Submit the second message and the transfer should complete.
-        secondWormholeTransceiverChain3.receiveMessage(encodedVMs[1]);
-        supplyAfter = token3.totalSupply();
-
-        require(sendingAmount + supplyBefore == supplyAfter, "Supplies dont match");
-        require(token3.balanceOf(userB) == sendingAmount, "User didn't receive tokens");
-        require(token3.balanceOf(address(nttManagerChain3)) == 0, "NttManager has unintended funds");
-
-        // Go back the other way from a THIRD user
-        vm.prank(userB);
-        token3.transfer(userC, sendingAmount);
-
-        vm.startPrank(userC);
-        token3.approve(address(nttManagerChain3), sendingAmount);
-        vm.recordLogs();
-
-        // Supply checks on the transfer
-        supplyBefore = token3.totalSupply();
-        nttManagerChain3.transfer(
-            sendingAmount,
-            chainId1,
-            toWormholeFormat(userD),
-            toWormholeFormat(userC),
-            false,
-            encodeTransceiverInstruction(true)
-        );
-
-        supplyAfter = token3.totalSupply();
-
-        require(sendingAmount - supplyBefore == supplyAfter, "Supplies don't match");
-        require(token3.balanceOf(userB) == 0, "OG user receive tokens");
-        require(token3.balanceOf(userC) == 0, "Sending user didn't receive tokens");
-        require(
-            token3.balanceOf(address(nttManagerChain3)) == 0,
-            "NttManager didn't receive unintended funds"
-        );
-
-        // Get and sign the log to go down the other pipe. Thank you to whoever wrote this code in the past!
-        entries = guardian.fetchWormholeMessageFromLog(vm.getRecordedLogs());
-        require(2 == entries.length, "Unexpected number of log entries for response");
-        encodedVMs = new bytes[](entries.length);
-        for (uint256 i = 0; i < encodedVMs.length; i++) {
-            encodedVMs[i] = guardian.fetchSignedMessageFromLogs(entries[i], chainId3);
-        }
-
-        // Chain1 verification and checks with the receiving of the message
-        vm.chainId(chainId1);
-
-        // Submit the first message back on chain one. Nothing should happen because our threshold is two.
-        supplyBefore = token1.totalSupply();
-        wormholeTransceiverChain1.receiveMessage(encodedVMs[0]);
-        supplyAfter = token1.totalSupply();
-
-        require(supplyBefore == supplyAfter, "Supplies don't match between operations");
-        require(token1.balanceOf(userB) == 0, "OG user receive tokens");
-        require(token1.balanceOf(userC) == 0, "Sending user didn't receive tokens");
-        require(token1.balanceOf(userD) == 0, "User received funds before they should");
-
-        // Submit the second message back on chain one. This should update the balance.
-        supplyBefore = token1.totalSupply();
-        secondWormholeTransceiverChain1.receiveMessage(encodedVMs[1]);
-        supplyAfter = token1.totalSupply();
-
-        require(supplyBefore == supplyAfter, "Supplies don't match between operations"); /////////////////// Is this right??
-        require(token1.balanceOf(userB) == 0, "OG user receive tokens");
-        require(token1.balanceOf(userC) == 0, "Sending user didn't receive tokens");
-        require(token1.balanceOf(userD) == sendingAmount, "User received funds");
-        */
-    }
-
-    function encodeTransceiverInstruction(bool relayer_off) public view returns (bytes memory) {
+    function encodeTransceiverInstruction(
+        bool relayer_off
+    ) public view returns (bytes memory) {
         WormholeTransceiver.WormholeTransceiverInstruction memory instruction =
             IWormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
         bytes memory encodedInstructionWormhole =
@@ -713,7 +620,9 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
     }
 
     // Encode an instruction for each of the relayers
-    function encodeTransceiverInstructions(bool relayer_off) public view returns (bytes memory) {
+    function encodeTransceiverInstructions(
+        bool relayer_off
+    ) public view returns (bytes memory) {
         WormholeTransceiver.WormholeTransceiverInstruction memory instruction =
             IWormholeTransceiver.WormholeTransceiverInstruction(relayer_off);
 

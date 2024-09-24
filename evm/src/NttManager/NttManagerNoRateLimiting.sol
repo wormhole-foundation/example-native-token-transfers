@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.8.8 <0.9.0;
 
-import "./NttManager.sol";
+import "./NttManagerWithPerChainTransceivers.sol";
 
 /// @title NttManagerNoRateLimiting
 /// @author Wormhole Project Contributors.
@@ -10,12 +10,12 @@ import "./NttManager.sol";
 ///         free up code space.
 ///
 /// @dev    All of the developer notes from `NttManager` apply here.
-contract NttManagerNoRateLimiting is NttManager {
+contract NttManagerNoRateLimiting is NttManagerWithPerChainTransceivers {
     constructor(
         address _token,
         Mode _mode,
         uint16 _chainId
-    ) NttManager(_token, _mode, _chainId, 0, true) {}
+    ) NttManagerWithPerChainTransceivers(_token, _mode, _chainId, 0, true) {}
 
     // ==================== Override RateLimiter functions =========================
 
