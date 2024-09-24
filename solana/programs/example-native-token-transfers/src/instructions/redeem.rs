@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
-use ntt_messages::{ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage};
+use ntt_messages::ntt_manager::NttManagerMessage;
 
 use crate::{
     bitmap::Bitmap,
@@ -14,6 +14,7 @@ use crate::{
         rate_limit::RateLimitResult,
     },
     registered_transceiver::*,
+    transfer::NativeTokenTransferConcrete,
 };
 
 #[derive(Accounts)]
@@ -43,7 +44,8 @@ pub struct Redeem<'info> {
         // executing the messages themselves with the [`released`] flag.
         owner = transceiver.transceiver_address,
     )]
-    pub transceiver_message: Account<'info, ValidatedTransceiverMessage<NativeTokenTransfer>>,
+    pub transceiver_message:
+        Account<'info, ValidatedTransceiverMessage<NativeTokenTransferConcrete>>,
 
     #[account(
         constraint = config.enabled_transceivers.get(transceiver.id)? @ NTTError::DisabledTransceiver
@@ -103,7 +105,7 @@ pub struct RedeemArgs {}
 pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let accs = ctx.accounts;
 
-    let message: NttManagerMessage<NativeTokenTransfer> =
+    let message: NttManagerMessage<NativeTokenTransferConcrete> =
         accs.transceiver_message.message.ntt_manager_payload.clone();
 
     // Calculate the scaled amount based on the appropriate decimal encoding for the token.

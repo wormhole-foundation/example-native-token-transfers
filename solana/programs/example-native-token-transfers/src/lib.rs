@@ -21,6 +21,7 @@ pub mod peer;
 pub mod queue;
 pub mod registered_transceiver;
 pub mod transceivers;
+pub mod transfer;
 
 use transceivers::wormhole::instructions::*;
 

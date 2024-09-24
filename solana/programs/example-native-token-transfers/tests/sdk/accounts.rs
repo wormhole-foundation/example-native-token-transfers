@@ -7,9 +7,10 @@ use example_native_token_transfers::{
         outbox::OutboxRateLimit,
     },
     registered_transceiver::RegisteredTransceiver,
+    transfer::NativeTokenTransferConcrete,
     SESSION_AUTHORITY_SEED, TOKEN_AUTHORITY_SEED,
 };
-use ntt_messages::{ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage};
+use ntt_messages::ntt_manager::NttManagerMessage;
 use sha3::{Digest, Keccak256};
 use wormhole_anchor_sdk::wormhole;
 use wormhole_io::TypePrefixedPayload;
@@ -119,7 +120,7 @@ impl NTT {
     pub fn inbox_item(
         &self,
         chain: u16,
-        ntt_manager_message: NttManagerMessage<NativeTokenTransfer>,
+        ntt_manager_message: NttManagerMessage<NativeTokenTransferConcrete>,
     ) -> Pubkey {
         let mut hasher = Keccak256::new();
         hasher.update(chain.to_be_bytes());

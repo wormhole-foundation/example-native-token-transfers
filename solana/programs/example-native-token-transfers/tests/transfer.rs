@@ -10,9 +10,10 @@ use example_native_token_transfers::{
     instructions::TransferArgs,
     queue::outbox::{OutboxItem, OutboxRateLimit},
     transceivers::wormhole::ReleaseOutboundArgs,
+    transfer::NativeTokenTransferConcrete,
 };
 use ntt_messages::{
-    chain_id::ChainId, mode::Mode, ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage,
+    chain_id::ChainId, mode::Mode, ntt::EmptyPayload, ntt_manager::NttManagerMessage,
     transceiver::TransceiverMessage, transceivers::wormhole::WormholeTransceiver,
     trimmed_amount::TrimmedAmount,
 };
@@ -194,7 +195,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
     // They are identical modulo the discriminator, which we just skip by using
     // the unchecked deserialiser.
     // TODO: update the sdk to export PostedMessage
-    let msg: PostedVaa<TransceiverMessage<WormholeTransceiver, NativeTokenTransfer>> =
+    let msg: PostedVaa<TransceiverMessage<WormholeTransceiver, NativeTokenTransferConcrete>> =
         ctx.get_account_data_anchor_unchecked(wh_message).await;
 
     let transceiver_message = msg.data();
@@ -207,7 +208,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
             NttManagerMessage {
                 id: outbox_item.pubkey().to_bytes(),
                 sender: test_data.user.pubkey().to_bytes(),
-                payload: NativeTokenTransfer {
+                payload: NativeTokenTransferConcrete {
                     amount: TrimmedAmount {
                         amount: 1,
                         decimals: 7
@@ -215,6 +216,7 @@ async fn test_transfer(ctx: &mut ProgramTestContext, test_data: &TestData, mode:
                     source_token: test_data.mint.to_bytes(),
                     to: [1u8; 32],
                     to_chain: ChainId { id: 2 },
+                    additional_payload: EmptyPayload {}
                 }
             },
             vec![]
