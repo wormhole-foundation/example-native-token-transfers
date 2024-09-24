@@ -24,9 +24,16 @@ import {
 import { SolanaWormholeCore } from "@wormhole-foundation/sdk-solana-core";
 import * as fs from "fs";
 
-import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import {
+  PublicKey,
+  sendAndConfirmTransaction,
+  SystemProgram,
+  Transaction,
+} from "@solana/web3.js";
 import { DummyTransferHook } from "../ts/idl/1_0_0/ts/dummy_transfer_hook.js";
+import { NttTransceiver } from "../ts/idl/2_0_0/ts/ntt_transceiver.js";
 import { SolanaNtt } from "../ts/sdk/index.js";
+import { derivePda } from "../ts/lib/utils.js";
 
 const solanaRootDir = `${__dirname}/../`;
 
@@ -50,6 +57,9 @@ async function signSendWait(
 const w = new Wormhole("Devnet", [SolanaPlatform], {
   chains: { Solana: { contracts: { coreBridge: CORE_BRIDGE_ADDRESS } } },
 });
+
+const nttTransceiver = anchor.workspace
+  .NttTransceiver as anchor.Program<NttTransceiver>;
 
 const remoteXcvr: ChainAddress = {
   chain: "Ethereum",
@@ -154,13 +164,14 @@ describe("example-native-token-transfers", () => {
         )
       );
 
-      const { blockhash } = await connection.getRecentBlockhash();
+      const { blockhash } = await connection.getLatestBlockhash();
 
       transaction.feePayer = payer.publicKey;
       transaction.recentBlockhash = blockhash;
 
-      const txid = await connection.sendTransaction(transaction, [payer, mint]);
-      await connection.confirmTransaction(txid, "confirmed");
+      await sendAndConfirmTransaction(connection, transaction, [payer, mint], {
+        commitment: "confirmed",
+      });
 
       tokenAccount = await spl.createAssociatedTokenAccount(
         connection,
@@ -191,7 +202,7 @@ describe("example-native-token-transfers", () => {
         ntt: {
           token: tokenAddress,
           manager: NTT_ADDRESS,
-          transceiver: { wormhole: NTT_ADDRESS },
+          transceiver: { wormhole: nttTransceiver.programId.toBase58() },
         },
       });
     } catch (e) {
@@ -200,7 +211,7 @@ describe("example-native-token-transfers", () => {
     }
   });
 
-  describe("Locking", () => {
+  describe("Burning", () => {
     beforeAll(async () => {
       try {
         await spl.setAuthority(
@@ -227,14 +238,15 @@ describe("example-native-token-transfers", () => {
         const registerTxs = ntt.registerTransceiver({
           payer: new SolanaAddress(payer.publicKey),
           owner: new SolanaAddress(payer.publicKey),
-          transceiver: ntt.program.programId,
+          transceiver: nttTransceiver,
         });
         await signSendWait(ctx, registerTxs, signer);
 
         // Set Wormhole xcvr peer
-        const setXcvrPeerTxs = ntt.setWormholeTransceiverPeer(
+        const setXcvrPeerTxs = ntt.setWormholeTransceiverPeer2(
           remoteXcvr,
-          sender
+          sender,
+          nttTransceiver
         );
         await signSendWait(ctx, setXcvrPeerTxs, signer);
 
@@ -283,17 +295,19 @@ describe("example-native-token-transfers", () => {
       // TODO: keep or remove the `outboxItem` param?
       // added as a way to keep tests the same but it technically breaks the Ntt interface
       const outboxItem = anchor.web3.Keypair.generate();
-      const xferTxs = ntt.transfer(
+      const xferTxs = ntt.transfer2(
         sender,
         amount,
         receiver,
         { queue: false, automatic: false, gasDropoff: 0n },
+        nttTransceiver,
         outboxItem
       );
       await signSendWait(ctx, xferTxs, signer);
 
-      const wormholeMessage = ntt.pdas.wormholeMessageAccount(
-        outboxItem.publicKey
+      const wormholeMessage = derivePda(
+        ["message", outboxItem.publicKey.toBytes()],
+        nttTransceiver.programId
       );
 
       const unsignedVaa = await coreBridge.parsePostMessageAccount(
@@ -353,8 +367,7 @@ describe("example-native-token-transfers", () => {
       const published = emitter.publishMessage(0, serialized, 200);
       const rawVaa = guardians.addSignatures(published, [0]);
       const vaa = deserialize("Ntt:WormholeTransfer", serialize(rawVaa));
-
-      const redeemTxs = ntt.redeem([vaa], sender);
+      const redeemTxs = ntt.redeem2([vaa], sender, nttTransceiver);
       try {
         await signSendWait(ctx, redeemTxs, signer);
       } catch (e) {
