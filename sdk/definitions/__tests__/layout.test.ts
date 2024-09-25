@@ -16,7 +16,11 @@ import {
 const payloads = {
   transceiver: {
     info: ["transceiver_info_1.txt"],
-    message: ["transceiver_message_1.txt"],
+    message: [
+      "transceiver_message_1.txt",
+      "transceiver_message_with_empty_payload.txt",
+      "transceiver_message_with_32byte_payload.txt",
+    ],
     registration: ["transceiver_registration_1.txt"],
   },
 };
@@ -46,16 +50,24 @@ describe("Ntt Layout Tests", function () {
       expect(deserialized.nttManagerPayload.payload.recipientChain).toEqual(
         "Neon"
       );
+      expect(
+        deserialized.nttManagerPayload.payload.additionalPayload
+      ).toHaveLength(
+        filename === "transceiver_message_with_32byte_payload.txt" ? 32 : 0
+      );
       expect(deserialized.transceiverPayload).toHaveLength(0);
 
-      expect(
-        serializeLayout(
-          wormholeTransceiverMessageLayout(
-            nttManagerMessageLayout(nativeTokenTransferLayout)
-          ),
-          deserialized
-        )
-      ).toEqual(data);
+      if (filename !== "transceiver_message_with_empty_payload.txt") {
+        // empty payloads don't get their length serialized
+        expect(
+          serializeLayout(
+            wormholeTransceiverMessageLayout(
+              nttManagerMessageLayout(nativeTokenTransferLayout)
+            ),
+            deserialized
+          )
+        ).toEqual(data);
+      }
     }
   );
 
