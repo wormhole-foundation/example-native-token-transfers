@@ -226,9 +226,11 @@ cp WormholeNttConfig.json.sample WormholeNttConfig.json
 
 Configure each network to your liking (including adding/removing networks). We will eventually add the addresses of the deployed contracts to this file. Navigate back to the `evm` directory.
 
-___
+---
+
 ⚠️ **WARNING:** Ensure that if the `NttManager` on the source chain is configured to be in `LOCKING` mode, the corresponding `NttManager`s on the target chains are configured to be in `BURNING` mode. If not, transfers will NOT go through and user funds may be lost! Proceed with caution!
-___
+
+---
 
 Currently the per-chain `inBoundLimit` is set to zero by default. This means all inbound transfers will be queued by the rate limiter. Set this value accordingly.
 
@@ -267,3 +269,9 @@ bash sh/configure_wormhole_ntt.sh -n NETWORK_TYPE -c CHAIN_NAME -k PRIVATE_KEY
 Tokens powered by NTT in **burn** mode require the `burn` method to be present. This method is not present in the standard ERC20 interface, but is found in the `ERC20Burnable` interface.
 
 The `mint` and `setMinter` methods found in the [`INttToken` Interface](src/interfaces/INttToken.sol) are not found in the standard `ERC20` interface.
+
+#### No-Rate-Limiting
+
+Although the rate limiting feature can be disabled during contract instantiation, it still occupies code space in the `NttManager` contract. If you wish to free up code space for custom development, you can instead instantiate the
+`NttManagerNoRateLimiting` contract. This contract is built without the bulk of the rate limiting code. Note that the current immutable checks do not allow modifying the rate-limiting parameters during migration. This means migrating
+from an instance of `NttManager` with rate-limiting enabled to `NttManagerNoRateLimiting` or vice versa is not officially supported.
