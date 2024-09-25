@@ -58,31 +58,57 @@
       "gasCost": 500000,
       "wormholeTransceiverIndex": 0,
       "isSupported": true
+    },
+    {
+      "name": "Geodt",
+      "programId": "ntTrjS9nYGsRCijV3v6Ks4QgMcEWp1SkoVnoTj4zxPJ",
+      "tokenAddress": "7JA5eZdCzztSfQbJvS8aVVxMFfd81Rs9VvwnocV1mKHu",
+      "gasCost": 500000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
     }
   ],
   "peerQuotes": {
     "Ethereum": {
       "maxGasDropoffEth": "0",
       "basePriceUsd": "0.5",
-      "nativePriceUsd": "3832.16",
+      "nativePriceUsd": "2576.69",
       "gasPriceGwei": "25"
     },
     "Arbitrum": {
       "maxGasDropoffEth": "0",
       "basePriceUsd": "0",
-      "nativePriceUsd": "3832.16",
+      "nativePriceUsd": "2576.69",
       "gasPriceGwei": "0"
     },
     "Optimism": {
       "maxGasDropoffEth": "0",
       "basePriceUsd": "0",
-      "nativePriceUsd": "3832.16",
+      "nativePriceUsd": "2579.07",
       "gasPriceGwei": "0"
     },
     "Base": {
       "maxGasDropoffEth": "0",
       "basePriceUsd": "0",
-      "nativePriceUsd": "3832.16",
+      "nativePriceUsd": "2579.07",
+      "gasPriceGwei": "0"
+    },
+    "Avalanche": {
+      "maxGasDropoffEth": "0",
+      "basePriceUsd": "0",
+      "nativePriceUsd": "27.54",
+      "gasPriceGwei": "0"
+    },
+    "Bsc": {
+      "maxGasDropoffEth": "0",
+      "basePriceUsd": "0",
+      "nativePriceUsd": "588.20",
+      "gasPriceGwei": "0"
+    },
+    "Polygon": {
+      "maxGasDropoffEth": "0",
+      "basePriceUsd": "0",
+      "nativePriceUsd": "0.41",
       "gasPriceGwei": "0"
     }
   }
