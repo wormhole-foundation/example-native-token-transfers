@@ -97,6 +97,16 @@ Program log: Instruction: ReleaseInboundMint
 Program log: Instruction: ReleaseInboundUnlock
 ```
 
+## Message Customization
+
+See the [NttManager](../docs/NttManager.md) doc for wire format details.
+
+### NativeTokenTransfer Additional Payload
+
+Modify [transfer.rs](./programs/example-native-token-transfers/src/transfer.rs) and replace the `EmptyPayload` with your own custom struct. See [ntt.rs](./modules/ntt-messages/src/ntt.rs) for an example. It is highly encouraged to use a 4-byte prefix for your payload.
+
+The additional payload field should then have your custom struct available everywhere `NativeTokenTransferConcrete` is used. Due to typing, parsing, and account allocation restrictions, this implementation expects that _all_ `NativeTokenTransfer` payloads for your contract adhere to your custom struct definition.
+
 ## Testing
 
 The test files are loacated in the `sdk/solana/__tests__/` directory

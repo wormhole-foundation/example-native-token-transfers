@@ -17,6 +17,8 @@ uint16   payload_len // length of the payload
 
 ### Payloads
 
+> Note: Integrators who need to send different types of payloads should also use a unique 4-byte prefix to distinguish them from `NativeTokenTransfer` and one another.
+
 #### NativeTokenTransfer
 
 ```go
