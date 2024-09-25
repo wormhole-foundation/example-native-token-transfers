@@ -51,7 +51,7 @@ interface IManagerBase {
 
     /// @notice Emmitted when the per-chain threshold required transceivers is changed.
     /// @dev Topic0
-    ///      0x2a855b929b9a53c6fb5b5ed248b27e502b709c088e036a5aa17620c8fc5085a9.
+    ///      0x899b344e9e176bdedb9f57f13e014ff93a874404737f35d71dd95a2e858814d8.
     /// @param chainId The chain to which the threshold applies.
     /// @param oldThreshold The old threshold.
     /// @param threshold The new threshold.
@@ -65,12 +65,19 @@ interface IManagerBase {
     /// @param threshold The current threshold of transceivers.
     event TransceiverAdded(address transceiver, uint256 transceiversNum, uint8 threshold);
 
-    /// @notice Emitted when a transceiver is enabled for a chain.
+    /// @notice Emitted when a transceiver is enabled for sending on a chain.
+    /// @dev Topic0
+    ///      0x8b14d833f2eae4d6fc1d6037cc37fc69ed72e184b586ab5cda3dda94cc4cc37d.
+    /// @param transceiver The address of the transceiver.
+    /// @param chainId The chain to which the threshold applies.
+    event SendTransceiverEnabledForChain(address transceiver, uint16 chainId);
+
+    /// @notice Emitted when a transceiver is enabled for receiving on a chain.
     /// @dev Topic0
     ///      0xf05962b5774c658e85ed80c91a75af9d66d2af2253dda480f90bce78aff5eda5.
     /// @param transceiver The address of the transceiver.
     /// @param chainId The chain to which the threshold applies.
-    event TransceiverEnabledForChain(address transceiver, uint16 chainId);
+    event RecvTransceiverEnabledForChain(address transceiver, uint16 chainId);
 
     /// @notice Emitted when an transceiver is removed from the nttManager.
     /// @dev Topic0
@@ -128,6 +135,8 @@ interface IManagerBase {
     error PeerNotRegistered(uint16 chainId);
 
     /// @notice Feature is not implemented.
+    /// @dev Topic0
+    ///      0xd6234725c2592490a5b2926ed2315070d2f568d079cb53600cc4c507f13f8289.
     error NotImplemented();
 
     /// @notice Fetch the delivery price for a given recipient chain transfer.

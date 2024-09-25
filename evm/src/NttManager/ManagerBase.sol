@@ -301,9 +301,8 @@ abstract contract ManagerBase is
     /// @inheritdoc IManagerBase
     function isMessageApproved(
         bytes32 digest
-    ) public view returns (bool) {
-        uint16 sourceChainId = _getMessageAttestationsStorage()[digest].sourceChainId;
-        uint8 threshold = getPerChainThreshold(sourceChainId);
+    ) public view virtual returns (bool) {
+        uint8 threshold = getThreshold();
         return messageAttestations(digest) >= threshold && threshold > 0;
     }
 
@@ -469,12 +468,10 @@ abstract contract ManagerBase is
     /// @dev Returns the bitmap of attestations from enabled transceivers for a given message.
     function _getMessageAttestations(
         bytes32 digest
-    ) internal view returns (uint64) {
+    ) internal view virtual returns (uint64) {
         uint64 enabledTransceiverBitmap = _getEnabledTransceiversBitmap();
-        uint16 sourceChainId = _getMessageAttestationsStorage()[digest].sourceChainId;
-        uint64 enabledTransceiversForChain = _getEnabledRecvTransceiversForChain(sourceChainId);
-        return _getMessageAttestationsStorage()[digest].attestedTransceivers
-            & enabledTransceiverBitmap & enabledTransceiversForChain;
+        return
+            _getMessageAttestationsStorage()[digest].attestedTransceivers & enabledTransceiverBitmap;
     }
 
     function _getEnabledTransceiverAttestedToMessage(
@@ -510,12 +507,6 @@ abstract contract ManagerBase is
         uint16 // chainId
     ) internal view virtual returns (bool) {
         return true;
-    }
-
-    function _getEnabledRecvTransceiversForChain(
-        uint16 // forChainId
-    ) internal view virtual returns (uint64 bitmap) {
-        return type(uint64).max;
     }
 
     /// ============== Invariants =============================================

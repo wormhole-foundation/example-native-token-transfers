@@ -313,3 +313,11 @@ The `mint` and `setMinter` methods found in the [`INttToken` Interface](src/inte
 Although the rate limiting feature can be disabled during contract instantiation, it still occupies code space in the `NttManager` contract. If you wish to free up code space for custom development, you can instead instantiate the
 `NttManagerNoRateLimiting` contract. This contract is built without the bulk of the rate limiting code. Note that the current immutable checks do not allow modifying the rate-limiting parameters during migration. This means migrating
 from an instance of `NttManager` with rate-limiting enabled to `NttManagerNoRateLimiting` or vice versa is not officially supported.
+
+#### Per-Chain-Transceivers
+
+The `NttManagerNoRateLimiting` contract inherits from the `NttManagerWithPerChainTransceivers` abstract contract, which allows configuring different transceivers and thresholds for each chain.
+You can configure a different set of send and receive transceivers for each chain, and if you don't specifically enable any transceivers for a chain, then all transceivers will be used for it.
+
+As an example, you could set up the NTT manager so that for chain1 it sends on transceiverA and transceiverB, but it only expects a response from transceiverA. Additionally, you could enable
+two transceivers for receiving but set the threshold to one, meaning only one response (from either transceiver) is required.

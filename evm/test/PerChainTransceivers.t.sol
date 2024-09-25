@@ -408,17 +408,13 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
         // Chain2 verification and checks
         vm.chainId(chainId2);
 
-        {
-            uint256 supplyBefore = token2.totalSupply();
-            wormholeTransceiverChain2.receiveMessage(encodedVMs[0]);
-            uint256 supplyAfter = token2.totalSupply();
+        uint256 supplyBefore = token2.totalSupply();
+        wormholeTransceiverChain2.receiveMessage(encodedVMs[0]);
+        uint256 supplyAfter = token2.totalSupply();
 
-            require(sendingAmount + supplyBefore == supplyAfter, "Supplies dont match");
-            require(token2.balanceOf(userB) == sendingAmount, "User didn't receive tokens");
-            require(
-                token2.balanceOf(address(nttManagerChain2)) == 0, "NttManager has unintended funds"
-            );
-        }
+        require(sendingAmount + supplyBefore == supplyAfter, "Supplies dont match");
+        require(token2.balanceOf(userB) == sendingAmount, "User didn't receive tokens");
+        require(token2.balanceOf(address(nttManagerChain2)) == 0, "NttManager has unintended funds");
 
         // Go back the other way from a THIRD user
         vm.prank(userB);
@@ -429,27 +425,25 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
         vm.recordLogs();
 
         // Supply checks on the transfer
-        {
-            uint256 supplyBefore = token2.totalSupply();
-            nttManagerChain2.transfer(
-                sendingAmount,
-                chainId1,
-                toWormholeFormat(userD),
-                toWormholeFormat(userC),
-                false,
-                encodeTransceiverInstruction(true)
-            );
+        supplyBefore = token2.totalSupply();
+        nttManagerChain2.transfer(
+            sendingAmount,
+            chainId1,
+            toWormholeFormat(userD),
+            toWormholeFormat(userC),
+            false,
+            encodeTransceiverInstruction(true)
+        );
 
-            uint256 supplyAfter = token2.totalSupply();
+        supplyAfter = token2.totalSupply();
 
-            require(sendingAmount - supplyBefore == supplyAfter, "Supplies don't match");
-            require(token2.balanceOf(userB) == 0, "OG user receive tokens");
-            require(token2.balanceOf(userC) == 0, "Sending user didn't receive tokens");
-            require(
-                token2.balanceOf(address(nttManagerChain2)) == 0,
-                "NttManager didn't receive unintended funds"
-            );
-        }
+        require(sendingAmount - supplyBefore == supplyAfter, "Supplies don't match");
+        require(token2.balanceOf(userB) == 0, "OG user receive tokens");
+        require(token2.balanceOf(userC) == 0, "Sending user didn't receive tokens");
+        require(
+            token2.balanceOf(address(nttManagerChain2)) == 0,
+            "NttManager didn't receive unintended funds"
+        );
 
         // Get and sign the log to go down the other pipe. Thank you to whoever wrote this code in the past!
         entries = guardian.fetchWormholeMessageFromLog(vm.getRecordedLogs());
@@ -462,18 +456,27 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
         // Chain1 verification and checks with the receiving of the message
         vm.chainId(chainId1);
 
-        {
-            uint256 supplyBefore = token1.totalSupply();
-            wormholeTransceiverChain1.receiveMessage(encodedVMs[0]);
-            uint256 supplyAfter = token1.totalSupply();
+        supplyBefore = token1.totalSupply();
+        wormholeTransceiverChain1.receiveMessage(encodedVMs[0]);
+        supplyAfter = token1.totalSupply();
 
-            require(supplyBefore == supplyAfter, "Supplies don't match between operations");
-            require(token1.balanceOf(userB) == 0, "OG user receive tokens");
-            require(token1.balanceOf(userC) == 0, "Sending user didn't receive tokens");
-            require(token1.balanceOf(userD) == sendingAmount, "User received funds");
-        }
+        require(supplyBefore == supplyAfter, "Supplies don't match between operations");
+        require(token1.balanceOf(userB) == 0, "OG user receive tokens");
+        require(token1.balanceOf(userC) == 0, "Sending user didn't receive tokens");
+        require(token1.balanceOf(userD) == sendingAmount, "Transfer did not complete");
 
-        //////////////////////// receive message 1.
+        // Submitting the second message back on chain one should not change anything.
+        supplyBefore = token1.totalSupply();
+        secondWormholeTransceiverChain1.receiveMessage(encodedVMs[1]);
+        supplyAfter = token1.totalSupply();
+
+        require(supplyBefore == supplyAfter, "Supplies don't match between operations");
+        require(token1.balanceOf(userB) == 0, "OG user receive tokens");
+        require(token1.balanceOf(userC) == 0, "Sending user didn't receive tokens");
+        require(
+            token1.balanceOf(userD) == sendingAmount,
+            "Second message updated the balance when it shouldn't have"
+        );
     }
 
     // This test does a transfer between chain one and chain three.
@@ -598,10 +601,151 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
         secondWormholeTransceiverChain1.receiveMessage(encodedVMs[1]);
         supplyAfter = token1.totalSupply();
 
-        require(supplyBefore == supplyAfter, "Supplies don't match between operations"); /////////////////// Is this right??
+        require(supplyBefore == supplyAfter, "Supplies don't match between operations");
         require(token1.balanceOf(userB) == 0, "OG user receive tokens");
         require(token1.balanceOf(userC) == 0, "Sending user didn't receive tokens");
         require(token1.balanceOf(userD) == sendingAmount, "User received funds");
+    }
+
+    // This test does a transfer between chain one and chain three.
+    // It sets the threshold for chain three on chain one to one, so the transfer should complete when the first VAA is posted.
+    function test_thresholdLessThanNumReceivers() public {
+        nttManagerChain1.setPerChainThreshold(chainId3, 1);
+        require(
+            nttManagerChain1.getPerChainThreshold(chainId3) == 1,
+            "Failed to set per-chain threshold"
+        );
+
+        vm.chainId(chainId1);
+
+        // Setting up the transfer
+        DummyToken token1 = DummyToken(nttManagerChain1.token());
+        DummyToken token3 = DummyTokenMintAndBurn(nttManagerChain3.token());
+
+        uint8 decimals = token1.decimals();
+        uint256 sendingAmount = 5 * 10 ** decimals;
+        token1.mintDummy(address(userA), 5 * 10 ** decimals);
+        vm.startPrank(userA);
+        token1.approve(address(nttManagerChain1), sendingAmount);
+
+        vm.recordLogs();
+
+        // Send token from chain 1 to chain 3, userB.
+        {
+            uint256 nttManagerBalanceBefore = token1.balanceOf(address(nttManagerChain1));
+            uint256 userBalanceBefore = token1.balanceOf(address(userA));
+            nttManagerChain1.transfer(sendingAmount, chainId3, bytes32(uint256(uint160(userB))));
+
+            // Balance check on funds going in and out working as expected
+            uint256 nttManagerBalanceAfter = token1.balanceOf(address(nttManagerChain1));
+            uint256 userBalanceAfter = token1.balanceOf(address(userB));
+            require(
+                nttManagerBalanceBefore + sendingAmount == nttManagerBalanceAfter,
+                "Should be locking the tokens"
+            );
+            require(
+                userBalanceBefore - sendingAmount == userBalanceAfter,
+                "User should have sent tokens"
+            );
+        }
+
+        vm.stopPrank();
+
+        // Get and sign the log to go down the other pipes. There should be two messages since we have two transceivers.
+        Vm.Log[] memory entries = guardian.fetchWormholeMessageFromLog(vm.getRecordedLogs());
+        require(2 == entries.length, "Unexpected number of log entries 3");
+        bytes[] memory encodedVMs = new bytes[](entries.length);
+        for (uint256 i = 0; i < encodedVMs.length; i++) {
+            encodedVMs[i] = guardian.fetchSignedMessageFromLogs(entries[i], chainId1);
+        }
+
+        // Chain3 verification and checks
+        vm.chainId(chainId3);
+
+        uint256 supplyBefore = token3.totalSupply();
+
+        // Submit the first message on chain 3. The numbers shouldn't change yet since the threshold is two.
+        wormholeTransceiverChain3.receiveMessage(encodedVMs[0]);
+        uint256 supplyAfter = token3.totalSupply();
+
+        require(supplyBefore == supplyAfter, "Supplies changed early");
+        require(token3.balanceOf(userB) == 0, "User receive tokens early");
+        require(token3.balanceOf(address(nttManagerChain3)) == 0, "NttManager has unintended funds");
+
+        // Submit the second message and the transfer should complete.
+        secondWormholeTransceiverChain3.receiveMessage(encodedVMs[1]);
+        supplyAfter = token3.totalSupply();
+
+        require(sendingAmount + supplyBefore == supplyAfter, "Supplies dont match");
+        require(token3.balanceOf(userB) == sendingAmount, "User didn't receive tokens");
+        require(token3.balanceOf(address(nttManagerChain3)) == 0, "NttManager has unintended funds");
+
+        // Go back the other way from a THIRD user
+        vm.prank(userB);
+        token3.transfer(userC, sendingAmount);
+
+        vm.startPrank(userC);
+        token3.approve(address(nttManagerChain3), sendingAmount);
+        vm.recordLogs();
+
+        // Supply checks on the transfer
+        supplyBefore = token3.totalSupply();
+        nttManagerChain3.transfer(
+            sendingAmount,
+            chainId1,
+            toWormholeFormat(userD),
+            toWormholeFormat(userC),
+            false,
+            encodeTransceiverInstruction(true)
+        );
+
+        supplyAfter = token3.totalSupply();
+
+        require(sendingAmount - supplyBefore == supplyAfter, "Supplies don't match");
+        require(token3.balanceOf(userB) == 0, "OG user receive tokens");
+        require(token3.balanceOf(userC) == 0, "Sending user didn't receive tokens");
+        require(
+            token3.balanceOf(address(nttManagerChain3)) == 0,
+            "NttManager didn't receive unintended funds"
+        );
+
+        // Get and sign the log to go down the other pipe. Thank you to whoever wrote this code in the past!
+        entries = guardian.fetchWormholeMessageFromLog(vm.getRecordedLogs());
+        require(2 == entries.length, "Unexpected number of log entries for response");
+        encodedVMs = new bytes[](entries.length);
+        for (uint256 i = 0; i < encodedVMs.length; i++) {
+            encodedVMs[i] = guardian.fetchSignedMessageFromLogs(entries[i], chainId3);
+        }
+
+        // Chain1 verification and checks with the receiving of the message
+        vm.chainId(chainId1);
+
+        // Submit the first message back on chain one. Since the threshold from chain three is one, the numbers should update.
+        // Just for fun, we are having the second transceiver receive the message first. The order doesn't matter.
+        supplyBefore = token1.totalSupply();
+        secondWormholeTransceiverChain1.receiveMessage(encodedVMs[1]);
+        supplyAfter = token1.totalSupply();
+
+        require(supplyBefore == supplyAfter, "Supplies don't match between operations");
+        require(token1.balanceOf(userB) == 0, "OG user receive tokens");
+        require(token1.balanceOf(userC) == 0, "Sending user didn't receive tokens");
+        require(
+            token1.balanceOf(userD) == sendingAmount,
+            "Transfer did not complete after first message"
+        );
+
+        // Submitting the second message back on chain one should not change anything.
+        supplyBefore = token1.totalSupply();
+        wormholeTransceiverChain1.receiveMessage(encodedVMs[0]);
+        supplyAfter = token1.totalSupply();
+
+        require(supplyBefore == supplyAfter, "Supplies don't match between operations");
+        require(token1.balanceOf(userB) == 0, "OG user receive tokens");
+        require(token1.balanceOf(userC) == 0, "Sending user didn't receive tokens");
+        require(
+            token1.balanceOf(userD) == sendingAmount,
+            "Second message updated the balance when it shouldn't have"
+        );
     }
 
     function encodeTransceiverInstruction(
