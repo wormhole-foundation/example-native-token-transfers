@@ -210,6 +210,26 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
             return;
         }
 
+        _handleMsg(sourceChainId, sourceNttManagerAddress, message, digest);
+    }
+
+    /// @dev Override this function to handle custom NttManager payloads.
+    /// This can also be used to customize transfer logic by using your own
+    /// _handleTransfer implementation.
+    function _handleMsg(
+        uint16 sourceChainId,
+        bytes32, // sourceNttManagerAddress
+        TransceiverStructs.NttManagerMessage memory message,
+        bytes32 digest
+    ) internal virtual {
+        _handleTransfer(sourceChainId, message, digest);
+    }
+
+    function _handleTransfer(
+        uint16 sourceChainId,
+        TransceiverStructs.NttManagerMessage memory message,
+        bytes32 digest
+    ) internal virtual {
         TransceiverStructs.NativeTokenTransfer memory nativeTokenTransfer =
             TransceiverStructs.parseNativeTokenTransfer(message.payload);
 
@@ -231,8 +251,16 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
             return;
         }
 
+        _handleAdditionalPayload(nativeTokenTransfer.additionalPayload);
+
         _mintOrUnlockToRecipient(digest, transferRecipient, nativeTransferAmount, false);
     }
+
+    /// @dev Override this function to process an additional payload on the NativeTokenTransfer
+    /// @param - The additional payload bytes
+    function _handleAdditionalPayload(
+        bytes memory
+    ) internal pure virtual {}
 
     function _enqueueOrConsumeInboundRateLimit(
         bytes32 digest,
@@ -501,7 +529,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint64 seq = sequence;
 
         TransceiverStructs.NativeTokenTransfer memory ntt = TransceiverStructs.NativeTokenTransfer(
-            amount, toWormholeFormat(token), recipient, recipientChain, ""
+            amount, toWormholeFormat(token), recipient, recipientChain, _prepareAdditionalPayload()
         );
 
         // construct the NttManagerMessage payload
@@ -546,6 +574,10 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         // return the sequence number
         return seq;
     }
+
+    /// @dev Override this function to provide an additional payload on the NativeTokenTransfer
+    /// @return - The bytes to be sent as the additional payload
+    function _prepareAdditionalPayload() internal pure virtual returns (bytes memory) {}
 
     function _mintOrUnlockToRecipient(
         bytes32 digest,
