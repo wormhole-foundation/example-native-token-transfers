@@ -15,7 +15,7 @@ jobs:
       - run: docker build -f Dockerfile.cli --target cli-local-test . --progress=plain
 
   test-solana:
-    runs-on: ubuntu-latest
+    runs-on: tilt-kube-public
     steps:
       - uses: actions/checkout@v3
       - run: docker build -f Dockerfile.cli --target cli-local-test-solana . --progress=plain
