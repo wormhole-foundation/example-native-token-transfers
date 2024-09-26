@@ -211,6 +211,8 @@ $ cast --help
 
 See the [NttManager](../docs/NttManager.md) doc for wire format details.
 
+> Note: The size of `NttManager` is significantly higher (and very close to the contract size limit) than `NttManagerNoRateLimiting`. See [No-Rate-Limiting](#no-rate-limiting) for more detail.
+
 ### NativeTokenTransfer Additional Payload
 
 Your contract can extend `NttManagerNoRateLimiting` to provide an additional payload on the `NativeTokenTransfer` message. Override the following:
@@ -220,7 +222,7 @@ Your contract can extend `NttManagerNoRateLimiting` to provide an additional pay
 
 Be sure to review the code to ensure that they are called at an appropriate place in the flow for your use case.
 
-> Note: This is _not_ supported when RateLimiting is enabled, as this implementation does not propagate the additional payloads on queued messages.
+> Note: This is _not_ supported when RateLimiting is enabled, as this implementation does not propagate the additional payloads on queued messages. Use either with `NttManager` when `_rateLimitDuration` is set to `0` and `_skipRateLimiting` is set to `true` in the constructor or with `NttManagerNoRateLimiting`.
 
 ### Custom Manager Payloads
 
@@ -228,10 +230,10 @@ Be sure to review the code to ensure that they are called at an appropriate plac
 
 - call `_prepareForTransfer`
 - construct and encode your payload
-- construct the NttManagerMessage payload
+- construct the `NttManagerMessage` payload
 - call `_sendMessageToTransceivers`
 
-On the receiving side, override `_handleMsg` and switch based on your custom payload prefixes, defaulting to `_handleTransfer`.
+On the receiving side, override `_handleMsg` and adjust its code based on your custom payload prefixes, defaulting to `_handleTransfer`.
 
 ## Deploy Wormhole NTT
 

@@ -54,7 +54,7 @@ impl<A: TypePrefixedPayload + MaybeSpace> Readable for NativeTokenTransfer<A> {
         if A::SIZE != Some(0) {
             // if the size is explicitly zero, this is an empty payload message
             // and the size field should be skipped
-            // TODO: same as below for ntt additional_payload
+            // TODO: ditto todo in transceiver.rs
             let _additional_payload_len: u16 = Readable::read(reader)?;
         }
         let additional_payload = A::read_payload(reader)?;
@@ -105,7 +105,7 @@ impl<A: TypePrefixedPayload + MaybeSpace> Writeable for NativeTokenTransfer<A> {
         if A::SIZE != Some(0) {
             let len: u16 = u16::try_from(additional_payload.written_size()).expect("u16 overflow");
             len.write(writer)?;
-            // TODO: same as above
+            // TODO: ditto todo in transceiver.rs
             A::write_payload(additional_payload, writer)
         } else {
             Ok(())

@@ -174,6 +174,8 @@ library TransceiverStructs {
         (nativeTokenTransfer.sourceToken, offset) = encoded.asBytes32Unchecked(offset);
         (nativeTokenTransfer.to, offset) = encoded.asBytes32Unchecked(offset);
         (nativeTokenTransfer.toChain, offset) = encoded.asUint16Unchecked(offset);
+        // The additional payload may be omitted, but if it is included, it is prefixed by a u16 for its length.
+        // If there are at least 2 bytes remaining, attempt to parse the additional payload.
         if (encoded.length >= offset + 2) {
             uint256 payloadLength;
             (payloadLength, offset) = encoded.asUint16Unchecked(offset);

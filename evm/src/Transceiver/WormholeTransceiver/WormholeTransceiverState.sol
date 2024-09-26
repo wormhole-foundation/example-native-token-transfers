@@ -36,7 +36,6 @@ abstract contract WormholeTransceiverState is IWormholeTransceiverState, Transce
     // ==================== Constants ================================================
 
     /// @dev Prefix for all TransceiverMessage payloads
-    ///      This is 0x99'E''W''H'
     /// @notice Magic string (constant value set by messaging provider) that idenfies the payload as an transceiver-emitted payload.
     ///         Note that this is not a security critical field. It's meant to be used by messaging providers to identify which messages are Transceiver-related.
     bytes4 constant WH_TRANSCEIVER_PAYLOAD_PREFIX = 0x9945FF10;

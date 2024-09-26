@@ -45,7 +45,7 @@ impl<A: TypePrefixedPayload + MaybeSpace> Readable for NttManagerMessage<A> {
     {
         let id = Readable::read(reader)?;
         let sender = Readable::read(reader)?;
-        // TODO: same as below for ntt_manager payload
+        // TODO: ditto todo in transceiver.rs
         let _payload_len: u16 = Readable::read(reader)?;
         let payload = A::read_payload(reader)?;
 
@@ -79,7 +79,7 @@ impl<A: TypePrefixedPayload + MaybeSpace> Writeable for NttManagerMessage<A> {
         writer.write_all(sender)?;
         let len: u16 = u16::try_from(payload.written_size()).expect("u16 overflow");
         len.write(writer)?;
-        // TODO: same as above
+        // TODO: ditto todo in transceiver.rs
         A::write_payload(payload, writer)
     }
 }

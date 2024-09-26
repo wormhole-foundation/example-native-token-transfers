@@ -27,7 +27,7 @@ uint16   transceiver_payload_length
 #### TransceiverMessage
 
 ```go
-prefix = 0x9945FF10 // 0x99'E''W''H'
+prefix = 0x9945FF10
 ```
 
 #### Initialize Transceiver
