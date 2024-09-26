@@ -229,7 +229,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint16 sourceChainId,
         TransceiverStructs.NttManagerMessage memory message,
         bytes32 digest
-    ) internal virtual {
+    ) internal {
         TransceiverStructs.NativeTokenTransfer memory nativeTokenTransfer =
             TransceiverStructs.parseNativeTokenTransfer(message.payload);
 
@@ -251,15 +251,15 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
             return;
         }
 
-        _handleAdditionalPayload(nativeTokenTransfer.additionalPayload);
+        _handleAdditionalPayload(nativeTokenTransfer);
 
         _mintOrUnlockToRecipient(digest, transferRecipient, nativeTransferAmount, false);
     }
 
     /// @dev Override this function to process an additional payload on the NativeTokenTransfer
-    /// @param - The additional payload bytes
+    /// @param - The raw NativeTokenTransfer, which includes the additionalPayload field
     function _handleAdditionalPayload(
-        bytes memory
+        TransceiverStructs.NativeTokenTransfer memory
     ) internal pure virtual {}
 
     function _enqueueOrConsumeInboundRateLimit(
@@ -528,9 +528,8 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         // push it on the stack again to avoid a stack too deep error
         uint64 seq = sequence;
 
-        TransceiverStructs.NativeTokenTransfer memory ntt = TransceiverStructs.NativeTokenTransfer(
-            amount, toWormholeFormat(token), recipient, recipientChain, _prepareAdditionalPayload()
-        );
+        TransceiverStructs.NativeTokenTransfer memory ntt =
+            _prepareNativeTokenTransfer(amount, token, recipient, recipientChain);
 
         // construct the NttManagerMessage payload
         bytes memory encodedNttManagerPayload = TransceiverStructs.encodeNttManagerMessage(
@@ -576,8 +575,21 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     }
 
     /// @dev Override this function to provide an additional payload on the NativeTokenTransfer
-    /// @return - The bytes to be sent as the additional payload
-    function _prepareAdditionalPayload() internal pure virtual returns (bytes memory) {}
+    /// @param amount TrimmedAmount of the transfer
+    /// @param token Address of the token that this NTT Manager is tied to
+    /// @param recipient The recipient address
+    /// @param recipientChain The Wormhole chain ID for the destination
+    /// @return - The TransceiverStructs.NativeTokenTransfer struct
+    function _prepareNativeTokenTransfer(
+        TrimmedAmount amount,
+        address token,
+        bytes32 recipient,
+        uint16 recipientChain
+    ) internal pure virtual returns (TransceiverStructs.NativeTokenTransfer memory) {
+        return TransceiverStructs.NativeTokenTransfer(
+            amount, toWormholeFormat(token), recipient, recipientChain, ""
+        );
+    }
 
     function _mintOrUnlockToRecipient(
         bytes32 digest,
