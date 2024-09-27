@@ -77,11 +77,10 @@ impl<A: TypePrefixedPayload + MaybeSpace> Writeable for NativeTokenTransfer<A> {
             + self.to.len()
             + ChainId::SIZE.unwrap()
             + if A::SIZE != Some(0) {
-                u16::SIZE.unwrap()
+                u16::SIZE.unwrap() + self.additional_payload.written_size()
             } else {
                 0
             }
-            + self.additional_payload.written_size()
     }
 
     fn write<W>(&self, writer: &mut W) -> io::Result<()>
