@@ -251,15 +251,17 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
             return;
         }
 
-        _handleAdditionalPayload(nativeTokenTransfer);
+        _handleAdditionalPayload(sourceChainId, nativeTokenTransfer);
 
         _mintOrUnlockToRecipient(digest, transferRecipient, nativeTransferAmount, false);
     }
 
     /// @dev Override this function to process an additional payload on the NativeTokenTransfer
-    /// @param - The raw NativeTokenTransfer, which includes the additionalPayload field
+    /// @param - The Wormhole chain id of the sender
+    /// @param - The parsed NativeTokenTransfer, which includes the additionalPayload field
     function _handleAdditionalPayload(
-        TransceiverStructs.NativeTokenTransfer memory
+        uint16, // sourceChainId
+        TransceiverStructs.NativeTokenTransfer memory // nativeTokenTransfer
     ) internal pure virtual {}
 
     function _enqueueOrConsumeInboundRateLimit(
