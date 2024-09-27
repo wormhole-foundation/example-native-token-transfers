@@ -217,7 +217,7 @@ See the [NttManager](../docs/NttManager.md) doc for wire format details.
 
 Your contract can extend `NttManagerNoRateLimiting` to provide an additional payload on the `NativeTokenTransfer` message. Override the following:
 
-- `_prepareAdditionalPayload`
+- `_prepareNativeTokenTransfer`
 - `_handleAdditionalPayload`
 
 Be sure to review the code to ensure that they are called at an appropriate place in the flow for your use case.
