@@ -4,6 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import "../../src/NttManager/NttManager.sol";
 import "../../src/NttManager/NttManagerNoRateLimiting.sol";
+import "../../src/NttManager/NttManagerWithPerChainTransceivers.sol";
 
 contract MockNttManagerContract is NttManager {
     constructor(
@@ -118,6 +119,14 @@ contract MockNttManagerNoRateLimitingContractForTest is NttManagerNoRateLimiting
         Mode mode,
         uint16 chainId
     ) NttManagerNoRateLimiting(token, mode, chainId) {}
+}
+
+contract MockNttManagerWithPerChainTransceivers is NttManagerWithPerChainTransceivers {
+    constructor(
+        address token,
+        Mode mode,
+        uint16 chainId
+    ) NttManagerWithPerChainTransceivers(token, mode, chainId) {}
 
     function isSendTransceiverEnabledForChain(
         address transceiver,

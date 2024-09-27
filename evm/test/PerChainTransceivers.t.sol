@@ -28,9 +28,9 @@ import "wormhole-solidity-sdk/Utils.sol";
 //import "wormhole-solidity-sdk/testing/WormholeRelayerTest.sol";
 
 contract TestPerChainTransceivers is Test, IRateLimiterEvents {
-    MockNttManagerNoRateLimitingContractForTest nttManagerChain1;
-    NttManagerNoRateLimiting nttManagerChain2;
-    NttManagerNoRateLimiting nttManagerChain3;
+    MockNttManagerWithPerChainTransceivers nttManagerChain1;
+    NttManagerWithPerChainTransceivers nttManagerChain2;
+    NttManagerWithPerChainTransceivers nttManagerChain3;
 
     using TrimmedAmountLib for uint256;
     using TrimmedAmountLib for TrimmedAmount;
@@ -76,11 +76,11 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
-        NttManager implementation = new MockNttManagerNoRateLimitingContractForTest(
+        NttManager implementation = new MockNttManagerWithPerChainTransceivers(
             address(t1), IManagerBase.Mode.LOCKING, chainId1
         );
 
-        nttManagerChain1 = MockNttManagerNoRateLimitingContractForTest(
+        nttManagerChain1 = MockNttManagerWithPerChainTransceivers(
             address(new ERC1967Proxy(address(implementation), ""))
         );
         nttManagerChain1.initialize();
@@ -129,11 +129,11 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
         // Chain 2 setup
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
-        NttManager implementationChain2 = new MockNttManagerNoRateLimitingContract(
+        NttManager implementationChain2 = new MockNttManagerWithPerChainTransceivers(
             address(t2), IManagerBase.Mode.BURNING, chainId2
         );
 
-        nttManagerChain2 = MockNttManagerNoRateLimitingContract(
+        nttManagerChain2 = MockNttManagerWithPerChainTransceivers(
             address(new ERC1967Proxy(address(implementationChain2), ""))
         );
         nttManagerChain2.initialize();
@@ -194,11 +194,11 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
         // Chain 3 setup
         vm.chainId(chainId3);
         DummyToken t3 = new DummyTokenMintAndBurn();
-        NttManager implementationChain3 = new MockNttManagerNoRateLimitingContract(
+        NttManager implementationChain3 = new MockNttManagerWithPerChainTransceivers(
             address(t3), IManagerBase.Mode.BURNING, chainId3
         );
 
-        nttManagerChain3 = MockNttManagerNoRateLimitingContract(
+        nttManagerChain3 = MockNttManagerWithPerChainTransceivers(
             address(new ERC1967Proxy(address(implementationChain3), ""))
         );
         nttManagerChain3.initialize();

@@ -41,8 +41,8 @@ import "wormhole-solidity-sdk/Utils.sol";
 // with the appropriate thresholds. We will then do a transfer.
 
 contract TestPerChainTransceiversDemo is Test, IRateLimiterEvents {
-    MockNttManagerNoRateLimitingContractForTest nttManagerChain1;
-    MockNttManagerNoRateLimitingContractForTest nttManagerChain2;
+    MockNttManagerWithPerChainTransceivers nttManagerChain1;
+    MockNttManagerWithPerChainTransceivers nttManagerChain2;
 
     using TrimmedAmountLib for uint256;
     using TrimmedAmountLib for TrimmedAmount;
@@ -81,11 +81,11 @@ contract TestPerChainTransceiversDemo is Test, IRateLimiterEvents {
         // Set up the manager on chain one. //////////////////////////////////////////////////////////////////
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
-        NttManager implementation = new MockNttManagerNoRateLimitingContractForTest(
+        NttManager implementation = new MockNttManagerWithPerChainTransceivers(
             address(t1), IManagerBase.Mode.LOCKING, chainId1
         );
 
-        nttManagerChain1 = MockNttManagerNoRateLimitingContractForTest(
+        nttManagerChain1 = MockNttManagerWithPerChainTransceivers(
             address(new ERC1967Proxy(address(implementation), ""))
         );
         nttManagerChain1.initialize();
@@ -125,11 +125,11 @@ contract TestPerChainTransceiversDemo is Test, IRateLimiterEvents {
         // Set up the manager on chain two. //////////////////////////////////////////////////////////////////
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
-        NttManager implementationChain2 = new MockNttManagerNoRateLimitingContractForTest(
+        NttManager implementationChain2 = new MockNttManagerWithPerChainTransceivers(
             address(t2), IManagerBase.Mode.BURNING, chainId2
         );
 
-        nttManagerChain2 = MockNttManagerNoRateLimitingContractForTest(
+        nttManagerChain2 = MockNttManagerWithPerChainTransceivers(
             address(new ERC1967Proxy(address(implementationChain2), ""))
         );
         nttManagerChain2.initialize();

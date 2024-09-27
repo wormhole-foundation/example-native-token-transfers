@@ -316,8 +316,8 @@ from an instance of `NttManager` with rate-limiting enabled to `NttManagerNoRate
 
 #### Per-Chain-Transceivers
 
-The `NttManagerNoRateLimiting` contract inherits from the `NttManagerWithPerChainTransceivers` abstract contract, which allows configuring different transceivers and thresholds for each chain.
-You can configure a different set of send and receive transceivers for each chain, and if you don't specifically enable any transceivers for a chain, then all transceivers will be used for it.
+The `NttManagerWithPerChainTransceivers` contract which inherits from `NttManagerNoRateLimiting` and allows configuring different transceivers and thresholds for each chain.
+You can configure a different set of send and receive transceivers for each chain. If you don't specifically enable any transceivers for a chain, then all transceivers will be used.
 
-As an example, you could set up the NTT manager so that for chain1 it sends on transceiverA and transceiverB, but it only expects a response from transceiverA. Additionally, you could enable
+As an example, you could set up the manager so that for chain1 it sends on transceiverA and transceiverB, but it only expects a response from transceiverA. Additionally, you could enable
 two transceivers for receiving but set the threshold to one, meaning only one response (from either transceiver) is required.
