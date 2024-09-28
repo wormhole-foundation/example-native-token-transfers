@@ -44,6 +44,12 @@ contract NttManagerWithPerChainTransceivers is NttManagerNoRateLimiting {
         uint16 forChainId
     ) external override(ManagerBase, IManagerBase) onlyOwner {
         _enableTransceiverForChain(transceiver, forChainId, RECV_TRANSCEIVER_BITMAP_SLOT);
+
+        // Make sure the threshold is set to something.
+        if (getPerChainThreshold(forChainId) == 0) {
+            this.setPerChainThreshold(forChainId, 1);
+        }
+
         emit RecvTransceiverEnabledForChain(transceiver, forChainId);
     }
 
@@ -56,15 +62,15 @@ contract NttManagerWithPerChainTransceivers is NttManagerNoRateLimiting {
             revert InvalidTransceiverZeroAddress();
         }
 
-        mapping(address => TransceiverInfo) storage transceiverInfos = _getTransceiverInfosStorage();
-        if (!transceiverInfos[transceiver].registered) {
+        TransceiverInfo storage transceiverInfo = _getTransceiverInfosStorage()[transceiver];
+
+        if (!transceiverInfo.registered) {
             revert NonRegisteredTransceiver(transceiver);
         }
 
-        uint8 index = _getTransceiverInfosStorage()[transceiver].index;
         mapping(uint16 => _EnabledTransceiverBitmap) storage _bitmaps =
             _getPerChainTransceiverBitmapStorage(tag);
-        _bitmaps[forChainId].bitmap |= uint64(1 << index);
+        _bitmaps[forChainId].bitmap |= uint64(1 << transceiverInfo.index);
     }
 
     function _isSendTransceiverEnabledForChain(
@@ -88,6 +94,9 @@ contract NttManagerWithPerChainTransceivers is NttManagerNoRateLimiting {
     ) private view returns (uint64 bitmap) {
         bitmap = _getPerChainTransceiverBitmapStorage(tag)[forChainId].bitmap;
         if (bitmap == 0) {
+            // Avoid an extra storage slot read and just return all ones. This works
+            // because the value gets combined with the enabled transceivers on the
+            // receive side and the specific transceiver index on the send side.
             bitmap = type(uint64).max;
         }
     }
@@ -110,6 +119,15 @@ contract NttManagerWithPerChainTransceivers is NttManagerNoRateLimiting {
     ) external override(ManagerBase, IManagerBase) onlyOwner {
         if (threshold == 0) {
             revert ZeroThreshold();
+        }
+
+        // They can't set the threshold greater than the number of enabled transceivers.
+        uint64 enabledTransceiverBitmap = _getEnabledTransceiversBitmap();
+        uint64 enabledTransceiversForChain = _getEnabledRecvTransceiversForChain(forChainId);
+        uint8 numEnabledTransceivers =
+            countSetBits(enabledTransceiverBitmap & enabledTransceiversForChain);
+        if (threshold > numEnabledTransceivers) {
+            revert ThresholdTooHigh(threshold, numEnabledTransceivers);
         }
 
         mapping(uint16 => _Threshold) storage _threshold = _getThresholdStoragePerChain();

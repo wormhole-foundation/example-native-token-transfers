@@ -532,7 +532,7 @@ abstract contract ManagerBase is
 
     function _checkThresholdInvariants(
         uint8 threshold
-    ) internal pure {
+    ) internal view {
         _NumTransceivers memory numTransceivers = _getNumTransceiversStorage();
 
         // invariant: threshold <= enabledTransceivers.length
