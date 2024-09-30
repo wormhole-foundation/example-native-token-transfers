@@ -9,19 +9,19 @@ pub struct ValidatedTransceiverMessage<A: AnchorDeserialize + AnchorSerialize + 
     pub message: TransceiverMessageData<A>,
 }
 
-impl<'info, A: AnchorDeserialize + AnchorSerialize + Space + Clone> ValidatedTransceiverMessage<A> {
+impl<A: AnchorDeserialize + AnchorSerialize + Space + Clone> ValidatedTransceiverMessage<A> {
     pub const SEED_PREFIX: &'static [u8] = b"transceiver_message";
 
-    pub fn try_from(info: UncheckedAccount, expected_owner: Pubkey) -> Result<Self> {
+    pub fn try_from(info: &UncheckedAccount, expected_owner: &Pubkey) -> Result<Self> {
         if info.owner == &system_program::ID && info.lamports() == 0 {
             return Err(ErrorCode::AccountNotInitialized.into());
         }
-        if *info.owner != expected_owner {
+        if *info.owner != *expected_owner {
             return Err(Error::from(ErrorCode::AccountOwnedByWrongProgram)
-                .with_pubkeys((*info.owner, expected_owner)));
+                .with_pubkeys((*info.owner, *expected_owner)));
         }
         let mut data: &[u8] = &info.try_borrow_data()?;
-        Ok(ValidatedTransceiverMessage::try_deserialize(&mut data)?)
+        ValidatedTransceiverMessage::try_deserialize(&mut data)
     }
 }
 
