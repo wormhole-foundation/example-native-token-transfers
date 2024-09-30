@@ -12,7 +12,7 @@ pub struct ValidatedTransceiverMessage<A: AnchorDeserialize + AnchorSerialize + 
     pub message: TransceiverMessageData<A>,
 }
 
-impl<'info, A: AnchorDeserialize + AnchorSerialize + Space + Clone> ValidatedTransceiverMessage<A> {
+impl<A: AnchorDeserialize + AnchorSerialize + Space + Clone> ValidatedTransceiverMessage<A> {
     pub const SEED_PREFIX: &'static [u8] = b"transceiver_message";
 
     pub fn try_from(info: &UncheckedAccount, expected_owner: &Pubkey) -> Result<Self> {
