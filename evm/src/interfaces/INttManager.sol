@@ -32,6 +32,12 @@ interface INttManager is IManagerBase {
         uint64 msgSequence
     );
 
+    /// @notice Emitted when a message is sent from the nttManager.
+    /// @dev Topic0
+    ///      0x3e6ae56314c6da8b461d872f41c6d0bb69317b9d0232805aaccfa45df1a16fa0.
+    /// @param digest The digest of the message.
+    event TransferSent(bytes32 indexed digest);
+
     /// @notice Emitted when the peer contract is updated.
     /// @dev Topic0
     ///      0x1456404e7f41f35c3daac941bb50bad417a66275c3040061b4287d787719599d.

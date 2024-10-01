@@ -59,7 +59,14 @@ library TransceiverStructs {
         uint16 sourceChainId,
         NttManagerMessage memory m
     ) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked(sourceChainId, encodeNttManagerMessage(m)));
+        return _nttManagerMessageDigest(sourceChainId, encodeNttManagerMessage(m));
+    }
+
+    function _nttManagerMessageDigest(
+        uint16 sourceChainId,
+        bytes memory encodedNttManagerMessage
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(sourceChainId, encodedNttManagerMessage));
     }
 
     function encodeNttManagerMessage(
