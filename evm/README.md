@@ -20,6 +20,14 @@ event TransferSent(
 );
 ```
 
+```solidity
+/// @notice Emitted when a message is sent from the nttManager.
+/// @dev Topic0
+///      0x3e6ae56314c6da8b461d872f41c6d0bb69317b9d0232805aaccfa45df1a16fa0.
+/// @param digest The digest of the message.
+event TransferSent(bytes32 indexed digest);
+```
+
 2. **Rate Limit**
 
 A transfer can be rate-limited (see [here](../README.md#rate-limiting-and-cancel-flows) for more details) both on the source and destination chains. If a transfer is rate-limited on the source chain and the `shouldQueue` flag is enabled, it is added to an outbound queue. The transfer can be released after the configured `_rateLimitDuration` has expired via the [`completeOutboundQueuedTransfer`] method. The `OutboundTransferQueued` and `OutboundTransferRateLimited` events are emitted.

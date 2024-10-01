@@ -184,8 +184,18 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
 
         vm.stopPrank();
 
+        // Get the TransferSent(bytes32) event to ensure it matches up with the TransferRedeemed(bytes32) event later
+        Vm.Log[] memory recordedLogs = vm.getRecordedLogs();
+        bytes32 sentEventDigest;
+        for (uint256 i = 0; i < recordedLogs.length; i++) {
+            if (recordedLogs[i].topics[0] == keccak256("TransferSent(bytes32)")) {
+                sentEventDigest = recordedLogs[i].topics[1];
+            }
+        }
+        require(sentEventDigest != bytes32(0), "TransferSent(bytes32) event should be found");
+
         // Get and sign the log to go down the other pipe. Thank you to whoever wrote this code in the past!
-        Vm.Log[] memory entries = guardian.fetchWormholeMessageFromLog(vm.getRecordedLogs());
+        Vm.Log[] memory entries = guardian.fetchWormholeMessageFromLog(recordedLogs);
         bytes[] memory encodedVMs = new bytes[](entries.length);
         for (uint256 i = 0; i < encodedVMs.length; i++) {
             encodedVMs[i] = guardian.fetchSignedMessageFromLogs(entries[i], chainId1);
@@ -208,6 +218,19 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
                 token2.balanceOf(address(nttManagerChain2)) == 0, "NttManager has unintended funds"
             );
         }
+
+        // Get the TransferRedeemed(bytes32) event to ensure it matches up with the TransferSent(bytes32) event earlier
+        recordedLogs = vm.getRecordedLogs();
+        bytes32 recvEventDigest;
+        for (uint256 i = 0; i < recordedLogs.length; i++) {
+            if (recordedLogs[i].topics[0] == keccak256("TransferRedeemed(bytes32)")) {
+                recvEventDigest = recordedLogs[i].topics[1];
+            }
+        }
+        require(
+            sentEventDigest == recvEventDigest,
+            "TransferRedeemed(bytes32) event should match TransferSent(bytes32)"
+        );
 
         // Can't resubmit the same message twice
         (IWormhole.VM memory wormholeVM,,) = wormhole.parseAndVerifyVM(encodedVMs[0]);
