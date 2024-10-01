@@ -218,15 +218,16 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     /// _handleTransfer implementation.
     function _handleMsg(
         uint16 sourceChainId,
-        bytes32, // sourceNttManagerAddress
+        bytes32 sourceNttManagerAddress,
         TransceiverStructs.NttManagerMessage memory message,
         bytes32 digest
     ) internal virtual {
-        _handleTransfer(sourceChainId, message, digest);
+        _handleTransfer(sourceChainId, sourceNttManagerAddress, message, digest);
     }
 
     function _handleTransfer(
         uint16 sourceChainId,
+        bytes32 sourceNttManagerAddress,
         TransceiverStructs.NttManagerMessage memory message,
         bytes32 digest
     ) internal {
@@ -251,18 +252,27 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
             return;
         }
 
-        _handleAdditionalPayload(sourceChainId, nativeTokenTransfer);
+        _handleAdditionalPayload(
+            sourceChainId, sourceNttManagerAddress, message.id, message.sender, nativeTokenTransfer
+        );
 
         _mintOrUnlockToRecipient(digest, transferRecipient, nativeTransferAmount, false);
     }
 
     /// @dev Override this function to process an additional payload on the NativeTokenTransfer
+    /// For integrator flexibility, this function is *not* marked pure or view
     /// @param - The Wormhole chain id of the sender
+    /// @param - The address of the sender's NTT Manager contract.
+    /// @param - The message id from the NttManagerMessage.
+    /// @param - The original message sender address from the NttManagerMessage.
     /// @param - The parsed NativeTokenTransfer, which includes the additionalPayload field
     function _handleAdditionalPayload(
         uint16, // sourceChainId
+        bytes32, // sourceNttManagerAddress
+        bytes32, // id
+        bytes32, // sender
         TransceiverStructs.NativeTokenTransfer memory // nativeTokenTransfer
-    ) internal pure virtual {}
+    ) internal virtual {}
 
     function _enqueueOrConsumeInboundRateLimit(
         bytes32 digest,
@@ -531,7 +541,7 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         uint64 seq = sequence;
 
         TransceiverStructs.NativeTokenTransfer memory ntt =
-            _prepareNativeTokenTransfer(amount, token, recipient, recipientChain);
+            _prepareNativeTokenTransfer(amount, token, recipient, recipientChain, seq, sender);
 
         // construct the NttManagerMessage payload
         bytes memory encodedNttManagerPayload = TransceiverStructs.encodeNttManagerMessage(
@@ -577,17 +587,22 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     }
 
     /// @dev Override this function to provide an additional payload on the NativeTokenTransfer
+    /// For integrator flexibility, this function is *not* marked pure or view
     /// @param amount TrimmedAmount of the transfer
     /// @param token Address of the token that this NTT Manager is tied to
     /// @param recipient The recipient address
     /// @param recipientChain The Wormhole chain ID for the destination
+    /// @param - The sequence number for the manager message (unused, provided for overriding integrators)
+    /// @param - The message sender (unused, provided for overriding integrators)
     /// @return - The TransceiverStructs.NativeTokenTransfer struct
     function _prepareNativeTokenTransfer(
         TrimmedAmount amount,
         address token,
         bytes32 recipient,
-        uint16 recipientChain
-    ) internal pure virtual returns (TransceiverStructs.NativeTokenTransfer memory) {
+        uint16 recipientChain,
+        uint64, // sequence
+        address // sender
+    ) internal virtual returns (TransceiverStructs.NativeTokenTransfer memory) {
         return TransceiverStructs.NativeTokenTransfer(
             amount, toWormholeFormat(token), recipient, recipientChain, ""
         );
