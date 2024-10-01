@@ -188,27 +188,19 @@ contract TestPerChainTransceiversDemo is Test, IRateLimiterEvents {
             chainId1, bytes32(uint256(uint160(address(chainOneSecondTransceiver))))
         );
 
-        // Set the default thresholds. //////////////////////////////////////////////////////////////////////
-        nttManagerChain1.setThreshold(2);
-        nttManagerChain2.setThreshold(2);
-
         // Set up our per-chain transceivers and thresholds. ////////////////////////////////////////////////
 
         // Set up chain one.
-        // 1.a:
-        nttManagerChain1.enableSendTransceiverForChain(address(chainOneFirstTransceiver), chainId2);
-        nttManagerChain1.enableSendTransceiverForChain(address(chainOneSecondTransceiver), chainId2);
-        // 2.b:
-        nttManagerChain1.enableRecvTransceiverForChain(address(chainOneFirstTransceiver), chainId2);
-        nttManagerChain1.setPerChainThreshold(chainId2, 1);
+        // 1.a: Enable both transceivers for sending.
+        nttManagerChain1.setSendTransceiverBitmapForChain(chainId2, 0x03);
+        // 2.b: Enable the first transceiver for receiving with a threshold of one.
+        nttManagerChain1.setRecvTransceiverBitmapForChain(chainId2, 0x01, 1);
 
         // Set up chain two.
-        // 2.a:
-        nttManagerChain2.enableSendTransceiverForChain(address(chainTwoFirstTransceiver), chainId1);
-        // 1.b:
-        nttManagerChain2.enableRecvTransceiverForChain(address(chainTwoFirstTransceiver), chainId1);
-        nttManagerChain2.enableRecvTransceiverForChain(address(chainTwoSecondTransceiver), chainId1);
-        nttManagerChain2.setPerChainThreshold(chainId1, 2);
+        // 2.a: Enable first transceiver for sending.
+        nttManagerChain2.setSendTransceiverBitmapForChain(chainId1, 0x01);
+        // 1.b: Enable both transceivers for receiving with a threshold of two.
+        nttManagerChain2.setRecvTransceiverBitmapForChain(chainId1, 0x03, 2);
     }
 
     function test_verifyConfig() public view {
@@ -229,9 +221,8 @@ contract TestPerChainTransceiversDemo is Test, IRateLimiterEvents {
             nttManagerChain1.getEnabledRecvTransceiversForChain(chainId2) == 0x1,
             "On chain 1, only first transceiver should be enabled for receiving from chain 2"
         );
-        require(nttManagerChain1.getThreshold() == 2, "On chain 1, the default threshold is wrong");
         require(
-            nttManagerChain1.getPerChainThreshold(chainId2) == 1,
+            nttManagerChain1.getThresholdForChain(chainId2) == 1,
             "On chain 1, threshold for chain 2 is wrong"
         );
 
@@ -252,9 +243,8 @@ contract TestPerChainTransceiversDemo is Test, IRateLimiterEvents {
             nttManagerChain2.getEnabledRecvTransceiversForChain(chainId1) == 0x3,
             "On chain 2, both transceivers should be enabled for receiving from chain 1"
         );
-        require(nttManagerChain2.getThreshold() == 2, "On chain 2, the default threshold is wrong");
         require(
-            nttManagerChain2.getPerChainThreshold(chainId1) == 2,
+            nttManagerChain2.getThresholdForChain(chainId1) == 2,
             "On chain 2, threshold for chain 1 is wrong"
         );
     }

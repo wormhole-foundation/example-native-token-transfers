@@ -269,100 +269,276 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
         secondWormholeTransceiverChain3.setWormholePeer(
             chainId2, bytes32(uint256(uint160(address(secondWormholeTransceiverChain2))))
         );
-
-        // Set the thresholds.
-        require(nttManagerChain1.getThreshold() != 0, "Threshold is zero with active transceivers");
-
-        // Actually set it
-        nttManagerChain1.setThreshold(1);
-        nttManagerChain2.setThreshold(1);
-        nttManagerChain3.setThreshold(1);
-
-        // On chain 1, set the threshold to chain 3 to be different.
-        nttManagerChain1.setPerChainThreshold(chainId3, 2);
-        nttManagerChain3.setPerChainThreshold(chainId1, 2);
-
-        require(nttManagerChain1.getThreshold() == 1, "Default threshold is wrong");
-        require(
-            nttManagerChain1.getPerChainThreshold(chainId3) == 2, "Threshold for chain 3 is wrong"
-        );
-
-        // Since we haven't set the per-chain threshold for chain 2, it should return the default
-        require(
-            nttManagerChain1.getPerChainThreshold(chainId2) == 1, "Threshold for chain 2 is wrong"
-        );
     }
 
     function test_transceiverSetters() public {
-        // If we haven't enabled per-chain send transceivers for this chain, the getter should return true.
+        // Make sure nothing is enabled for either sending or receiving.
         require(
-            nttManagerChain1.isSendTransceiverEnabledForChain(address(nttManagerChain3), chainId3),
-            "Send transceiver should be enabled by default"
+            nttManagerChain1.getChainsEnabledForSending().length == 0,
+            "There should be no chains enabled for sending to start with"
+        );
+        require(
+            nttManagerChain1.getChainsEnabledForReceiving().length == 0,
+            "There should be no chains enabled for receiving to start with"
         );
 
-        // If we haven't enabled per-chain receive transceivers, the getter should return everything is enabled.
+        // Chain 2
         require(
-            nttManagerChain1.getEnabledRecvTransceiversForChain(chainId3) == type(uint64).max,
-            "Receive transceiver should be enabled by default"
+            nttManagerChain1.getSendTransceiverBitmapForChain(chainId2) == 0,
+            "There should be nothing enabled for sending on chain two to start with"
+        );
+        require(
+            nttManagerChain1.getRecvTransceiverBitmapForChain(chainId2) == 0,
+            "There should be nothing enabled for receiving on chain two to start with"
         );
 
-        nttManagerChain1.enableSendTransceiverForChain(address(wormholeTransceiverChain1), chainId2);
-        nttManagerChain1.enableRecvTransceiverForChain(
-            address(secondWormholeTransceiverChain1), chainId3
+        // Chain 3
+        require(
+            nttManagerChain1.getSendTransceiverBitmapForChain(chainId3) == 0,
+            "There should be nothing enabled for sending on chain three to start with"
+        );
+        require(
+            nttManagerChain1.getRecvTransceiverBitmapForChain(chainId3) == 0,
+            "There should be nothing enabled for receiving on chain three to start with"
         );
 
-        // Once we enable a transceiver for a chain, that is the only one enabled for that chain.
+        // Enable a sender on chain two.
+        nttManagerChain1.setSendTransceiverBitmapForChain(chainId2, 0x02);
         require(
-            nttManagerChain1.isSendTransceiverEnabledForChain(
-                address(wormholeTransceiverChain1), chainId2
-            ),
-            "First transceiver should be enabled for sending on chain 2"
+            nttManagerChain1.getSendTransceiverBitmapForChain(chainId2) == 0x02,
+            "Sending bitmap is wrong for chain two #1"
         );
+        uint16[] memory sendChains = nttManagerChain1.getChainsEnabledForSending();
+        require(sendChains.length == 1, "There should be one chain enabled for sending");
+        require(sendChains[0] == chainId2, "Chain two should be enabled for sending");
+
+        // Enable a receiver on chain two.
+        nttManagerChain1.setRecvTransceiverBitmapForChain(chainId2, 0x01, 1);
         require(
-            !nttManagerChain1.isSendTransceiverEnabledForChain(
-                address(secondWormholeTransceiverChain1), chainId2
-            ),
-            "Second transceiver should not be enabled for sending on chain 2"
+            nttManagerChain1.getRecvTransceiverBitmapForChain(chainId2) == 0x01,
+            "Receiving bitmap is wrong for chain two #1"
         );
+        uint16[] memory recvChains = nttManagerChain1.getChainsEnabledForReceiving();
+        require(recvChains.length == 1, "There should be one chain enabled for receiving");
+        require(recvChains[0] == chainId2, "Chain two should be enabled for receiving #1");
+
+        // Enable a sender on chain three.
+        nttManagerChain1.setSendTransceiverBitmapForChain(chainId3, 0x01);
         require(
-            nttManagerChain1.getEnabledRecvTransceiversForChain(chainId3) == 0x2,
-            "Only second transceiver should be enabled for receiving on chain 3"
+            nttManagerChain1.getSendTransceiverBitmapForChain(chainId3) == 0x01,
+            "Sending bitmap is wrong for chain three #1"
+        );
+        sendChains = nttManagerChain1.getChainsEnabledForSending();
+        require(sendChains.length == 2, "There should be one chain enabled for sending");
+        require(sendChains[0] == chainId2, "Chain two should be enabled for sending");
+        require(sendChains[1] == chainId3, "Chain three should be enabled for sending");
+
+        // Enable a receiver on chain three.
+        nttManagerChain1.setRecvTransceiverBitmapForChain(chainId3, 0x02, 1);
+        require(
+            nttManagerChain1.getRecvTransceiverBitmapForChain(chainId3) == 0x02,
+            "Receiving bitmap is wrong for chain three #1"
+        );
+        recvChains = nttManagerChain1.getChainsEnabledForReceiving();
+        require(recvChains.length == 2, "There should be two chains enabled for receiving");
+        require(recvChains[0] == chainId2, "Chain two should be enabled for receiving #2");
+        require(recvChains[1] == chainId3, "Chain three should be enabled for receiving #1");
+        require(
+            nttManagerChain1.getThresholdForChain(chainId3) == 1,
+            "Threshold is wrong for chain three #1"
         );
 
-        // And for chains we didn't touch, the defaults should still be in place.
+        // Enable two receivers on chain two.
+        nttManagerChain1.setRecvTransceiverBitmapForChain(chainId2, 0x03, 2);
         require(
-            nttManagerChain1.isSendTransceiverEnabledForChain(address(nttManagerChain3), chainId3),
-            "Send transceiver should be enabled by default for untouched chain"
+            nttManagerChain1.getRecvTransceiverBitmapForChain(chainId2) == 0x03,
+            "Receiving bitmap is wrong for chain three #2"
+        );
+        recvChains = nttManagerChain1.getChainsEnabledForReceiving();
+        require(recvChains.length == 2, "There should be two chains enabled for receiving");
+        require(recvChains[0] == chainId2, "Chain two should be enabled for receiving #3");
+        require(recvChains[1] == chainId3, "Chain three should be enabled for receiving #2");
+        require(
+            nttManagerChain1.getThresholdForChain(chainId2) == 2,
+            "Threshold is wrong for chain three #2"
+        );
+
+        // Disable one receiver on chain two.
+        nttManagerChain1.setRecvTransceiverBitmapForChain(chainId2, 0x02, 1);
+        require(
+            nttManagerChain1.getRecvTransceiverBitmapForChain(chainId2) == 0x02,
+            "Receiving bitmap is wrong for chain two #3"
+        );
+        recvChains = nttManagerChain1.getChainsEnabledForReceiving();
+        require(recvChains.length == 2, "There should be two chains enabled for receiving");
+        require(recvChains[0] == chainId2, "Chain two should be enabled for receiving #4");
+        require(recvChains[1] == chainId3, "Chain three should be enabled for receiving #3");
+        require(
+            nttManagerChain1.getThresholdForChain(chainId2) == 1,
+            "Threshold is wrong for chain two #3"
+        );
+
+        // Disable the other receiver on chain two.
+        nttManagerChain1.setRecvTransceiverBitmapForChain(chainId2, 0x00, 0);
+        require(
+            nttManagerChain1.getRecvTransceiverBitmapForChain(chainId2) == 0x00,
+            "Receiving bitmap is wrong for chain two #4"
+        );
+        recvChains = nttManagerChain1.getChainsEnabledForReceiving();
+        require(recvChains.length == 1, "There should be only one chain enabled for receiving");
+        require(recvChains[0] == chainId3, "Chain three should be enabled for receiving #5");
+        require(
+            nttManagerChain1.getThresholdForChain(chainId2) == 0,
+            "Threshold is wrong for chain two #4"
+        );
+
+        // Disable one receiver on chain three.
+        nttManagerChain1.setRecvTransceiverBitmapForChain(chainId3, 0x02, 1);
+        require(
+            nttManagerChain1.getRecvTransceiverBitmapForChain(chainId3) == 0x02,
+            "Receiving bitmap is wrong for chain three #3"
+        );
+        recvChains = nttManagerChain1.getChainsEnabledForReceiving();
+        require(recvChains.length == 1, "There should be one chain enabled for receiving");
+        require(recvChains[0] == chainId3, "Chain three should be enabled for receiving #4");
+        require(
+            nttManagerChain1.getThresholdForChain(chainId3) == 1,
+            "Threshold is wrong for chain three #3"
+        );
+
+        // Disable the other receiver on chain three.
+        nttManagerChain1.setRecvTransceiverBitmapForChain(chainId3, 0x00, 0);
+        require(
+            nttManagerChain1.getRecvTransceiverBitmapForChain(chainId3) == 0x00,
+            "Receiving bitmap is wrong for chain three #5"
+        );
+        recvChains = nttManagerChain1.getChainsEnabledForReceiving();
+        require(recvChains.length == 0, "There should be no chains enabled for receiving");
+        require(
+            nttManagerChain1.getThresholdForChain(chainId3) == 0,
+            "Threshold is wrong for chain three #5"
+        );
+
+        // Make sure our senders haven't changed.
+        nttManagerChain1.setSendTransceiverBitmapForChain(chainId2, 0x02);
+        require(
+            nttManagerChain1.getSendTransceiverBitmapForChain(chainId2) == 0x02,
+            "Sending bitmap is wrong for chain two #2"
         );
         require(
-            nttManagerChain1.getEnabledRecvTransceiversForChain(chainId2) == type(uint64).max,
-            "Receive transceiver should be enabled by default for untouched chain"
+            nttManagerChain1.getSendTransceiverBitmapForChain(chainId3) == 0x01,
+            "Sending bitmap is wrong for chain three #2"
         );
+        sendChains = nttManagerChain1.getChainsEnabledForSending();
+        require(sendChains.length == 2, "There should be one chain enabled for sending");
+        require(sendChains[0] == chainId2, "Chain two should be enabled for sending");
+        require(sendChains[1] == chainId3, "Chain three should be enabled for sending");
+    }
+
+    function test_setTransceiversForChains() public {
+        IManagerBase.SetTransceiversForChainEntry[] memory params =
+            new IManagerBase.SetTransceiversForChainEntry[](2);
+
+        params[0] = IManagerBase.SetTransceiversForChainEntry({
+            chainId: chainId2,
+            sendBitmap: 0x02,
+            recvBitmap: 0x01,
+            recvThreshold: 1
+        });
+
+        params[1] = IManagerBase.SetTransceiversForChainEntry({
+            chainId: chainId3,
+            sendBitmap: 0x02,
+            recvBitmap: 0x03,
+            recvThreshold: 2
+        });
+
+        nttManagerChain1.setTransceiversForChains(params);
+
+        // Validate chain two.
+        require(
+            nttManagerChain1.getSendTransceiverBitmapForChain(chainId2) == 0x02,
+            "Sending bitmap is wrong for chain two"
+        );
+        require(
+            nttManagerChain1.getRecvTransceiverBitmapForChain(chainId2) == 0x01,
+            "Receiving bitmap is wrong for chain two"
+        );
+        require(
+            nttManagerChain1.getThresholdForChain(chainId2) == 1, "Threshold is wrong for chain two"
+        );
+
+        // Validate chain three.
+        require(
+            nttManagerChain1.getSendTransceiverBitmapForChain(chainId3) == 0x02,
+            "Sending bitmap is wrong for chain three"
+        );
+        require(
+            nttManagerChain1.getRecvTransceiverBitmapForChain(chainId3) == 0x03,
+            "Receiving bitmap is wrong for chain three"
+        );
+        require(
+            nttManagerChain1.getThresholdForChain(chainId3) == 2,
+            "Threshold is wrong for chain three"
+        );
+
+        // Validate the chain lists.
+        uint16[] memory sendChains = nttManagerChain1.getChainsEnabledForSending();
+        require(sendChains.length == 2, "There should be two chains enabled for sending");
+        require(sendChains[0] == chainId2, "Chain two should be enabled for sending #3");
+        require(sendChains[1] == chainId3, "Chain three should be enabled for sending #2");
+
+        uint16[] memory recvChains = nttManagerChain1.getChainsEnabledForReceiving();
+        require(recvChains.length == 2, "There should be two chains enabled for receiving");
+        require(recvChains[0] == chainId2, "Chain two should be enabled for receiving #3");
+        require(recvChains[1] == chainId3, "Chain three should be enabled for receiving #2");
     }
 
     function test_someReverts() public {
-        // Can't enable transceiver with address zero.
-        vm.expectRevert(
-            abi.encodeWithSelector(TransceiverRegistry.InvalidTransceiverZeroAddress.selector)
-        );
-        nttManagerChain1.enableSendTransceiverForChain(address(0), chainId2);
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.ThresholdTooHigh.selector, 2, 1));
+        nttManagerChain1.setRecvTransceiverBitmapForChain(chainId2, 0x01, 2);
 
-        // Can't enable transceiver for an unknown address.
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.ZeroThreshold.selector));
+        nttManagerChain1.setRecvTransceiverBitmapForChain(chainId2, 0x01, 0);
+
         vm.expectRevert(
             abi.encodeWithSelector(
-                TransceiverRegistry.NonRegisteredTransceiver.selector, address(this)
+                NttManagerWithPerChainTransceivers.TransceiverIndexTooLarge.selector, 6, 2
             )
         );
-        nttManagerChain1.enableSendTransceiverForChain(address(this), chainId2);
+        nttManagerChain1.setRecvTransceiverBitmapForChain(chainId2, 0x40, 0);
 
-        // Can set the per-chain threshold to zero.
-        vm.expectRevert(abi.encodeWithSelector(IManagerBase.ZeroThreshold.selector));
-        nttManagerChain1.setPerChainThreshold(chainId2, 0);
+        nttManagerChain1.setRecvTransceiverBitmapForChain(chainId2, 0, 0);
+        nttManagerChain1.removeTransceiver(address(wormholeTransceiverChain1));
     }
 
     // This test does a transfer between chain one and chain two.
-    // Since chain two uses the default threshold, posting a VAA from only one transceiver completes the transfer.
-    function test_defaultThreshold() public {
+    // Since the receive thresholds are set to one, posting a VAA from only one transceiver completes the transfer.
+    function test_thresholdLessThanNumReceivers() public {
+        IManagerBase.SetTransceiversForChainEntry[] memory nttManager1Params =
+            new IManagerBase.SetTransceiversForChainEntry[](1);
+
+        nttManager1Params[0] = IManagerBase.SetTransceiversForChainEntry({
+            chainId: chainId2,
+            sendBitmap: 0x03,
+            recvBitmap: 0x03,
+            recvThreshold: 1
+        });
+
+        nttManagerChain1.setTransceiversForChains(nttManager1Params);
+
+        IManagerBase.SetTransceiversForChainEntry[] memory nttManager2Params =
+            new IManagerBase.SetTransceiversForChainEntry[](1);
+
+        nttManager2Params[0] = IManagerBase.SetTransceiversForChainEntry({
+            chainId: chainId1,
+            sendBitmap: 0x03,
+            recvBitmap: 0x03,
+            recvThreshold: 1
+        });
+
+        nttManagerChain2.setTransceiversForChains(nttManager2Params);
+
         vm.chainId(chainId1);
 
         // Setting up the transfer
@@ -412,7 +588,7 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
         wormholeTransceiverChain2.receiveMessage(encodedVMs[0]);
         uint256 supplyAfter = token2.totalSupply();
 
-        require(sendingAmount + supplyBefore == supplyAfter, "Supplies dont match");
+        require(sendingAmount + supplyBefore == supplyAfter, "Supplies dont match #1");
         require(token2.balanceOf(userB) == sendingAmount, "User didn't receive tokens");
         require(token2.balanceOf(address(nttManagerChain2)) == 0, "NttManager has unintended funds");
 
@@ -481,7 +657,31 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
 
     // This test does a transfer between chain one and chain three.
     // Since the threshold for these two chains is two, the transfer is not completed until both VAAs are posted.
-    function test_perChainThreshold() public {
+    function test_thresholdEqualToNumberOfReceivers() public {
+        IManagerBase.SetTransceiversForChainEntry[] memory nttManager1Params =
+            new IManagerBase.SetTransceiversForChainEntry[](1);
+
+        nttManager1Params[0] = IManagerBase.SetTransceiversForChainEntry({
+            chainId: chainId3,
+            sendBitmap: 0x03,
+            recvBitmap: 0x03,
+            recvThreshold: 2
+        });
+
+        nttManagerChain1.setTransceiversForChains(nttManager1Params);
+
+        IManagerBase.SetTransceiversForChainEntry[] memory nttManager3Params =
+            new IManagerBase.SetTransceiversForChainEntry[](1);
+
+        nttManager3Params[0] = IManagerBase.SetTransceiversForChainEntry({
+            chainId: chainId1,
+            sendBitmap: 0x03,
+            recvBitmap: 0x03,
+            recvThreshold: 2
+        });
+
+        nttManagerChain3.setTransceiversForChains(nttManager3Params);
+
         vm.chainId(chainId1);
 
         // Setting up the transfer
@@ -605,147 +805,6 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
         require(token1.balanceOf(userB) == 0, "OG user receive tokens");
         require(token1.balanceOf(userC) == 0, "Sending user didn't receive tokens");
         require(token1.balanceOf(userD) == sendingAmount, "User received funds");
-    }
-
-    // This test does a transfer between chain one and chain three.
-    // It sets the threshold for chain three on chain one to one, so the transfer should complete when the first VAA is posted.
-    function test_thresholdLessThanNumReceivers() public {
-        nttManagerChain1.setPerChainThreshold(chainId3, 1);
-        require(
-            nttManagerChain1.getPerChainThreshold(chainId3) == 1,
-            "Failed to set per-chain threshold"
-        );
-
-        vm.chainId(chainId1);
-
-        // Setting up the transfer
-        DummyToken token1 = DummyToken(nttManagerChain1.token());
-        DummyToken token3 = DummyTokenMintAndBurn(nttManagerChain3.token());
-
-        uint8 decimals = token1.decimals();
-        uint256 sendingAmount = 5 * 10 ** decimals;
-        token1.mintDummy(address(userA), 5 * 10 ** decimals);
-        vm.startPrank(userA);
-        token1.approve(address(nttManagerChain1), sendingAmount);
-
-        vm.recordLogs();
-
-        // Send token from chain 1 to chain 3, userB.
-        {
-            uint256 nttManagerBalanceBefore = token1.balanceOf(address(nttManagerChain1));
-            uint256 userBalanceBefore = token1.balanceOf(address(userA));
-            nttManagerChain1.transfer(sendingAmount, chainId3, bytes32(uint256(uint160(userB))));
-
-            // Balance check on funds going in and out working as expected
-            uint256 nttManagerBalanceAfter = token1.balanceOf(address(nttManagerChain1));
-            uint256 userBalanceAfter = token1.balanceOf(address(userB));
-            require(
-                nttManagerBalanceBefore + sendingAmount == nttManagerBalanceAfter,
-                "Should be locking the tokens"
-            );
-            require(
-                userBalanceBefore - sendingAmount == userBalanceAfter,
-                "User should have sent tokens"
-            );
-        }
-
-        vm.stopPrank();
-
-        // Get and sign the log to go down the other pipes. There should be two messages since we have two transceivers.
-        Vm.Log[] memory entries = guardian.fetchWormholeMessageFromLog(vm.getRecordedLogs());
-        require(2 == entries.length, "Unexpected number of log entries 3");
-        bytes[] memory encodedVMs = new bytes[](entries.length);
-        for (uint256 i = 0; i < encodedVMs.length; i++) {
-            encodedVMs[i] = guardian.fetchSignedMessageFromLogs(entries[i], chainId1);
-        }
-
-        // Chain3 verification and checks
-        vm.chainId(chainId3);
-
-        uint256 supplyBefore = token3.totalSupply();
-
-        // Submit the first message on chain 3. The numbers shouldn't change yet since the threshold is two.
-        wormholeTransceiverChain3.receiveMessage(encodedVMs[0]);
-        uint256 supplyAfter = token3.totalSupply();
-
-        require(supplyBefore == supplyAfter, "Supplies changed early");
-        require(token3.balanceOf(userB) == 0, "User receive tokens early");
-        require(token3.balanceOf(address(nttManagerChain3)) == 0, "NttManager has unintended funds");
-
-        // Submit the second message and the transfer should complete.
-        secondWormholeTransceiverChain3.receiveMessage(encodedVMs[1]);
-        supplyAfter = token3.totalSupply();
-
-        require(sendingAmount + supplyBefore == supplyAfter, "Supplies dont match");
-        require(token3.balanceOf(userB) == sendingAmount, "User didn't receive tokens");
-        require(token3.balanceOf(address(nttManagerChain3)) == 0, "NttManager has unintended funds");
-
-        // Go back the other way from a THIRD user
-        vm.prank(userB);
-        token3.transfer(userC, sendingAmount);
-
-        vm.startPrank(userC);
-        token3.approve(address(nttManagerChain3), sendingAmount);
-        vm.recordLogs();
-
-        // Supply checks on the transfer
-        supplyBefore = token3.totalSupply();
-        nttManagerChain3.transfer(
-            sendingAmount,
-            chainId1,
-            toWormholeFormat(userD),
-            toWormholeFormat(userC),
-            false,
-            encodeTransceiverInstruction(true)
-        );
-
-        supplyAfter = token3.totalSupply();
-
-        require(sendingAmount - supplyBefore == supplyAfter, "Supplies don't match");
-        require(token3.balanceOf(userB) == 0, "OG user receive tokens");
-        require(token3.balanceOf(userC) == 0, "Sending user didn't receive tokens");
-        require(
-            token3.balanceOf(address(nttManagerChain3)) == 0,
-            "NttManager didn't receive unintended funds"
-        );
-
-        // Get and sign the log to go down the other pipe. Thank you to whoever wrote this code in the past!
-        entries = guardian.fetchWormholeMessageFromLog(vm.getRecordedLogs());
-        require(2 == entries.length, "Unexpected number of log entries for response");
-        encodedVMs = new bytes[](entries.length);
-        for (uint256 i = 0; i < encodedVMs.length; i++) {
-            encodedVMs[i] = guardian.fetchSignedMessageFromLogs(entries[i], chainId3);
-        }
-
-        // Chain1 verification and checks with the receiving of the message
-        vm.chainId(chainId1);
-
-        // Submit the first message back on chain one. Since the threshold from chain three is one, the numbers should update.
-        // Just for fun, we are having the second transceiver receive the message first. The order doesn't matter.
-        supplyBefore = token1.totalSupply();
-        secondWormholeTransceiverChain1.receiveMessage(encodedVMs[1]);
-        supplyAfter = token1.totalSupply();
-
-        require(supplyBefore == supplyAfter, "Supplies don't match between operations");
-        require(token1.balanceOf(userB) == 0, "OG user receive tokens");
-        require(token1.balanceOf(userC) == 0, "Sending user didn't receive tokens");
-        require(
-            token1.balanceOf(userD) == sendingAmount,
-            "Transfer did not complete after first message"
-        );
-
-        // Submitting the second message back on chain one should not change anything.
-        supplyBefore = token1.totalSupply();
-        wormholeTransceiverChain1.receiveMessage(encodedVMs[0]);
-        supplyAfter = token1.totalSupply();
-
-        require(supplyBefore == supplyAfter, "Supplies don't match between operations");
-        require(token1.balanceOf(userB) == 0, "OG user receive tokens");
-        require(token1.balanceOf(userC) == 0, "Sending user didn't receive tokens");
-        require(
-            token1.balanceOf(userD) == sendingAmount,
-            "Second message updated the balance when it shouldn't have"
-        );
     }
 
     function encodeTransceiverInstruction(

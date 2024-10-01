@@ -34,6 +34,14 @@ interface IManagerBase {
         uint8 num;
     }
 
+    /// @notice The structure of a per-chain entry in the call to setTransceiversForChains.
+    struct SetTransceiversForChainEntry {
+        uint64 sendBitmap;
+        uint64 recvBitmap;
+        uint16 chainId;
+        uint8 recvThreshold;
+    }
+
     /// @notice Emitted when a message has been attested to.
     /// @dev Topic0
     ///      0x35a2101eaac94b493e0dfca061f9a7f087913fde8678e7cde0aca9897edba0e5.
@@ -49,14 +57,6 @@ interface IManagerBase {
     /// @param threshold The new threshold.
     event ThresholdChanged(uint8 oldThreshold, uint8 threshold);
 
-    /// @notice Emmitted when the per-chain threshold required transceivers is changed.
-    /// @dev Topic0
-    ///      0x899b344e9e176bdedb9f57f13e014ff93a874404737f35d71dd95a2e858814d8.
-    /// @param chainId The chain to which the threshold applies.
-    /// @param oldThreshold The old threshold.
-    /// @param threshold The new threshold.
-    event PerChainThresholdChanged(uint16 chainId, uint8 oldThreshold, uint8 threshold);
-
     /// @notice Emitted when an transceiver is removed from the nttManager.
     /// @dev Topic0
     ///      0xf05962b5774c658e85ed80c91a75af9d66d2af2253dda480f90bce78aff5eda5.
@@ -65,26 +65,32 @@ interface IManagerBase {
     /// @param threshold The current threshold of transceivers.
     event TransceiverAdded(address transceiver, uint256 transceiversNum, uint8 threshold);
 
-    /// @notice Emitted when a transceiver is enabled for sending on a chain.
-    /// @dev Topic0
-    ///      0x8b14d833f2eae4d6fc1d6037cc37fc69ed72e184b586ab5cda3dda94cc4cc37d.
-    /// @param transceiver The address of the transceiver.
-    /// @param chainId The chain to which the send applies.
-    event SendTransceiverEnabledForChain(address transceiver, uint16 chainId);
-
-    /// @notice Emitted when a transceiver is enabled for receiving on a chain.
-    /// @dev Topic0
-    ///      0xf05962b5774c658e85ed80c91a75af9d66d2af2253dda480f90bce78aff5eda5.
-    /// @param transceiver The address of the transceiver.
-    /// @param chainId The chain to which the receive applies.
-    event RecvTransceiverEnabledForChain(address transceiver, uint16 chainId);
-
     /// @notice Emitted when an transceiver is removed from the nttManager.
     /// @dev Topic0
     ///     0x697a3853515b88013ad432f29f53d406debc9509ed6d9313dcfe115250fcd18f.
     /// @param transceiver The address of the transceiver.
     /// @param threshold The current threshold of transceivers.
     event TransceiverRemoved(address transceiver, uint8 threshold);
+
+    /// @notice Emitted when the sending transceivers are updated for a chain.
+    /// @dev Topic0
+    ///      0xe3bed59083cdad1d552b8eef7d3acc80adb78da6c6f375ae3adf5cb4823b2619
+    /// @param chainId The chain that was updated.
+    /// @param oldBitmap The original index bitmap.
+    /// @param oldBitmap The updated index bitmap.
+    event SendTransceiversUpdatedForChain(uint16 chainId, uint64 oldBitmap, uint64 newBitmap);
+
+    /// @notice Emitted when the receivinging transceivers are updated for a chain.
+    /// @dev Topic0
+    ///      0xd09fdac2bd3e794a578992bfe77134765623d22a2b3201e2994f681828160f2f
+    /// @param chainId The chain that was updated.
+    /// @param oldBitmap The original index bitmap.
+    /// @param oldBitmap The updated index bitmap.
+    /// @param oldThreshold The original receive threshold.
+    /// @param newThreshold The updated receive threshold.
+    event RecvTransceiversUpdatedForChain(
+        uint16 chainId, uint64 oldBitmap, uint64 newBitmap, uint8 oldThreshold, uint8 newThreshold
+    );
 
     /// @notice payment for a transfer is too low.
     /// @param requiredPayment The required payment.
@@ -156,13 +162,6 @@ interface IManagerBase {
         uint8 threshold
     ) external;
 
-    /// @notice Sets the per-chain threshold for the number of attestations required for a message
-    /// to be considered valid. Note that if a threshold is not specified for a chain, the default applies.
-    /// @param chainId The chain for which the threshold applies.
-    /// @param threshold The new threshold.
-    /// @dev This method can only be executed by the `owner`.
-    function setPerChainThreshold(uint16 chainId, uint8 threshold) external;
-
     /// @notice Sets the transceiver for the given chain.
     /// @param transceiver The address of the transceiver.
     /// @dev This method can only be executed by the `owner`.
@@ -176,18 +175,6 @@ interface IManagerBase {
     function removeTransceiver(
         address transceiver
     ) external;
-
-    /// @notice Enables the transceiver for sending on the given chain.
-    /// @param transceiver The address of the transceiver.
-    /// @param chainId The chain for which the threshold applies.
-    /// @dev This method can only be executed by the `owner`.
-    function enableSendTransceiverForChain(address transceiver, uint16 chainId) external;
-
-    /// @notice Enables the transceiver for receiving on the given chain.
-    /// @param transceiver The address of the transceiver.
-    /// @param chainId The chain for which the threshold applies.
-    /// @dev This method can only be executed by the `owner`.
-    function enableRecvTransceiverForChain(address transceiver, uint16 chainId) external;
 
     /// @notice Checks if a message has been approved. The message should have at least
     /// the minimum threshold of attestations from distinct endpoints.
@@ -226,13 +213,6 @@ interface IManagerBase {
     /// it to be considered valid and acted upon.
     function getThreshold() external view returns (uint8);
 
-    /// @notice Returns the number of Transceivers that must attest to a msgId for
-    /// it to be considered valid and acted upon.
-    /// @param chainId The chain for which the threshold applies.
-    function getPerChainThreshold(
-        uint16 chainId
-    ) external view returns (uint8);
-
     /// @notice Returns a boolean indicating if the transceiver has attested to the message.
     /// @param digest The digest of the message.
     /// @param index The index of the transceiver
@@ -254,4 +234,50 @@ interface IManagerBase {
 
     /// @notice Returns the chain ID.
     function chainId() external view returns (uint16);
+
+    /// @notice Returns the bitmap of send transceivers enabled for a chain.
+    /// @param forChainId The chain for which sending is enabled.
+    function getSendTransceiverBitmapForChain(
+        uint16 forChainId
+    ) external view returns (uint64);
+
+    /// @notice Returns the bitmap of receive transceivers enabled for a chain.
+    /// @param forChainId The chain for which receiving is enabled.
+    function getRecvTransceiverBitmapForChain(
+        uint16 forChainId
+    ) external view returns (uint64);
+
+    /// @notice Returns the set of chains for which sending is enabled.
+    function getChainsEnabledForSending() external view returns (uint16[] memory);
+
+    /// @notice Returns the set of chains for which receiving is enabled.
+    function getChainsEnabledForReceiving() external view returns (uint16[] memory);
+
+    /// @notice Sets the bitmap of transceivers enabled for sending for a chain.
+    /// @param forChainId The chain to be updated.
+    /// @param indexBitmap The bitmap of transceiver indexes that are enabled.
+    function setSendTransceiverBitmapForChain(uint16 forChainId, uint64 indexBitmap) external;
+
+    /// @notice Sets the bitmap of transceivers enabled for receiving for a chain.
+    /// @param forChainId The chain to be updated.
+    /// @param indexBitmap The bitmap of transceiver indexes that are enabled.
+    /// @param threshold The receive threshold for the chain.
+    function setRecvTransceiverBitmapForChain(
+        uint16 forChainId,
+        uint64 indexBitmap,
+        uint8 threshold
+    ) external;
+
+    /// @notice Sets the transceiver bitmaps and thresholds for a set of chains.
+    /// @param params The values to be applied for a set of chains.
+    function setTransceiversForChains(
+        SetTransceiversForChainEntry[] memory params
+    ) external;
+
+    /// @notice Returns the number of Transceivers that must attest to a msgId for
+    /// it to be considered valid and acted upon.
+    /// @param forChainId The chain for which the threshold applies.
+    function getThresholdForChain(
+        uint16 forChainId
+    ) external view returns (uint8);
 }
