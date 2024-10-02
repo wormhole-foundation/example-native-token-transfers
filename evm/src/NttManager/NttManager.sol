@@ -593,7 +593,8 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     /// @param recipient The recipient address
     /// @param recipientChain The Wormhole chain ID for the destination
     /// @param - The sequence number for the manager message (unused, provided for overriding integrators)
-    /// @param - The message sender (unused, provided for overriding integrators)
+    /// @param - The sender of the funds (unused, provided for overriding integrators). If releasing
+    /// queued transfers, when rate limiting is used, then this value could be different from msg.sender.
     /// @return - The TransceiverStructs.NativeTokenTransfer struct
     function _prepareNativeTokenTransfer(
         TrimmedAmount amount,
