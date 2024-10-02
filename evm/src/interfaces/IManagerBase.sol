@@ -34,14 +34,6 @@ interface IManagerBase {
         uint8 num;
     }
 
-    /// @notice The structure of a per-chain entry in the call to setTransceiversForChains.
-    struct SetTransceiversForChainEntry {
-        uint64 sendBitmap;
-        uint64 recvBitmap;
-        uint16 chainId;
-        uint8 recvThreshold;
-    }
-
     /// @notice Emitted when a message has been attested to.
     /// @dev Topic0
     ///      0x35a2101eaac94b493e0dfca061f9a7f087913fde8678e7cde0aca9897edba0e5.
@@ -71,26 +63,6 @@ interface IManagerBase {
     /// @param transceiver The address of the transceiver.
     /// @param threshold The current threshold of transceivers.
     event TransceiverRemoved(address transceiver, uint8 threshold);
-
-    /// @notice Emitted when the sending transceivers are updated for a chain.
-    /// @dev Topic0
-    ///      0xe3bed59083cdad1d552b8eef7d3acc80adb78da6c6f375ae3adf5cb4823b2619
-    /// @param chainId The chain that was updated.
-    /// @param oldBitmap The original index bitmap.
-    /// @param oldBitmap The updated index bitmap.
-    event SendTransceiversUpdatedForChain(uint16 chainId, uint64 oldBitmap, uint64 newBitmap);
-
-    /// @notice Emitted when the receivinging transceivers are updated for a chain.
-    /// @dev Topic0
-    ///      0xd09fdac2bd3e794a578992bfe77134765623d22a2b3201e2994f681828160f2f
-    /// @param chainId The chain that was updated.
-    /// @param oldBitmap The original index bitmap.
-    /// @param oldBitmap The updated index bitmap.
-    /// @param oldThreshold The original receive threshold.
-    /// @param newThreshold The updated receive threshold.
-    event RecvTransceiversUpdatedForChain(
-        uint16 chainId, uint64 oldBitmap, uint64 newBitmap, uint8 oldThreshold, uint8 newThreshold
-    );
 
     /// @notice payment for a transfer is too low.
     /// @param requiredPayment The required payment.
@@ -234,50 +206,4 @@ interface IManagerBase {
 
     /// @notice Returns the chain ID.
     function chainId() external view returns (uint16);
-
-    /// @notice Returns the bitmap of send transceivers enabled for a chain.
-    /// @param forChainId The chain for which sending is enabled.
-    function getSendTransceiverBitmapForChain(
-        uint16 forChainId
-    ) external view returns (uint64);
-
-    /// @notice Returns the bitmap of receive transceivers enabled for a chain.
-    /// @param forChainId The chain for which receiving is enabled.
-    function getRecvTransceiverBitmapForChain(
-        uint16 forChainId
-    ) external view returns (uint64);
-
-    /// @notice Returns the set of chains for which sending is enabled.
-    function getChainsEnabledForSending() external view returns (uint16[] memory);
-
-    /// @notice Returns the set of chains for which receiving is enabled.
-    function getChainsEnabledForReceiving() external view returns (uint16[] memory);
-
-    /// @notice Sets the bitmap of transceivers enabled for sending for a chain.
-    /// @param forChainId The chain to be updated.
-    /// @param indexBitmap The bitmap of transceiver indexes that are enabled.
-    function setSendTransceiverBitmapForChain(uint16 forChainId, uint64 indexBitmap) external;
-
-    /// @notice Sets the bitmap of transceivers enabled for receiving for a chain.
-    /// @param forChainId The chain to be updated.
-    /// @param indexBitmap The bitmap of transceiver indexes that are enabled.
-    /// @param threshold The receive threshold for the chain.
-    function setRecvTransceiverBitmapForChain(
-        uint16 forChainId,
-        uint64 indexBitmap,
-        uint8 threshold
-    ) external;
-
-    /// @notice Sets the transceiver bitmaps and thresholds for a set of chains.
-    /// @param params The values to be applied for a set of chains.
-    function setTransceiversForChains(
-        SetTransceiversForChainEntry[] memory params
-    ) external;
-
-    /// @notice Returns the number of Transceivers that must attest to a msgId for
-    /// it to be considered valid and acted upon.
-    /// @param forChainId The chain for which the threshold applies.
-    function getThresholdForChain(
-        uint16 forChainId
-    ) external view returns (uint8);
 }

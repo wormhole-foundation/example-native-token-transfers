@@ -420,57 +420,6 @@ abstract contract ManagerBase is
         emit ThresholdChanged(oldThreshold, threshold);
     }
 
-    /// @inheritdoc IManagerBase
-    function getSendTransceiverBitmapForChain(
-        uint16 // forChainId
-    ) external view virtual returns (uint64) {
-        return 0;
-    }
-
-    /// @inheritdoc IManagerBase
-    function getRecvTransceiverBitmapForChain(
-        uint16 // forChainId
-    ) external view virtual returns (uint64) {
-        return 0;
-    }
-
-    /// @inheritdoc IManagerBase
-    function getThresholdForChain(
-        uint16 // forChainId
-    ) external view virtual returns (uint8) {
-        return 0;
-    }
-
-    /// @inheritdoc IManagerBase
-    function getChainsEnabledForSending() external view virtual returns (uint16[] memory) {}
-
-    /// @inheritdoc IManagerBase
-    function getChainsEnabledForReceiving() external view virtual returns (uint16[] memory) {}
-
-    /// @inheritdoc IManagerBase
-    function setSendTransceiverBitmapForChain(
-        uint16, // forChainId
-        uint64 // indexBitmap
-    ) external virtual onlyOwner {
-        revert NotImplemented();
-    }
-
-    /// @inheritdoc IManagerBase
-    function setRecvTransceiverBitmapForChain(
-        uint16, // forChainId
-        uint64, // indexBitmap
-        uint8 // threshold
-    ) external virtual onlyOwner {
-        revert NotImplemented();
-    }
-
-    /// @inheritdoc IManagerBase
-    function setTransceiversForChains(
-        SetTransceiversForChainEntry[] memory // params
-    ) external virtual onlyOwner {
-        revert NotImplemented();
-    }
-
     // =============== Internal ==============================================================
 
     function _setTransceiverAttestedToMessage(bytes32 digest, uint8 index) internal {

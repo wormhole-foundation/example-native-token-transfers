@@ -436,17 +436,17 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
     }
 
     function test_setTransceiversForChains() public {
-        IManagerBase.SetTransceiversForChainEntry[] memory params =
-            new IManagerBase.SetTransceiversForChainEntry[](2);
+        NttManagerWithPerChainTransceivers.SetTransceiversForChainEntry[] memory params =
+            new NttManagerWithPerChainTransceivers.SetTransceiversForChainEntry[](2);
 
-        params[0] = IManagerBase.SetTransceiversForChainEntry({
+        params[0] = NttManagerWithPerChainTransceivers.SetTransceiversForChainEntry({
             chainId: chainId2,
             sendBitmap: 0x02,
             recvBitmap: 0x01,
             recvThreshold: 1
         });
 
-        params[1] = IManagerBase.SetTransceiversForChainEntry({
+        params[1] = NttManagerWithPerChainTransceivers.SetTransceiversForChainEntry({
             chainId: chainId3,
             sendBitmap: 0x02,
             recvBitmap: 0x03,
@@ -515,10 +515,10 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
     // This test does a transfer between chain one and chain two.
     // Since the receive thresholds are set to one, posting a VAA from only one transceiver completes the transfer.
     function test_thresholdLessThanNumReceivers() public {
-        IManagerBase.SetTransceiversForChainEntry[] memory nttManager1Params =
-            new IManagerBase.SetTransceiversForChainEntry[](1);
+        NttManagerWithPerChainTransceivers.SetTransceiversForChainEntry[] memory nttManager1Params =
+            new NttManagerWithPerChainTransceivers.SetTransceiversForChainEntry[](1);
 
-        nttManager1Params[0] = IManagerBase.SetTransceiversForChainEntry({
+        nttManager1Params[0] = NttManagerWithPerChainTransceivers.SetTransceiversForChainEntry({
             chainId: chainId2,
             sendBitmap: 0x03,
             recvBitmap: 0x03,
@@ -527,10 +527,10 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
 
         nttManagerChain1.setTransceiversForChains(nttManager1Params);
 
-        IManagerBase.SetTransceiversForChainEntry[] memory nttManager2Params =
-            new IManagerBase.SetTransceiversForChainEntry[](1);
+        NttManagerWithPerChainTransceivers.SetTransceiversForChainEntry[] memory nttManager2Params =
+            new NttManagerWithPerChainTransceivers.SetTransceiversForChainEntry[](1);
 
-        nttManager2Params[0] = IManagerBase.SetTransceiversForChainEntry({
+        nttManager2Params[0] = NttManagerWithPerChainTransceivers.SetTransceiversForChainEntry({
             chainId: chainId1,
             sendBitmap: 0x03,
             recvBitmap: 0x03,
@@ -658,10 +658,10 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
     // This test does a transfer between chain one and chain three.
     // Since the threshold for these two chains is two, the transfer is not completed until both VAAs are posted.
     function test_thresholdEqualToNumberOfReceivers() public {
-        IManagerBase.SetTransceiversForChainEntry[] memory nttManager1Params =
-            new IManagerBase.SetTransceiversForChainEntry[](1);
+        NttManagerWithPerChainTransceivers.SetTransceiversForChainEntry[] memory nttManager1Params =
+            new NttManagerWithPerChainTransceivers.SetTransceiversForChainEntry[](1);
 
-        nttManager1Params[0] = IManagerBase.SetTransceiversForChainEntry({
+        nttManager1Params[0] = NttManagerWithPerChainTransceivers.SetTransceiversForChainEntry({
             chainId: chainId3,
             sendBitmap: 0x03,
             recvBitmap: 0x03,
@@ -670,10 +670,10 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
 
         nttManagerChain1.setTransceiversForChains(nttManager1Params);
 
-        IManagerBase.SetTransceiversForChainEntry[] memory nttManager3Params =
-            new IManagerBase.SetTransceiversForChainEntry[](1);
+        NttManagerWithPerChainTransceivers.SetTransceiversForChainEntry[] memory nttManager3Params =
+            new NttManagerWithPerChainTransceivers.SetTransceiversForChainEntry[](1);
 
-        nttManager3Params[0] = IManagerBase.SetTransceiversForChainEntry({
+        nttManager3Params[0] = NttManagerWithPerChainTransceivers.SetTransceiversForChainEntry({
             chainId: chainId1,
             sendBitmap: 0x03,
             recvBitmap: 0x03,

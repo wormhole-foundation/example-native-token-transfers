@@ -14,6 +14,26 @@ import "./NttManagerNoRateLimiting.sol";
 ///
 /// @dev    All of the developer notes from `NttManager` apply here.
 contract NttManagerWithPerChainTransceivers is NttManagerNoRateLimiting {
+    /// @notice Emitted when the sending transceivers are updated for a chain.
+    /// @dev Topic0
+    ///      0xe3bed59083cdad1d552b8eef7d3acc80adb78da6c6f375ae3adf5cb4823b2619
+    /// @param chainId The chain that was updated.
+    /// @param oldBitmap The original index bitmap.
+    /// @param oldBitmap The updated index bitmap.
+    event SendTransceiversUpdatedForChain(uint16 chainId, uint64 oldBitmap, uint64 newBitmap);
+
+    /// @notice Emitted when the receivinging transceivers are updated for a chain.
+    /// @dev Topic0
+    ///      0xd09fdac2bd3e794a578992bfe77134765623d22a2b3201e2994f681828160f2f
+    /// @param chainId The chain that was updated.
+    /// @param oldBitmap The original index bitmap.
+    /// @param oldBitmap The updated index bitmap.
+    /// @param oldThreshold The original receive threshold.
+    /// @param newThreshold The updated receive threshold.
+    event RecvTransceiversUpdatedForChain(
+        uint16 chainId, uint64 oldBitmap, uint64 newBitmap, uint8 oldThreshold, uint8 newThreshold
+    );
+
     /// @notice Transceiver index is greater than the number of enabled transceivers.
     /// @dev Selector 0x770c2d3c.
     /// @param index The transceiver index that is invalid.
@@ -38,6 +58,14 @@ contract NttManagerWithPerChainTransceivers is NttManagerNoRateLimiting {
     /// @param transceiver The address of the transceiver that is not enabled.
     error TransceiverNotEnabled(uint8 index, address transceiver);
 
+    /// @notice The structure of a per-chain entry in the call to setTransceiversForChains.
+    struct SetTransceiversForChainEntry {
+        uint64 sendBitmap;
+        uint64 recvBitmap;
+        uint16 chainId;
+        uint8 recvThreshold;
+    }
+
     constructor(
         address _token,
         Mode _mode,
@@ -60,54 +88,50 @@ contract NttManagerWithPerChainTransceivers is NttManagerNoRateLimiting {
 
     // =============== Public Getters ========================================================
 
-    /// @inheritdoc IManagerBase
+    /// @notice Returns the bitmap of send transceivers enabled for a chain.
+    /// @param forChainId The chain for which sending is enabled.
     function getSendTransceiverBitmapForChain(
         uint16 forChainId
-    ) external view override(ManagerBase, IManagerBase) returns (uint64) {
+    ) external view returns (uint64) {
         return _getPerChainTransceiverBitmap(forChainId, SEND_TRANSCEIVER_BITMAP_SLOT);
     }
 
-    /// @inheritdoc IManagerBase
+    /// @notice Returns the bitmap of receive transceivers enabled for a chain.
+    /// @param forChainId The chain for which receiving is enabled.
     function getRecvTransceiverBitmapForChain(
         uint16 forChainId
-    ) external view override(ManagerBase, IManagerBase) returns (uint64) {
+    ) external view returns (uint64) {
         return _getPerChainTransceiverBitmap(forChainId, RECV_TRANSCEIVER_BITMAP_SLOT);
     }
 
-    /// @inheritdoc IManagerBase
-    function getChainsEnabledForSending()
-        external
-        pure
-        override(ManagerBase, IManagerBase)
-        returns (uint16[] memory)
-    {
+    /// @notice Returns the set of chains for which sending is enabled.
+    function getChainsEnabledForSending() external pure returns (uint16[] memory) {
         return _getEnabledChainsStorage(SEND_ENABLED_CHAINS_SLOT);
     }
 
-    /// @inheritdoc IManagerBase
-    function getChainsEnabledForReceiving()
-        external
-        pure
-        override(ManagerBase, IManagerBase)
-        returns (uint16[] memory)
-    {
+    /// @notice Returns the set of chains for which receiving is enabled.
+    function getChainsEnabledForReceiving() external pure returns (uint16[] memory) {
         return _getEnabledChainsStorage(RECV_ENABLED_CHAINS_SLOT);
     }
 
-    /// @inheritdoc IManagerBase
+    /// @notice Returns the number of Transceivers that must attest to a msgId for
+    /// it to be considered valid and acted upon.
+    /// @param forChainId The chain for which the threshold applies.
     function getThresholdForChain(
         uint16 forChainId
-    ) public view override(ManagerBase, IManagerBase) returns (uint8) {
+    ) public view returns (uint8) {
         return _getThresholdStoragePerChain()[forChainId].num;
     }
 
     // =============== Public Setters ========================================================
 
-    /// @inheritdoc IManagerBase
+    /// @notice Sets the bitmap of transceivers enabled for sending for a chain.
+    /// @param forChainId The chain to be updated.
+    /// @param indexBitmap The bitmap of transceiver indexes that are enabled.
     function setSendTransceiverBitmapForChain(
         uint16 forChainId,
         uint64 indexBitmap
-    ) public override(ManagerBase, IManagerBase) onlyOwner {
+    ) public onlyOwner {
         _validateTransceivers(indexBitmap);
         mapping(uint16 => _EnabledTransceiverBitmap) storage _bitmaps =
             _getPerChainTransceiverBitmapStorage(SEND_TRANSCEIVER_BITMAP_SLOT);
@@ -123,12 +147,15 @@ contract NttManagerWithPerChainTransceivers is NttManagerNoRateLimiting {
         emit SendTransceiversUpdatedForChain(forChainId, oldBitmap, indexBitmap);
     }
 
-    /// @inheritdoc IManagerBase
+    /// @notice Sets the bitmap of transceivers enabled for receiving for a chain.
+    /// @param forChainId The chain to be updated.
+    /// @param indexBitmap The bitmap of transceiver indexes that are enabled.
+    /// @param threshold The receive threshold for the chain.
     function setRecvTransceiverBitmapForChain(
         uint16 forChainId,
         uint64 indexBitmap,
         uint8 threshold
-    ) public override(ManagerBase, IManagerBase) onlyOwner {
+    ) public onlyOwner {
         _validateTransceivers(indexBitmap);
 
         // Validate the threshold against the bitmap.
@@ -164,10 +191,11 @@ contract NttManagerWithPerChainTransceivers is NttManagerNoRateLimiting {
         );
     }
 
-    /// @inheritdoc IManagerBase
+    /// @notice Sets the transceiver bitmaps and thresholds for a set of chains.
+    /// @param params The values to be applied for a set of chains.
     function setTransceiversForChains(
         SetTransceiversForChainEntry[] memory params
-    ) external override(ManagerBase, IManagerBase) onlyOwner {
+    ) external onlyOwner {
         for (uint256 idx = 0; idx < params.length; idx++) {
             setSendTransceiverBitmapForChain(params[idx].chainId, params[idx].sendBitmap);
             setRecvTransceiverBitmapForChain(
