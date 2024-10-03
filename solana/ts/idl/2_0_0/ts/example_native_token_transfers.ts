@@ -421,18 +421,14 @@ export type ExampleNativeTokenTransfers = {
         {
           "name": "peer",
           "isMut": false,
-          "isSigner": false,
-          "docs": [
-            "NOTE: seeds constraint is verified manually in the `impl`",
-            "as it depends on `transceiver_message` being deserialized"
-          ]
+          "isSigner": false
         },
         {
           "name": "transceiverMessage",
           "isMut": false,
           "isSigner": false,
           "docs": [
-            "as it depends on `transceiver_message` being deserialized"
+            "`Account<T>` and `owner` constraints are mutually-exclusive"
           ]
         },
         {
@@ -466,11 +462,7 @@ export type ExampleNativeTokenTransfers = {
         {
           "name": "inboxRateLimit",
           "isMut": true,
-          "isSigner": false,
-          "docs": [
-            "NOTE: seeds constraint is verified manually in the `impl`",
-            "as it depends on `transceiver_message` being deserialized"
-          ]
+          "isSigner": false
         },
         {
           "name": "outboxRateLimit",
@@ -2385,18 +2377,14 @@ export const IDL: ExampleNativeTokenTransfers = {
         {
           "name": "peer",
           "isMut": false,
-          "isSigner": false,
-          "docs": [
-            "NOTE: seeds constraint is verified manually in the `impl`",
-            "as it depends on `transceiver_message` being deserialized"
-          ]
+          "isSigner": false
         },
         {
           "name": "transceiverMessage",
           "isMut": false,
           "isSigner": false,
           "docs": [
-            "as it depends on `transceiver_message` being deserialized"
+            "`Account<T>` and `owner` constraints are mutually-exclusive"
           ]
         },
         {
@@ -2430,11 +2418,7 @@ export const IDL: ExampleNativeTokenTransfers = {
         {
           "name": "inboxRateLimit",
           "isMut": true,
-          "isSigner": false,
-          "docs": [
-            "NOTE: seeds constraint is verified manually in the `impl`",
-            "as it depends on `transceiver_message` being deserialized"
-          ]
+          "isSigner": false
         },
         {
           "name": "outboxRateLimit",
