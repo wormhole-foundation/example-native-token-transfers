@@ -1,5 +1,8 @@
-use anchor_lang::{prelude::*, system_program};
-use ntt_messages::{chain_id::ChainId, transceiver::TransceiverMessageData};
+use anchor_lang::{prelude::*, system_program, Discriminator};
+use ntt_messages::{
+    chain_id::ChainId,
+    transceiver::{TransceiverMessageData, TransceiverMessageDataBytes},
+};
 use std::{collections::HashMap, marker::PhantomData};
 
 #[account]
@@ -22,6 +25,34 @@ impl<A: AnchorDeserialize + AnchorSerialize + Space + Clone> ValidatedTransceive
         }
         let mut data: &[u8] = &info.try_borrow_data()?;
         ValidatedTransceiverMessage::try_deserialize(&mut data)
+    }
+
+    pub fn from_chain(info: &UncheckedAccount) -> Result<ChainId> {
+        let data: &[u8] = &info.try_borrow_data().unwrap();
+        if data.len() < ValidatedTransceiverMessage::<A>::DISCRIMINATOR.len() {
+            return Err(ErrorCode::AccountDiscriminatorNotFound.into());
+        }
+        let given_disc = &data[..8];
+        if Self::DISCRIMINATOR != given_disc {
+            return Err(ErrorCode::AccountDiscriminatorMismatch.into());
+        }
+        Ok(ChainId {
+            // This is LE bytes because we deserialize using Borsh.
+            // Not to be confused with the wire format (which is BE bytes)
+            id: u16::from_le_bytes(data[8..10].try_into().unwrap()),
+        })
+    }
+
+    pub fn message<'a>(info: &'a UncheckedAccount) -> Result<TransceiverMessageDataBytes<'a, A>> {
+        let data = info.try_borrow_data().unwrap();
+        if data.len() < ValidatedTransceiverMessage::<A>::DISCRIMINATOR.len() {
+            return Err(ErrorCode::AccountDiscriminatorNotFound.into());
+        }
+        let given_disc = &data[..8];
+        if Self::DISCRIMINATOR != given_disc {
+            return Err(ErrorCode::AccountDiscriminatorMismatch.into());
+        }
+        Ok(TransceiverMessageDataBytes::parse(data))
     }
 }
 
