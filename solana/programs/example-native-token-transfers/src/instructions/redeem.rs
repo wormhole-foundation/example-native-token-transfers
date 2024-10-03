@@ -28,18 +28,24 @@ pub struct Redeem<'info> {
     )]
     pub config: Account<'info, Config>,
 
-    #[account()]
-    /// NOTE: seeds constraint is verified manually in the `impl`
-    /// as it depends on `transceiver_message` being deserialized
+    #[account(
+        seeds = [NttManagerPeer::SEED_PREFIX, ValidatedTransceiverMessage::<NativeTokenTransfer>::from_chain(&transceiver_message)?.id.to_be_bytes().as_ref()],
+        constraint = peer.address == ValidatedTransceiverMessage::<NativeTokenTransfer>::message(&transceiver_message)?.source_ntt_manager() @ NTTError::InvalidNttManagerPeer,
+        bump = peer.bump,
+    )]
     pub peer: Account<'info, NttManagerPeer>,
 
     #[account(
+        // check that the message is targeted to this chain
+        constraint = ValidatedTransceiverMessage::<NativeTokenTransfer>::message(&transceiver_message)?.ntt_manager_payload().payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
+        // check that we're the intended recipient
+        constraint = ValidatedTransceiverMessage::<NativeTokenTransfer>::message(&transceiver_message)?.recipient_ntt_manager() == crate::ID.to_bytes() @ NTTError::InvalidRecipientNttManager,
         // NOTE: we don't replay protect VAAs. Instead, we replay protect
         // executing the messages themselves with the [`released`] flag.
         owner = transceiver.transceiver_address
     )]
-    /// CHECK: remaining constraints are verified manually in the `impl`
-    /// as it depends on `transceiver_message` being deserialized
+    /// CHECK: `transceiver_message` has to be manually deserialized as Anchor
+    /// `Account<T>` and `owner` constraints are mutually-exclusive
     pub transceiver_message: UncheckedAccount<'info>,
 
     #[account(
@@ -52,7 +58,18 @@ pub struct Redeem<'info> {
     )]
     pub mint: InterfaceAccount<'info, token_interface::Mint>,
 
-    #[account(mut)]
+    #[account(
+        init_if_needed,
+        payer = payer,
+        space = 8 + InboxItem::INIT_SPACE,
+        seeds = [
+            InboxItem::SEED_PREFIX,
+            ValidatedTransceiverMessage::<NativeTokenTransfer>::message(&transceiver_message)?.ntt_manager_payload().keccak256(
+                ValidatedTransceiverMessage::<NativeTokenTransfer>::from_chain(&transceiver_message)?
+            ).as_ref(),
+        ],
+        bump,
+        )]
     /// NOTE: This account is content-addressed (PDA seeded by the message hash).
     /// This is because in a multi-transceiver configuration, the different
     /// transceivers "vote" on messages (by delivering them). By making the inbox
@@ -65,11 +82,16 @@ pub struct Redeem<'info> {
     /// program should not fail which would occur when using the `init` constraint.
     /// The [`InboxItem::init`] field is used to guard against malicious or accidental modification
     /// InboxItem fields that should remain constant.
-    pub inbox_item: UncheckedAccount<'info>,
+    pub inbox_item: Account<'info, InboxItem>,
 
-    #[account(mut)]
-    /// NOTE: seeds constraint is verified manually in the `impl`
-    /// as it depends on `transceiver_message` being deserialized
+    #[account(
+        mut,
+        seeds = [
+            InboxRateLimit::SEED_PREFIX,
+            ValidatedTransceiverMessage::<NativeTokenTransfer>::from_chain(&transceiver_message)?.id.to_be_bytes().as_ref(),
+        ],
+        bump,
+    )]
     pub inbox_rate_limit: Account<'info, InboxRateLimit>,
 
     #[account(mut)]
@@ -244,6 +266,7 @@ pub struct RedeemArgs {}
 
 pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let accs = ctx.accounts;
+
     let transceiver_message: ValidatedTransceiverMessage<NativeTokenTransfer> =
         ValidatedTransceiverMessage::try_from(
             transceiver_message.clone(),
@@ -504,24 +527,25 @@ pub fn redeem<'info>(
         .untrim(accs.mint.decimals)
         .map_err(NTTError::from)?;
 
-    if !inbox_item.init {
+    if !accs.inbox_item.init {
         let recipient_address =
             Pubkey::try_from(message.payload.to).map_err(|_| NTTError::InvalidRecipientAddress)?;
 
-        inbox_item = InboxItem {
+        accs.inbox_item.set_inner(InboxItem {
             init: true,
-            bump: inbox_item_bump,
+            bump: ctx.bumps.inbox_item,
             amount,
             recipient_address,
             release_status: ReleaseStatus::NotApproved,
             votes: Bitmap::new(),
-        };
+        });
     }
 
     // idempotent
-    inbox_item.votes.set(accs.transceiver.id, true)?;
+    accs.inbox_item.votes.set(accs.transceiver.id, true)?;
 
-    if inbox_item
+    if accs
+        .inbox_item
         .votes
         .count_enabled_votes(accs.config.enabled_transceivers)
         < accs.config.threshold
@@ -539,9 +563,7 @@ pub fn redeem<'info>(
         RateLimitResult::Delayed(release_timestamp) => release_timestamp,
     };
 
-    inbox_item.release_after(release_timestamp)?;
-
-    inbox_item.try_serialize(&mut &mut accs.inbox_item.try_borrow_mut_data()?[..])?;
+    accs.inbox_item.release_after(release_timestamp)?;
 
     Ok(())
 }
