@@ -416,10 +416,6 @@ export type ExampleNativeTokenTransfers = {
           name: "peer";
           isMut: false;
           isSigner: false;
-          docs: [
-            "NOTE: seeds constraint is verified manually in the `impl`",
-            "as it depends on `transceiver_message` being deserialized"
-          ];
         },
         {
           name: "transceiverMessage";
@@ -459,10 +455,6 @@ export type ExampleNativeTokenTransfers = {
           name: "inboxRateLimit";
           isMut: true;
           isSigner: false;
-          docs: [
-            "NOTE: seeds constraint is verified manually in the `impl`",
-            "as it depends on `transceiver_message` being deserialized"
-          ];
         },
         {
           name: "outboxRateLimit";
@@ -2333,10 +2325,6 @@ export const IDL: ExampleNativeTokenTransfers = {
           name: "peer",
           isMut: false,
           isSigner: false,
-          docs: [
-            "NOTE: seeds constraint is verified manually in the `impl`",
-            "as it depends on `transceiver_message` being deserialized",
-          ],
         },
         {
           name: "transceiverMessage",
@@ -2376,10 +2364,6 @@ export const IDL: ExampleNativeTokenTransfers = {
           name: "inboxRateLimit",
           isMut: true,
           isSigner: false,
-          docs: [
-            "NOTE: seeds constraint is verified manually in the `impl`",
-            "as it depends on `transceiver_message` being deserialized",
-          ],
         },
         {
           name: "outboxRateLimit",
