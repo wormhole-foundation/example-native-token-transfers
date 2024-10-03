@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{cell::Ref, io, marker::PhantomData};
+use std::{io, marker::PhantomData};
 
 #[cfg(feature = "anchor")]
 use anchor_lang::prelude::*;
