@@ -30,16 +30,16 @@ pub struct Redeem<'info> {
 
     #[account(
         seeds = [NttManagerPeer::SEED_PREFIX, ValidatedTransceiverMessage::<NativeTokenTransfer>::from_chain(&transceiver_message)?.id.to_be_bytes().as_ref()],
-        constraint = peer.address == ValidatedTransceiverMessage::<NativeTokenTransfer>::message(&transceiver_message)?.source_ntt_manager() @ NTTError::InvalidNttManagerPeer,
+        constraint = peer.address == ValidatedTransceiverMessage::<NativeTokenTransfer>::message(&transceiver_message.try_borrow_data()?[..])?.source_ntt_manager() @ NTTError::InvalidNttManagerPeer,
         bump = peer.bump,
     )]
     pub peer: Account<'info, NttManagerPeer>,
 
     #[account(
         // check that the message is targeted to this chain
-        constraint = ValidatedTransceiverMessage::<NativeTokenTransfer>::message(&transceiver_message)?.ntt_manager_payload().payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
+        constraint = ValidatedTransceiverMessage::<NativeTokenTransfer>::message(&transceiver_message.try_borrow_data()?[..])?.ntt_manager_payload().payload.to_chain == config.chain_id @ NTTError::InvalidChainId,
         // check that we're the intended recipient
-        constraint = ValidatedTransceiverMessage::<NativeTokenTransfer>::message(&transceiver_message)?.recipient_ntt_manager() == crate::ID.to_bytes() @ NTTError::InvalidRecipientNttManager,
+        constraint = ValidatedTransceiverMessage::<NativeTokenTransfer>::message(&transceiver_message.try_borrow_data()?[..])?.recipient_ntt_manager() == crate::ID.to_bytes() @ NTTError::InvalidRecipientNttManager,
         // NOTE: we don't replay protect VAAs. Instead, we replay protect
         // executing the messages themselves with the [`released`] flag.
         owner = transceiver.transceiver_address
@@ -64,12 +64,12 @@ pub struct Redeem<'info> {
         space = 8 + InboxItem::INIT_SPACE,
         seeds = [
             InboxItem::SEED_PREFIX,
-            ValidatedTransceiverMessage::<NativeTokenTransfer>::message(&transceiver_message)?.ntt_manager_payload().keccak256(
+            ValidatedTransceiverMessage::<NativeTokenTransfer>::message(&transceiver_message.try_borrow_data()?[..])?.ntt_manager_payload().keccak256(
                 ValidatedTransceiverMessage::<NativeTokenTransfer>::from_chain(&transceiver_message)?
             ).as_ref(),
         ],
         bump,
-        )]
+    )]
     /// NOTE: This account is content-addressed (PDA seeded by the message hash).
     /// This is because in a multi-transceiver configuration, the different
     /// transceivers "vote" on messages (by delivering them). By making the inbox
