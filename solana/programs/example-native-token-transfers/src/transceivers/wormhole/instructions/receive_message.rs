@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 use ntt_messages::{
     chain_id::ChainId,
+    ntt::NativeTokenTransfer,
     transceiver::{TransceiverMessage, TransceiverMessageData},
     transceivers::wormhole::WormholeTransceiver,
 };
@@ -9,7 +10,7 @@ use wormhole_anchor_sdk::wormhole::PostedVaa;
 
 use crate::{
     config::*, error::NTTError, messages::ValidatedTransceiverMessage,
-    transceivers::accounts::peer::TransceiverPeer, transfer::NativeTokenTransferConcrete,
+    transceivers::accounts::peer::TransceiverPeer, transfer::Payload,
 };
 
 #[derive(Accounts)]
@@ -37,15 +38,15 @@ pub struct ReceiveMessage<'info> {
     )]
     pub vaa: Account<
         'info,
-        PostedVaa<TransceiverMessage<WormholeTransceiver, NativeTokenTransferConcrete>>,
+        PostedVaa<TransceiverMessage<WormholeTransceiver, NativeTokenTransfer<Payload>>>,
     >,
 
     #[account(
         init,
         payer = payer,
-        space = 8 + ValidatedTransceiverMessage::<TransceiverMessageData<NativeTokenTransferConcrete>>::INIT_SPACE,
+        space = 8 + ValidatedTransceiverMessage::<TransceiverMessageData<NativeTokenTransfer<Payload>>>::INIT_SPACE,
         seeds = [
-            ValidatedTransceiverMessage::<TransceiverMessageData<NativeTokenTransferConcrete>>::SEED_PREFIX,
+            ValidatedTransceiverMessage::<TransceiverMessageData<NativeTokenTransfer<Payload>>>::SEED_PREFIX,
             vaa.emitter_chain().to_be_bytes().as_ref(),
             vaa.message().ntt_manager_payload.id.as_ref(),
         ],
@@ -56,7 +57,7 @@ pub struct ReceiveMessage<'info> {
     // attested to the transfer. Then we only release it if there's quorum.
     // We would need to maybe_init this account in that case.
     pub transceiver_message:
-        Account<'info, ValidatedTransceiverMessage<NativeTokenTransferConcrete>>,
+        Account<'info, ValidatedTransceiverMessage<NativeTokenTransfer<Payload>>>,
 
     pub system_program: Program<'info, System>,
 }
