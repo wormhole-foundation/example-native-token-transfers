@@ -74,6 +74,14 @@
       "gasCost": 500000,
       "wormholeTransceiverIndex": 0,
       "isSupported": true
+    },
+    {
+      "name": "Layer3",
+      "programId": "NTtn3BrY2jt8cZqptVgeGpw8Pcrnr6yDfWR8aMN6bhB",
+      "tokenAddress": "FGG8y8JrZrAinbBwWAB2EacQgZVyzoerdMsU1LUaRkKv",
+      "gasCost": 0,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": false
     }
   ],
   "peerQuotes": {
