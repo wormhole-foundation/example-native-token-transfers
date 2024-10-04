@@ -82,6 +82,22 @@
       "gasCost": 0,
       "wormholeTransceiverIndex": 0,
       "isSupported": false
+    },
+    {
+      "name": "USDs",
+      "programId": "STTaPviaZpRbBiubcx2QeDKViRB7scgg4kmonK1Wn3T",
+      "tokenAddress": "USDSmbcVPUStXmCNeH6i13LmRPMZic7Afz7uu7nVgrJ",
+      "gasCost": 0,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": false
+    },
+    {
+      "name": "Sky",
+      "programId": "STTzd1vq1QoxzHWR6dbcvg8uyiRGHh3sXqMdreYsYWh",
+      "tokenAddress": "SKY3ns1PY4rCyyu1n5WCNGnh7MPSjJai3fRcba12NZ8",
+      "gasCost": 0,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": false
     }
   ],
   "peerQuotes": {
