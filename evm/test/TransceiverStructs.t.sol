@@ -80,7 +80,8 @@ contract TestTransceiverStructs is Test {
             amount: packTrimmedAmount(uint64(1234567), 7),
             sourceToken: hex"BEEFFACE",
             to: hex"FEEBCAFE",
-            toChain: 17
+            toChain: 17,
+            additionalPayload: ""
         });
 
         TransceiverStructs.NttManagerMessage memory mm = TransceiverStructs.NttManagerMessage({
@@ -103,6 +104,94 @@ contract TestTransceiverStructs is Test {
         // this is a useful test case for implementations on other runtimes
         bytes memory encodedExpected =
             vm.parseBytes(vm.readLine("./test/payloads/transceiver_message_1.txt"));
+        assertEq(encodedTransceiverMessage, encodedExpected);
+
+        TransceiverStructs.TransceiverMessage memory emParsed =
+            TransceiverStructs.parseTransceiverMessage(wh_prefix, encodedTransceiverMessage);
+
+        TransceiverStructs.NttManagerMessage memory mmParsed =
+            TransceiverStructs.parseNttManagerMessage(emParsed.nttManagerPayload);
+
+        // deep equality check
+        assertEq(abi.encode(mmParsed), abi.encode(mm));
+
+        TransceiverStructs.NativeTokenTransfer memory nttParsed =
+            TransceiverStructs.parseNativeTokenTransfer(mmParsed.payload);
+
+        // deep equality check
+        assertEq(abi.encode(nttParsed), abi.encode(ntt));
+    }
+
+    function test_parse_TransceiverMessageWithEmptyPayload() public {
+        TransceiverStructs.NativeTokenTransfer memory ntt = TransceiverStructs.NativeTokenTransfer({
+            amount: packTrimmedAmount(uint64(1234567), 7),
+            sourceToken: hex"BEEFFACE",
+            to: hex"FEEBCAFE",
+            toChain: 17,
+            additionalPayload: ""
+        });
+
+        TransceiverStructs.NttManagerMessage memory mm = TransceiverStructs.NttManagerMessage({
+            id: hex"128434bafe23430000000000000000000000000000000000ce00aa0000000000",
+            sender: hex"46679213412343",
+            payload: TransceiverStructs.encodeNativeTokenTransfer(ntt)
+        });
+
+        bytes4 wh_prefix = 0x9945FF10;
+
+        // this message can't be generated but does technically adhere to the spec
+        bytes memory encodedExpected =
+            vm.parseBytes(vm.readLine("./test/payloads/transceiver_message_with_empty_payload.txt"));
+
+        TransceiverStructs.TransceiverMessage memory emParsed =
+            TransceiverStructs.parseTransceiverMessage(wh_prefix, encodedExpected);
+
+        TransceiverStructs.NttManagerMessage memory mmParsed =
+            TransceiverStructs.parseNttManagerMessage(emParsed.nttManagerPayload);
+
+        // add empty payload length
+        mm.payload = abi.encodePacked(mm.payload, hex"0000");
+
+        // deep equality check
+        assertEq(abi.encode(mmParsed), abi.encode(mm));
+
+        TransceiverStructs.NativeTokenTransfer memory nttParsed =
+            TransceiverStructs.parseNativeTokenTransfer(mmParsed.payload);
+
+        // deep equality check
+        assertEq(abi.encode(nttParsed), abi.encode(ntt));
+    }
+
+    function test_serialize_TransceiverMessageWithAdditionalPayload() public {
+        TransceiverStructs.NativeTokenTransfer memory ntt = TransceiverStructs.NativeTokenTransfer({
+            amount: packTrimmedAmount(uint64(1234567), 7),
+            sourceToken: hex"BEEFFACE",
+            to: hex"FEEBCAFE",
+            toChain: 17,
+            additionalPayload: hex"deadbeef000000000000000000000000000000000000000000000000deadbeef"
+        });
+
+        TransceiverStructs.NttManagerMessage memory mm = TransceiverStructs.NttManagerMessage({
+            id: hex"128434bafe23430000000000000000000000000000000000ce00aa0000000000",
+            sender: hex"46679213412343",
+            payload: TransceiverStructs.encodeNativeTokenTransfer(ntt)
+        });
+
+        bytes4 wh_prefix = 0x9945FF10;
+        TransceiverStructs.TransceiverMessage memory em = TransceiverStructs.TransceiverMessage({
+            sourceNttManagerAddress: hex"042942FAFABE",
+            recipientNttManagerAddress: hex"042942FABABE",
+            nttManagerPayload: TransceiverStructs.encodeNttManagerMessage(mm),
+            transceiverPayload: new bytes(0)
+        });
+
+        bytes memory encodedTransceiverMessage =
+            TransceiverStructs.encodeTransceiverMessage(wh_prefix, em);
+
+        // this is a useful test case for implementations on other runtimes
+        bytes memory encodedExpected = vm.parseBytes(
+            vm.readLine("./test/payloads/transceiver_message_with_32byte_payload.txt")
+        );
         assertEq(encodedTransceiverMessage, encodedExpected);
 
         TransceiverStructs.TransceiverMessage memory emParsed =
@@ -169,9 +258,15 @@ contract TestTransceiverStructs is Test {
 
         bytes memory junk = "junk";
 
+        uint256 expectedRead = message.length;
+        if (m.additionalPayload.length == 0) {
+            // when there isn't an additionalPayload, "ju" is interpreted as the length
+            expectedRead = message.length + 2 + 0x6A75;
+        }
+
         vm.expectRevert(
             abi.encodeWithSelector(
-                BytesParsing.LengthMismatch.selector, message.length + junk.length, message.length
+                BytesParsing.LengthMismatch.selector, message.length + junk.length, expectedRead
             )
         );
         TransceiverStructs.parseNativeTokenTransfer(abi.encodePacked(message, junk));

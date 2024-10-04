@@ -2,7 +2,6 @@ use anchor_lang::prelude::*;
 
 use ntt_messages::{
     chain_id::ChainId,
-    ntt::NativeTokenTransfer,
     transceiver::{TransceiverMessage, TransceiverMessageData},
     transceivers::wormhole::WormholeTransceiver,
 };
@@ -10,7 +9,7 @@ use wormhole_anchor_sdk::wormhole::PostedVaa;
 
 use crate::{
     config::*, error::NTTError, messages::ValidatedTransceiverMessage,
-    transceivers::accounts::peer::TransceiverPeer,
+    transceivers::accounts::peer::TransceiverPeer, transfer::NativeTokenTransferConcrete,
 };
 
 #[derive(Accounts)]
@@ -36,15 +35,17 @@ pub struct ReceiveMessage<'info> {
         // NOTE: we don't replay protect VAAs. Instead, we replay protect
         // executing the messages themselves with the [`released`] flag.
     )]
-    pub vaa:
-        Account<'info, PostedVaa<TransceiverMessage<WormholeTransceiver, NativeTokenTransfer>>>,
+    pub vaa: Account<
+        'info,
+        PostedVaa<TransceiverMessage<WormholeTransceiver, NativeTokenTransferConcrete>>,
+    >,
 
     #[account(
         init,
         payer = payer,
-        space = 8 + ValidatedTransceiverMessage::<TransceiverMessageData<NativeTokenTransfer>>::INIT_SPACE,
+        space = 8 + ValidatedTransceiverMessage::<TransceiverMessageData<NativeTokenTransferConcrete>>::INIT_SPACE,
         seeds = [
-            ValidatedTransceiverMessage::<TransceiverMessageData<NativeTokenTransfer>>::SEED_PREFIX,
+            ValidatedTransceiverMessage::<TransceiverMessageData<NativeTokenTransferConcrete>>::SEED_PREFIX,
             vaa.emitter_chain().to_be_bytes().as_ref(),
             vaa.message().ntt_manager_payload.id.as_ref(),
         ],
@@ -54,7 +55,8 @@ pub struct ReceiveMessage<'info> {
     // inbox item transfer struct with a bitmap storing which transceivers have
     // attested to the transfer. Then we only release it if there's quorum.
     // We would need to maybe_init this account in that case.
-    pub transceiver_message: Account<'info, ValidatedTransceiverMessage<NativeTokenTransfer>>,
+    pub transceiver_message:
+        Account<'info, ValidatedTransceiverMessage<NativeTokenTransferConcrete>>,
 
     pub system_program: Program<'info, System>,
 }

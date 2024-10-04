@@ -348,6 +348,7 @@ describe("example-native-token-transfers", () => {
             sourceToken: new UniversalAddress("FAFA".padStart(64, "0")),
             recipientAddress: new UniversalAddress(payer.publicKey.toBytes()),
             recipientChain: "Solana",
+            additionalPayload: new Uint8Array(),
           },
         },
         transceiverPayload: new Uint8Array(),

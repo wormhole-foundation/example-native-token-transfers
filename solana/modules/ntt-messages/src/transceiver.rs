@@ -179,8 +179,8 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        chain_id::ChainId, ntt::NativeTokenTransfer, transceivers::wormhole::WormholeTransceiver,
-        trimmed_amount::TrimmedAmount,
+        chain_id::ChainId, ntt::EmptyPayload, ntt::NativeTokenTransfer,
+        transceivers::wormhole::WormholeTransceiver, trimmed_amount::TrimmedAmount,
     };
 
     use super::*;
@@ -192,7 +192,7 @@ mod test {
         )
         .unwrap();
         let mut vec = &data[..];
-        let message: TransceiverMessage<WormholeTransceiver, NativeTokenTransfer> =
+        let message: TransceiverMessage<WormholeTransceiver, NativeTokenTransfer<EmptyPayload>> =
             TypePrefixedPayload::read_payload(&mut vec).unwrap();
 
         let expected = TransceiverMessage {
@@ -229,6 +229,222 @@ mod test {
                             0xFE, 0xEB, 0xCA, 0xFE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                         ],
+                        additional_payload: EmptyPayload {},
+                    },
+                },
+            },
+            transceiver_payload: vec![],
+        };
+        assert_eq!(message, expected);
+        assert_eq!(vec.len(), 0);
+
+        let encoded = TypePrefixedPayload::to_vec_payload(&expected);
+        assert_eq!(encoded, data);
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    #[cfg_attr(
+        feature = "anchor",
+        derive(AnchorSerialize, AnchorDeserialize, InitSpace)
+    )]
+    pub struct EmptyMockPayload {}
+
+    impl EmptyMockPayload {
+        const PREFIX: [u8; 0] = [];
+    }
+
+    impl TypePrefixedPayload for EmptyMockPayload {
+        const TYPE: Option<u8> = None;
+    }
+
+    impl Readable for EmptyMockPayload {
+        // This will cause the size to be written, since it is not explicitly 0
+        const SIZE: Option<usize> = None;
+
+        fn read<R>(_reader: &mut R) -> io::Result<Self>
+        where
+            Self: Sized,
+            R: io::Read,
+        {
+            Ok(Self {})
+        }
+    }
+
+    impl Writeable for EmptyMockPayload {
+        fn written_size(&self) -> usize {
+            Self::PREFIX.len()
+        }
+
+        fn write<W>(&self, _writer: &mut W) -> io::Result<()>
+        where
+            W: io::Write,
+        {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_deserialize_transceiver_message_with_empty_payload() {
+        let data = hex::decode(
+            include_str!(
+                "../../../../evm/test/payloads/transceiver_message_with_empty_payload.txt"
+            )
+            .trim_end(),
+        )
+        .unwrap();
+        let mut vec = &data[..];
+        let message: TransceiverMessage<
+            WormholeTransceiver,
+            NativeTokenTransfer<EmptyMockPayload>,
+        > = TypePrefixedPayload::read_payload(&mut vec).unwrap();
+
+        let expected = TransceiverMessage {
+            _phantom: PhantomData::<WormholeTransceiver>,
+            message_data: TransceiverMessageData {
+                source_ntt_manager: [
+                    0x04, 0x29, 0x42, 0xFA, 0xFA, 0xBE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                ],
+                recipient_ntt_manager: [
+                    0x04, 0x29, 0x42, 0xFA, 0xBA, 0xBE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                ],
+                ntt_manager_payload: NttManagerMessage {
+                    id: [
+                        0x12, 0x84, 0x34, 0xBA, 0xFE, 0x23, 0x43, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0xCE, 0, 0xAA, 0, 0, 0, 0, 0,
+                    ],
+                    sender: [
+                        0x46, 0x67, 0x92, 0x13, 0x41, 0x23, 0x43, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    ],
+                    payload: NativeTokenTransfer {
+                        amount: TrimmedAmount {
+                            amount: 1234567,
+                            decimals: 7,
+                        },
+                        source_token: [
+                            0xBE, 0xEF, 0xFA, 0xCE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        ],
+                        to_chain: ChainId { id: 17 },
+                        to: [
+                            0xFE, 0xEB, 0xCA, 0xFE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        ],
+                        additional_payload: EmptyMockPayload {},
+                    },
+                },
+            },
+            transceiver_payload: vec![],
+        };
+        assert_eq!(message, expected);
+        assert_eq!(vec.len(), 0);
+
+        let encoded = TypePrefixedPayload::to_vec_payload(&expected);
+        assert_eq!(encoded, data);
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    #[cfg_attr(
+        feature = "anchor",
+        derive(AnchorSerialize, AnchorDeserialize, InitSpace)
+    )]
+    pub struct MockPayload {
+        hash: [u8; 32],
+    }
+
+    impl MockPayload {
+        const PREFIX: [u8; 0] = [];
+    }
+
+    impl TypePrefixedPayload for MockPayload {
+        const TYPE: Option<u8> = None;
+    }
+
+    impl Readable for MockPayload {
+        const SIZE: Option<usize> = None;
+
+        fn read<R>(reader: &mut R) -> io::Result<Self>
+        where
+            Self: Sized,
+            R: io::Read,
+        {
+            let hash: [u8; 32] = Readable::read(reader)?;
+            Ok(Self { hash })
+        }
+    }
+
+    impl Writeable for MockPayload {
+        fn written_size(&self) -> usize {
+            Self::PREFIX.len() + <[u8; 32]>::SIZE.unwrap() // hash
+        }
+
+        fn write<W>(&self, writer: &mut W) -> io::Result<()>
+        where
+            W: io::Write,
+        {
+            let MockPayload { hash } = self;
+
+            Self::PREFIX.write(writer)?;
+            hash.write(writer)?;
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_deserialize_transceiver_message_with_32byte_payload() {
+        let data = hex::decode(
+            include_str!(
+                "../../../../evm/test/payloads/transceiver_message_with_32byte_payload.txt"
+            )
+            .trim_end(),
+        )
+        .unwrap();
+        let mut vec = &data[..];
+        let message: TransceiverMessage<WormholeTransceiver, NativeTokenTransfer<MockPayload>> =
+            TypePrefixedPayload::read_payload(&mut vec).unwrap();
+
+        let expected = TransceiverMessage {
+            _phantom: PhantomData::<WormholeTransceiver>,
+            message_data: TransceiverMessageData {
+                source_ntt_manager: [
+                    0x04, 0x29, 0x42, 0xFA, 0xFA, 0xBE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                ],
+                recipient_ntt_manager: [
+                    0x04, 0x29, 0x42, 0xFA, 0xBA, 0xBE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                ],
+                ntt_manager_payload: NttManagerMessage {
+                    id: [
+                        0x12, 0x84, 0x34, 0xBA, 0xFE, 0x23, 0x43, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0xCE, 0, 0xAA, 0, 0, 0, 0, 0,
+                    ],
+                    sender: [
+                        0x46, 0x67, 0x92, 0x13, 0x41, 0x23, 0x43, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    ],
+                    payload: NativeTokenTransfer {
+                        amount: TrimmedAmount {
+                            amount: 1234567,
+                            decimals: 7,
+                        },
+                        source_token: [
+                            0xBE, 0xEF, 0xFA, 0xCE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        ],
+                        to_chain: ChainId { id: 17 },
+                        to: [
+                            0xFE, 0xEB, 0xCA, 0xFE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        ],
+                        additional_payload: MockPayload {
+                            hash: [
+                                0xDE, 0xAD, 0xBE, 0xEF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xDE, 0xAD, 0xBE, 0xEF,
+                            ],
+                        },
                     },
                 },
             },

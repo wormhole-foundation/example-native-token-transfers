@@ -190,6 +190,7 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
         for (uint256 i = 0; i < recordedLogs.length; i++) {
             if (recordedLogs[i].topics[0] == keccak256("TransferSent(bytes32)")) {
                 sentEventDigest = recordedLogs[i].topics[1];
+                break;
             }
         }
         require(sentEventDigest != bytes32(0), "TransferSent(bytes32) event should be found");
@@ -225,6 +226,7 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
         for (uint256 i = 0; i < recordedLogs.length; i++) {
             if (recordedLogs[i].topics[0] == keccak256("TransferRedeemed(bytes32)")) {
                 recvEventDigest = recordedLogs[i].topics[1];
+                break;
             }
         }
         require(

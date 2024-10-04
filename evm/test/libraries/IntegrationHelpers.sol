@@ -133,7 +133,8 @@ contract IntegrationHelpers is Test {
                     amount: sendingAmount,
                     sourceToken: toWormholeFormat(tokenAddr),
                     to: toWormholeFormat(to),
-                    toChain: recipientChainId
+                    toChain: recipientChainId,
+                    additionalPayload: ""
                 })
             )
         );
