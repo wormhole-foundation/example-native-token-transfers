@@ -7,10 +7,10 @@ use example_native_token_transfers::{
     error::NTTError,
     instructions::{RedeemArgs, TransferArgs},
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit},
-    transfer::NativeTokenTransferConcrete,
+    transfer::Payload,
 };
 use ntt_messages::{
-    chain_id::ChainId, mode::Mode, ntt::EmptyPayload, ntt_manager::NttManagerMessage,
+    chain_id::ChainId, mode::Mode, ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage,
     transceiver::TransceiverMessage, transceivers::wormhole::WormholeTransceiver,
     trimmed_amount::TrimmedAmount,
 };
@@ -69,7 +69,7 @@ fn init_redeem_accs(
     ctx: &mut ProgramTestContext,
     test_data: &TestData,
     chain_id: u16,
-    ntt_manager_message: NttManagerMessage<NativeTokenTransferConcrete>,
+    ntt_manager_message: NttManagerMessage<NativeTokenTransfer<Payload>>,
 ) -> Redeem {
     Redeem {
         payer: ctx.payer.pubkey(),
@@ -110,11 +110,11 @@ async fn post_transfer_vaa(
     // dedicated receive transfer test suite
     recipient_ntt_manager: Option<&Pubkey>,
     recipient: &Keypair,
-) -> (Pubkey, NttManagerMessage<NativeTokenTransferConcrete>) {
+) -> (Pubkey, NttManagerMessage<NativeTokenTransfer<Payload>>) {
     let ntt_manager_message = NttManagerMessage {
         id,
         sender: [4u8; 32],
-        payload: NativeTokenTransferConcrete {
+        payload: NativeTokenTransfer {
             amount: TrimmedAmount {
                 amount,
                 decimals: 9,
@@ -122,11 +122,11 @@ async fn post_transfer_vaa(
             source_token: [3u8; 32],
             to_chain: ChainId { id: THIS_CHAIN },
             to: recipient.pubkey().to_bytes(),
-            additional_payload: EmptyPayload {},
+            additional_payload: Payload {},
         },
     };
 
-    let transceiver_message: TransceiverMessage<WormholeTransceiver, NativeTokenTransferConcrete> =
+    let transceiver_message: TransceiverMessage<WormholeTransceiver, NativeTokenTransfer<Payload>> =
         TransceiverMessage::new(
             OTHER_MANAGER,
             recipient_ntt_manager
