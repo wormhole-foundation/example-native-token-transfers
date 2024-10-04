@@ -1,4 +1,6 @@
-# Message Lifecycle (EVM)
+# EVM
+
+## Message Lifecycle (EVM)
 
 1. **Transfer**
 
@@ -18,6 +20,14 @@ _Events_
 event TransferSent(
     bytes32 recipient, uint256 amount, uint256 fee, uint16 recipientChain, uint64 msgSequence
 );
+```
+
+```solidity
+/// @notice Emitted when a message is sent from the nttManager.
+/// @dev Topic0
+///      0x3e6ae56314c6da8b461d872f41c6d0bb69317b9d0232805aaccfa45df1a16fa0.
+/// @param digest The digest of the message.
+event TransferSent(bytes32 indexed digest);
 ```
 
 2. **Rate Limit**
@@ -197,9 +207,37 @@ $ anvil --help
 $ cast --help
 ```
 
-### Deploy Wormhole NTT
+## Message Customization
 
-#### Environment Setup
+See the [NttManager](../docs/NttManager.md) doc for wire format details.
+
+> Note: The size of `NttManager` is significantly higher (and very close to the contract size limit) than `NttManagerNoRateLimiting`. See [No-Rate-Limiting](#no-rate-limiting) for more detail.
+
+### NativeTokenTransfer Additional Payload
+
+Your contract can extend `NttManagerNoRateLimiting` to provide an additional payload on the `NativeTokenTransfer` message. Override the following:
+
+- `_prepareNativeTokenTransfer`
+- `_handleAdditionalPayload`
+
+Be sure to review the code to ensure that they are called at an appropriate place in the flow for your use case.
+
+> Note: This is _not_ supported when RateLimiting is enabled, as this implementation does not propagate the additional payloads on queued messages. Use either with `NttManager` when `_rateLimitDuration` is set to `0` and `_skipRateLimiting` is set to `true` in the constructor or with `NttManagerNoRateLimiting`.
+
+### Custom Manager Payloads
+
+`NttManager` (or `NttManagerNoRateLimiting`) can also be extended to exchange other kinds of custom messages. To send custom messages, create a new public function and roughly follow the steps in `_transfer`. What exactly you need to do will vary on your use case, but in order to leverage the existing transceivers, you will roughly need to
+
+- call `_prepareForTransfer`
+- construct and encode your payload
+- construct the `NttManagerMessage` payload
+- call `_sendMessageToTransceivers`
+
+On the receiving side, override `_handleMsg` and adjust its code based on your custom payload prefixes, defaulting to `_handleTransfer`.
+
+## Deploy Wormhole NTT
+
+### Environment Setup
 
 Note: **All Chain IDs set in the deployment environment files and configuration files should be the Wormhole Chain ID**
 
@@ -214,7 +252,7 @@ Do this for each blockchain network that the `NTTManager` and `WormholeTransceiv
 
 Currently the `MAX_OUTBOUND_LIMIT` is set to zero in the sample `.env` file. This means that all outbound transfers will be queued by the rate limiter.
 
-#### Config Setup
+### Config Setup
 
 Before deploying the contracts, navigate to the `evm/cfg` directory and copy the sample file. Make sure to preserve the existing name:
 
@@ -226,13 +264,15 @@ cp WormholeNttConfig.json.sample WormholeNttConfig.json
 
 Configure each network to your liking (including adding/removing networks). We will eventually add the addresses of the deployed contracts to this file. Navigate back to the `evm` directory.
 
-___
+---
+
 ⚠️ **WARNING:** Ensure that if the `NttManager` on the source chain is configured to be in `LOCKING` mode, the corresponding `NttManager`s on the target chains are configured to be in `BURNING` mode. If not, transfers will NOT go through and user funds may be lost! Proceed with caution!
-___
+
+---
 
 Currently the per-chain `inBoundLimit` is set to zero by default. This means all inbound transfers will be queued by the rate limiter. Set this value accordingly.
 
-#### Deploy
+### Deploy
 
 Deploy the `NttManager` and `WormholeTransceiver` contracts by running the following command for each target network:
 
@@ -248,7 +288,7 @@ bash sh/deploy_wormhole_ntt.sh -n NETWORK_TYPE -c CHAIN_NAME -k PRIVATE_KEY
 
 Save the deployed proxy contract addresses (see the forge script output) in the `WormholeNttConfig.json` file.
 
-#### Configuration
+### Configuration
 
 Once all of the contracts have been deployed and the addresses have been saved, run the following command for each target network:
 
@@ -262,8 +302,14 @@ bash sh/configure_wormhole_ntt.sh -n NETWORK_TYPE -c CHAIN_NAME -k PRIVATE_KEY
 -c avalanche, ethereum, sepolia
 ```
 
-#### Additional Notes
+### Additional Notes
 
 Tokens powered by NTT in **burn** mode require the `burn` method to be present. This method is not present in the standard ERC20 interface, but is found in the `ERC20Burnable` interface.
 
 The `mint` and `setMinter` methods found in the [`INttToken` Interface](src/interfaces/INttToken.sol) are not found in the standard `ERC20` interface.
+
+#### No-Rate-Limiting
+
+Although the rate limiting feature can be disabled during contract instantiation, it still occupies code space in the `NttManager` contract. If you wish to free up code space for custom development, you can instead instantiate the
+`NttManagerNoRateLimiting` contract. This contract is built without the bulk of the rate limiting code. Note that the current immutable checks do not allow modifying the rate-limiting parameters during migration. This means migrating
+from an instance of `NttManager` with rate-limiting enabled to `NttManagerNoRateLimiting` or vice versa is not officially supported.

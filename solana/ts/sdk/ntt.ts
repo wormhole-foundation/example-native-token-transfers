@@ -699,10 +699,12 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       luts.push(await this.getAddressLookupTable());
     } catch {}
 
+    const { blockhash } = await this.connection.getLatestBlockhash();
+
     const messageV0 = new TransactionMessage({
       payerKey: payerAddress,
       instructions: tx.instructions,
-      recentBlockhash: (await this.connection.getRecentBlockhash()).blockhash,
+      recentBlockhash: blockhash,
     }).compileToV0Message(luts);
 
     const vtx = new VersionedTransaction(messageV0);
@@ -904,10 +906,12 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       luts.push(await this.getAddressLookupTable());
     } catch {}
 
+    const { blockhash } = await this.connection.getLatestBlockhash();
+
     const messageV0 = new TransactionMessage({
       payerKey: senderAddress,
       instructions: tx.instructions,
-      recentBlockhash: (await this.connection.getRecentBlockhash()).blockhash,
+      recentBlockhash: blockhash,
     }).compileToV0Message(luts);
 
     const vtx = new VersionedTransaction(messageV0);

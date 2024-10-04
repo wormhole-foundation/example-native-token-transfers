@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface;
-use ntt_messages::{ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage};
+use ntt_messages::ntt_manager::NttManagerMessage;
 
 use crate::{
     bitmap::Bitmap,
@@ -14,6 +14,7 @@ use crate::{
         rate_limit::RateLimitResult,
     },
     registered_transceiver::*,
+    transfer::NativeTokenTransferConcrete,
 };
 
 #[derive(Accounts)]

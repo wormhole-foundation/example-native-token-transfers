@@ -12,16 +12,14 @@ Wormhole’s Native Token Transfers (NTT) is an open, flexible, and composable f
 
 There are two basic components to NTT:
 
-(1) **Transceiver**: This contract is responsible for sending NTT transfers forwarded through the `NttManager` on the source chain and delivered to a corresponding peer `NttManager` on the recipient chain. Transceivers should follow the `ITransceiver` interface. Transceivers can be defined independently of Wormhole core and can be modified to support any verification backend.
+(1) **Transceiver**: This contract is responsible for sending NTT transfers forwarded through the `NttManager` on the source chain and delivered to a corresponding peer `NttManager` on the recipient chain. Transceivers should follow the `ITransceiver` interface. Transceivers can be defined independently of Wormhole core and can be modified to support any verification backend. See [docs/Transceiver.md](./docs/Transceiver.md) for more info.
 
-(2) **NttManager**: The NttManager contract is responsible for managing the token and the Transceivers. It also handles the rate-limiting and the message attestation logic. Note that each `NttManager` corresponds to a single token. However, a single `NttManager` can can control multiple transceivers.
-
+(2) **NttManager**: The NttManager contract is responsible for managing the token and the Transceivers. It also handles the rate-limiting and the message attestation logic. Note that each `NttManager` corresponds to a single token. However, a single `NttManager` can control multiple transceivers. See [docs/NttManager.md](./docs/NttManager.md) for more info.
 
 <figure>
   <img src="images/ntt_architecture__with_custom_attestation.jpg" alt="NTT Architecture Diagram">
   <figcaption>Figure: NTT Architecture Diagram with Custom Attestations.</figcaption>
 </figure>
-
 
 ## Amount trimming
 
@@ -52,5 +50,6 @@ The action identifier specifies the runtime. Currently, these are as follows:
 - 1: evm
 - 2: solana
 
-___
+---
+
 ⚠️ **WARNING:** Ensure that if the `NttManager` on the source chain is configured to be in `LOCKING` mode, the corresponding `NttManager`s on the target chains are configured to be in `BURNING` mode. If not, transfers will NOT go through and user funds may be lost! Proceed with caution!

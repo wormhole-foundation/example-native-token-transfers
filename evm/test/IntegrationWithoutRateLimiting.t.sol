@@ -4,7 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-import "../src/NttManager/NttManager.sol";
+import "../src/NttManager/NttManagerNoRateLimiting.sol";
 import "../src/Transceiver/Transceiver.sol";
 import "../src/interfaces/INttManager.sol";
 import "../src/interfaces/IRateLimiter.sol";
@@ -26,9 +26,9 @@ import "wormhole-solidity-sdk/testing/helpers/WormholeSimulator.sol";
 import "wormhole-solidity-sdk/Utils.sol";
 //import "wormhole-solidity-sdk/testing/WormholeRelayerTest.sol";
 
-contract TestEndToEndBase is Test, IRateLimiterEvents {
-    NttManager nttManagerChain1;
-    NttManager nttManagerChain2;
+contract TestEndToEndNoRateLimiting is Test {
+    NttManagerNoRateLimiting nttManagerChain1;
+    NttManagerNoRateLimiting nttManagerChain2;
 
     using TrimmedAmountLib for uint256;
     using TrimmedAmountLib for TrimmedAmount;
@@ -63,12 +63,13 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
 
         vm.chainId(chainId1);
         DummyToken t1 = new DummyToken();
-        NttManager implementation = new MockNttManagerContract(
-            address(t1), IManagerBase.Mode.LOCKING, chainId1, 1 days, false
+        NttManagerNoRateLimiting implementation = new MockNttManagerNoRateLimitingContract(
+            address(t1), IManagerBase.Mode.LOCKING, chainId1
         );
 
-        nttManagerChain1 =
-            MockNttManagerContract(address(new ERC1967Proxy(address(implementation), "")));
+        nttManagerChain1 = MockNttManagerNoRateLimitingContract(
+            address(new ERC1967Proxy(address(implementation), ""))
+        );
         nttManagerChain1.initialize();
 
         WormholeTransceiver wormholeTransceiverChain1Implementation = new MockWormholeTransceiverContract(
@@ -94,18 +95,19 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
         wormholeTransceiverChain1.initialize();
 
         nttManagerChain1.setTransceiver(address(wormholeTransceiverChain1));
-        nttManagerChain1.setOutboundLimit(type(uint64).max);
-        nttManagerChain1.setInboundLimit(type(uint64).max, chainId2);
+        // nttManagerChain1.setOutboundLimit(type(uint64).max);
+        // nttManagerChain1.setInboundLimit(type(uint64).max, chainId2);
 
         // Chain 2 setup
         vm.chainId(chainId2);
         DummyToken t2 = new DummyTokenMintAndBurn();
-        NttManager implementationChain2 = new MockNttManagerContract(
-            address(t2), IManagerBase.Mode.BURNING, chainId2, 1 days, false
+        NttManagerNoRateLimiting implementationChain2 = new MockNttManagerNoRateLimitingContract(
+            address(t2), IManagerBase.Mode.BURNING, chainId2
         );
 
-        nttManagerChain2 =
-            MockNttManagerContract(address(new ERC1967Proxy(address(implementationChain2), "")));
+        nttManagerChain2 = MockNttManagerNoRateLimitingContract(
+            address(new ERC1967Proxy(address(implementationChain2), ""))
+        );
         nttManagerChain2.initialize();
 
         WormholeTransceiver wormholeTransceiverChain2Implementation = new MockWormholeTransceiverContract(
@@ -122,8 +124,8 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
         wormholeTransceiverChain2.initialize();
 
         nttManagerChain2.setTransceiver(address(wormholeTransceiverChain2));
-        nttManagerChain2.setOutboundLimit(type(uint64).max);
-        nttManagerChain2.setInboundLimit(type(uint64).max, chainId1);
+        // nttManagerChain2.setOutboundLimit(type(uint64).max);
+        // nttManagerChain2.setInboundLimit(type(uint64).max, chainId1);
 
         // Register peer contracts for the nttManager and transceiver. Transceivers and nttManager each have the concept of peers here.
         nttManagerChain1.setPeer(
@@ -146,6 +148,9 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
         // Actually set it
         nttManagerChain1.setThreshold(1);
         nttManagerChain2.setThreshold(1);
+
+        INttManager.NttManagerPeer memory peer = nttManagerChain1.getPeer(chainId2);
+        require(9 == peer.tokenDecimals, "Peer has the wrong number of token decimals");
     }
 
     function test_chainToChainBase() public {
@@ -184,19 +189,8 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
 
         vm.stopPrank();
 
-        // Get the TransferSent(bytes32) event to ensure it matches up with the TransferRedeemed(bytes32) event later
-        Vm.Log[] memory recordedLogs = vm.getRecordedLogs();
-        bytes32 sentEventDigest;
-        for (uint256 i = 0; i < recordedLogs.length; i++) {
-            if (recordedLogs[i].topics[0] == keccak256("TransferSent(bytes32)")) {
-                sentEventDigest = recordedLogs[i].topics[1];
-                break;
-            }
-        }
-        require(sentEventDigest != bytes32(0), "TransferSent(bytes32) event should be found");
-
         // Get and sign the log to go down the other pipe. Thank you to whoever wrote this code in the past!
-        Vm.Log[] memory entries = guardian.fetchWormholeMessageFromLog(recordedLogs);
+        Vm.Log[] memory entries = guardian.fetchWormholeMessageFromLog(vm.getRecordedLogs());
         bytes[] memory encodedVMs = new bytes[](entries.length);
         for (uint256 i = 0; i < encodedVMs.length; i++) {
             encodedVMs[i] = guardian.fetchSignedMessageFromLogs(entries[i], chainId1);
@@ -216,23 +210,10 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             require(sendingAmount + supplyBefore == supplyAfter, "Supplies dont match");
             require(token2.balanceOf(userB) == sendingAmount, "User didn't receive tokens");
             require(
-                token2.balanceOf(address(nttManagerChain2)) == 0, "NttManager has unintended funds"
+                token2.balanceOf(address(nttManagerChain2)) == 0,
+                "NttManagerNoRateLimiting has unintended funds"
             );
         }
-
-        // Get the TransferRedeemed(bytes32) event to ensure it matches up with the TransferSent(bytes32) event earlier
-        recordedLogs = vm.getRecordedLogs();
-        bytes32 recvEventDigest;
-        for (uint256 i = 0; i < recordedLogs.length; i++) {
-            if (recordedLogs[i].topics[0] == keccak256("TransferRedeemed(bytes32)")) {
-                recvEventDigest = recordedLogs[i].topics[1];
-                break;
-            }
-        }
-        require(
-            sentEventDigest == recvEventDigest,
-            "TransferRedeemed(bytes32) event should match TransferSent(bytes32)"
-        );
 
         // Can't resubmit the same message twice
         (IWormhole.VM memory wormholeVM,,) = wormhole.parseAndVerifyVM(encodedVMs[0]);
@@ -270,7 +251,7 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             require(token2.balanceOf(userC) == 0, "Sending user didn't receive tokens");
             require(
                 token2.balanceOf(address(nttManagerChain2)) == 0,
-                "NttManager didn't receive unintended funds"
+                "NttManagerNoRateLimiting didn't receive unintended funds"
             );
         }
 
@@ -295,6 +276,57 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             require(token1.balanceOf(userC) == 0, "Sending user didn't receive tokens");
             require(token1.balanceOf(userD) == sendingAmount, "User received funds");
         }
+    }
+
+    // This test triggers some basic reverts to increase our code coverage.
+    function test_someReverts() public {
+        // These shouldn't revert.
+        nttManagerChain1.setOutboundLimit(0);
+        nttManagerChain1.setInboundLimit(0, chainId2);
+
+        require(
+            nttManagerChain1.getCurrentOutboundCapacity() == 0,
+            "getCurrentOutboundCapacity returned unexpected value"
+        );
+
+        require(
+            nttManagerChain1.getCurrentInboundCapacity(chainId2) == 0,
+            "getCurrentInboundCapacity returned unexpected value"
+        );
+
+        // Everything else should.
+        vm.expectRevert(abi.encodeWithSelector(INttManager.InvalidPeerChainIdZero.selector));
+        nttManagerChain1.setPeer(
+            0, bytes32(uint256(uint160(address(nttManagerChain2)))), 9, type(uint64).max
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(INttManager.InvalidPeerZeroAddress.selector));
+        nttManagerChain1.setPeer(chainId2, bytes32(0), 9, type(uint64).max);
+
+        vm.expectRevert(abi.encodeWithSelector(INttManager.InvalidPeerDecimals.selector));
+        nttManagerChain1.setPeer(
+            chainId2, bytes32(uint256(uint160(address(nttManagerChain2)))), 0, type(uint64).max
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(INttManager.InvalidPeerSameChainId.selector));
+        nttManagerChain1.setPeer(
+            chainId1, bytes32(uint256(uint160(address(nttManagerChain2)))), 9, type(uint64).max
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
+        nttManagerChain1.getOutboundQueuedTransfer(0);
+
+        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
+        nttManagerChain1.getInboundQueuedTransfer(bytes32(0));
+
+        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
+        nttManagerChain1.completeInboundQueuedTransfer(bytes32(0));
+
+        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
+        nttManagerChain1.completeOutboundQueuedTransfer(0);
+
+        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
+        nttManagerChain1.cancelOutboundQueuedTransfer(0);
     }
 
     function test_lotsOfReverts() public {
@@ -365,7 +397,8 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             require(sendingAmount + supplyBefore == supplyAfter, "Supplies dont match");
             require(token2.balanceOf(userB) == sendingAmount, "User didn't receive tokens");
             require(
-                token2.balanceOf(address(nttManagerChain2)) == 0, "NttManager has unintended funds"
+                token2.balanceOf(address(nttManagerChain2)) == 0,
+                "NttManagerNoRateLimiting has unintended funds"
             );
         }
 
@@ -391,7 +424,7 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             uint256 supplyBefore = token2.totalSupply();
 
             vm.stopPrank();
-            nttManagerChain2.setOutboundLimit(0);
+            // nttManagerChain2.setOutboundLimit(0);
 
             vm.startPrank(userC);
             nttManagerChain2.transfer(
@@ -403,41 +436,6 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
                 encodeTransceiverInstruction(true)
             );
 
-            // Test timing on the queues
-            vm.expectRevert(
-                abi.encodeWithSelector(
-                    IRateLimiter.OutboundQueuedTransferStillQueued.selector,
-                    0,
-                    vm.getBlockTimestamp()
-                )
-            );
-            nttManagerChain2.completeOutboundQueuedTransfer(0);
-            vm.warp(vm.getBlockTimestamp() + 1 days - 1);
-
-            vm.expectRevert(
-                abi.encodeWithSelector(
-                    IRateLimiter.OutboundQueuedTransferStillQueued.selector,
-                    0,
-                    vm.getBlockTimestamp() - 1 days + 1
-                )
-            );
-            nttManagerChain2.completeOutboundQueuedTransfer(0);
-
-            vm.warp(vm.getBlockTimestamp() + 1);
-            nttManagerChain2.completeOutboundQueuedTransfer(0);
-
-            // Replay - should be deleted
-            vm.expectRevert(
-                abi.encodeWithSelector(IRateLimiter.OutboundQueuedTransferNotFound.selector, 0)
-            );
-            nttManagerChain2.completeOutboundQueuedTransfer(0);
-
-            // Non-existant
-            vm.expectRevert(
-                abi.encodeWithSelector(IRateLimiter.OutboundQueuedTransferNotFound.selector, 1)
-            );
-            nttManagerChain2.completeOutboundQueuedTransfer(1);
-
             uint256 supplyAfter = token2.totalSupply();
 
             require(sendingAmount - supplyBefore == supplyAfter, "Supplies don't match");
@@ -445,7 +443,7 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             require(token2.balanceOf(userC) == 0, "Sending user didn't receive tokens");
             require(
                 token2.balanceOf(address(nttManagerChain2)) == 0,
-                "NttManager didn't receive unintended funds"
+                "NttManagerNoRateLimiting didn't receive unintended funds"
             );
         }
 
@@ -464,23 +462,13 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
         {
             uint256 supplyBefore = token1.totalSupply();
 
-            nttManagerChain1.setInboundLimit(0, chainId2);
+            // nttManagerChain1.setInboundLimit(0, chainId2);
             wormholeTransceiverChain1.receiveMessage(encodedVMs[0]);
 
             bytes32[] memory queuedDigests =
                 Utils.fetchQueuedTransferDigestsFromLogs(vm.getRecordedLogs());
 
-            vm.warp(vm.getBlockTimestamp() + 100000);
-            nttManagerChain1.completeInboundQueuedTransfer(queuedDigests[0]);
-
-            // Double redeem
-            vm.warp(vm.getBlockTimestamp() + 100000);
-            vm.expectRevert(
-                abi.encodeWithSelector(
-                    IRateLimiter.InboundQueuedTransferNotFound.selector, queuedDigests[0]
-                )
-            );
-            nttManagerChain1.completeInboundQueuedTransfer(queuedDigests[0]);
+            require(0 == queuedDigests.length, "Should not queue inbound messages");
 
             uint256 supplyAfter = token1.totalSupply();
 
@@ -604,7 +592,8 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             require(sendingAmount + supplyBefore == supplyAfter, "Supplies dont match");
             require(token2.balanceOf(userB) == sendingAmount, "User didn't receive tokens");
             require(
-                token2.balanceOf(address(nttManagerChain2)) == 0, "NttManager has unintended funds"
+                token2.balanceOf(address(nttManagerChain2)) == 0,
+                "NttManagerNoRateLimiting has unintended funds"
             );
         }
 
@@ -629,7 +618,10 @@ contract TestEndToEndBase is Test, IRateLimiterEvents {
             uint256 userBalanceAfter = token1.balanceOf(address(userB));
 
             require(userBalanceBefore - userBalanceAfter == 0, "No funds left for user");
-            require(nttManagerBalanceAfter == 0, "NttManager should burn all tranferred tokens");
+            require(
+                nttManagerBalanceAfter == 0,
+                "NttManagerNoRateLimiting should burn all tranferred tokens"
+            );
         }
 
         // Get the VAA proof for the transfers to use

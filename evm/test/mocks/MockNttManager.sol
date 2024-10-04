@@ -3,6 +3,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import "../../src/NttManager/NttManager.sol";
+import "../../src/NttManager/NttManagerNoRateLimiting.sol";
 
 contract MockNttManagerContract is NttManager {
     constructor(
@@ -12,6 +13,26 @@ contract MockNttManagerContract is NttManager {
         uint64 rateLimitDuration,
         bool skipRateLimiting
     ) NttManager(token, mode, chainId, rateLimitDuration, skipRateLimiting) {}
+
+    /// We create a dummy storage variable here with standard solidity slot assignment.
+    /// Then we check that its assigned slot is 0, i.e. that the super contract doesn't
+    /// define any storage variables (and instead uses deterministic slots).
+    /// See `test_noAutomaticSlot` below.
+    uint256 my_slot;
+
+    function lastSlot() public pure returns (bytes32 result) {
+        assembly ("memory-safe") {
+            result := my_slot.slot
+        }
+    }
+}
+
+contract MockNttManagerNoRateLimitingContract is NttManagerNoRateLimiting {
+    constructor(
+        address token,
+        Mode mode,
+        uint16 chainId
+    ) NttManagerNoRateLimiting(token, mode, chainId) {}
 
     /// We create a dummy storage variable here with standard solidity slot assignment.
     /// Then we check that its assigned slot is 0, i.e. that the super contract doesn't

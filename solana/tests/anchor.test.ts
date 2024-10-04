@@ -278,12 +278,13 @@ describe("example-native-token-transfers", () => {
         initializeExtraAccountMetaListInstruction
       );
       transaction.feePayer = payer.publicKey;
-      const { blockhash } = await connection.getRecentBlockhash();
+      const { blockhash } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
 
       transaction.sign(payer);
-      const txid = await connection.sendTransaction(transaction, [payer]);
-      await connection.confirmTransaction(txid, "confirmed");
+      await sendAndConfirmTransaction(connection, transaction, [payer], {
+        commitment: "confirmed",
+      });
     });
 
     test("Can send tokens", async () => {
@@ -355,6 +356,7 @@ describe("example-native-token-transfers", () => {
             sourceToken: new UniversalAddress("FAFA".padStart(64, "0")),
             recipientAddress: new UniversalAddress(payer.publicKey.toBytes()),
             recipientChain: "Solana",
+            additionalPayload: new Uint8Array(),
           },
         },
         transceiverPayload: new Uint8Array(),

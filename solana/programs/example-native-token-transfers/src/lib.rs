@@ -21,6 +21,7 @@ pub mod peer;
 pub mod queue;
 pub mod registered_transceiver;
 pub mod transceivers;
+pub mod transfer;
 
 use transceivers::wormhole::instructions::*;
 
@@ -115,6 +116,10 @@ pub mod example_native_token_transfers {
 
     pub fn transfer_ownership(ctx: Context<TransferOwnership>) -> Result<()> {
         instructions::transfer_ownership(ctx)
+    }
+
+    pub fn transfer_ownership_one_step_unchecked(ctx: Context<TransferOwnership>) -> Result<()> {
+        instructions::transfer_ownership_one_step_unchecked(ctx)
     }
 
     pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {

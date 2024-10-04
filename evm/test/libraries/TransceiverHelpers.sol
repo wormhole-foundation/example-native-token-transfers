@@ -83,7 +83,8 @@ library TransceiverHelpersLib {
                     amount: amount,
                     sourceToken: toWormholeFormat(address(token)),
                     to: toWormholeFormat(to),
-                    toChain: toChain
+                    toChain: toChain,
+                    additionalPayload: ""
                 })
             )
         );
