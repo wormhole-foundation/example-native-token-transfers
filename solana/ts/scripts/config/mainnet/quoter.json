@@ -66,6 +66,14 @@
       "gasCost": 500000,
       "wormholeTransceiverIndex": 0,
       "isSupported": true
+    },
+    {
+      "name": "Cheese",
+      "programId": "NTtxeqz2XjMnpcEoWMqb6pz84zHweJRYWyzmsmmW49E",
+      "tokenAddress": "AbrMJWfDVRZ2EWCQ1xSCpoVeVgZNpq1U2AoYG98oRXfn",
+      "gasCost": 500000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
     }
   ],
   "peerQuotes": {
