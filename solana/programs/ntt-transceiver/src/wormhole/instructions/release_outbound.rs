@@ -6,7 +6,7 @@ use example_native_token_transfers::{
     instructions::OUTBOX_ITEM_SIGNER_SEED,
     program::ExampleNativeTokenTransfers,
     queue::outbox::OutboxItem,
-    registered_transceiver::RegisteredTransceiver,
+    registered_transceiver::*,
     transfer::Payload,
 };
 use ntt_messages::{
@@ -127,7 +127,6 @@ pub fn release_outbound<'info>(
 
     accs.outbox_item.reload()?;
     assert!(accs.outbox_item.released.get(accs.transceiver.id)?);
-
     let message: TransceiverMessage<WormholeTransceiver, NativeTokenTransfer<Payload>> =
         TransceiverMessage::new(
             // TODO: should we just put the ntt id here statically?
