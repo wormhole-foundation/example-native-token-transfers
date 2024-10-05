@@ -1,3 +1,3 @@
-use ntt_messages::{ntt::EmptyPayload, ntt::NativeTokenTransfer};
+use ntt_messages::ntt::EmptyPayload;
 
-pub type NativeTokenTransferConcrete = NativeTokenTransfer<EmptyPayload>;
+pub type Payload = EmptyPayload;

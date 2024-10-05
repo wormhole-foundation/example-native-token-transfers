@@ -1,13 +1,13 @@
 use anchor_lang::prelude::*;
 
 use ntt_messages::{
-    ntt::EmptyPayload, ntt_manager::NttManagerMessage, transceiver::TransceiverMessage,
+    ntt::NativeTokenTransfer, ntt_manager::NttManagerMessage, transceiver::TransceiverMessage,
     transceivers::wormhole::WormholeTransceiver,
 };
 
 use crate::{
     config::*, error::NTTError, queue::outbox::OutboxItem, registered_transceiver::*,
-    transceivers::wormhole::accounts::*, transfer::NativeTokenTransferConcrete,
+    transceivers::wormhole::accounts::*, transfer::Payload,
 };
 
 #[derive(Accounts)]
@@ -66,7 +66,7 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, args: ReleaseOutboundArgs
     }
 
     assert!(accs.outbox_item.released.get(accs.transceiver.id)?);
-    let message: TransceiverMessage<WormholeTransceiver, NativeTokenTransferConcrete> =
+    let message: TransceiverMessage<WormholeTransceiver, NativeTokenTransfer<Payload>> =
         TransceiverMessage::new(
             // TODO: should we just put the ntt id here statically?
             accs.outbox_item.to_account_info().owner.to_bytes(),
@@ -74,12 +74,12 @@ pub fn release_outbound(ctx: Context<ReleaseOutbound>, args: ReleaseOutboundArgs
             NttManagerMessage {
                 id: accs.outbox_item.key().to_bytes(),
                 sender: accs.outbox_item.sender.to_bytes(),
-                payload: NativeTokenTransferConcrete {
+                payload: NativeTokenTransfer {
                     amount: accs.outbox_item.amount,
                     source_token: accs.config.mint.to_bytes(),
                     to: accs.outbox_item.recipient_address,
                     to_chain: accs.outbox_item.recipient_chain,
-                    additional_payload: EmptyPayload {},
+                    additional_payload: Payload {},
                 },
             },
             vec![],

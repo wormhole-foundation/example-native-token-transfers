@@ -105,7 +105,7 @@ See the [NttManager](../docs/NttManager.md) doc for wire format details.
 
 Modify [transfer.rs](./programs/example-native-token-transfers/src/transfer.rs) and replace the `EmptyPayload` with your own custom struct. See [ntt.rs](./modules/ntt-messages/src/ntt.rs) for an example. It is highly encouraged to use a 4-byte prefix for your payload.
 
-The additional payload field should then have your custom struct available everywhere `NativeTokenTransferConcrete` is used. Due to typing, parsing, and account allocation restrictions, this implementation expects that _all_ `NativeTokenTransfer` payloads for your contract adhere to your custom struct definition.
+The additional payload field should then have your custom struct available everywhere `NativeTokenTransfer<Payload>` is used. Due to typing, parsing, and account allocation restrictions, this implementation expects that _all_ `NativeTokenTransfer` payloads for your contract adhere to your custom struct definition.
 
 You can then modify [release_outbound](./programs/example-native-token-transfers/src/transceivers/wormhole/instructions/release_outbound.rs) and [redeem](./programs/example-native-token-transfers/src/instructions/redeem.rs) to generate and process the additional payload.
 
