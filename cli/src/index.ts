@@ -682,8 +682,12 @@ yargs(hideBin(process.argv))
                     const tx = (await ntt.getTransceiver(0) as EvmNttWormholeTranceiver<Network, EvmChains>).setIsEvmChain(evmChain, true)
                     await signSendWait(ctx, tx, signer.signer)
                 }
-                for (const relaying of missingConfig.standardRelaying) {
-                    const tx = (await ntt.getTransceiver(0) as EvmNttWormholeTranceiver<Network, EvmChains>).setIsWormholeRelayingEnabled(relaying, true)
+                for (const relayingTarget of missingConfig.standardRelaying) {
+                    const tx = (await ntt.getTransceiver(0) as EvmNttWormholeTranceiver<Network, EvmChains>).setIsWormholeRelayingEnabled(relayingTarget, true)
+                    await signSendWait(ctx, tx, signer.signer)
+                }
+                for (const relayingTarget of missingConfig.specialRelaying) {
+                    const tx = (await ntt.getTransceiver(0) as EvmNttWormholeTranceiver<Network, EvmChains>).setIsSpecialRelayingEnabled(relayingTarget, true)
                     await signSendWait(ctx, tx, signer.signer)
                 }
                 if (missingConfig.solanaWormholeTransceiver) {
@@ -800,8 +804,11 @@ yargs(hideBin(process.argv))
                 for (const evmChain of missingConfig.evmChains) {
                     console.error(`  ${evmChain} needs to be configured as an EVM chain`);
                 }
-                for (const relaying of missingConfig.standardRelaying) {
-                    console.warn(`  No standard relaying: ${relaying}`);
+                for (const relayingTarget of missingConfig.standardRelaying) {
+                    console.warn(`  No standard relaying to ${relayingTarget}`);
+                }
+                for (const relayingTarget of missingConfig.specialRelaying) {
+                    console.warn(`  No special relaying to ${relayingTarget}`);
                 }
                 if (missingConfig.solanaWormholeTransceiver) {
                     console.error("  Missing Solana wormhole transceiver");
@@ -896,6 +903,7 @@ type MissingImplicitConfig = {
     transceiverPeers: ChainAddress<Chain>[];
     evmChains: Chain[];
     standardRelaying: Chain[];
+    specialRelaying: Chain[];
     solanaWormholeTransceiver: boolean;
     solanaUpdateLUT: boolean;
 }
@@ -1436,6 +1444,7 @@ async function missingConfigs(
             transceiverPeers: [],
             evmChains: [],
             standardRelaying: [],
+            specialRelaying: [],
             solanaWormholeTransceiver: false,
             solanaUpdateLUT: false,
         };
@@ -1490,17 +1499,27 @@ async function missingConfigs(
 
             if (chainToPlatform(fromChain) === "Evm") {
                 const toIsEvm = chainToPlatform(toChain) === "Evm";
+                const toIsSolana = chainToPlatform(toChain) === "Solana";
+                const whTransceiver = await from.ntt.getTransceiver(0) as EvmNttWormholeTranceiver<Network, EvmChains>;
 
-                const remoteToEvm = await (await from.ntt.getTransceiver(0) as EvmNttWormholeTranceiver<Network, EvmChains>).isEvmChain(toChain);
-                if (toIsEvm && !remoteToEvm) {
-                    count++;
-                    missing.evmChains.push(toChain);
-                }
+                if (toIsEvm) {
+                    const remoteToEvm = await whTransceiver.isEvmChain(toChain);
+                    if (!remoteToEvm) {
+                        count++;
+                        missing.evmChains.push(toChain);
+                    }
 
-                const standardRelaying = await (await from.ntt.getTransceiver(0) as EvmNttWormholeTranceiver<Network, EvmChains>).isWormholeRelayingEnabled(toChain);
-                if (toIsEvm && !standardRelaying) {
-                    count++;
-                    missing.standardRelaying.push(toChain);
+                    const standardRelaying = await whTransceiver.isWormholeRelayingEnabled(toChain);
+                    if (!standardRelaying) {
+                        count++;
+                        missing.standardRelaying.push(toChain);
+                    }
+                } else if (toIsSolana) {
+                    const specialRelaying = await whTransceiver.isSpecialRelayingEnabled(toChain);
+                    if (!specialRelaying) {
+                        count++;
+                        missing.specialRelaying.push(toChain);
+                    }
                 }
             }
 
