@@ -1,5 +1,5 @@
 export type NttTransceiver = {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "name": "ntt_transceiver",
   "instructions": [
     {
@@ -681,7 +681,7 @@ export type NttTransceiver = {
   ]
 }
 export const IDL: NttTransceiver = {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "name": "ntt_transceiver",
   "instructions": [
     {
