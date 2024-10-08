@@ -313,19 +313,19 @@ contract TestEndToEndNoRateLimiting is Test {
             chainId1, bytes32(uint256(uint160(address(nttManagerChain2)))), 9, type(uint64).max
         );
 
-        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.NotImplemented.selector));
         nttManagerChain1.getOutboundQueuedTransfer(0);
 
-        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.NotImplemented.selector));
         nttManagerChain1.getInboundQueuedTransfer(bytes32(0));
 
-        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.NotImplemented.selector));
         nttManagerChain1.completeInboundQueuedTransfer(bytes32(0));
 
-        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.NotImplemented.selector));
         nttManagerChain1.completeOutboundQueuedTransfer(0);
 
-        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.NotImplemented.selector));
         nttManagerChain1.cancelOutboundQueuedTransfer(0);
     }
 
@@ -572,6 +572,7 @@ contract TestEndToEndNoRateLimiting is Test {
             uint256 supplyBefore = token2.totalSupply();
             wormholeTransceiverChain2_1.receiveMessage(encodedVMs[0]);
 
+            // Playing the VAA to the wrong transceiver should revert.
             vm.expectRevert(
                 abi.encodeWithSelector(
                     IWormholeTransceiver.InvalidWormholePeer.selector,

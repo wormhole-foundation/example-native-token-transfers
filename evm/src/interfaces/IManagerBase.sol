@@ -21,6 +21,9 @@ interface IManagerBase {
     struct AttestationInfo {
         bool executed;
         uint64 attestedTransceivers;
+        // TODO: think about potential migration issues here (this field was
+        // introduced later, so for older messages it will be 0).
+        uint16 sourceChainId;
     }
 
     struct _Sequence {
@@ -108,6 +111,11 @@ interface IManagerBase {
     /// @dev Selector 0x3af256bc.
     /// @param chainId The target Wormhole chain id
     error PeerNotRegistered(uint16 chainId);
+
+    /// @notice Feature is not implemented.
+    /// @dev Selector
+    ///      0xd6234725
+    error NotImplemented();
 
     /// @notice Fetch the delivery price for a given recipient chain transfer.
     /// @param recipientChain The Wormhole chain ID of the transfer destination.

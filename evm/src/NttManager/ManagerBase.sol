@@ -64,11 +64,11 @@ abstract contract ManagerBase is
     bytes32 private constant MESSAGE_SEQUENCE_SLOT =
         bytes32(uint256(keccak256("ntt.messageSequence")) - 1);
 
-    bytes32 private constant THRESHOLD_SLOT = bytes32(uint256(keccak256("ntt.threshold")) - 1);
+    bytes32 internal constant THRESHOLD_SLOT = bytes32(uint256(keccak256("ntt.threshold")) - 1);
 
     // =============== Storage Getters/Setters ==============================================
 
-    function _getThresholdStorage() private pure returns (_Threshold storage $) {
+    function _getThresholdStorage() internal pure returns (_Threshold storage $) {
         uint256 slot = uint256(THRESHOLD_SLOT);
         assembly ("memory-safe") {
             $.slot := slot
@@ -122,6 +122,9 @@ abstract contract ManagerBase is
         uint256 totalPriceQuote = 0;
         for (uint256 i = 0; i < numEnabledTransceivers; i++) {
             address transceiverAddr = enabledTransceivers[i];
+            if (!_isSendTransceiverEnabledForChain(transceiverAddr, recipientChain)) {
+                continue;
+            }
             uint8 registeredTransceiverIndex = transceiverInfos[transceiverAddr].index;
             uint256 transceiverPriceQuote = ITransceiver(transceiverAddr).quoteDeliveryPrice(
                 recipientChain, transceiverInstructions[registeredTransceiverIndex]
@@ -150,6 +153,7 @@ abstract contract ManagerBase is
         ) {
             revert TransceiverAlreadyAttestedToMessage(nttManagerMessageHash);
         }
+        _getMessageAttestationsStorage()[nttManagerMessageHash].sourceChainId = sourceChainId;
         _setTransceiverAttestedToMessage(nttManagerMessageHash, msg.sender);
 
         return nttManagerMessageHash;
@@ -200,6 +204,9 @@ abstract contract ManagerBase is
         // call into transceiver contracts to send the message
         for (uint256 i = 0; i < numEnabledTransceivers; i++) {
             address transceiverAddr = enabledTransceivers[i];
+            if (!_isSendTransceiverEnabledForChain(transceiverAddr, recipientChain)) {
+                continue;
+            }
 
             // send it to the recipient nttManager based on the chain
             ITransceiver(transceiverAddr).sendMessage{value: priceQuotes[i]}(
@@ -287,7 +294,7 @@ abstract contract ManagerBase is
     /// @inheritdoc IManagerBase
     function isMessageApproved(
         bytes32 digest
-    ) public view returns (bool) {
+    ) public view virtual returns (bool) {
         uint8 threshold = getThreshold();
         return messageAttestations(digest) >= threshold && threshold > 0;
     }
@@ -430,7 +437,7 @@ abstract contract ManagerBase is
     /// @dev Returns the bitmap of attestations from enabled transceivers for a given message.
     function _getMessageAttestations(
         bytes32 digest
-    ) internal view returns (uint64) {
+    ) internal view virtual returns (uint64) {
         uint64 enabledTransceiverBitmap = _getEnabledTransceiversBitmap();
         return
             _getMessageAttestationsStorage()[digest].attestedTransceivers & enabledTransceiverBitmap;
@@ -462,6 +469,13 @@ abstract contract ManagerBase is
     function _useMessageSequence() internal returns (uint64 currentSequence) {
         currentSequence = _getMessageSequenceStorage().num;
         _getMessageSequenceStorage().num++;
+    }
+
+    function _isSendTransceiverEnabledForChain(
+        address, // transceiver,
+        uint16 // chainId
+    ) internal view virtual returns (bool) {
+        return true;
     }
 
     /// ============== Invariants =============================================

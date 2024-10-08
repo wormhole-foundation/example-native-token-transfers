@@ -4,6 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import "../../src/NttManager/NttManager.sol";
 import "../../src/NttManager/NttManagerNoRateLimiting.sol";
+import "../../src/NttManager/NttManagerWithPerChainTransceivers.sol";
 
 contract MockNttManagerContract is NttManager {
     constructor(
@@ -109,5 +110,34 @@ contract MockNttManagerStorageLayoutChange is NttManager {
         a = address(0x1);
         b = address(0x2);
         c = address(0x3);
+    }
+}
+
+contract MockNttManagerNoRateLimitingContractForTest is NttManagerNoRateLimiting {
+    constructor(
+        address token,
+        Mode mode,
+        uint16 chainId
+    ) NttManagerNoRateLimiting(token, mode, chainId) {}
+}
+
+contract MockNttManagerWithPerChainTransceivers is NttManagerWithPerChainTransceivers {
+    constructor(
+        address token,
+        Mode mode,
+        uint16 chainId
+    ) NttManagerWithPerChainTransceivers(token, mode, chainId) {}
+
+    function isSendTransceiverEnabledForChain(
+        address transceiver,
+        uint16 forChainId
+    ) external view returns (bool) {
+        return _isSendTransceiverEnabledForChain(transceiver, forChainId);
+    }
+
+    function getEnabledRecvTransceiversForChain(
+        uint16 forChainId
+    ) external view returns (uint64 bitmap) {
+        return _getEnabledRecvTransceiversForChain(forChainId);
     }
 }

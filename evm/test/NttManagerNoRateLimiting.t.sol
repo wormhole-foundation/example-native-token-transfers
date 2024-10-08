@@ -750,11 +750,11 @@ contract TestNttManagerNoRateLimiting is Test, IRateLimiterEvents {
         vm.chainId(chainId);
 
         // Queued outbound transfers can't be completed, per usual
-        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.NotImplemented.selector));
         nttManager.completeOutboundQueuedTransfer(sequence);
 
         // Queued outbound transfers can't be cancelled, per usual
-        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.NotImplemented.selector));
         nttManager.cancelOutboundQueuedTransfer(sequence);
 
         // Outbound transfers fail when queued
@@ -823,7 +823,7 @@ contract TestNttManagerNoRateLimiting is Test, IRateLimiterEvents {
 
         vm.warp(vm.getBlockTimestamp() + 1 days);
 
-        vm.expectRevert(abi.encodeWithSelector(INttManager.NotImplemented.selector));
+        vm.expectRevert(abi.encodeWithSelector(IManagerBase.NotImplemented.selector));
         nttManager.completeInboundQueuedTransfer(hash);
     }
 
