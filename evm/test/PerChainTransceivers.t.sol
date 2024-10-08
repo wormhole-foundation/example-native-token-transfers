@@ -503,13 +503,23 @@ contract TestPerChainTransceivers is Test, IRateLimiterEvents {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                NttManagerWithPerChainTransceivers.TransceiverIndexTooLarge.selector, 6, 2
+                NttManagerWithPerChainTransceivers.InvalidTransceiverIndex.selector, 6
             )
         );
         nttManagerChain1.setRecvTransceiverBitmapForChain(chainId2, 0x40, 0);
 
+        // Can't globally remove a transceiver when it's enabled for a chain.
+        nttManagerChain1.setRecvTransceiverBitmapForChain(chainId2, 0x02, 1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                NttManagerWithPerChainTransceivers.InvalidTransceiverIndex.selector, 1
+            )
+        );
+        nttManagerChain1.removeTransceiver(address(secondWormholeTransceiverChain1));
+
+        // But once you disable it per-chain, you should be able to remove it globally.
         nttManagerChain1.setRecvTransceiverBitmapForChain(chainId2, 0, 0);
-        nttManagerChain1.removeTransceiver(address(wormholeTransceiverChain1));
+        nttManagerChain1.removeTransceiver(address(secondWormholeTransceiverChain1));
     }
 
     // This test does a transfer between chain one and chain two.

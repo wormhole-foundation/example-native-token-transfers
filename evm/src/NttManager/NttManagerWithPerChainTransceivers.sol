@@ -34,17 +34,10 @@ contract NttManagerWithPerChainTransceivers is NttManagerNoRateLimiting {
         uint16 chainId, uint64 oldBitmap, uint64 newBitmap, uint8 oldThreshold, uint8 newThreshold
     );
 
-    /// @notice Transceiver index is greater than the number of enabled transceivers.
-    /// @dev Selector 0x770c2d3c.
+    /// @notice Transceiver index does not match one in the list.
+    /// @dev Selector 0x24595b41.
     /// @param index The transceiver index that is invalid.
-    /// @param len The length of the transceiver list.
-    error TransceiverIndexTooLarge(uint8 index, uint256 len);
-
-    /// @notice Transceiver index does not match the one in the list.
-    /// @dev Selector 0x2f52d3e.
-    /// @param index The transceiver index that is invalid.
-    /// @param expectedIndex The index in the transceiver list.
-    error InvalidTransceiverIndex(uint8 index, uint8 expectedIndex);
+    error InvalidTransceiverIndex(uint8 index);
 
     /// @notice Transceiver with specified index is not registered.
     /// @dev Selector 0x38ab702a.
@@ -196,11 +189,15 @@ contract NttManagerWithPerChainTransceivers is NttManagerNoRateLimiting {
     function setTransceiversForChains(
         SetTransceiversForChainEntry[] memory params
     ) external onlyOwner {
-        for (uint256 idx = 0; idx < params.length; idx++) {
+        uint256 len = params.length;
+        for (uint256 idx = 0; idx < len;) {
             setSendTransceiverBitmapForChain(params[idx].chainId, params[idx].sendBitmap);
             setRecvTransceiverBitmapForChain(
                 params[idx].chainId, params[idx].recvBitmap, params[idx].recvThreshold
             );
+            unchecked {
+                ++idx;
+            }
         }
     }
 
@@ -212,7 +209,7 @@ contract NttManagerWithPerChainTransceivers is NttManagerNoRateLimiting {
     ) internal view override returns (bool) {
         uint64 bitmap = _getPerChainTransceiverBitmap(forChainId, SEND_TRANSCEIVER_BITMAP_SLOT);
         uint8 index = _getTransceiverInfosStorage()[transceiver].index;
-        return (bitmap & uint64(1 << index)) != 0;
+        return (bitmap & uint64(1 << index)) > 0;
     }
 
     /// @inheritdoc IManagerBase
@@ -232,6 +229,24 @@ contract NttManagerWithPerChainTransceivers is NttManagerNoRateLimiting {
         uint64 enabledTransceiversForChain =
             _getEnabledRecvTransceiversForChain(attInfo.sourceChainId);
         return attInfo.attestedTransceivers & enabledTransceiverBitmap & enabledTransceiversForChain;
+    }
+
+    function _checkTransceiversInvariants() internal view override {
+        super._checkTransceiversInvariants();
+        _validateTransceivers(SEND_ENABLED_CHAINS_SLOT, SEND_TRANSCEIVER_BITMAP_SLOT);
+        _validateTransceivers(RECV_ENABLED_CHAINS_SLOT, RECV_TRANSCEIVER_BITMAP_SLOT);
+    }
+
+    function _validateTransceivers(bytes32 chainsTag, bytes32 bitmapTag) private view {
+        uint16[] memory chains = _getEnabledChainsStorage(chainsTag);
+        uint256 len = chains.length;
+        for (uint256 idx = 0; idx < len;) {
+            uint64 bitmap = _getPerChainTransceiverBitmap(chains[idx], bitmapTag);
+            _validateTransceivers(bitmap);
+            unchecked {
+                ++idx;
+            }
+        }
     }
 
     // ==================== Implementation =========================
@@ -286,64 +301,58 @@ contract NttManagerWithPerChainTransceivers is NttManagerNoRateLimiting {
     function _validateTransceiver(
         uint8 index
     ) internal view {
-        address[] storage _enabledTransceivers = _getEnabledTransceiversStorage();
-        if (index >= _enabledTransceivers.length) {
-            revert TransceiverIndexTooLarge(index, _enabledTransceivers.length);
-        }
-
-        address transceiverAddr = _enabledTransceivers[index];
         mapping(address => TransceiverInfo) storage transceiverInfos = _getTransceiverInfosStorage();
+        address[] storage _enabledTransceivers = _getEnabledTransceiversStorage();
+        uint256 len = _enabledTransceivers.length;
+        for (uint256 idx = 0; (idx < len);) {
+            address transceiverAddr = _enabledTransceivers[idx];
+            if (transceiverInfos[transceiverAddr].index == index) {
+                if (!transceiverInfos[transceiverAddr].registered) {
+                    revert TransceiverNotRegistered(index, transceiverAddr);
+                }
 
-        if (transceiverInfos[transceiverAddr].index != index) {
-            revert InvalidTransceiverIndex(index, transceiverInfos[transceiverAddr].index);
+                if (!transceiverInfos[transceiverAddr].enabled) {
+                    revert TransceiverNotEnabled(index, transceiverAddr);
+                }
+                // This index is good.
+                return;
+            }
+            unchecked {
+                ++idx;
+            }
         }
 
-        if (!transceiverInfos[transceiverAddr].registered) {
-            revert TransceiverNotRegistered(index, transceiverAddr);
-        }
-
-        if (!transceiverInfos[transceiverAddr].enabled) {
-            revert TransceiverNotEnabled(index, transceiverAddr);
-        }
+        revert InvalidTransceiverIndex(index);
     }
 
     function _removeChain(bytes32 tag, uint16 forChainId) private {
         uint16[] storage chains = _getEnabledChainsStorage(tag);
         uint256 len = chains.length;
-        for (uint256 idx = 0; (idx < len); idx++) {
+        for (uint256 idx = 0; (idx < len);) {
             if (chains[idx] == forChainId) {
-                if (len > 1) {
-                    chains[idx] = chains[len - 1];
-                }
+                chains[idx] = chains[len - 1];
                 chains.pop();
                 return;
+            }
+            unchecked {
+                ++idx;
             }
         }
     }
 
     function _addChainIfNeeded(bytes32 tag, uint16 forChainId) private {
         uint16[] storage chains = _getEnabledChainsStorage(tag);
-        uint256 zeroIdx = type(uint256).max;
         uint256 len = chains.length;
-        for (uint256 idx = 0; (idx < len); idx++) {
+        for (uint256 idx = 0; (idx < len);) {
             if (chains[idx] == forChainId) {
                 return;
             }
-            if (chains[idx] == 0) {
-                zeroIdx = idx;
+            unchecked {
+                ++idx;
             }
         }
-
-        if (zeroIdx != type(uint256).max) {
-            chains[zeroIdx] = forChainId;
-        } else {
-            chains.push(forChainId);
-        }
+        chains.push(forChainId);
     }
-
-    // function _copyEnabledChains(bytes32 tag) uint16[] memory {
-    //     uint16[] ret = new
-    // }
 
     function _getEnabledChainsStorage(
         bytes32 tag
