@@ -3,6 +3,12 @@ export type NttTransceiver = {
   "name": "ntt_transceiver",
   "instructions": [
     {
+      "name": "transceiverType",
+      "accounts": [],
+      "args": [],
+      "returns": "string"
+    },
+    {
       "name": "setWormholePeer",
       "accounts": [
         {
@@ -684,6 +690,12 @@ export const IDL: NttTransceiver = {
   "version": "2.0.0",
   "name": "ntt_transceiver",
   "instructions": [
+    {
+      "name": "transceiverType",
+      "accounts": [],
+      "args": [],
+      "returns": "string"
+    },
     {
       "name": "setWormholePeer",
       "accounts": [
