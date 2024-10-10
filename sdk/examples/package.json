@@ -1,6 +1,6 @@
 {
   "name": "@wormhole-foundation/sdk-examples-ntt",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "license": "Apache-2.0",
   "main": "./dist/cjs/index.js",
   "types": "./dist/cjs/index.d.ts",
@@ -33,9 +33,9 @@
   },
   "dependencies": {
     "@wormhole-foundation/sdk": "^0.10.2",
-    "@wormhole-foundation/sdk-definitions-ntt": "0.2.1",
-    "@wormhole-foundation/sdk-evm-ntt": "0.2.1",
-    "@wormhole-foundation/sdk-solana-ntt": "0.2.1",
-    "@wormhole-foundation/sdk-route-ntt": "0.2.1"
+    "@wormhole-foundation/sdk-definitions-ntt": "0.2.2",
+    "@wormhole-foundation/sdk-evm-ntt": "0.2.2",
+    "@wormhole-foundation/sdk-solana-ntt": "0.2.2",
+    "@wormhole-foundation/sdk-route-ntt": "0.2.2"
   }
 }
