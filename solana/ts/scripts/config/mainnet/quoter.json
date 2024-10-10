@@ -79,25 +79,65 @@
       "name": "Layer3",
       "programId": "NTtn3BrY2jt8cZqptVgeGpw8Pcrnr6yDfWR8aMN6bhB",
       "tokenAddress": "FGG8y8JrZrAinbBwWAB2EacQgZVyzoerdMsU1LUaRkKv",
-      "gasCost": 0,
+      "gasCost": 500000,
       "wormholeTransceiverIndex": 0,
       "isSupported": false
+    },
+    {
+      "name": "Layer3",
+      "programId": "NttwugVXXpdq1CRdC2PwgsqsUNEsi3kLqB8M22cxPCL",
+      "tokenAddress": "2ummN5q6x8iQid7BFcRp7oMgF3UMEXR8LrUSPYzuMHQH",
+      "gasCost": 500000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": false
+    },
+    {
+      "name": "Layer3",
+      "programId": "nTTVLsyTqRZFSyphRjkgi1Bxp5aR7nXDmMGerNWm2a6",
+      "tokenAddress": "CivjW7ZGp7eaubEdGoDeVsTrYYRnyTf5mrp9pET7KFuk",
+      "gasCost": 500000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": false
+    },
+    {
+      "name": "Layer3",
+      "programId": "ntT5xGC7XEuR8Po9U3Umze12T9LBdaTCuEc9Cby6qPa",
+      "tokenAddress": "5k84VjAKoGPXa7ias1BNgKUrX7e61eMPWhZDqsiD4Bpe",
+      "gasCost": 500000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
     },
     {
       "name": "USDs",
       "programId": "STTaPviaZpRbBiubcx2QeDKViRB7scgg4kmonK1Wn3T",
       "tokenAddress": "USDSmbcVPUStXmCNeH6i13LmRPMZic7Afz7uu7nVgrJ",
-      "gasCost": 0,
+      "gasCost": 500000,
       "wormholeTransceiverIndex": 0,
       "isSupported": false
+    },
+    {
+      "name": "USDs",
+      "programId": "STTb3N8SdASycVjRhgPZV7EgtdaW19pkuY5vGxTNEW6",
+      "tokenAddress": "USDSvKzCxbVwSEsu1amJb8BgrUq3c39sGirmT3bmbng",
+      "gasCost": 500000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
     },
     {
       "name": "Sky",
       "programId": "STTzd1vq1QoxzHWR6dbcvg8uyiRGHh3sXqMdreYsYWh",
       "tokenAddress": "SKY3ns1PY4rCyyu1n5WCNGnh7MPSjJai3fRcba12NZ8",
-      "gasCost": 0,
+      "gasCost": 500000,
       "wormholeTransceiverIndex": 0,
       "isSupported": false
+    },
+    {
+      "name": "Sky",
+      "programId": "STTrhNsZyLN3srkazdo6LnpJ5RciJYP9N4zVwwYycw9",
+      "tokenAddress": "SKY3XUAsKsXPrcn6aAAMrjxscGcwKawEibtSsF1CNgt",
+      "gasCost": 500000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
     }
   ],
   "peerQuotes": {
