@@ -1,6 +1,6 @@
 {
   "name": "ntt",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "type": "module",
   "license": "Apache-2.0",
   "scripts": {
@@ -21,7 +21,7 @@
     "@solana/web3.js": "^1.95.2",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.12.2",
-    "@wormhole-foundation/sdk": "^0.10.2",
+    "@wormhole-foundation/sdk": "^0.11.0",
     "@wormhole-foundation/wormchain-sdk": "^0.0.1",
     "ethers": "^6.5.1",
     "ts-jest": "^29.1.2",
