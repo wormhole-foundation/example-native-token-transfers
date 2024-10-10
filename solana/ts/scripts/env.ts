@@ -50,6 +50,7 @@ export type NttDeployment = {
 };
 
 export type QuoterManagerRegistrations = {
+    name: string;
     programId: string;
     tokenAddress: string;
     gasCost: number;

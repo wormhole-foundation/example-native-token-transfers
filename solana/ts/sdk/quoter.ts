@@ -40,7 +40,7 @@ export class NttQuoter {
   async calcRelayCostInSol(nttProgramId: PublicKey, chain: Chain, requestedGasDropoffEth: number) {
     const [chainData, nttData, instanceData, rentCost] = await Promise.all([
       this.tryGetRegisteredChain(chain),
-      this.getRegisteredNtt(nttProgramId),
+      this.tryGetRegisteredNtt(nttProgramId),
       this.tryGetInstance(),
       this.program.provider.connection.getMinimumBalanceForRentExemption(
         this.program.account.relayRequest.size

@@ -16,6 +16,7 @@ async function run() {
   for (const managerConfig of config.managerRegistrations) {
     const nttKey = new PublicKey(managerConfig.programId);
     const registration = await quoter.tryGetRegisteredNtt(nttKey);
+    console.log(`Registration for manager ${managerConfig.programId} (${managerConfig.name}):`, registration);
     const needsUpdate =
       registration !== null &&
       (registration.gasCost !== managerConfig.gasCost ||
