@@ -3,6 +3,12 @@
   "name": "ntt_transceiver",
   "instructions": [
     {
+      "name": "transceiverType",
+      "accounts": [],
+      "args": [],
+      "returns": "string"
+    },
+    {
       "name": "setWormholePeer",
       "accounts": [
         {
