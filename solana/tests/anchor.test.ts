@@ -235,18 +235,16 @@ describe("example-native-token-transfers", () => {
         await signSendWait(ctx, initTxs, signer);
 
         // register
-        const registerTxs = ntt.registerTransceiver({
+        const registerTxs = ntt.registerWormholeTransceiver({
           payer: new SolanaAddress(payer.publicKey),
           owner: new SolanaAddress(payer.publicKey),
-          transceiver: nttTransceiver,
         });
         await signSendWait(ctx, registerTxs, signer);
 
         // Set Wormhole xcvr peer
-        const setXcvrPeerTxs = ntt.setWormholeTransceiverPeer2(
+        const setXcvrPeerTxs = ntt.setWormholeTransceiverPeer(
           remoteXcvr,
-          sender,
-          nttTransceiver
+          sender
         );
         await signSendWait(ctx, setXcvrPeerTxs, signer);
 
@@ -296,12 +294,12 @@ describe("example-native-token-transfers", () => {
       // TODO: keep or remove the `outboxItem` param?
       // added as a way to keep tests the same but it technically breaks the Ntt interface
       const outboxItem = anchor.web3.Keypair.generate();
-      const xferTxs = ntt.transfer2(
+      const xferTxs = ntt.transfer(
         sender,
         amount,
         receiver,
         { queue: false, automatic: false, gasDropoff: 0n },
-        nttTransceiver,
+        "wormhole",
         outboxItem
       );
       await signSendWait(ctx, xferTxs, signer);
@@ -315,6 +313,7 @@ describe("example-native-token-transfers", () => {
         wormholeMessage
       );
 
+      // TODO4: where is wormhole transfer coming from?
       const transceiverMessage = deserializePayload(
         "Ntt:WormholeTransfer",
         unsignedVaa.payload
@@ -369,7 +368,8 @@ describe("example-native-token-transfers", () => {
       const published = emitter.publishMessage(0, serialized, 200);
       const rawVaa = guardians.addSignatures(published, [0]);
       const vaa = deserialize("Ntt:WormholeTransfer", serialize(rawVaa));
-      const redeemTxs = ntt.redeem2([vaa], sender, nttTransceiver);
+      const vaaMap = new Map([["wormhole", vaa]]);
+      const redeemTxs = ntt.redeem(vaaMap, sender);
       try {
         await signSendWait(ctx, redeemTxs, signer);
       } catch (e) {
