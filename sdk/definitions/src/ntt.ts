@@ -190,8 +190,9 @@ export interface Ntt<N extends Network, C extends Chain> {
     payer?: AccountAddress<C>
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
 
+  // TODO: replace ix with transceiver type
   setTransceiverPeer(
-    transceiverType: string,
+    ix: number,
     peer: ChainAddress,
     payer?: AccountAddress<C>
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
@@ -229,9 +230,11 @@ export interface Ntt<N extends Network, C extends Chain> {
   /**
    * redeem redeems a set of Attestations to the corresponding transceivers on the destination chain
    * @param attestations The attestations to redeem, the length should be equal to the number of transceivers
+   *
+   * TODO: replace with Map<transceiver type, Attestation>
    */
   redeem(
-    attestations: Map<string, Ntt.Attestation>,
+    attestations: Ntt.Attestation[],
     payer?: AccountAddress<C>
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
 
@@ -244,9 +247,12 @@ export interface Ntt<N extends Network, C extends Chain> {
   /** Get the peer information for the given chain if it exists */
   getPeer<C extends Chain>(chain: C): Promise<Ntt.Peer<C> | null>;
 
-  /** Get the transceiver corresponding to type */
+  /** Get the transceiver corresponding to index (0 = Wormhole)
+   *
+   * TODO: replace ix with transceiver type
+   */
   getTransceiver(
-    type: string
+    ix: number
   ): Promise<NttTransceiver<N, C, Ntt.Attestation> | null>;
 
   /**

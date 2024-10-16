@@ -31,7 +31,7 @@ import {
   Transaction,
 } from "@solana/web3.js";
 import { DummyTransferHook } from "../ts/idl/1_0_0/ts/dummy_transfer_hook.js";
-import { NttTransceiver } from "../ts/idl/2_0_0/ts/ntt_transceiver.js";
+import { type NttTransceiver as NttTransceiverIdlType } from "../ts/idl/2_0_0/ts/ntt_transceiver.js";
 import { SolanaNtt } from "../ts/sdk/index.js";
 import { derivePda } from "../ts/lib/utils.js";
 
@@ -59,7 +59,7 @@ const w = new Wormhole("Devnet", [SolanaPlatform], {
 });
 
 const nttTransceiver = anchor.workspace
-  .NttTransceiver as anchor.Program<NttTransceiver>;
+  .NttTransceiver as anchor.Program<NttTransceiverIdlType>;
 
 const remoteXcvr: ChainAddress = {
   chain: "Ethereum",
@@ -299,7 +299,6 @@ describe("example-native-token-transfers", () => {
         amount,
         receiver,
         { queue: false, automatic: false, gasDropoff: 0n },
-        "wormhole",
         outboxItem
       );
       await signSendWait(ctx, xferTxs, signer);
@@ -313,7 +312,6 @@ describe("example-native-token-transfers", () => {
         wormholeMessage
       );
 
-      // TODO4: where is wormhole transfer coming from?
       const transceiverMessage = deserializePayload(
         "Ntt:WormholeTransfer",
         unsignedVaa.payload
@@ -368,8 +366,7 @@ describe("example-native-token-transfers", () => {
       const published = emitter.publishMessage(0, serialized, 200);
       const rawVaa = guardians.addSignatures(published, [0]);
       const vaa = deserialize("Ntt:WormholeTransfer", serialize(rawVaa));
-      const vaaMap = new Map([["wormhole", vaa]]);
-      const redeemTxs = ntt.redeem(vaaMap, sender);
+      const redeemTxs = ntt.redeem([vaa], sender);
       try {
         await signSendWait(ctx, redeemTxs, signer);
       } catch (e) {
@@ -377,7 +374,6 @@ describe("example-native-token-transfers", () => {
         throw e;
       }
 
-      // expect(released).toEqual(true);
       expect((await counterValue()).toString()).toEqual("2");
     });
   });
