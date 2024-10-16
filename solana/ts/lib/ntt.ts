@@ -270,6 +270,7 @@ export namespace NTT {
   export async function initializeOrUpdateLUT(
     program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
     config: NttBindings.Config<IdlVersion>,
+    whTransceiver: PublicKey,
     args: {
       payer: PublicKey;
       wormholeId: PublicKey;
@@ -292,7 +293,7 @@ export namespace NTT {
     });
 
     const whAccs = utils.getWormholeDerivedAccounts(
-      program.programId,
+      whTransceiver,
       args.wormholeId.toString()
     );
 
@@ -306,6 +307,7 @@ export namespace NTT {
       wormhole: {
         bridge: whAccs.wormholeBridge,
         feeCollector: whAccs.wormholeFeeCollector,
+        emitter: whAccs.wormholeEmitter,
         sequence: whAccs.wormholeSequence,
         program: args.wormholeId,
         systemProgram: SystemProgram.programId,
@@ -518,6 +520,7 @@ export namespace NTT {
     return transferIx;
   }
 
+<<<<<<< HEAD
   /**
    * Creates a release_outbound instruction. The `payer` needs to sign the transaction.
    */
@@ -559,6 +562,8 @@ export namespace NTT {
       .instruction();
   }
 
+=======
+>>>>>>> 1c339ad (solana: Revert to store list of xcvrs in SolanaNtt class)
   // TODO: document that if recipient is provided, then the instruction can be
   // created before the inbox item is created (i.e. they can be put in the same tx)
   export async function createReleaseInboundMintInstruction(

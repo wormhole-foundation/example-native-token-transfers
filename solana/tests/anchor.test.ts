@@ -389,7 +389,6 @@ describe("example-native-token-transfers", () => {
         throw e;
       }
 
-      // expect(released).toEqual(true);
       expect((await counterValue()).toString()).toEqual("2");
     });
   });

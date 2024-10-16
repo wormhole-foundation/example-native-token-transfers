@@ -15,7 +15,11 @@ import {
   toUniversal,
   universalAddress,
 } from "@wormhole-foundation/sdk-definitions";
-import type { AnyEvmAddress, EvmChains, EvmPlatformType } from "@wormhole-foundation/sdk-evm";
+import type {
+  AnyEvmAddress,
+  EvmChains,
+  EvmPlatformType,
+} from "@wormhole-foundation/sdk-evm";
 import {
   EvmAddress,
   EvmPlatform,
@@ -39,7 +43,8 @@ import {
 } from "./bindings.js";
 
 export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
-  implements NttTransceiver<N, C, WormholeNttTransceiver.VAA> {
+  implements NttTransceiver<N, C, WormholeNttTransceiver.VAA>
+{
   transceiver: NttTransceiverBindings.NttTransceiver;
   constructor(
     readonly manager: EvmNtt<N, C>,
@@ -53,14 +58,19 @@ export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
   }
 
   getAddress(): ChainAddress<C> {
-    return { chain: this.manager.chain, address: toUniversal(this.manager.chain, this.address) };
+    return {
+      chain: this.manager.chain,
+      address: toUniversal(this.manager.chain, this.address),
+    };
   }
 
   encodeFlags(flags: { skipRelay: boolean }): Uint8Array {
     return new Uint8Array([flags.skipRelay ? 1 : 0]);
   }
 
-  async *setPeer<P extends Chain>(peer: ChainAddress<P>): AsyncGenerator<EvmUnsignedTransaction<N, C>> {
+  async *setPeer<P extends Chain>(
+    peer: ChainAddress<P>
+  ): AsyncGenerator<EvmUnsignedTransaction<N, C>> {
     const tx = await this.transceiver.setWormholePeer.populateTransaction(
       toChainId(peer.chain),
       universalAddress(peer)
@@ -74,8 +84,14 @@ export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
   }
 
   async *setPauser(pauser: AccountAddress<C>) {
-    const canonicalPauser = canonicalAddress({chain: this.manager.chain, address: pauser});
-    const tx = await this.transceiver.transferPauserCapability.populateTransaction(canonicalPauser);
+    const canonicalPauser = canonicalAddress({
+      chain: this.manager.chain,
+      address: pauser,
+    });
+    const tx =
+      await this.transceiver.transferPauserCapability.populateTransaction(
+        canonicalPauser
+      );
     yield this.manager.createUnsignedTx(tx, "WormholeTransceiver.setPauser");
   }
 
@@ -102,7 +118,10 @@ export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
       toChainId(chain),
       isEvm
     );
-    yield this.manager.createUnsignedTx(tx, "WormholeTransceiver.setIsEvmChain");
+    yield this.manager.createUnsignedTx(
+      tx,
+      "WormholeTransceiver.setIsEvmChain"
+    );
   }
 
   async *receive(attestation: WormholeNttTransceiver.VAA) {
@@ -122,10 +141,11 @@ export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
   }
 
   async *setIsWormholeRelayingEnabled(destChain: Chain, enabled: boolean) {
-    const tx = await this.transceiver.setIsWormholeRelayingEnabled.populateTransaction(
-      toChainId(destChain),
-      enabled
-    );
+    const tx =
+      await this.transceiver.setIsWormholeRelayingEnabled.populateTransaction(
+        toChainId(destChain),
+        enabled
+      );
     yield this.manager.createUnsignedTx(
       tx,
       "WormholeTransceiver.setWormholeRelayingEnabled"
@@ -151,7 +171,8 @@ export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
 }
 
 export class EvmNtt<N extends Network, C extends EvmChains>
-  implements Ntt<N, C> {
+  implements Ntt<N, C>
+{
   tokenAddress: string;
   readonly chainId: bigint;
   manager: NttManagerBindings.NttManager;
@@ -182,17 +203,24 @@ export class EvmNtt<N extends Network, C extends EvmChains>
       this.provider
     );
 
-    if (contracts.ntt.transceiver.wormhole != null) {
-      this.xcvrs = [
-        // Enable more Transceivers here
-        new EvmNttWormholeTranceiver(
-          this,
-          contracts.ntt.transceiver.wormhole,
-          abiBindings!
-        ),
+    this.xcvrs = [];
+    if (contracts.ntt.transceiver["wormhole"]) {
+      const transceiverTypes = [
+        "wormhole", // wormhole xcvr should be ix 0
+        ...Object.keys(contracts.ntt.transceiver).filter((transceiverType) => {
+          transceiverType !== "wormhole";
+        }),
       ];
-    } else {
-      this.xcvrs = [];
+      transceiverTypes.map((transceiverType) => {
+        // Enable more Transceivers here
+        this.xcvrs.push(
+          new EvmNttWormholeTranceiver(
+            this,
+            contracts.ntt!.transceiver[transceiverType]!,
+            abiBindings!
+          )
+        );
+      });
     }
   }
 
@@ -211,12 +239,12 @@ export class EvmNtt<N extends Network, C extends EvmChains>
   }
 
   async *pause() {
-    const tx = await this.manager.pause.populateTransaction()
+    const tx = await this.manager.pause.populateTransaction();
     yield this.createUnsignedTx(tx, "Ntt.pause");
   }
 
   async *unpause() {
-    const tx = await this.manager.unpause.populateTransaction()
+    const tx = await this.manager.unpause.populateTransaction();
     yield this.createUnsignedTx(tx, "Ntt.unpause");
   }
 
@@ -230,13 +258,17 @@ export class EvmNtt<N extends Network, C extends EvmChains>
 
   async *setOwner(owner: AnyEvmAddress) {
     const canonicalOwner = new EvmAddress(owner).toString();
-    const tx = await this.manager.transferOwnership.populateTransaction(canonicalOwner);
+    const tx = await this.manager.transferOwnership.populateTransaction(
+      canonicalOwner
+    );
     yield this.createUnsignedTx(tx, "Ntt.setOwner");
   }
 
   async *setPauser(pauser: AnyEvmAddress) {
     const canonicalPauser = new EvmAddress(pauser).toString();
-    const tx = await this.manager.transferPauserCapability.populateTransaction(canonicalPauser);
+    const tx = await this.manager.transferPauserCapability.populateTransaction(
+      canonicalPauser
+    );
     yield this.createUnsignedTx(tx, "Ntt.setPauser");
   }
 
@@ -398,9 +430,14 @@ export class EvmNtt<N extends Network, C extends EvmChains>
   }
 
   async *setWormholeTransceiverPeer(peer: ChainAddress<C>) {
-    // TODO: we only have one right now, so just set the peer on that one
-    // in the future, these should(?) be keyed by attestation type
-    yield* this.xcvrs[0]!.setPeer(peer);
+    yield* this.setTransceiverPeer(0, peer);
+  }
+
+  async *setTransceiverPeer(ix: number, peer: ChainAddress<C>) {
+    if (ix >= this.xcvrs.length) {
+      throw new Error("Transceiver not found");
+    }
+    yield* this.xcvrs[ix]!.setPeer(peer);
   }
 
   async *transfer(
@@ -475,7 +512,9 @@ export class EvmNtt<N extends Network, C extends EvmChains>
   }
 
   async getOutboundLimit(): Promise<bigint> {
-    const encoded: EncodedTrimmedAmount = (await this.manager.getOutboundLimitParams()).limit;
+    const encoded: EncodedTrimmedAmount = (
+      await this.manager.getOutboundLimitParams()
+    ).limit;
     const trimmedAmount: TrimmedAmount = decodeTrimmedAmount(encoded);
     const tokenDecimals = await this.getTokenDecimals();
 
@@ -492,7 +531,9 @@ export class EvmNtt<N extends Network, C extends EvmChains>
   }
 
   async getInboundLimit(fromChain: Chain): Promise<bigint> {
-    const encoded: EncodedTrimmedAmount = (await this.manager.getInboundLimitParams(toChainId(fromChain))).limit;
+    const encoded: EncodedTrimmedAmount = (
+      await this.manager.getInboundLimitParams(toChainId(fromChain))
+    ).limit;
     const trimmedAmount: TrimmedAmount = decodeTrimmedAmount(encoded);
     const tokenDecimals = await this.getTokenDecimals();
 
@@ -547,7 +588,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
       manager: this.managerAddress,
       token: this.tokenAddress,
       transceiver: {
-        wormhole: this.xcvrs[0]?.address,
+        wormhole: this.xcvrs[0]!.address,
       },
       // TODO: what about the quoter?
     };
@@ -556,7 +597,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
       manager: this.managerAddress,
       token: await this.manager.token(),
       transceiver: {
-        wormhole: (await this.manager.getTransceivers())[0]! // TODO: make this more generic
+        wormhole: (await this.manager.getTransceivers())[0]!, // TODO: make this more generic
       },
     };
 
@@ -569,7 +610,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
           delete a[k];
         }
       }
-    }
+    };
 
     deleteMatching(remote, local);
 
@@ -612,14 +653,18 @@ function untrim(trimmed: TrimmedAmount, toDecimals: number): bigint {
   return scale(amount, fromDecimals, toDecimals);
 }
 
-function scale(amount: bigint, fromDecimals: number, toDecimals: number): bigint {
+function scale(
+  amount: bigint,
+  fromDecimals: number,
+  toDecimals: number
+): bigint {
   if (fromDecimals == toDecimals) {
     return amount;
   }
 
   if (fromDecimals > toDecimals) {
-    return amount / (10n ** BigInt(fromDecimals - toDecimals));
+    return amount / 10n ** BigInt(fromDecimals - toDecimals);
   } else {
-    return amount * (10n ** BigInt(toDecimals - fromDecimals));
+    return amount * 10n ** BigInt(toDecimals - fromDecimals);
   }
 }

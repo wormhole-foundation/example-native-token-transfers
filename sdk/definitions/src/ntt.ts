@@ -163,21 +163,23 @@ export interface Ntt<N extends Network, C extends Chain> {
 
   isPaused(): Promise<boolean>;
 
-  pause(
-    payer?: AccountAddress<C>
-  ): AsyncGenerator<UnsignedTransaction<N, C>>;
+  pause(payer?: AccountAddress<C>): AsyncGenerator<UnsignedTransaction<N, C>>;
 
-  unpause(
-    payer?: AccountAddress<C>
-  ): AsyncGenerator<UnsignedTransaction<N, C>>;
+  unpause(payer?: AccountAddress<C>): AsyncGenerator<UnsignedTransaction<N, C>>;
 
   getOwner(): Promise<AccountAddress<C>>;
 
   getPauser(): Promise<AccountAddress<C> | null>;
 
-  setOwner(newOwner: AccountAddress<C>, payer?: AccountAddress<C>): AsyncGenerator<UnsignedTransaction<N, C>>;
+  setOwner(
+    newOwner: AccountAddress<C>,
+    payer?: AccountAddress<C>
+  ): AsyncGenerator<UnsignedTransaction<N, C>>;
 
-  setPauser(newOwner: AccountAddress<C>, payer?: AccountAddress<C>): AsyncGenerator<UnsignedTransaction<N, C>>;
+  setPauser(
+    newOwner: AccountAddress<C>,
+    payer?: AccountAddress<C>
+  ): AsyncGenerator<UnsignedTransaction<N, C>>;
 
   getThreshold(): Promise<number>;
 
@@ -188,7 +190,9 @@ export interface Ntt<N extends Network, C extends Chain> {
     payer?: AccountAddress<C>
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
 
-  setWormholeTransceiverPeer(
+  // TODO: replace ix with transceiver type
+  setTransceiverPeer(
+    ix: number,
     peer: ChainAddress,
     payer?: AccountAddress<C>
   ): AsyncGenerator<UnsignedTransaction<N, C>>;
@@ -226,6 +230,8 @@ export interface Ntt<N extends Network, C extends Chain> {
   /**
    * redeem redeems a set of Attestations to the corresponding transceivers on the destination chain
    * @param attestations The attestations to redeem, the length should be equal to the number of transceivers
+   *
+   * TODO: replace with Map<transceiver type, Attestation>
    */
   redeem(
     attestations: Ntt.Attestation[],
@@ -241,7 +247,13 @@ export interface Ntt<N extends Network, C extends Chain> {
   /** Get the peer information for the given chain if it exists */
   getPeer<C extends Chain>(chain: C): Promise<Ntt.Peer<C> | null>;
 
-  getTransceiver(ix: number): Promise<NttTransceiver<N, C, Ntt.Attestation> | null>;
+  /** Get the transceiver corresponding to index (0 = Wormhole)
+   *
+   * TODO: replace ix with transceiver type
+   */
+  getTransceiver(
+    ix: number
+  ): Promise<NttTransceiver<N, C, Ntt.Attestation> | null>;
 
   /**
    * getCurrentOutboundCapacity returns the current outbound capacity of the Ntt manager
@@ -256,7 +268,10 @@ export interface Ntt<N extends Network, C extends Chain> {
   /**
    * setOutboundLimit sets the maximum outbound capacity of the Ntt manager
    */
-  setOutboundLimit(limit: bigint, payer?: AccountAddress<C>): AsyncGenerator<UnsignedTransaction<N, C>>;
+  setOutboundLimit(
+    limit: bigint,
+    payer?: AccountAddress<C>
+  ): AsyncGenerator<UnsignedTransaction<N, C>>;
 
   /**
    * getCurrentInboundCapacity returns the current inbound capacity of the Ntt manager
@@ -346,17 +361,22 @@ export interface NttTransceiver<
   C extends Chain,
   A extends Ntt.Attestation
 > {
-
   getAddress(): ChainAddress<C>;
 
   /** setPeer sets a peer address for a given chain
    * Note: Admin only
    */
-  setPeer(peer: ChainAddress<Chain>, payer?: AccountAddress<C>): AsyncGenerator<UnsignedTransaction<N, C>>;
+  setPeer(
+    peer: ChainAddress<Chain>,
+    payer?: AccountAddress<C>
+  ): AsyncGenerator<UnsignedTransaction<N, C>>;
 
   getPeer<C extends Chain>(chain: C): Promise<ChainAddress<C> | null>;
 
-  setPauser(newPauser: AccountAddress<C>, payer?: AccountAddress<C>): AsyncGenerator<UnsignedTransaction<N, C>>;
+  setPauser(
+    newPauser: AccountAddress<C>,
+    payer?: AccountAddress<C>
+  ): AsyncGenerator<UnsignedTransaction<N, C>>;
 
   getPauser(): Promise<AccountAddress<C> | null>;
 
