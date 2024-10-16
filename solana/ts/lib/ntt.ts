@@ -277,6 +277,7 @@ export namespace NTT {
   export async function initializeOrUpdateLUT(
     program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
     config: NttBindings.Config<IdlVersion>,
+    whTransceiver: PublicKey,
     args: {
       payer: PublicKey;
       wormholeId: PublicKey;
@@ -299,7 +300,7 @@ export namespace NTT {
     });
 
     const whAccs = utils.getWormholeDerivedAccounts(
-      program.programId,
+      whTransceiver,
       args.wormholeId.toString()
     );
 
@@ -313,6 +314,7 @@ export namespace NTT {
       wormhole: {
         bridge: whAccs.wormholeBridge,
         feeCollector: whAccs.wormholeFeeCollector,
+        emitter: whAccs.wormholeEmitter,
         sequence: whAccs.wormholeSequence,
         program: args.wormholeId,
         systemProgram: SystemProgram.programId,
@@ -524,61 +526,6 @@ export namespace NTT {
 
     return transferIx;
   }
-
-  /**
-   * Creates a release_outbound instruction. The `payer` needs to sign the transaction.
-   */
-  // export async function createReleaseOutboundInstruction(
-  //   program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
-  //   args: {
-  //     wormholeId: PublicKey;
-  //     payer: PublicKey;
-  //     outboxItem: PublicKey;
-  //     revertOnDelay: boolean;
-  //     transceiver?: Program<NttTransceiverIdl>;
-  //   },
-  //   pdas?: Pdas
-  // ): Promise<TransactionInstruction> {
-  //   pdas = pdas ?? NTT.pdas(program.programId);
-
-  //   const whAccs = utils.getWormholeDerivedAccounts(
-  //     program.programId,
-  //     args.wormholeId
-  //   );
-
-  //   if (!args.transceiver) {
-  //     throw Error("no transceiver provided");
-  //   }
-
-  //   return await args.transceiver.methods
-  //     .releaseWormholeOutbound({
-  //       revertOnDelay: args.revertOnDelay,
-  //     })
-  //     .accounts({
-  //       payer: args.payer,
-  //       config: { config: pdas.configAccount() },
-  //       outboxItem: args.outboxItem,
-  //       wormholeMessage: derivePda(
-  //         ["message", args.outboxItem.toBytes()],
-  //         args.transceiver.programId
-  //       ),
-  //       emitter: derivePda("emitter", args.transceiver.programId),
-  //       transceiver: pdas.registeredTransceiver(args.transceiver.programId),
-  //       wormhole: {
-  //         bridge: whAccs.wormholeBridge,
-  //         feeCollector: whAccs.wormholeFeeCollector,
-  //         sequence: derivePda(
-  //           [
-  //             "Sequence",
-  //             derivePda("emitter", args.transceiver.programId).toBytes(),
-  //           ],
-  //           args.wormholeId
-  //         ),
-  //         program: args.wormholeId,
-  //       },
-  //     })
-  //     .instruction();
-  // }
 
   // TODO: document that if recipient is provided, then the instruction can be
   // created before the inbox item is created (i.e. they can be put in the same tx)
