@@ -137,6 +137,17 @@ export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
       toChainId(destChain)
     );
   }
+
+  async *setIsSpecialRelayingEnabled(destChain: Chain, enabled: boolean) {
+    const tx = await this.transceiver.setIsSpecialRelayingEnabled.populateTransaction(
+      toChainId(destChain),
+      enabled
+    );
+    yield this.manager.createUnsignedTx(
+      tx,
+      "WormholeTransceiver.setSpecialRelayingEnabled"
+    );
+  }
 }
 
 export class EvmNtt<N extends Network, C extends EvmChains>
