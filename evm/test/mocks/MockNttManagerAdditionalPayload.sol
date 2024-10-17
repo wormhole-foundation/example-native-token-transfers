@@ -16,11 +16,11 @@ contract MockNttManagerAdditionalPayloadContract is NttManagerNoRateLimiting {
 
     function _prepareNativeTokenTransfer(
         TrimmedAmount amount,
-        address token,
         bytes32 recipient,
         uint16 recipientChain,
         uint64, // sequence
-        address // sender
+        address, // sender
+        bytes32 // refundAddress
     ) internal override returns (TransceiverStructs.NativeTokenTransfer memory) {
         bytes memory additionalPayload = abi.encodePacked("banana");
         emit AdditionalPayloadSent(additionalPayload);
