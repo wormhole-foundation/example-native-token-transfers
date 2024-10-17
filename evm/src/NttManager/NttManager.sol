@@ -540,8 +540,9 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         // push it on the stack again to avoid a stack too deep error
         uint64 seq = sequence;
 
-        TransceiverStructs.NativeTokenTransfer memory ntt =
-            _prepareNativeTokenTransfer(amount, token, recipient, recipientChain, seq, sender);
+        TransceiverStructs.NativeTokenTransfer memory ntt = _prepareNativeTokenTransfer(
+            amount, recipient, recipientChain, seq, sender, refundAddress
+        );
 
         // construct the NttManagerMessage payload
         bytes memory encodedNttManagerPayload = TransceiverStructs.encodeNttManagerMessage(
@@ -589,20 +590,20 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     /// @dev Override this function to provide an additional payload on the NativeTokenTransfer
     /// For integrator flexibility, this function is *not* marked pure or view
     /// @param amount TrimmedAmount of the transfer
-    /// @param token Address of the token that this NTT Manager is tied to
     /// @param recipient The recipient address
     /// @param recipientChain The Wormhole chain ID for the destination
     /// @param - The sequence number for the manager message (unused, provided for overriding integrators)
     /// @param - The sender of the funds (unused, provided for overriding integrators). If releasing
+    /// @param - The address on the destination chain to which the refund of unused gas will be paid
     /// queued transfers, when rate limiting is used, then this value could be different from msg.sender.
     /// @return - The TransceiverStructs.NativeTokenTransfer struct
     function _prepareNativeTokenTransfer(
         TrimmedAmount amount,
-        address token,
         bytes32 recipient,
         uint16 recipientChain,
         uint64, // sequence
-        address // sender
+        address, // sender
+        bytes32 // refundAddress
     ) internal virtual returns (TransceiverStructs.NativeTokenTransfer memory) {
         return TransceiverStructs.NativeTokenTransfer(
             amount, toWormholeFormat(token), recipient, recipientChain, ""
