@@ -257,6 +257,8 @@ export class SolanaNttWormholeTransceiver<
           sequence: whAccs.wormholeSequence,
           program: this.manager.core.address,
         },
+        manager: this.manager.program.programId,
+        outboxItemSigner: this.pdas.outboxItemSigner(),
       })
       .instruction();
   }
