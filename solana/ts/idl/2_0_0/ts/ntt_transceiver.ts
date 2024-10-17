@@ -164,6 +164,16 @@ export type NttTransceiver = {
               "isSigner": false
             }
           ]
+        },
+        {
+          "name": "manager",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "outboxItemSigner",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -852,6 +862,16 @@ export const IDL: NttTransceiver = {
               "isSigner": false
             }
           ]
+        },
+        {
+          "name": "manager",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "outboxItemSigner",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
