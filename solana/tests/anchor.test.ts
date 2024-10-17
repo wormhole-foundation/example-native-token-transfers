@@ -58,8 +58,10 @@ const w = new Wormhole("Devnet", [SolanaPlatform], {
   chains: { Solana: { contracts: { coreBridge: CORE_BRIDGE_ADDRESS } } },
 });
 
-const nttTransceiver = anchor.workspace
-  .NttTransceiver as anchor.Program<NttTransceiverIdlType>;
+const nttTransceivers = {
+  wormhole: anchor.workspace
+    .NttTransceiver as anchor.Program<NttTransceiverIdlType>,
+};
 
 const remoteXcvr: ChainAddress = {
   chain: "Ethereum",
@@ -202,7 +204,9 @@ describe("example-native-token-transfers", () => {
         ntt: {
           token: tokenAddress,
           manager: NTT_ADDRESS,
-          transceiver: { wormhole: nttTransceiver.programId.toBase58() },
+          transceiver: {
+            wormhole: nttTransceivers["wormhole"].programId.toBase58(),
+          },
         },
       });
     } catch (e) {
@@ -303,9 +307,17 @@ describe("example-native-token-transfers", () => {
       );
       await signSendWait(ctx, xferTxs, signer);
 
+      // assert that released bitmap has transceiver bits set
+      const outboxItemInfo = await ntt.program.account.outboxItem.fetch(
+        outboxItem.publicKey
+      );
+      expect(outboxItemInfo.released.map.bitLength()).toBe(
+        Object.keys(nttTransceivers).length
+      );
+
       const wormholeMessage = derivePda(
         ["message", outboxItem.publicKey.toBytes()],
-        nttTransceiver.programId
+        nttTransceivers["wormhole"].programId
       );
 
       const unsignedVaa = await coreBridge.parsePostMessageAccount(
