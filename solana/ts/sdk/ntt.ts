@@ -300,7 +300,10 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     );
 
     this.transceivers = [];
-    if (contracts.ntt.transceiver["wormhole"]) {
+    if (
+      "wormhole" in contracts.ntt.transceiver &&
+      contracts.ntt.transceiver["wormhole"]
+    ) {
       const transceiverTypes = [
         "wormhole", // wormhole xcvr should be ix 0
         ...Object.keys(contracts.ntt.transceiver).filter((transceiverType) => {

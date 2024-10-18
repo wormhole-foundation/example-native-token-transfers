@@ -193,7 +193,10 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     );
 
     this.xcvrs = [];
-    if (contracts.ntt.transceiver["wormhole"]) {
+    if (
+      "wormhole" in contracts.ntt.transceiver &&
+      contracts.ntt.transceiver["wormhole"]
+    ) {
       const transceiverTypes = [
         "wormhole", // wormhole xcvr should be ix 0
         ...Object.keys(contracts.ntt.transceiver).filter((transceiverType) => {
@@ -577,7 +580,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
       manager: this.managerAddress,
       token: this.tokenAddress,
       transceiver: {
-        wormhole: this.xcvrs[0]!.address,
+        ...(this.xcvrs.length > 0 && { wormhole: this.xcvrs[0]!.address }),
       },
       // TODO: what about the quoter?
     };
@@ -586,7 +589,9 @@ export class EvmNtt<N extends Network, C extends EvmChains>
       manager: this.managerAddress,
       token: await this.manager.token(),
       transceiver: {
-        wormhole: (await this.manager.getTransceivers())[0]!, // TODO: make this more generic
+        ...(this.xcvrs.length > 0 && {
+          wormhole: (await this.manager.getTransceivers())[0]!,
+        }), // TODO: make this more generic
       },
     };
 
