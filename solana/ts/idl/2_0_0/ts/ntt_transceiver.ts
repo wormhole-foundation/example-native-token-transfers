@@ -3,6 +3,12 @@ export type NttTransceiver = {
   "name": "ntt_transceiver",
   "instructions": [
     {
+      "name": "transceiverType",
+      "accounts": [],
+      "args": [],
+      "returns": "string"
+    },
+    {
       "name": "setWormholePeer",
       "accounts": [
         {
@@ -158,6 +164,16 @@ export type NttTransceiver = {
               "isSigner": false
             }
           ]
+        },
+        {
+          "name": "manager",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "outboxItemSigner",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -685,6 +701,12 @@ export const IDL: NttTransceiver = {
   "name": "ntt_transceiver",
   "instructions": [
     {
+      "name": "transceiverType",
+      "accounts": [],
+      "args": [],
+      "returns": "string"
+    },
+    {
       "name": "setWormholePeer",
       "accounts": [
         {
@@ -840,6 +862,16 @@ export const IDL: NttTransceiver = {
               "isSigner": false
             }
           ]
+        },
+        {
+          "name": "manager",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "outboxItemSigner",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [

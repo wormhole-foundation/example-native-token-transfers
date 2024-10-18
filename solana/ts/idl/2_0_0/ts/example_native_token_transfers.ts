@@ -653,6 +653,42 @@ export type ExampleNativeTokenTransfers = {
       "args": []
     },
     {
+      "name": "transferOwnershipOneStepUnchecked",
+      "accounts": [
+        {
+          "name": "config",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "newOwner",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "upgradeLock",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "programData",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bpfLoaderUpgradeableProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "claimOwnership",
       "accounts": [
         {
@@ -841,6 +877,38 @@ export type ExampleNativeTokenTransfers = {
           }
         }
       ]
+    },
+    {
+      "name": "markOutboxItemAsReleased",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "config",
+          "accounts": [
+            {
+              "name": "config",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "outboxItem",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transceiver",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [],
+      "returns": "bool"
     },
     {
       "name": "setWormholePeer",
@@ -2609,6 +2677,42 @@ export const IDL: ExampleNativeTokenTransfers = {
       "args": []
     },
     {
+      "name": "transferOwnershipOneStepUnchecked",
+      "accounts": [
+        {
+          "name": "config",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "newOwner",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "upgradeLock",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "programData",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "bpfLoaderUpgradeableProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "claimOwnership",
       "accounts": [
         {
@@ -2797,6 +2901,38 @@ export const IDL: ExampleNativeTokenTransfers = {
           }
         }
       ]
+    },
+    {
+      "name": "markOutboxItemAsReleased",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "config",
+          "accounts": [
+            {
+              "name": "config",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "outboxItem",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transceiver",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [],
+      "returns": "bool"
     },
     {
       "name": "setWormholePeer",
