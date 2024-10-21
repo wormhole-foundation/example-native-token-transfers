@@ -1288,7 +1288,7 @@ async function deploySolana<N extends Network, C extends SolanaChains>(
         ntt: {
             manager: providedProgramId,
             token: token,
-            transceiver: { wormhole: emitter },
+            transceiver: { wormhole: providedProgramId },
         }
     }) as SolanaNtt<N, C>;
 
@@ -1798,7 +1798,7 @@ async function nttFromManager<N extends Network, C extends Chain>(
         ntt: {
             manager: nativeManagerAddress,
             token: null,
-            transceiver: {},
+            transceiver: { "wormhole": nativeManagerAddress },
         }
     });
     const diff = await onlyManager.verifyAddresses();
