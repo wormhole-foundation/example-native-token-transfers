@@ -426,7 +426,10 @@
         {
           "name": "transceiverMessage",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "`Account<T>` and `owner` constraints are mutually-exclusive"
+          ]
         },
         {
           "name": "transceiver",

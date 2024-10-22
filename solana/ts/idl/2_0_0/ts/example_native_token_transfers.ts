@@ -426,7 +426,10 @@ export type ExampleNativeTokenTransfers = {
         {
           "name": "transceiverMessage",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "`Account<T>` and `owner` constraints are mutually-exclusive"
+          ]
         },
         {
           "name": "transceiver",
@@ -2379,7 +2382,10 @@ export const IDL: ExampleNativeTokenTransfers = {
         {
           "name": "transceiverMessage",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "`Account<T>` and `owner` constraints are mutually-exclusive"
+          ]
         },
         {
           "name": "transceiver",

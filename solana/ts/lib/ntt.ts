@@ -55,6 +55,7 @@ import {
   programDataAddress,
   programVersionLayout,
 } from "./utils.js";
+import { NttTransceiver as NttTransceiverIdl } from "../idl/2_0_0/ts/ntt_transceiver.js";
 
 export namespace NTT {
   /** Arguments for transfer instruction */
@@ -528,6 +529,7 @@ export namespace NTT {
       payer: PublicKey;
       outboxItem: PublicKey;
       revertOnDelay: boolean;
+      transceiver?: Program<NttTransceiverIdl>;
     },
     pdas?: Pdas
   ): Promise<TransactionInstruction> {
@@ -538,7 +540,11 @@ export namespace NTT {
       args.wormholeId
     );
 
-    return await program.methods
+    if (!args.transceiver) {
+      throw Error("no transceiver provided");
+    }
+
+    return await args.transceiver.methods
       .releaseWormholeOutbound({
         revertOnDelay: args.revertOnDelay,
       })
@@ -546,13 +552,22 @@ export namespace NTT {
         payer: args.payer,
         config: { config: pdas.configAccount() },
         outboxItem: args.outboxItem,
-        wormholeMessage: pdas.wormholeMessageAccount(args.outboxItem),
-        emitter: whAccs.wormholeEmitter,
-        transceiver: pdas.registeredTransceiver(program.programId),
+        wormholeMessage: derivePda(
+          ["message", args.outboxItem.toBytes()],
+          args.transceiver.programId
+        ),
+        emitter: derivePda("emitter", args.transceiver.programId),
+        transceiver: pdas.registeredTransceiver(args.transceiver.programId),
         wormhole: {
           bridge: whAccs.wormholeBridge,
           feeCollector: whAccs.wormholeFeeCollector,
-          sequence: whAccs.wormholeSequence,
+          sequence: derivePda(
+            [
+              "Sequence",
+              derivePda("emitter", args.transceiver.programId).toBytes(),
+            ],
+            args.wormholeId
+          ),
           program: args.wormholeId,
         },
       })
@@ -797,11 +812,15 @@ export namespace NTT {
       owner: PublicKey;
       chain: Chain;
       address: ArrayLike<number>;
+      transceiver?: Program<NttTransceiverIdl>;
     },
     pdas?: Pdas
   ) {
     pdas = pdas ?? NTT.pdas(program.programId);
-    const ix = await program.methods
+    if (!args.transceiver) {
+      throw new Error("no trx provided");
+    }
+    const ix = await args.transceiver.methods
       .setWormholePeer({
         chainId: { id: toChainId(args.chain) },
         address: Array.from(args.address),
@@ -810,7 +829,10 @@ export namespace NTT {
         payer: args.payer,
         owner: args.owner,
         config: pdas.configAccount(),
-        peer: pdas.transceiverPeerAccount(args.chain),
+        peer: derivePda(
+          ["transceiver_peer", chainToBytes(args.chain)],
+          args.transceiver.programId
+        ),
       })
       .instruction();
 
@@ -820,18 +842,27 @@ export namespace NTT {
       args.wormholeId
     );
 
-    const broadcastIx = await program.methods
+    const broadcastIx = await args.transceiver.methods
       .broadcastWormholePeer({ chainId: toChainId(args.chain) })
       .accounts({
         payer: args.payer,
         config: pdas.configAccount(),
-        peer: pdas.transceiverPeerAccount(args.chain),
+        peer: derivePda(
+          ["transceiver_peer", chainToBytes(args.chain)],
+          args.transceiver.programId
+        ),
         wormholeMessage: wormholeMessage.publicKey,
-        emitter: pdas.emitterAccount(),
+        emitter: derivePda("emitter", args.transceiver.programId),
         wormhole: {
           bridge: whAccs.wormholeBridge,
           feeCollector: whAccs.wormholeFeeCollector,
-          sequence: whAccs.wormholeSequence,
+          sequence: derivePda(
+            [
+              "Sequence",
+              derivePda("emitter", args.transceiver.programId).toBytes(),
+            ],
+            args.wormholeId
+          ),
           program: args.wormholeId,
         },
       })
@@ -951,6 +982,7 @@ export namespace NTT {
       wormholeId: PublicKey;
       payer: PublicKey;
       vaa: VAA<"Ntt:WormholeTransfer">;
+      transceiver?: Program<NttTransceiverIdl>;
     },
     pdas?: Pdas
   ): Promise<TransactionInstruction> {
@@ -960,9 +992,16 @@ export namespace NTT {
     const nttMessage = wormholeNTT.payload.nttManagerPayload;
     const chain = wormholeNTT.emitterChain;
 
-    const transceiverPeer = pdas.transceiverPeerAccount(chain);
+    if (!args.transceiver) {
+      throw Error("no transceiver provided");
+    }
 
-    return await program.methods
+    const transceiverPeer = derivePda(
+      ["transceiver_peer", chainToBytes(chain)],
+      args.transceiver.programId
+    );
+
+    return args.transceiver.methods
       .receiveWormholeMessage()
       .accounts({
         payer: args.payer,
@@ -972,9 +1011,9 @@ export namespace NTT {
           args.wormholeId,
           Buffer.from(wormholeNTT.hash)
         ),
-        transceiverMessage: pdas.transceiverMessageAccount(
-          chain,
-          nttMessage.id
+        transceiverMessage: derivePda(
+          ["transceiver_message", chainToBytes(chain), nttMessage.id],
+          args.transceiver.programId
         ),
       })
       .instruction();
@@ -985,6 +1024,7 @@ export namespace NTT {
     args: {
       payer: PublicKey;
       vaa: VAA<"Ntt:WormholeTransfer">;
+      transceiver?: Program<NttTransceiverIdl>;
     },
     pdas?: Pdas
   ): Promise<TransactionInstruction> {
@@ -994,17 +1034,29 @@ export namespace NTT {
     const nttMessage = wormholeNTT.payload.nttManagerPayload;
     const chain = wormholeNTT.emitterChain;
 
-    return await program.methods
+    if (!args.transceiver) {
+      throw Error("no transceiver provided");
+    }
+
+    console.log(
+      (
+        await program.account.registeredTransceiver.fetch(
+          pdas.registeredTransceiver(args.transceiver.programId)
+        )
+      ).transceiverAddress.toBase58()
+    );
+
+    return program.methods
       .redeem({})
       .accounts({
         payer: args.payer,
         config: pdas.configAccount(),
         peer: pdas.peerAccount(chain),
-        transceiverMessage: pdas.transceiverMessageAccount(
-          chain,
-          nttMessage.id
+        transceiverMessage: derivePda(
+          ["transceiver_message", chainToBytes(chain), nttMessage.id],
+          args.transceiver.programId
         ),
-        transceiver: pdas.registeredTransceiver(program.programId),
+        transceiver: pdas.registeredTransceiver(args.transceiver.programId),
         mint: config.mint,
         inboxItem: pdas.inboxItemAccount(chain, nttMessage),
         inboxRateLimit: pdas.inboxRateLimitAccount(chain),
