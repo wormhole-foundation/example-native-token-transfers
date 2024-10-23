@@ -31,7 +31,7 @@ import {
   Transaction,
 } from "@solana/web3.js";
 import { DummyTransferHook } from "../ts/idl/1_0_0/ts/dummy_transfer_hook.js";
-import { NttTransceiver } from "../ts/idl/2_0_0/ts/ntt_transceiver.js";
+import { type NttTransceiver as NttTransceiverIdlType } from "../ts/idl/2_0_0/ts/ntt_transceiver.js";
 import { SolanaNtt } from "../ts/sdk/index.js";
 import { derivePda } from "../ts/lib/utils.js";
 
@@ -40,7 +40,8 @@ const solanaRootDir = `${__dirname}/../`;
 const GUARDIAN_KEY =
   "cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0";
 const CORE_BRIDGE_ADDRESS = contracts.coreBridge("Mainnet", "Solana");
-const NTT_ADDRESS = anchor.workspace.ExampleNativeTokenTransfers.programId;
+const NTT_ADDRESS: PublicKey =
+  anchor.workspace.ExampleNativeTokenTransfers.programId;
 
 async function signSendWait(
   chain: ChainContext<any, any, any>,
@@ -58,8 +59,10 @@ const w = new Wormhole("Devnet", [SolanaPlatform], {
   chains: { Solana: { contracts: { coreBridge: CORE_BRIDGE_ADDRESS } } },
 });
 
-const nttTransceiver = anchor.workspace
-  .NttTransceiver as anchor.Program<NttTransceiver>;
+const nttTransceivers = {
+  wormhole: anchor.workspace
+    .NttTransceiver as anchor.Program<NttTransceiverIdlType>,
+};
 
 const remoteXcvr: ChainAddress = {
   chain: "Ethereum",
@@ -201,8 +204,10 @@ describe("example-native-token-transfers", () => {
         ...ctx.config.contracts,
         ntt: {
           token: tokenAddress,
-          manager: NTT_ADDRESS,
-          transceiver: { wormhole: nttTransceiver.programId.toBase58() },
+          manager: NTT_ADDRESS.toBase58(),
+          transceiver: {
+            wormhole: nttTransceivers["wormhole"].programId.toBase58(),
+          },
         },
       });
     } catch (e) {
@@ -235,18 +240,16 @@ describe("example-native-token-transfers", () => {
         await signSendWait(ctx, initTxs, signer);
 
         // register
-        const registerTxs = ntt.registerTransceiver({
+        const registerTxs = ntt.registerWormholeTransceiver({
           payer: new SolanaAddress(payer.publicKey),
           owner: new SolanaAddress(payer.publicKey),
-          transceiver: nttTransceiver,
         });
         await signSendWait(ctx, registerTxs, signer);
 
         // Set Wormhole xcvr peer
-        const setXcvrPeerTxs = ntt.setWormholeTransceiverPeer2(
+        const setXcvrPeerTxs = ntt.setWormholeTransceiverPeer(
           remoteXcvr,
-          sender,
-          nttTransceiver
+          sender
         );
         await signSendWait(ctx, setXcvrPeerTxs, signer);
 
@@ -296,19 +299,26 @@ describe("example-native-token-transfers", () => {
       // TODO: keep or remove the `outboxItem` param?
       // added as a way to keep tests the same but it technically breaks the Ntt interface
       const outboxItem = anchor.web3.Keypair.generate();
-      const xferTxs = ntt.transfer2(
+      const xferTxs = ntt.transfer(
         sender,
         amount,
         receiver,
         { queue: false, automatic: false, gasDropoff: 0n },
-        nttTransceiver,
         outboxItem
       );
       await signSendWait(ctx, xferTxs, signer);
 
+      // assert that released bitmap has transceiver bits set
+      const outboxItemInfo = await ntt.program.account.outboxItem.fetch(
+        outboxItem.publicKey
+      );
+      expect(outboxItemInfo.released.map.bitLength()).toBe(
+        Object.keys(nttTransceivers).length
+      );
+
       const wormholeMessage = derivePda(
         ["message", outboxItem.publicKey.toBytes()],
-        nttTransceiver.programId
+        nttTransceivers["wormhole"].programId
       );
 
       const unsignedVaa = await coreBridge.parsePostMessageAccount(
@@ -369,7 +379,7 @@ describe("example-native-token-transfers", () => {
       const published = emitter.publishMessage(0, serialized, 200);
       const rawVaa = guardians.addSignatures(published, [0]);
       const vaa = deserialize("Ntt:WormholeTransfer", serialize(rawVaa));
-      const redeemTxs = ntt.redeem2([vaa], sender, nttTransceiver);
+      const redeemTxs = ntt.redeem([vaa], sender);
       try {
         await signSendWait(ctx, redeemTxs, signer);
       } catch (e) {
@@ -377,7 +387,6 @@ describe("example-native-token-transfers", () => {
         throw e;
       }
 
-      // expect(released).toEqual(true);
       expect((await counterValue()).toString()).toEqual("2");
     });
   });
@@ -388,8 +397,10 @@ describe("example-native-token-transfers", () => {
     const overrides = {
       Solana: {
         token: tokenAddress,
-        manager: NTT_ADDRESS,
-        transceiver: { wormhole: NTT_ADDRESS },
+        manager: NTT_ADDRESS.toBase58(),
+        transceiver: {
+          wormhole: nttTransceivers["wormhole"].programId.toBase58(),
+        },
       },
     };
 
@@ -422,6 +433,17 @@ describe("example-native-token-transfers", () => {
           new SolanaAddress(payer.publicKey.toBase58())
         );
         expect(version).toBe("2.0.0");
+      });
+      test("It gets the correct transceiver type", async function () {
+        const ntt = new SolanaNtt("Devnet", "Solana", connection, {
+          ...ctx.config.contracts,
+          ...{ ntt: overrides["Solana"] },
+        });
+        const whTransceiver = await ntt.getWormholeTransceiver();
+        const transceiverType = await whTransceiver!.getTransceiverType(
+          new SolanaAddress(payer.publicKey.toBase58())
+        );
+        expect(transceiverType).toBe("wormhole");
       });
     });
   });
