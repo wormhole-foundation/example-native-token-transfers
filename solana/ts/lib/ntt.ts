@@ -306,6 +306,7 @@ export namespace NTT {
       args.wormholeId.toString()
     );
 
+    // TODO: add `whAccs.emitter`, `whTransceiver`, and transceiverEmitter PDA account to LUT
     const entries = {
       config: pdas.configAccount(),
       custody: config.custody,
@@ -316,7 +317,6 @@ export namespace NTT {
       wormhole: {
         bridge: whAccs.wormholeBridge,
         feeCollector: whAccs.wormholeFeeCollector,
-        emitter: whAccs.wormholeEmitter,
         sequence: whAccs.wormholeSequence,
         program: args.wormholeId,
         systemProgram: SystemProgram.programId,

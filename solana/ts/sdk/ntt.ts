@@ -25,7 +25,7 @@ import {
 } from "@wormhole-foundation/sdk-definitions";
 import {
   Ntt,
-  NttTransceiver,
+  SolanaNttTransceiver,
   WormholeNttTransceiver,
 } from "@wormhole-foundation/sdk-definitions-ntt";
 import {
@@ -53,14 +53,18 @@ import { IdlVersion, NttBindings, getNttProgram } from "../lib/bindings.js";
 export class SolanaNttWormholeTransceiver<
   N extends Network,
   C extends SolanaChains
-> implements NttTransceiver<N, C, WormholeNttTransceiver.VAA>
+> implements
+    WormholeNttTransceiver<N, C>,
+    SolanaNttTransceiver<N, C, WormholeNttTransceiver.VAA>
 {
+  programId: PublicKey;
   pdas: NTT.TransceiverPdas;
 
   constructor(
     readonly manager: SolanaNtt<N, C>,
     readonly program: Program<NttTransceiverIdlType>
   ) {
+    this.programId = program.programId;
     this.pdas = NTT.transceiverPdas(program.programId);
   }
 
@@ -114,12 +118,58 @@ export class SolanaNttWormholeTransceiver<
       .instruction();
   }
 
+  async getTransceiverType(payer: AccountAddress<C>): Promise<string> {
+    // the anchor library has a built-in method to read view functions. However,
+    // it requires a signer, which would trigger a wallet prompt on the frontend.
+    // Instead, we manually construct a versioned transaction and call the
+    // simulate function with sigVerify: false below.
+    //
+    // This way, the simulation won't require a signer, but it still requires
+    // the pubkey of an account that has some lamports in it (since the
+    // simulation checks if the account has enough money to pay for the transaction).
+    //
+    // It's a little unfortunate but it's the best we can do.
+    const payerKey = new SolanaAddress(payer).unwrap();
+    const ix = await this.program.methods
+      .transceiverType()
+      .accountsStrict({})
+      .instruction();
+    const latestBlockHash =
+      await this.program.provider.connection.getLatestBlockhash();
+
+    const msg = new TransactionMessage({
+      payerKey,
+      recentBlockhash: latestBlockHash.blockhash,
+      instructions: [ix],
+    }).compileToV0Message();
+
+    const tx = new VersionedTransaction(msg);
+
+    const txSimulation =
+      await this.program.provider.connection.simulateTransaction(tx, {
+        sigVerify: false,
+      });
+
+    // the return buffer is in base64 and it encodes the string with a 32 bit
+    // little endian length prefix.
+    if (txSimulation.value.returnData?.data[0]) {
+      const buffer = Buffer.from(
+        txSimulation.value.returnData?.data[0],
+        "base64"
+      );
+      const len = buffer.readUInt32LE(0);
+      return buffer.subarray(4, len + 4).toString();
+    } else {
+      throw new Error("no transceiver type found");
+    }
+  }
+
   getAddress(): ChainAddress<C> {
     return {
       chain: this.manager.chain,
       address: toUniversal(
         this.manager.chain,
-        this.program.programId.toBase58()
+        this.pdas.emitterAccount().toBase58()
       ),
     };
   }
@@ -345,7 +395,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   ): Promise<
     | (T extends 0
         ? SolanaNttWormholeTransceiver<N, C>
-        : NttTransceiver<N, C, any>)
+        : SolanaNttTransceiver<N, C, any>)
     | null
   > {
     const transceiverProgram = this.transceivers[ix] ?? null;
@@ -574,9 +624,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     if (!whTransceiver) {
       throw new Error("wormhole transceiver not found");
     }
-    const whTransceiverProgramId = whTransceiver
-      .getAddress()
-      .address.toNative("Solana").address;
+    const whTransceiverProgramId = whTransceiver.programId;
 
     const ix = await NTT.initializeOrUpdateLUT(
       this.program,
@@ -635,9 +683,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     if (!transceiver) {
       throw new Error(`Transceiver not found`);
     }
-    const transceiverProgramId = transceiver
-      .getAddress()
-      .address.toNative("Solana").address;
+    const transceiverProgramId = transceiver.programId;
 
     return this.program.methods
       .registerTransceiver()
