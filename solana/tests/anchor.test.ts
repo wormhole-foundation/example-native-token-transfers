@@ -40,7 +40,8 @@ const solanaRootDir = `${__dirname}/../`;
 const GUARDIAN_KEY =
   "cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0";
 const CORE_BRIDGE_ADDRESS = contracts.coreBridge("Mainnet", "Solana");
-const NTT_ADDRESS = anchor.workspace.ExampleNativeTokenTransfers.programId;
+const NTT_ADDRESS: PublicKey =
+  anchor.workspace.ExampleNativeTokenTransfers.programId;
 
 async function signSendWait(
   chain: ChainContext<any, any, any>,
@@ -203,7 +204,7 @@ describe("example-native-token-transfers", () => {
         ...ctx.config.contracts,
         ntt: {
           token: tokenAddress,
-          manager: NTT_ADDRESS,
+          manager: NTT_ADDRESS.toBase58(),
           transceiver: {
             wormhole: nttTransceivers["wormhole"].programId.toBase58(),
           },
@@ -396,8 +397,10 @@ describe("example-native-token-transfers", () => {
     const overrides = {
       Solana: {
         token: tokenAddress,
-        manager: NTT_ADDRESS,
-        transceiver: { wormhole: NTT_ADDRESS },
+        manager: NTT_ADDRESS.toBase58(),
+        transceiver: {
+          wormhole: nttTransceivers["wormhole"].programId.toBase58(),
+        },
       },
     };
 
@@ -430,6 +433,17 @@ describe("example-native-token-transfers", () => {
           new SolanaAddress(payer.publicKey.toBase58())
         );
         expect(version).toBe("2.0.0");
+      });
+      test("It gets the correct transceiver type", async function () {
+        const ntt = new SolanaNtt("Devnet", "Solana", connection, {
+          ...ctx.config.contracts,
+          ...{ ntt: overrides["Solana"] },
+        });
+        const whTransceiver = await ntt.getWormholeTransceiver();
+        const transceiverType = await whTransceiver!.getTransceiverType(
+          new SolanaAddress(payer.publicKey.toBase58())
+        );
+        expect(transceiverType).toBe("wormhole");
       });
     });
   });
