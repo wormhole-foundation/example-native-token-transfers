@@ -25,6 +25,7 @@ import {
   transceiverInstructionLayout,
   transceiverRegistration,
 } from "./layouts/index.js";
+import { PublicKey } from "@solana/web3.js";
 
 /**
  * @namespace Ntt
@@ -361,6 +362,11 @@ export interface NttTransceiver<
   C extends Chain,
   A extends Ntt.Attestation
 > {
+  getTransceiverType(payer?: AccountAddress<C>): Promise<string>;
+
+  /**
+   * Returns transceiver contract address on EVM and `emitterAccount` PDA address on Solana
+   */
   getAddress(): ChainAddress<C>;
 
   /** setPeer sets a peer address for a given chain
@@ -412,6 +418,20 @@ export namespace WormholeNttTransceiver {
  */
 export interface WormholeNttTransceiver<N extends Network, C extends Chain>
   extends NttTransceiver<N, C, WormholeNttTransceiver.VAA> {}
+
+export interface SolanaNttTransceiver<
+  N extends Network,
+  C extends Chain,
+  A extends Ntt.Attestation
+> extends NttTransceiver<N, C, A> {
+  programId: PublicKey;
+}
+
+export interface EvmNttTransceiver<
+  N extends Network,
+  C extends Chain,
+  A extends Ntt.Attestation
+> extends NttTransceiver<N, C, A> {}
 
 declare module "@wormhole-foundation/sdk-definitions" {
   export namespace WormholeRegistry {
