@@ -138,6 +138,14 @@
       "gasCost": 500000,
       "wormholeTransceiverIndex": 0,
       "isSupported": true
+    },
+    {
+      "name": "Libertai",
+      "programId": "ntTziNUdVjNJKZXCFbSZxfmjigyBouS8YLtAp8R2Fwa",
+      "tokenAddress": "mntpN8z1d29f3MWhMD7VqZFpeYmbD88MgwS3Bkz8y7u",
+      "gasGost": 500000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
     }
   ],
   "peerQuotes": {
