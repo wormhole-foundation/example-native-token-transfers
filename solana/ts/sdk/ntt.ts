@@ -375,7 +375,11 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
             )
           );
           if (!whTransceiver.pdas.emitterAccount().equals(transceiverKey)) {
-            throw new Error("invalid emitterAccount provided");
+            throw new Error(
+              `Invalid emitterAccount provided. Expected: ${whTransceiver.pdas
+                .emitterAccount()
+                .toBase58()}; Actual: ${transceiverKey.toBase58()}`
+            );
           }
           this.transceivers.push(whTransceiver.program);
         } else {
