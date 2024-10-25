@@ -37,6 +37,7 @@ import solanaTiltKey from "./solana-tilt.json"; // from https://github.com/wormh
 import { Ntt } from "../definitions/src/index.js";
 import "../../evm/ts/src/index.js";
 import "../../solana/ts/sdk/index.js";
+import { NTT } from "../../solana/ts/lib/index.js";
 import { SolanaNtt } from "../../solana/ts/sdk/index.js";
 import { submitAccountantVAA } from "./accountant.js";
 
@@ -579,7 +580,9 @@ async function deploySolana(ctx: Ctx): Promise<Ctx> {
     ...ctx,
     contracts: {
       transceiver: {
-        wormhole: manager.program.programId.toString(),
+        wormhole: NTT.transceiverPdas(manager.program.programId)
+          .emitterAccount()
+          .toString(),
       },
       manager: manager.program.programId.toString(),
       token: mint.toString(),

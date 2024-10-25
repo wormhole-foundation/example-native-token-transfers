@@ -1288,7 +1288,7 @@ async function deploySolana<N extends Network, C extends SolanaChains>(
         ntt: {
             manager: providedProgramId,
             token: token,
-            transceiver: { wormhole: providedProgramId },
+            transceiver: { wormhole: emitter },
         }
     }) as SolanaNtt<N, C>;
 
