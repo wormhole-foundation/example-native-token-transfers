@@ -525,7 +525,9 @@ async function deploySolana(ctx: Ctx): Promise<Ctx> {
     token: mint.toBase58(),
     manager: managerProgramId,
     transceiver: {
-      wormhole: managerProgramId,
+      wormhole: NTT.transceiverPdas(managerProgramId)
+        .emitterAccount()
+        .toString(),
     },
   };
 
