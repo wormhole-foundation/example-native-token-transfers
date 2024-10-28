@@ -1183,16 +1183,28 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   }
 
   async verifyAddresses(): Promise<Partial<Ntt.Contracts> | null> {
-    // NOTE: transceivers are not being compared as there is no reverse lookup
-    // given manager address to the registered transceivers
+    // NOTE: This function should only be called when the wormhole transceiver is the manager.
+    // For the generic transceiver case, transceivers can not be compared as there is no
+    // reverse lookup given manager address to the registered transceivers.
+    const whTransceiver = await this.getWormholeTransceiver();
     const local: Partial<Ntt.Contracts> = {
       manager: this.managerAddress,
       token: this.tokenAddress,
+      transceiver: {
+        ...(whTransceiver && {
+          wormhole: whTransceiver.pdas.emitterAccount().toBase58(),
+        }),
+      },
     };
 
     const remote: Partial<Ntt.Contracts> = {
       manager: this.program.programId.toBase58(),
       token: (await this.getConfig()).mint.toBase58(),
+      transceiver: {
+        wormhole: NTT.transceiverPdas(this.program.programId)
+          .emitterAccount()
+          .toBase58(),
+      },
     };
 
     const deleteMatching = (a: any, b: any) => {
