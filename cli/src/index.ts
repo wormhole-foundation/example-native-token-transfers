@@ -1798,7 +1798,7 @@ async function nttFromManager<N extends Network, C extends Chain>(
         ntt: {
             manager: nativeManagerAddress,
             token: null,
-            transceiver: {},
+            transceiver: { "wormhole": nativeManagerAddress },
         }
     });
     const diff = await onlyManager.verifyAddresses();
