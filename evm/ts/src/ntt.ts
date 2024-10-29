@@ -598,9 +598,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
       manager: this.managerAddress,
       token: await this.manager.token(),
       transceiver: {
-        ...(this.xcvrs.length > 0 && {
-          wormhole: (await this.manager.getTransceivers())[0]!,
-        }), // TODO: make this more generic
+        wormhole: (await this.manager.getTransceivers())[0]!, // TODO: make this more generic
       },
     };
 
