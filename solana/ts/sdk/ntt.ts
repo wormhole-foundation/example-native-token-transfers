@@ -296,14 +296,37 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           transceiverType !== "wormhole";
         }),
       ];
-      transceiverTypes.map((transceiverType) => {
-        this.transceivers.push(
-          new Program<NttTransceiverIdlType>(
-            NttTransceiverIdl,
-            contracts.ntt!.transceiver[transceiverType]!,
-            { connection }
-          )
+      transceiverTypes.map((transceiverType, idx) => {
+        const transceiverKey = new PublicKey(
+          contracts.ntt!.transceiver[transceiverType]!
         );
+        // handle wormhole case separately for emitterAccount separately
+        if (idx === 0 && !PublicKey.isOnCurve(transceiverKey)) {
+          const whTransceiver = new SolanaNttWormholeTransceiver(
+            this,
+            new Program<NttTransceiverIdlType>(
+              NttTransceiverIdl,
+              contracts.ntt!.manager,
+              { connection }
+            )
+          );
+          if (!whTransceiver.pdas.emitterAccount().equals(transceiverKey)) {
+            throw new Error(
+              `Invalid emitterAccount provided. Expected: ${whTransceiver.pdas
+                .emitterAccount()
+                .toBase58()}; Actual: ${transceiverKey.toBase58()}`
+            );
+          }
+          this.transceivers.push(whTransceiver.program);
+        } else {
+          this.transceivers.push(
+            new Program<NttTransceiverIdlType>(
+              NttTransceiverIdl,
+              contracts.ntt!.transceiver[transceiverType]!,
+              { connection }
+            )
+          );
+        }
       });
     }
 
@@ -1102,16 +1125,28 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   }
 
   async verifyAddresses(): Promise<Partial<Ntt.Contracts> | null> {
-    // NOTE: transceivers are not being compared as there is no reverse lookup
-    // given manager address to the registered transceivers
+    // NOTE: This function should only be called when the wormhole transceiver is the manager.
+    // For the generic transceiver case, transceivers can not be compared as there is no
+    // reverse lookup given manager address to the registered transceivers.
+    const whTransceiver = await this.getWormholeTransceiver();
     const local: Partial<Ntt.Contracts> = {
       manager: this.managerAddress,
       token: this.tokenAddress,
+      transceiver: {
+        ...(whTransceiver && {
+          wormhole: whTransceiver.pdas.emitterAccount().toBase58(),
+        }),
+      },
     };
 
     const remote: Partial<Ntt.Contracts> = {
       manager: this.program.programId.toBase58(),
       token: (await this.getConfig()).mint.toBase58(),
+      transceiver: {
+        wormhole: NTT.transceiverPdas(this.program.programId)
+          .emitterAccount()
+          .toBase58(),
+      },
     };
 
     const deleteMatching = (a: any, b: any) => {

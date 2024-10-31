@@ -1,6 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
 import {
+  AccountAddress,
   ChainAddress,
   ChainContext,
   Signer,
@@ -13,7 +14,6 @@ import {
   serialize,
   serializePayload,
   signSendWait as ssw,
-  AccountAddress,
 } from "@wormhole-foundation/sdk";
 import * as testing from "@wormhole-foundation/sdk-definitions/testing";
 import {
@@ -26,9 +26,9 @@ import * as fs from "fs";
 
 import {
   PublicKey,
-  sendAndConfirmTransaction,
   SystemProgram,
   Transaction,
+  sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import { DummyTransferHook } from "../ts/idl/1_0_0/ts/dummy_transfer_hook.js";
 import { type NttTransceiver as NttTransceiverIdlType } from "../ts/idl/3_0_0/ts/ntt_transceiver.js";
@@ -433,6 +433,33 @@ describe("example-native-token-transfers", () => {
           new SolanaAddress(payer.publicKey.toBase58())
         );
         expect(version).toBe("2.0.0");
+      });
+
+      test("It initializes using `emitterAccount` as transceiver address", async function () {
+        const overrideEmitter: (typeof overrides)["Solana"] = JSON.parse(
+          JSON.stringify(overrides["Solana"])
+        );
+        overrideEmitter.transceiver.wormhole = NTT.transceiverPdas(NTT_ADDRESS)
+          .emitterAccount()
+          .toBase58();
+
+        const ntt = new SolanaNtt("Devnet", "Solana", connection, {
+          ...ctx.config.contracts,
+          ...{ ntt: overrideEmitter },
+        });
+        expect(ntt).toBeTruthy();
+      });
+
+      test("It gets the correct transceiver type", async function () {
+        const ntt = new SolanaNtt("Devnet", "Solana", connection, {
+          ...ctx.config.contracts,
+          ...{ ntt: overrides["Solana"] },
+        });
+        const whTransceiver = await ntt.getWormholeTransceiver();
+        const transceiverType = await whTransceiver!.getTransceiverType(
+          new SolanaAddress(payer.publicKey.toBase58())
+        );
+        expect(transceiverType).toBe("wormhole");
       });
     });
   });
