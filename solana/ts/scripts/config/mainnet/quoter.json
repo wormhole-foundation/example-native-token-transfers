@@ -146,6 +146,14 @@
       "gasGost": 500000,
       "wormholeTransceiverIndex": 0,
       "isSupported": true
+    },
+    {
+      "name": "LitLab Games",
+      "programId": "NTt198zrFsZkvfFH5juBK98frhDNooPtd5PGefd7vNb",
+      "tokenAddress": "GEBUHM7o5T1Ws2rAWjRijtYeh9XFxKrD3B4b9HV7dxLz",
+      "gasGost": 500000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
     }
   ],
   "peerQuotes": {
