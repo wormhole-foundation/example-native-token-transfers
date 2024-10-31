@@ -44,21 +44,21 @@
     "test": "jest --config ./jest.config.ts"
   },
   "dependencies": {
-    "@wormhole-foundation/sdk-base": "^0.12.0",
-    "@wormhole-foundation/sdk-definitions": "^0.12.0",
-    "@wormhole-foundation/sdk-definitions-ntt": "0.4.0",
-    "@wormhole-foundation/sdk-evm": "^0.12.0",
-    "@wormhole-foundation/sdk-evm-core": "^0.12.0",
     "ethers": "^6.5.1"
   },
   "peerDependencies": {
     "@wormhole-foundation/sdk-definitions-ntt": "0.4.0",
-    "@wormhole-foundation/sdk-base": "^0.12.0",
-    "@wormhole-foundation/sdk-definitions": "^0.12.0",
-    "@wormhole-foundation/sdk-evm": "^0.12.0",
-    "@wormhole-foundation/sdk-evm-core": "^0.12.0"
+    "@wormhole-foundation/sdk-base": "^1.0.0",
+    "@wormhole-foundation/sdk-definitions": "^1.0.0",
+    "@wormhole-foundation/sdk-evm": "^1.0.0",
+    "@wormhole-foundation/sdk-evm-core": "^1.0.0"
   },
   "devDependencies": {
+    "@wormhole-foundation/sdk-definitions-ntt": "0.4.0",
+    "@wormhole-foundation/sdk-base": "^1.0.0",
+    "@wormhole-foundation/sdk-definitions": "^1.0.0",
+    "@wormhole-foundation/sdk-evm": "^1.0.0",
+    "@wormhole-foundation/sdk-evm-core": "^1.0.0",
     "@typechain/ethers-v6": "^0.5.1",
     "tsx": "^4.7.2",
     "typechain": "^8.3.2"
