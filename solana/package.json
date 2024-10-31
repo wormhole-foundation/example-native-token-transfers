@@ -42,11 +42,6 @@
     "build:contracts": "make build"
   },
   "devDependencies": {
-    "@wormhole-foundation/sdk-definitions-ntt": "0.4.0",
-    "@wormhole-foundation/sdk-base": "^1.0.0",
-    "@wormhole-foundation/sdk-definitions": "^1.0.0",
-    "@wormhole-foundation/sdk-solana": "^1.0.0",
-    "@wormhole-foundation/sdk-solana-core": "^1.0.0",
     "@types/bn.js": "^5.1.5",
     "nock": "^13.3.3",
     "ts-jest": "^29.1.2",
