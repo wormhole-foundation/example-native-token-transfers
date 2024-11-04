@@ -53,10 +53,10 @@
     "@coral-xyz/borsh": "0.29.0",
     "@solana/spl-token": "0.4.0",
     "@solana/web3.js": "^1.95.2",
-    "bn.js": "5.2.1"
+    "bn.js": "5.2.1",
+    "@wormhole-foundation/sdk-definitions-ntt": "0.4.0"
   },
   "peerDependencies": {
-    "@wormhole-foundation/sdk-definitions-ntt": "0.4.0",
     "@wormhole-foundation/sdk-base": "^1.0.0",
     "@wormhole-foundation/sdk-definitions": "^1.0.0",
     "@wormhole-foundation/sdk-solana": "^1.0.0",
