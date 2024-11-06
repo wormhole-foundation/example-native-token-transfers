@@ -31,20 +31,13 @@ interface IRateLimiterEvents {
     ///      0x7e3b0fc388be9d36273f66210aed83be975df3a9adfffa4c734033f498f362cd.
     /// @param oldLimit The old outbound limit.
     /// @param newLimit The new outbound limit.
-    event OutboundTransferLimitUpdated(
-        uint256 oldLimit,
-        uint256 newLimit
-    );
- 
+    event OutboundTransferLimitUpdated(uint256 oldLimit, uint256 newLimit);
+
     /// @notice Emitted when the inbound transfer limit is updated.
     /// @dev Topic0
     ///      0x739ed886fd81a3ddc9f4b327ab69152e513cd45b26fda0c73660eaca8e119301.
     /// @param chainId The chain ID the limit is set for.
     /// @param oldLimit The old inbound limit.
     /// @param newLimit The new inbound limit.
-    event InboundTransferLimitUpdated(
-        uint16 indexed chainId,
-        uint256 oldLimit,
-        uint256 newLimit
-    );
+    event InboundTransferLimitUpdated(uint16 indexed chainId, uint256 oldLimit, uint256 newLimit);
 }

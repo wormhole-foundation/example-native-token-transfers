@@ -124,7 +124,9 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         TrimmedAmount oldLimit = rateLimitParams.limit;
         uint8 decimals = tokenDecimals();
         _setLimit(limit, rateLimitParams);
-        emit InboundTransferLimitUpdated(chainId_, oldLimit.untrim(decimals), limit.untrim(decimals));
+        emit InboundTransferLimitUpdated(
+            chainId_, oldLimit.untrim(decimals), limit.untrim(decimals)
+        );
     }
 
     function getInboundLimitParams(
