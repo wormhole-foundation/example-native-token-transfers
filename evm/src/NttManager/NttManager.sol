@@ -127,7 +127,6 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
 
         uint8 toDecimals = tokenDecimals();
         _setInboundLimit(inboundLimit.trim(toDecimals, toDecimals), peerChainId);
-        emit InboundLimitUpdated(peerChainId, 0, inboundLimit);
 
         emit PeerUpdated(
             peerChainId, oldPeer.peerAddress, oldPeer.tokenDecimals, peerContract, decimals
@@ -138,22 +137,14 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
     function setOutboundLimit(
         uint256 limit
     ) external onlyOwner {
-        TrimmedAmount oldLimit = getOutboundLimitParams().limit;
-
         uint8 toDecimals = tokenDecimals();
         _setOutboundLimit(limit.trim(toDecimals, toDecimals));
-
-        emit OutboundLimitUpdated(oldLimit.untrim(toDecimals), limit);
     }
 
     /// @inheritdoc INttManager
     function setInboundLimit(uint256 limit, uint16 chainId_) external onlyOwner {
-        TrimmedAmount oldLimit = getInboundLimitParams(chainId_).limit;
-
         uint8 toDecimals = tokenDecimals();
         _setInboundLimit(limit.trim(toDecimals, toDecimals), chainId_);
-
-        emit InboundLimitUpdated(chainId_, oldLimit.untrim(toDecimals), limit);
     }
 
     /// ============== Invariants =============================================
