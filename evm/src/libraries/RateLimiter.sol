@@ -96,7 +96,11 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     function _setOutboundLimit(
         TrimmedAmount limit
     ) internal virtual {
-        _setLimit(limit, _getOutboundLimitParamsStorage());
+        RateLimitParams storage rateLimitParams = _getOutboundLimitParamsStorage();
+        TrimmedAmount oldLimit = rateLimitParams.limit;
+        uint8 decimals = tokenDecimals();
+        _setLimit(limit, rateLimitParams);
+        emit OutboundTransferLimitUpdated(oldLimit.untrim(decimals), limit.untrim(decimals));
     }
 
     function getOutboundLimitParams() public pure virtual returns (RateLimitParams memory) {
@@ -116,7 +120,11 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
     }
 
     function _setInboundLimit(TrimmedAmount limit, uint16 chainId_) internal virtual {
-        _setLimit(limit, _getInboundLimitParamsStorage()[chainId_]);
+        RateLimitParams storage rateLimitParams = _getInboundLimitParamsStorage()[chainId_];
+        TrimmedAmount oldLimit = rateLimitParams.limit;
+        uint8 decimals = tokenDecimals();
+        _setLimit(limit, rateLimitParams);
+        emit InboundTransferLimitUpdated(chainId_, oldLimit.untrim(decimals), limit.untrim(decimals));
     }
 
     function getInboundLimitParams(
