@@ -55,7 +55,8 @@ interface INttManager is IManagerBase {
     );
 
     /// @notice Emitted when the outbound transfer limit is updated.
-    /// @dev 
+    /// @dev Topic0
+    ///      0x47b89bcc74f69b843254b547e92022bb07e57681833d4a1858300790b3e0a901.
     /// @param oldLimit The old outbound limit.
     /// @param newLimit The new outbound limit.
     event OutboundLimitUpdated(
@@ -64,7 +65,8 @@ interface INttManager is IManagerBase {
     );
  
     /// @notice Emitted when the inbound transfer limit is updated.
-    /// @dev 
+    /// @dev Topic0
+    ///      0x35d8618fbee970d48f845ecb4474f125fd1f91e3213b126871989fdb37e77f3f.
     /// @param chainId The chain ID the limit is set for.
     /// @param oldLimit The old inbound limit.
     /// @param newLimit The new inbound limit.
