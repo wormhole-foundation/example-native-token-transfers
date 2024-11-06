@@ -14,8 +14,8 @@ interface INttManager is IManagerBase {
     }
 
     /// @notice Emitted when a message is sent from the nttManager.
-    /// @dev Topic0
-    ///      0xe54e51e42099622516fa3b48e9733581c9dbdcb771cafb093f745a0532a35982.
+    /// @dev 
+    ///
     /// @param recipient The recipient of the message.
     /// @param refundAddress The address on the destination chain to which the
     ///                      refund of unused gas will be paid
@@ -24,8 +24,8 @@ interface INttManager is IManagerBase {
     /// @param recipientChain The chain ID of the recipient.
     /// @param msgSequence The unique sequence ID of the message.
     event TransferSent(
-        bytes32 recipient,
-        bytes32 refundAddress,
+        bytes32 indexed recipient,
+        bytes32 indexed refundAddress,
         uint256 amount,
         uint256 fee,
         uint16 recipientChain,
