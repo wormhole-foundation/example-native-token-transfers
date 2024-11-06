@@ -54,6 +54,26 @@ interface INttManager is IManagerBase {
         uint8 peerDecimals
     );
 
+    /// @notice Emitted when the outbound transfer limit is updated.
+    /// @dev 
+    /// @param oldLimit The old outbound limit.
+    /// @param newLimit The new outbound limit.
+    event OutboundLimitUpdated(
+        uint256 oldLimit,
+        uint256 newLimit
+    );
+ 
+    /// @notice Emitted when the inbound transfer limit is updated.
+    /// @dev 
+    /// @param chainId The chain ID the limit is set for.
+    /// @param oldLimit The old inbound limit.
+    /// @param newLimit The new inbound limit.
+    event InboundLimitUpdated(
+        uint16 indexed chainId,
+        uint256 oldLimit,
+        uint256 newLimit
+    );
+
     /// @notice Emitted when a transfer has been redeemed
     ///         (either minted or unlocked on the recipient chain).
     /// @dev Topic0
