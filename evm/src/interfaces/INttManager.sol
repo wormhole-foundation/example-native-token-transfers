@@ -56,8 +56,8 @@ interface INttManager is IManagerBase {
 
     /// @notice Emitted when a transfer has been redeemed
     ///         (either minted or unlocked on the recipient chain).
-    /// @dev
-    ///
+    /// @dev Topic0
+    ///      0x822760cb8aef838664db98515460929d89d5799b7546e9269dffdc09e2cbb995.
     /// @param sourceChain The source chain.
     /// @param digest The digest of the message.
     event TransferRedeemed(uint16 indexed sourceChain, bytes32 indexed digest);

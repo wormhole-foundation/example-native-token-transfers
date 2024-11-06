@@ -32,8 +32,8 @@ interface IManagerBase {
     }
 
     /// @notice Emitted when a message has been attested to.
-    /// @dev
-    ///
+    /// @dev Topic0
+    ///      0xf1ec44311dd9bf51a389c38e415716ad070edf9e303ea55ed7ae11472a5f031d.
     /// @param sourceChain The source chain.
     /// @param digest The digest of the message.
     /// @param transceiver The address of the transceiver.
