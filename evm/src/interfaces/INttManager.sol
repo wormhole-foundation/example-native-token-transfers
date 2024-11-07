@@ -24,8 +24,8 @@ interface INttManager is IManagerBase {
     /// @param recipientChain The chain ID of the recipient.
     /// @param msgSequence The unique sequence ID of the message.
     event TransferSent(
-        bytes32 recipient,
-        bytes32 refundAddress,
+        bytes32 indexed recipient,
+        bytes32 indexed refundAddress,
         uint256 amount,
         uint256 fee,
         uint16 recipientChain,
