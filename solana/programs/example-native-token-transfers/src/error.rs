@@ -55,6 +55,10 @@ pub enum NTTError {
     NoRegisteredTransceivers,
     #[msg("NotPaused")]
     NotPaused,
+    #[msg("InvalidPendingTokenAuthority")]
+    InvalidPendingTokenAuthority,
+    #[msg("IncorrectRentPayer")]
+    IncorrectRentPayer,
 }
 
 impl From<ScalingError> for NTTError {
