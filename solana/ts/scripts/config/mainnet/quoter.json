@@ -121,6 +121,14 @@
       "tokenAddress": "USDSvKzCxbVwSEsu1amJb8BgrUq3c39sGirmT3bmbng",
       "gasCost": 500000,
       "wormholeTransceiverIndex": 0,
+      "isSupported": false
+    },
+    {
+      "name": "USDs",
+      "programId": "STTUVCMPuNbk21y1J6nqEGXSQ8HKvFmFBKnCvKHTrWn",
+      "tokenAddress": "USDSwr9ApdHk5bvJKMjzff41FfuX8bSxdKcR81vTwcA",
+      "gasCost": 500000,
+      "wormholeTransceiverIndex": 0,
       "isSupported": true
     },
     {
