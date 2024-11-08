@@ -713,111 +713,6 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     );
   }
 
-  async *transfer2(
-    sender: AccountAddress<C>,
-    amount: bigint,
-    destination: ChainAddress,
-    options: Ntt.TransferOptions,
-    transceiver: Program<NttTransceiverIdl>,
-    outboxItem?: Keypair
-  ): AsyncGenerator<UnsignedTransaction<N, C>, any, unknown> {
-    const config = await this.getConfig();
-    if (config.paused) throw new Error("Contract is paused");
-
-    outboxItem = outboxItem ?? Keypair.generate();
-
-    const payerAddress = new SolanaAddress(sender).unwrap();
-    const fromAuthority = payerAddress;
-    const from = await this.getTokenAccount(fromAuthority);
-
-    const transferArgs = NTT.transferArgs(amount, destination, options.queue);
-
-    const txArgs = {
-      transferArgs,
-      payer: payerAddress,
-      from,
-      fromAuthority,
-      outboxItem: outboxItem.publicKey,
-    };
-
-    const approveIx = splToken.createApproveInstruction(
-      from,
-      this.pdas.sessionAuthority(fromAuthority, transferArgs),
-      fromAuthority,
-      amount,
-      [],
-      config.tokenProgram
-    );
-
-    const transferIx =
-      config.mode.locking != null
-        ? NTT.createTransferLockInstruction(
-            this.program,
-            config,
-            txArgs,
-            this.pdas
-          )
-        : NTT.createTransferBurnInstruction(
-            this.program,
-            config,
-            txArgs,
-            this.pdas
-          );
-
-    const releaseIx = NTT.createReleaseOutboundInstruction(
-      this.program,
-      {
-        payer: payerAddress,
-        outboxItem: outboxItem.publicKey,
-        revertOnDelay: !options.queue,
-        wormholeId: new PublicKey(this.core.address),
-        transceiver,
-      },
-      this.pdas
-    );
-
-    const tx = new Transaction();
-    tx.feePayer = payerAddress;
-    tx.add(approveIx, ...(await Promise.all([transferIx, releaseIx])));
-
-    if (options.automatic) {
-      if (!this.quoter)
-        throw new Error(
-          "No quoter available, cannot initiate an automatic transfer."
-        );
-
-      const fee = await this.quoteDeliveryPrice(destination.chain, options);
-
-      const relayIx = await this.quoter.createRequestRelayInstruction(
-        payerAddress,
-        outboxItem.publicKey,
-        destination.chain,
-        Number(fee) / LAMPORTS_PER_SOL,
-        // Note: quoter expects gas dropoff to be in terms of gwei
-        Number(options.gasDropoff ?? 0n) / WEI_PER_GWEI
-      );
-      tx.add(relayIx);
-    }
-
-    const luts: AddressLookupTableAccount[] = [];
-    try {
-      luts.push(await this.getAddressLookupTable());
-    } catch {}
-
-    const messageV0 = new TransactionMessage({
-      payerKey: payerAddress,
-      instructions: tx.instructions,
-      recentBlockhash: (await this.connection.getRecentBlockhash()).blockhash,
-    }).compileToV0Message(luts);
-
-    const vtx = new VersionedTransaction(messageV0);
-
-    yield this.createUnsignedTx(
-      { transaction: vtx, signers: [outboxItem] },
-      "Ntt.Transfer"
-    );
-  }
-
   private async getTokenAccount(sender: PublicKey): Promise<PublicKey> {
     const config = await this.getConfig();
     const tokenAccount = await splToken.getAssociatedTokenAddress(
@@ -898,93 +793,6 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const redeemIx = NTT.createRedeemInstruction(this.program, config, {
       payer: senderAddress,
       vaa: wormholeNTT,
-    });
-
-    const releaseIx =
-      config.mode.locking != null
-        ? NTT.createReleaseInboundUnlockInstruction(
-            this.program,
-            config,
-            releaseArgs
-          )
-        : NTT.createReleaseInboundMintInstruction(
-            this.program,
-            config,
-            releaseArgs
-          );
-
-    const tx = new Transaction();
-    tx.feePayer = senderAddress;
-    tx.add(...(await Promise.all([receiveMessageIx, redeemIx, releaseIx])));
-
-    const luts: AddressLookupTableAccount[] = [];
-    try {
-      luts.push(await this.getAddressLookupTable());
-    } catch {}
-
-    const messageV0 = new TransactionMessage({
-      payerKey: senderAddress,
-      instructions: tx.instructions,
-      recentBlockhash: (await this.connection.getRecentBlockhash()).blockhash,
-    }).compileToV0Message(luts);
-
-    const vtx = new VersionedTransaction(messageV0);
-
-    yield this.createUnsignedTx({ transaction: vtx }, "Ntt.Redeem");
-  }
-
-  async *redeem2(
-    attestations: Ntt.Attestation[],
-    payer: AccountAddress<C>,
-    transceiver: Program<NttTransceiverIdl>
-  ) {
-    const config = await this.getConfig();
-    if (config.paused) throw new Error("Contract is paused");
-
-    // TODO: not this, we should iterate over the set of enabled xcvrs?
-    // if (attestations.length !== this.xcvrs.length) throw "No";
-    const wormholeNTT = attestations[0];
-    if (!wormholeNTT || wormholeNTT.payloadName !== "WormholeTransfer") {
-      throw new Error("Invalid attestation payload");
-    }
-
-    // Create the vaa if necessary
-    yield* this.createAta(payer);
-
-    // Post the VAA that we intend to redeem
-    yield* this.core.postVaa(payer, wormholeNTT);
-
-    const senderAddress = new SolanaAddress(payer).unwrap();
-
-    const receiveMessageIx = NTT.createReceiveWormholeMessageInstruction(
-      this.program,
-      {
-        wormholeId: new PublicKey(this.core.address),
-        payer: senderAddress,
-        vaa: wormholeNTT,
-        transceiver,
-      },
-      this.pdas
-    );
-
-    const nttMessage = wormholeNTT.payload.nttManagerPayload;
-    const emitterChain = wormholeNTT.emitterChain;
-    const releaseArgs = {
-      payer: senderAddress,
-      config,
-      nttMessage,
-      recipient: new PublicKey(
-        nttMessage.payload.recipientAddress.toUint8Array()
-      ),
-      chain: emitterChain,
-      revertOnDelay: false,
-    };
-
-    // TODO: loop through transceivers etc.
-    const redeemIx = NTT.createRedeemInstruction(this.program, config, {
-      payer: senderAddress,
-      vaa: wormholeNTT,
-      transceiver,
     });
 
     const releaseIx =
@@ -1294,7 +1102,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       manager: this.managerAddress,
       token: this.tokenAddress,
       transceiver: {
-        wormhole: this.whTransceiverAddress,
+        wormhole: this.whTransceiverAddress!,
       },
     };
 
