@@ -103,10 +103,7 @@ pub struct Redeem<'info> {
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct RedeemArgs {}
 
-pub fn redeem<'info>(
-    ctx: Context<'_, '_, '_, 'info, Redeem<'info>>,
-    _args: RedeemArgs,
-) -> Result<()> {
+pub fn redeem(ctx: Context<Redeem>, _args: RedeemArgs) -> Result<()> {
     let accs = ctx.accounts;
 
     let transceiver_message: ValidatedTransceiverMessage<NativeTokenTransfer<Payload>> =
