@@ -833,38 +833,6 @@ export type ExampleNativeTokenTransfers = {
       ];
     },
     {
-      name: "markOutboxItemAsReleased";
-      accounts: [
-        {
-          name: "signer";
-          isMut: false;
-          isSigner: true;
-        },
-        {
-          name: "config";
-          accounts: [
-            {
-              name: "config";
-              isMut: false;
-              isSigner: false;
-            }
-          ];
-        },
-        {
-          name: "outboxItem";
-          isMut: true;
-          isSigner: false;
-        },
-        {
-          name: "transceiver";
-          isMut: false;
-          isSigner: false;
-        }
-      ];
-      args: [];
-      returns: "bool";
-    },
-    {
       name: "setWormholePeer";
       accounts: [
         {
@@ -2772,38 +2740,6 @@ export const IDL: ExampleNativeTokenTransfers = {
           },
         },
       ],
-    },
-    {
-      name: "markOutboxItemAsReleased",
-      accounts: [
-        {
-          name: "signer",
-          isMut: false,
-          isSigner: true,
-        },
-        {
-          name: "config",
-          accounts: [
-            {
-              name: "config",
-              isMut: false,
-              isSigner: false,
-            },
-          ],
-        },
-        {
-          name: "outboxItem",
-          isMut: true,
-          isSigner: false,
-        },
-        {
-          name: "transceiver",
-          isMut: false,
-          isSigner: false,
-        },
-      ],
-      args: [],
-      returns: "bool",
     },
     {
       name: "setWormholePeer",
