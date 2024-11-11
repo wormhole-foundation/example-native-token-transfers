@@ -296,12 +296,17 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           transceiverType !== "wormhole";
         }),
       ];
-      transceiverTypes.map((transceiverType, idx) => {
+      transceiverTypes.map((transceiverType) => {
+        // we currently only support wormhole transceivers
+        if (transceiverType !== "wormhole") {
+          throw new Error(`Unsupported transceiver type: ${transceiverType}`);
+        }
+
         const transceiverKey = new PublicKey(
           contracts.ntt!.transceiver[transceiverType]!
         );
-        // handle wormhole case separately for emitterAccount separately
-        if (idx === 0 && !PublicKey.isOnCurve(transceiverKey)) {
+        // handle emitterAccount case separately
+        if (!PublicKey.isOnCurve(transceiverKey)) {
           const whTransceiver = new SolanaNttWormholeTransceiver(
             this,
             new Program<NttTransceiverIdlType>(

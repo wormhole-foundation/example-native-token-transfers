@@ -159,10 +159,11 @@ export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
   }
 
   async *setIsSpecialRelayingEnabled(destChain: Chain, enabled: boolean) {
-    const tx = await this.transceiver.setIsSpecialRelayingEnabled.populateTransaction(
-      toChainId(destChain),
-      enabled
-    );
+    const tx =
+      await this.transceiver.setIsSpecialRelayingEnabled.populateTransaction(
+        toChainId(destChain),
+        enabled
+      );
     yield this.manager.createUnsignedTx(
       tx,
       "WormholeTransceiver.setSpecialRelayingEnabled"
@@ -212,6 +213,11 @@ export class EvmNtt<N extends Network, C extends EvmChains>
         }),
       ];
       transceiverTypes.map((transceiverType) => {
+        // we currently only support wormhole transceivers
+        if (transceiverType !== "wormhole") {
+          throw new Error(`Unsupported transceiver type: ${transceiverType}`);
+        }
+
         // Enable more Transceivers here
         this.xcvrs.push(
           new EvmNttWormholeTranceiver(
