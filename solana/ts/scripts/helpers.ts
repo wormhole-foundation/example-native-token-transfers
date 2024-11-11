@@ -23,8 +23,8 @@ export async function ledgerSignAndSend(instructions: TransactionInstruction[], 
 
   tx.add(...instructions);
 
-  const recentBlockHash = await connection.getRecentBlockhash();
-  
+  const recentBlockHash = await connection.getLatestBlockhash();
+
   tx.recentBlockhash = recentBlockHash.blockhash;
   tx.feePayer = deployerPk;
   
