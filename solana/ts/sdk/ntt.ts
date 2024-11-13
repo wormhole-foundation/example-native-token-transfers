@@ -13,7 +13,7 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 
-import { Chain, Network } from "@wormhole-foundation/sdk-base";
+import { Chain, Network, toChainId } from "@wormhole-foundation/sdk-base";
 import {
   AccountAddress,
   ChainAddress,
@@ -25,7 +25,7 @@ import {
 } from "@wormhole-foundation/sdk-definitions";
 import {
   Ntt,
-  NttTransceiver,
+  SolanaNttTransceiver,
   WormholeNttTransceiver,
 } from "@wormhole-foundation/sdk-definitions-ntt";
 import {
@@ -53,9 +53,20 @@ import { IdlVersion, NttBindings, getNttProgram } from "../lib/bindings.js";
 export class SolanaNttWormholeTransceiver<
   N extends Network,
   C extends SolanaChains
-> implements NttTransceiver<N, C, WormholeNttTransceiver.VAA>
+> implements
+    WormholeNttTransceiver<N, C>,
+    SolanaNttTransceiver<N, C, WormholeNttTransceiver.VAA>
 {
-  constructor(readonly manager: SolanaNtt<N, C>, readonly address: PublicKey) {}
+  programId: PublicKey;
+  pdas: NTT.TransceiverPdas;
+
+  constructor(
+    readonly manager: SolanaNtt<N, C>,
+    readonly program: Program<NttTransceiverIdlType>
+  ) {
+    this.programId = program.programId;
+    this.pdas = NTT.transceiverPdas(program.programId);
+  }
 
   async getPauser(): Promise<AccountAddress<C> | null> {
     return null;
@@ -107,10 +118,59 @@ export class SolanaNttWormholeTransceiver<
       .instruction();
   }
 
+  async getTransceiverType(payer: AccountAddress<C>): Promise<string> {
+    // the anchor library has a built-in method to read view functions. However,
+    // it requires a signer, which would trigger a wallet prompt on the frontend.
+    // Instead, we manually construct a versioned transaction and call the
+    // simulate function with sigVerify: false below.
+    //
+    // This way, the simulation won't require a signer, but it still requires
+    // the pubkey of an account that has some lamports in it (since the
+    // simulation checks if the account has enough money to pay for the transaction).
+    //
+    // It's a little unfortunate but it's the best we can do.
+    const payerKey = new SolanaAddress(payer).unwrap();
+    const ix = await this.program.methods
+      .transceiverType()
+      .accountsStrict({})
+      .instruction();
+    const latestBlockHash =
+      await this.program.provider.connection.getLatestBlockhash();
+
+    const msg = new TransactionMessage({
+      payerKey,
+      recentBlockhash: latestBlockHash.blockhash,
+      instructions: [ix],
+    }).compileToV0Message();
+
+    const tx = new VersionedTransaction(msg);
+
+    const txSimulation =
+      await this.program.provider.connection.simulateTransaction(tx, {
+        sigVerify: false,
+      });
+
+    // the return buffer is in base64 and it encodes the string with a 32 bit
+    // little endian length prefix.
+    if (txSimulation.value.returnData?.data[0]) {
+      const buffer = Buffer.from(
+        txSimulation.value.returnData?.data[0],
+        "base64"
+      );
+      const len = buffer.readUInt32LE(0);
+      return buffer.subarray(4, len + 4).toString();
+    } else {
+      throw new Error("no transceiver type found");
+    }
+  }
+
   getAddress(): ChainAddress<C> {
     return {
       chain: this.manager.chain,
-      address: toUniversal(this.manager.chain, this.address.toBase58()),
+      address: toUniversal(
+        this.manager.chain,
+        this.pdas.emitterAccount().toBase58()
+      ),
     };
   }
 
@@ -148,7 +208,7 @@ export class SolanaNttWormholeTransceiver<
   async getPeer<C extends Chain>(chain: C): Promise<ChainAddress<C> | null> {
     const peer =
       await this.manager.program.account.transceiverPeer.fetchNullable(
-        this.manager.pdas.transceiverPeerAccount(chain)
+        this.pdas.transceiverPeerAccount(chain)
       );
 
     if (!peer) return null;
@@ -247,6 +307,8 @@ export class SolanaNttWormholeTransceiver<
           sequence: whAccs.wormholeSequence,
           program: this.manager.core.address,
         },
+        manager: this.manager.program.programId,
+        outboxItemSigner: this.pdas.outboxItemSigner(),
       })
       .instruction();
   }
@@ -271,7 +333,6 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   // (only in verifyAddresses)
   private managerAddress: string;
   private tokenAddress: string;
-  private whTransceiverAddress?: string;
 
   constructor(
     readonly network: N,
@@ -289,7 +350,10 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     );
 
     this.transceivers = [];
-    if (contracts.ntt.transceiver["wormhole"]) {
+    if (
+      "wormhole" in contracts.ntt.transceiver &&
+      contracts.ntt.transceiver["wormhole"]
+    ) {
       const transceiverTypes = [
         "wormhole", // wormhole xcvr should be ix 0
         ...Object.keys(contracts.ntt.transceiver).filter((transceiverType) => {
@@ -337,7 +401,6 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     this.managerAddress = contracts.ntt.manager;
     this.tokenAddress = contracts.ntt.token;
-    this.whTransceiverAddress = contracts.ntt.transceiver.wormhole;
 
     if (this.contracts.ntt?.quoter)
       this.quoter = new NttQuoter(
@@ -360,7 +423,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   ): Promise<
     | (T extends 0
         ? SolanaNttWormholeTransceiver<N, C>
-        : NttTransceiver<N, C, any>)
+        : SolanaNttTransceiver<N, C, any>)
     | null
   > {
     const transceiverProgram = this.transceivers[ix] ?? null;
@@ -440,7 +503,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   }
 
   async *setPauser(_newPauser: AnySolanaAddress, _payer: AccountAddress<C>) {
-    throw new Error("Pauser role not supported on Solna.");
+    throw new Error("Pauser role not supported on Solana.");
   }
 
   async isRelayingAvailable(destination: Chain): Promise<boolean> {
@@ -589,9 +652,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     if (!whTransceiver) {
       throw new Error("wormhole transceiver not found");
     }
-    const whTransceiverProgramId = whTransceiver
-      .getAddress()
-      .address.toNative("Solana").address;
+    const whTransceiverProgramId = whTransceiver.programId;
 
     const ix = await NTT.initializeOrUpdateLUT(
       this.program,
@@ -611,14 +672,14 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     yield this.createUnsignedTx({ transaction: tx }, "Ntt.InitializeLUT");
   }
 
-  async *registerTransceiver(args: {
+  async *registerWormholeTransceiver(args: {
     payer: AccountAddress<C>;
     owner: AccountAddress<C>;
-    transceiver: PublicKey;
   }) {
-    const config = await this.getConfig();
     const payer = new SolanaAddress(args.payer).unwrap();
     const owner = new SolanaAddress(args.owner).unwrap();
+
+    const config = await this.getConfig();
     if (config.paused) throw new Error("Contract is paused");
 
     const ix = await this.createRegisterTransceiverIx(0, payer, owner);
@@ -650,9 +711,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     if (!transceiver) {
       throw new Error(`Transceiver not found`);
     }
-    const transceiverProgramId = transceiver
-      .getAddress()
-      .address.toNative("Solana").address;
+    const transceiverProgramId = transceiver.programId;
 
     return this.program.methods
       .registerTransceiver()
@@ -745,6 +804,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       config.tokenProgram
     );
 
+    const asyncIxs: Promise<web3.TransactionInstruction>[] = [];
     const transferIx =
       config.mode.locking != null
         ? NTT.createTransferLockInstruction(
@@ -778,7 +838,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
 
     const tx = new Transaction();
     tx.feePayer = payerAddress;
-    tx.add(approveIx, ...(await Promise.all([transferIx, releaseIx])));
+    tx.add(approveIx, ...(await Promise.all(asyncIxs)));
 
     if (options.automatic) {
       if (!this.quoter)
@@ -804,12 +864,10 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       luts.push(await this.getAddressLookupTable());
     } catch {}
 
-    const { blockhash } = await this.connection.getLatestBlockhash();
-
     const messageV0 = new TransactionMessage({
       payerKey: payerAddress,
       instructions: tx.instructions,
-      recentBlockhash: blockhash,
+      recentBlockhash: (await this.connection.getLatestBlockhash()).blockhash,
     }).compileToV0Message(luts);
 
     const vtx = new VersionedTransaction(messageV0);

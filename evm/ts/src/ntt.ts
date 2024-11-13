@@ -30,6 +30,7 @@ import {
 import "@wormhole-foundation/sdk-evm-core";
 
 import {
+  EvmNttTransceiver,
   Ntt,
   NttTransceiver,
   WormholeNttTransceiver,
@@ -43,7 +44,9 @@ import {
 } from "./bindings.js";
 
 export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
-  implements NttTransceiver<N, C, WormholeNttTransceiver.VAA>
+  implements
+    WormholeNttTransceiver<N, C>,
+    EvmNttTransceiver<N, C, WormholeNttTransceiver.VAA>
 {
   transceiver: NttTransceiverBindings.NttTransceiver;
   constructor(
@@ -55,6 +58,12 @@ export class EvmNttWormholeTranceiver<N extends Network, C extends EvmChains>
       address,
       manager.provider
     );
+  }
+
+  async getTransceiverType(): Promise<string> {
+    // NOTE: We hardcode the type here as transceiver type is only available for versions >1.1.0
+    // For those versions, we can return `this.transceiver.getTransceiverType()` directly
+    return "wormhole";
   }
 
   getAddress(): ChainAddress<C> {
@@ -205,7 +214,10 @@ export class EvmNtt<N extends Network, C extends EvmChains>
     );
 
     this.xcvrs = [];
-    if (contracts.ntt.transceiver["wormhole"]) {
+    if (
+      "wormhole" in contracts.ntt.transceiver &&
+      contracts.ntt.transceiver["wormhole"]
+    ) {
       const transceiverTypes = [
         "wormhole", // wormhole xcvr should be ix 0
         ...Object.keys(contracts.ntt.transceiver).filter((transceiverType) => {
@@ -594,7 +606,7 @@ export class EvmNtt<N extends Network, C extends EvmChains>
       manager: this.managerAddress,
       token: this.tokenAddress,
       transceiver: {
-        wormhole: this.xcvrs[0]!.address,
+        ...(this.xcvrs.length > 0 && { wormhole: this.xcvrs[0]!.address }),
       },
       // TODO: what about the quoter?
     };

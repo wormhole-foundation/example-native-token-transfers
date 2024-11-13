@@ -41,7 +41,8 @@ const solanaRootDir = `${__dirname}/../`;
 const GUARDIAN_KEY =
   "cfb12303a19cde580bb4dd771639b0d26bc68353645571a8cff516ab2ee113a0";
 const CORE_BRIDGE_ADDRESS = contracts.coreBridge("Mainnet", "Solana");
-const NTT_ADDRESS = anchor.workspace.ExampleNativeTokenTransfers.programId;
+const NTT_ADDRESS: PublicKey =
+  anchor.workspace.ExampleNativeTokenTransfers.programId;
 
 async function signSendWait(
   chain: ChainContext<any, any, any>,
@@ -204,7 +205,7 @@ describe("example-native-token-transfers", () => {
         ...ctx.config.contracts,
         ntt: {
           token: tokenAddress,
-          manager: NTT_ADDRESS,
+          manager: NTT_ADDRESS.toBase58(),
           transceiver: {
             wormhole: nttTransceivers["wormhole"].programId.toBase58(),
           },
@@ -216,7 +217,7 @@ describe("example-native-token-transfers", () => {
     }
   });
 
-  describe("Locking", () => {
+  describe("Burning", () => {
     beforeAll(async () => {
       try {
         await spl.setAuthority(
@@ -240,10 +241,9 @@ describe("example-native-token-transfers", () => {
         await signSendWait(ctx, initTxs, signer);
 
         // register
-        const registerTxs = ntt.registerTransceiver({
+        const registerTxs = ntt.registerWormholeTransceiver({
           payer: new SolanaAddress(payer.publicKey),
           owner: new SolanaAddress(payer.publicKey),
-          transceiver: ntt.program.programId,
         });
         await signSendWait(ctx, registerTxs, signer);
 
@@ -380,7 +380,6 @@ describe("example-native-token-transfers", () => {
       const published = emitter.publishMessage(0, serialized, 200);
       const rawVaa = guardians.addSignatures(published, [0]);
       const vaa = deserialize("Ntt:WormholeTransfer", serialize(rawVaa));
-
       const redeemTxs = ntt.redeem([vaa], sender);
       try {
         await signSendWait(ctx, redeemTxs, signer);
@@ -399,8 +398,10 @@ describe("example-native-token-transfers", () => {
     const overrides = {
       Solana: {
         token: tokenAddress,
-        manager: NTT_ADDRESS,
-        transceiver: { wormhole: NTT_ADDRESS },
+        manager: NTT_ADDRESS.toBase58(),
+        transceiver: {
+          wormhole: nttTransceivers["wormhole"].programId.toBase58(),
+        },
       },
     };
 
