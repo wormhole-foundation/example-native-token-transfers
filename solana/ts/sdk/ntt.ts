@@ -1106,14 +1106,22 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   }
 
   async getIsApproved(attestation: Ntt.Attestation): Promise<boolean> {
-    const digest = (attestation as WormholeNttTransceiver.VAA).hash;
-    const vaaAddress = utils.derivePostedVaaKey(
-      this.core.address,
-      Buffer.from(digest)
-    );
-
-    const info = await this.connection.getAccountInfo(vaaAddress);
-    return info !== null;
+    if (attestation.payloadName !== "WormholeTransfer") {
+      throw new Error(`Invalid payload: ${attestation.payloadName}`);
+    }
+    const payload = attestation.payload["nttManagerPayload"];
+    try {
+      // check that the inbox item was initialized
+      const inboxItem = await this.program.account.inboxItem.fetch(
+        this.pdas.inboxItemAccount(attestation.emitterChain, payload)
+      );
+      return inboxItem.init;
+    } catch (e: any) {
+      if (e.message?.includes("Account does not exist")) {
+        return false;
+      }
+      throw e;
+    }
   }
 
   async *completeInboundQueuedTransfer(
