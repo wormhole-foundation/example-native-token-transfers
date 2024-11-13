@@ -800,7 +800,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   }
 
   async getIsApproved(attestation: Ntt.Attestation): Promise<boolean> {
-    if (attestation.payloadName !== "WormholeTransfer") return false;
+    if (attestation.payloadName !== "WormholeTransfer") {
+      throw new Error(`Invalid payload: ${attestation.payloadName}`);
+    }
     const payload = attestation.payload["nttManagerPayload"];
     try {
       // check that the inbox item was initialized
