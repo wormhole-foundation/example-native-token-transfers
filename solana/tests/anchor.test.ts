@@ -62,11 +62,6 @@ const w = new Wormhole("Devnet", [SolanaPlatform], {
   chains: { Solana: { contracts: { coreBridge: CORE_BRIDGE_ADDRESS } } },
 });
 
-const nttTransceivers = {
-  wormhole: anchor.workspace
-    .NttTransceiver as anchor.Program<NttTransceiverIdlType>,
-};
-
 const remoteXcvr: ChainAddress = {
   chain: "Ethereum",
   address: new UniversalAddress(
