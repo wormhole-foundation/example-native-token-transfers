@@ -121,9 +121,9 @@ export class SolanaNttWormholeTransceiver<
   }
 
   async getTransceiverType(payer: AccountAddress<C>): Promise<string> {
-    // NOTE: transceiver type does not exist for versions <= 3.x.x so we hardcode
+    // NOTE: transceiver type does not exist for versions < 3.x.x so we hardcode
     const [major, , ,] = parseVersion(this.version);
-    if (major <= 3) {
+    if (major < 3) {
       return "wormhole";
     }
 
@@ -318,7 +318,7 @@ export class SolanaNttWormholeTransceiver<
         },
         // NOTE: baked-in transceiver case is handled separately
         // due to tx size error when LUT is not configured
-        ...(major <= 3 && {
+        ...(major >= 3 && {
           manager: this.manager.program.programId,
           outboxItemSigner: this.pdas.outboxItemSigner(),
         }),
