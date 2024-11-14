@@ -1,10 +1,25 @@
-Ntt TS SDK
-----------
+# NTT TypeScript SDK
 
-# Building
+The NTT TypeScript SDK is is a collection of packages that provide a simple interface for interacting with NTT contracts. The `@wormhole-foundation/sdk-route-ntt` package provides a Wormhole SDK `Route` for NTT, meant to be used with the [Router](https://github.com/wormhole-foundation/connect-sdk/blob/main/examples/src/router.ts) in the Wormhole SDK.
+
+## Building
 
 From this directory, install package dependencies and build contract dependencies
-```
+
+```bash
 npm install
 npm run build:deps
-``` 
+```
+
+## Installation
+
+```bash
+npm install @wormhole-foundation/sdk-definitions-ntt
+npm install @wormhole-foundation/sdk-evm-ntt
+npm install @wormhole-foundation/sdk-solana-ntt
+npm install @wormhole-foundation/sdk-route-ntt
+```
+
+## Usage
+
+See [here](sdk/examples/src/route.ts) for an example of how to use this Route.
