@@ -473,33 +473,6 @@ describe("example-native-token-transfers", () => {
         );
         expect(transceiverType).toBe("wormhole");
       });
-
-      test("It initializes using `emitterAccount` as transceiver address", async function () {
-        const overrideEmitter: (typeof overrides)["Solana"] = JSON.parse(
-          JSON.stringify(overrides["Solana"])
-        );
-        overrideEmitter.transceiver.wormhole = NTT.transceiverPdas(NTT_ADDRESS)
-          .emitterAccount()
-          .toBase58();
-
-        const ntt = new SolanaNtt("Devnet", "Solana", connection, {
-          ...ctx.config.contracts,
-          ...{ ntt: overrideEmitter },
-        });
-        expect(ntt).toBeTruthy();
-      });
-
-      test("It gets the correct transceiver type", async function () {
-        const ntt = new SolanaNtt("Devnet", "Solana", connection, {
-          ...ctx.config.contracts,
-          ...{ ntt: overrides["Solana"] },
-        });
-        const whTransceiver = await ntt.getWormholeTransceiver();
-        const transceiverType = await whTransceiver!.getTransceiverType(
-          new SolanaAddress(payer.publicKey.toBase58())
-        );
-        expect(transceiverType).toBe("wormhole");
-      });
     });
   });
 });
