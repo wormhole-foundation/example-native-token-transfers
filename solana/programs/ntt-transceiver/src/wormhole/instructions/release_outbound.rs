@@ -77,7 +77,7 @@ impl<'info> ReleaseOutbound<'info> {
                     transceiver: self.transceiver.to_account_info(),
                 },
                 // signer seeds
-                &[&[OUTBOX_ITEM_SIGNER_SEED], &[&[bump_seed]]],
+                &[&[OUTBOX_ITEM_SIGNER_SEED, &[bump_seed]]],
             ),
         )?;
         Ok(result.get())
