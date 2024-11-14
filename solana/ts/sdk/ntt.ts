@@ -43,12 +43,13 @@ import {
 } from "@wormhole-foundation/sdk-solana-core";
 import BN from "bn.js";
 import {
-  type NttTransceiver as NttTransceiverIdlType,
-  IDL as NttTransceiverIdl,
-} from "../idl/3_0_0/ts/ntt_transceiver.js";
+  IdlVersion,
+  NttBindings,
+  getNttProgram,
+  getTransceiverProgram,
+} from "../lib/bindings.js";
 import { NTT, NttQuoter, WEI_PER_GWEI } from "../lib/index.js";
-
-import { IdlVersion, NttBindings, getNttProgram } from "../lib/bindings.js";
+import { parseVersion } from "../lib/utils.js";
 
 export class SolanaNttWormholeTransceiver<
   N extends Network,
@@ -62,7 +63,8 @@ export class SolanaNttWormholeTransceiver<
 
   constructor(
     readonly manager: SolanaNtt<N, C>,
-    readonly program: Program<NttTransceiverIdlType>
+    readonly program: Program<NttBindings.Transceiver<IdlVersion>>,
+    readonly version: string = "3.0.0"
   ) {
     this.programId = program.programId;
     this.pdas = NTT.transceiverPdas(program.programId);
@@ -119,6 +121,12 @@ export class SolanaNttWormholeTransceiver<
   }
 
   async getTransceiverType(payer: AccountAddress<C>): Promise<string> {
+    // NOTE: transceiver type does not exist for versions < 3.x.x so we hardcode
+    const [major, , ,] = parseVersion(this.version);
+    if (major < 3) {
+      return "wormhole";
+    }
+
     // the anchor library has a built-in method to read view functions. However,
     // it requires a signer, which would trigger a wallet prompt on the frontend.
     // Instead, we manually construct a versioned transaction and call the
@@ -283,6 +291,7 @@ export class SolanaNttWormholeTransceiver<
     outboxItem: PublicKey,
     revertOnDelay: boolean
   ): Promise<web3.TransactionInstruction> {
+    const [major, , ,] = parseVersion(this.version);
     const whAccs = utils.getWormholeDerivedAccounts(
       this.program.programId,
       this.manager.core.address
@@ -307,8 +316,12 @@ export class SolanaNttWormholeTransceiver<
           sequence: whAccs.wormholeSequence,
           program: this.manager.core.address,
         },
-        manager: this.manager.program.programId,
-        outboxItemSigner: this.pdas.outboxItemSigner(),
+        // NOTE: baked-in transceiver case is handled separately
+        // due to tx size error when LUT is not configured
+        ...(major >= 3 && {
+          manager: this.manager.program.programId,
+          outboxItemSigner: this.pdas.outboxItemSigner(),
+        }),
       })
       .instruction();
   }
@@ -327,7 +340,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
   addressLookupTable?: AddressLookupTableAccount;
 
   // 0 = Wormhole xcvr
-  transceivers: Program<NttTransceiverIdlType>[];
+  transceivers: Program<NttBindings.Transceiver<IdlVersion>>[];
 
   // NOTE: these are stored from the constructor, but are not used directly
   // (only in verifyAddresses)
@@ -339,7 +352,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     readonly chain: C,
     readonly connection: Connection,
     readonly contracts: Contracts & { ntt?: Ntt.Contracts },
-    readonly version: string = "2.0.0"
+    readonly version: string = "3.0.0"
   ) {
     if (!contracts.ntt) throw new Error("Ntt contracts not found");
 
@@ -373,11 +386,12 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         if (!PublicKey.isOnCurve(transceiverKey)) {
           const whTransceiver = new SolanaNttWormholeTransceiver(
             this,
-            new Program<NttTransceiverIdlType>(
-              NttTransceiverIdl,
+            getTransceiverProgram(
+              connection,
               contracts.ntt!.manager,
-              { connection }
-            )
+              version as IdlVersion
+            ),
+            version
           );
           if (!whTransceiver.pdas.emitterAccount().equals(transceiverKey)) {
             throw new Error(
@@ -389,10 +403,10 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
           this.transceivers.push(whTransceiver.program);
         } else {
           this.transceivers.push(
-            new Program<NttTransceiverIdlType>(
-              NttTransceiverIdl,
+            getTransceiverProgram(
+              connection,
               contracts.ntt!.transceiver[transceiverType]!,
-              { connection }
+              version as IdlVersion
             )
           );
         }
@@ -429,7 +443,11 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
     const transceiverProgram = this.transceivers[ix] ?? null;
     if (!transceiverProgram) return null;
     if (ix === 0)
-      return new SolanaNttWormholeTransceiver(this, transceiverProgram);
+      return new SolanaNttWormholeTransceiver(
+        this,
+        transceiverProgram,
+        this.version
+      );
     return null;
   }
 
@@ -601,7 +619,7 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
       );
     } catch (e) {
       // This might happen if e.g. the program is not deployed yet.
-      const version = "2.0.0";
+      const version = "3.0.0";
       return version;
     }
   }
