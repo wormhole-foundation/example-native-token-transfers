@@ -104,10 +104,21 @@ export class EvmNativeSigner<N extends Network, C extends EvmChains = EvmChains>
 
     const signed = [];
 
-    // default gas limit
-    const gasLimit = chain === 'ArbitrumSepolia'
-      ? 4_000_000n
-      : this.opts?.maxGasLimit ?? 500_000n;
+    let gasLimit: bigint;
+
+    // Specialized for Mantle and Arbitrum Sepolia
+    switch (chain) {
+      case 'Mantle':
+        gasLimit = 2600_000_000_000n;
+        break;
+      case 'ArbitrumSepolia':
+        gasLimit = 4_000_000n;
+        break;
+      default:
+        // default gas limit
+        gasLimit = this.opts?.maxGasLimit ?? 500_000n;
+        break;
+    }
 
 
     // TODO: DIFF STARTS HERE
