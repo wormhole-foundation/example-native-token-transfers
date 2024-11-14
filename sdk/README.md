@@ -22,4 +22,4 @@ npm install @wormhole-foundation/sdk-route-ntt
 
 ## Usage
 
-See [here](sdk/examples/src/route.ts) for an example of how to use this Route.
+See [here](examples/src/route.ts) for an example of how to use this Route.
