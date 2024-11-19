@@ -323,6 +323,11 @@ yargs(hideBin(process.argv))
                 type: "number",
                 default: 50000,
             })
+            .option("gas-limit", {
+                describe: "Gas limit for EVM deployment",
+                type: "string",
+                default: 500000,
+            })
             .option("signer-type", options.signerType)
             .option("skip-verify", options.skipVerify)
             .option("ver", options.version)
@@ -377,7 +382,7 @@ yargs(hideBin(process.argv))
             const ch = wh.getChain(chain);
 
             // TODO: make manager configurable
-            const deployedManager = await deploy(version, mode, ch, token, signerType, !argv["skip-verify"], argv["yes"], argv["payer"], argv["program-key"], argv["binary"], argv["solana-priority-fee"]);
+            const deployedManager = await deploy(version, mode, ch, token, signerType, !argv["skip-verify"], argv["gas-limit"], argv["yes"], argv["payer"], argv["program-key"], argv["binary"], argv["solana-priority-fee"]);
 
             const [config, _ctx, _ntt, decimals] =
                 await pullChainConfig(network, deployedManager, overrides);
@@ -1067,6 +1072,7 @@ async function deploy<N extends Network, C extends Chain>(
     token: string,
     signerType: SignerType,
     evmVerify: boolean,
+    evmGasLimit: string,
     yes: boolean,
     solanaPayer?: string,
     solanaProgramKeyPath?: string,
@@ -1080,7 +1086,7 @@ async function deploy<N extends Network, C extends Chain>(
     const worktree = version ? createWorkTree(platform, version) : ".";
     switch (platform) {
         case "Evm":
-            return await deployEvm(worktree, mode, ch, token, signerType, evmVerify);
+            return await deployEvm(worktree, mode, ch, token, signerType, evmVerify, evmGasLimit);
         case "Solana":
             if (solanaPayer === undefined || !fs.existsSync(solanaPayer)) {
                 console.error("Payer not found. Specify with --payer");
@@ -1100,6 +1106,7 @@ async function deployEvm<N extends Network, C extends Chain>(
     token: string,
     signerType: SignerType,
     verify: boolean,
+    gasLimit: string
 ): Promise<ChainAddress<C>> {
     ensureNttRoot(pwd);
 
@@ -1123,7 +1130,7 @@ async function deployEvm<N extends Network, C extends Chain>(
     const decimals: number = await tokenContract.decimals();
 
     // TODO: should actually make these ENV variables.
-    const sig = "run(address,address,address,address,uint8,uint8)";
+    const sig = "run(address,address,address,address,uint8,uint8,uint256)";
     const modeUint = mode === "locking" ? 0 : 1;
     const signer = await getSigner(ch, signerType);
     const signerArgs = forgeSignerArgs(signer.source);
@@ -1153,7 +1160,7 @@ async function deployEvm<N extends Network, C extends Chain>(
 forge script --via-ir script/DeployWormholeNtt.s.sol \
 --rpc-url ${rpc} \
 ${simulateArg} \
---sig "${sig}" ${wormhole} ${token} ${relayer} ${specialRelayer} ${decimals} ${modeUint} \
+--sig "${sig}" ${wormhole} ${token} ${relayer} ${specialRelayer} ${decimals} ${modeUint} ${gasLimit} \
 --broadcast ${verifyArgs.join(' ')} ${signerArgs} 2>&1 | tee last-run.stdout`, {
                     cwd: `${pwd}/evm`,
                     encoding: 'utf8',

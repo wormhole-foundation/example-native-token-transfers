@@ -20,7 +20,8 @@ contract DeployWormholeNtt is Script, DeployWormholeNttBase {
         address wormholeRelayer,
         address specialRelayer,
         uint8 decimals,
-        IManagerBase.Mode mode
+        IManagerBase.Mode mode,
+        uint256 gasLimit
     ) public {
         vm.startBroadcast();
 
@@ -73,7 +74,7 @@ contract DeployWormholeNtt is Script, DeployWormholeNttBase {
             wormholeRelayerAddr: wormholeRelayer,
             specialRelayerAddr: specialRelayer,
             consistencyLevel: 202,
-            gasLimit: 500000,
+            gasLimit: gasLimit,
             // the trimming will trim this number to uint64.max
             outboundLimit: uint256(type(uint64).max) * scale
         });
