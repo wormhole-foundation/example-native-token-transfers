@@ -1,7 +1,6 @@
 import {
   CustomConversion,
   Layout,
-  LayoutItem,
   LayoutToType,
 } from "@wormhole-foundation/sdk-base";
 import { layoutItems } from "@wormhole-foundation/sdk-definitions";
@@ -47,7 +46,7 @@ const optionalAdditionalPayloadItem = {
       return new Uint8Array();
     },
   } satisfies CustomConversion<Uint8Array, Uint8Array>,
-} as const satisfies LayoutItem;
+} as const satisfies Layout;
 
 export type NativeTokenTransfer = LayoutToType<
   typeof nativeTokenTransferLayout
