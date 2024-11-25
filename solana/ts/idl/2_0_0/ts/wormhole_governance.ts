@@ -15,7 +15,7 @@ export type WormholeGovernance = {
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "governed program."
+            "governed program. This account is validated by Wormhole, not this program."
           ]
         },
         {
@@ -91,7 +91,7 @@ export const IDL: WormholeGovernance = {
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "governed program."
+            "governed program. This account is validated by Wormhole, not this program."
           ]
         },
         {
