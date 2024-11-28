@@ -122,7 +122,8 @@ export class NttAutomaticRoute<N extends Network>
     );
 
     const parsedAmount = amount.parse(params.amount, request.source.decimals);
-    const transferAmount = NttRoute.getTransferAmount(
+    // The trimmedAmount may differ from the parsedAmount if the parsedAmount includes dust
+    const trimmedAmount = NttRoute.getTrimmedAmount(
       parsedAmount,
       request.destination.decimals
     );
@@ -130,7 +131,7 @@ export class NttAutomaticRoute<N extends Network>
     const validatedParams: Vp = {
       amount: params.amount,
       normalizedParams: {
-        amount: transferAmount,
+        amount: trimmedAmount,
         sourceContracts: NttRoute.resolveNttContracts(
           this.staticConfig,
           request.source.id

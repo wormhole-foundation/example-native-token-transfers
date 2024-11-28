@@ -215,7 +215,7 @@ export namespace NttRoute {
     return amount > threshold;
   }
 
-  export function getTransferAmount(
+  export function getTrimmedAmount(
     amt: amount.Amount,
     dstTokenDecimals: number
   ): amount.Amount {
