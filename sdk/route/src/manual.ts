@@ -104,7 +104,7 @@ export class NttManualRoute<N extends Network>
 
     const parsedAmount = amount.parse(params.amount, request.source.decimals);
     // The trimmedAmount may differ from the parsedAmount if the parsedAmount includes dust
-    const trimmedAmount = NttRoute.getTrimmedAmount(
+    const trimmedAmount = NttRoute.trimAmount(
       parsedAmount,
       request.destination.decimals
     );
