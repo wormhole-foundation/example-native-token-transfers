@@ -2,9 +2,9 @@ load('ext://namespace', 'namespace_create', 'namespace_inject')
 load('ext://git_resource', 'git_checkout')
 
 git_checkout('https://github.com/wormhole-foundation/wormhole.git#main', '.wormhole/', unsafe_mode=True)
-local(['sed','-i','/{chainId: vaa.ChainIDEthereum, addr: "000000000000000000000000855FA758c77D68a04990E992aA4dcdeF899F654A"},/i {chainId: vaa.ChainIDSolana, addr: "8bf0b547c96edc5c1d512ca25c5c1d1812a180438a0046e511d1fb61561d5cdf"},{chainId: vaa.ChainIDSolana, addr: "0a490691c21334ca173d9ce386e2a86774ce173f351db10d5d0cccc5c4875376"},{chainId: vaa.ChainIDEthereum, addr: "0000000000000000000000006f84742680311cef5ba42bc10a71a4708b4561d1"},{chainId: vaa.ChainIDEthereum, addr: "0000000000000000000000009ba423008e530c4d464da15f0c9652942216f019"},{chainId: vaa.ChainIDBSC, addr: "0000000000000000000000006f84742680311cef5ba42bc10a71a4708b4561d1"},{chainId: vaa.ChainIDBSC, addr: "000000000000000000000000baac7efcddde498b0b791eda92d43b20f5cd8ff6"},', '.wormhole/node/pkg/accountant/ntt_config.go'])
+local(['sed','-i.bak','s/{chainId: vaa.ChainIDEthereum, addr: "000000000000000000000000855FA758c77D68a04990E992aA4dcdeF899F654A"},/{chainId: vaa.ChainIDEthereum, addr: "000000000000000000000000855FA758c77D68a04990E992aA4dcdeF899F654A"},{chainId: vaa.ChainIDSolana, addr: "8bf0b547c96edc5c1d512ca25c5c1d1812a180438a0046e511d1fb61561d5cdf"},{chainId: vaa.ChainIDSolana, addr: "0a490691c21334ca173d9ce386e2a86774ce173f351db10d5d0cccc5c4875376"},{chainId: vaa.ChainIDEthereum, addr: "0000000000000000000000006f84742680311cef5ba42bc10a71a4708b4561d1"},{chainId: vaa.ChainIDEthereum, addr: "0000000000000000000000009ba423008e530c4d464da15f0c9652942216f019"},{chainId: vaa.ChainIDBSC, addr: "0000000000000000000000006f84742680311cef5ba42bc10a71a4708b4561d1"},{chainId: vaa.ChainIDBSC, addr: "000000000000000000000000baac7efcddde498b0b791eda92d43b20f5cd8ff6"},/g', '.wormhole/node/pkg/accountant/ntt_config.go'])
 
-load(".wormhole/Tiltfile", "namespace", "k8s_yaml_with_ns")
+load(".wormhole/Tiltfile", "namespace", "k8s_yaml_with_ns", "m1")
 
 # Solana deploy
 docker_build(
@@ -13,6 +13,15 @@ docker_build(
     only = ["./sdk", "./solana"],
     ignore=["./sdk/__tests__", "./sdk/Dockerfile", "./sdk/ci.yaml", "./sdk/**/dist", "./sdk/node_modules", "./sdk/**/node_modules"],
     dockerfile = "./solana/Dockerfile",
+)
+build_args = {}
+if m1:
+    build_args = {"BASE_IMAGE": "ghcr.io/wormholelabs-xyz/solana-test-validator-m1:1.17.29@sha256:c5a43c0762f2dab4873a9e632a389029b6d5f706be7dfb89a42a66cc65a3dd24"}
+docker_build(
+    ref = "solana-test-validator",
+    context = "solana",
+    dockerfile = "solana/Dockerfile.test-validator",
+    build_args = build_args
 )
 k8s_yaml_with_ns("./solana/solana-devnet.yaml")
 k8s_resource(
