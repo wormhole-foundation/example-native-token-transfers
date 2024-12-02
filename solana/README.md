@@ -1,6 +1,6 @@
 # Solana
 
-## Prequisities
+## Prerequisites
 
 Ensure that you are using the correct version of the Solana and Anchor CLI tools by consulting `Anchor.toml`.
 
