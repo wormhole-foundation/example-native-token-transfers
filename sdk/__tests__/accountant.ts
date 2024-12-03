@@ -10,23 +10,37 @@ export const ZERO_FEE = {
 };
 
 // cache the client and signer
-let client: Awaited<ReturnType<typeof getWormchainSigningClient>>;
-let signer: string;
+let clientAndSigner: {
+  [privateKey: string]: {
+    client: Awaited<ReturnType<typeof getWormchainSigningClient>>;
+    signer: string;
+  };
+} = {};
 
-const privateKey =
-  "quality vacuum heart guard buzz spike sight swarm shove special gym robust assume sudden deposit grid alcohol choice devote leader tilt noodle tide penalty";
+async function getClientAndSigner(privateKey: string) {
+  return (
+    clientAndSigner[privateKey] ||
+    (await (async () => {
+      const wallet = await getWallet(privateKey);
+      const client = await getWormchainSigningClient(url, wallet);
+      const signers = await wallet.getAccounts();
+      const signer = signers[0]!.address;
+      const ret = { client, signer };
+      clientAndSigner[privateKey] = ret;
+      return ret;
+    })())
+  );
+}
+
 const url = process.env["CI"]
   ? "http://wormchain:26657"
   : "http://localhost:26659";
 
-export async function submitAccountantVAAs(vaas: Uint8Array[]) {
-  if (!signer) {
-    // NttAccountantTest = wormhole18s5lynnmx37hq4wlrw9gdn68sg2uxp5rwf5k3u
-    const wallet = await getWallet(privateKey);
-    client = await getWormchainSigningClient(url, wallet);
-    const signers = await wallet.getAccounts();
-    signer = signers[0]!.address;
-  }
+export async function submitAccountantVAAs(
+  vaas: Uint8Array[],
+  privateKey: string
+) {
+  const { client, signer } = await getClientAndSigner(privateKey);
   const msg = client.wasm.msgExecuteContract({
     sender: signer,
     contract:
@@ -48,4 +62,28 @@ export async function submitAccountantVAAs(vaas: Uint8Array[]) {
     throw new Error(`Bad result: ${result.rawLog}`);
   }
   console.log(`Accountant tx submitted: ${result.transactionHash}`);
+}
+
+export async function registerRelayers(privateKey: string) {
+  try {
+    await submitAccountantVAAs(
+      [
+        new Uint8Array(
+          Buffer.from(
+            "01000000000100a4f34c530ff196c060ff349f2bf7bcb16865771a7165ca84fb5e263f148a01b03592b9af46a410a3760f39097d7380e4e72b6e1da4fa25c2d7b2d00f102d0cae0100000000000000000001000000000000000000000000000000000000000000000000000000000000000400000000001ce9cf010000000000000000000000000000000000576f726d686f6c6552656c617965720100000002000000000000000000000000cc680d088586c09c3e0e099a676fa4b6e42467b4",
+            "hex"
+          )
+        ),
+        new Uint8Array(
+          Buffer.from(
+            "010000000001000fd839cfdbea0f43a35dbb8cc0219b55cd5ec9f59b7e4a7183dbeebd522f7c673c866a218bfa108d8c7606acb5fc6b94a7a4c3be06f10836c242afecdb80da6e00000000000000000000010000000000000000000000000000000000000000000000000000000000000004000000000445fb0b010000000000000000000000000000000000576f726d686f6c6552656c617965720100000004000000000000000000000000cc680d088586c09c3e0e099a676fa4b6e42467b4",
+            "hex"
+          )
+        ),
+      ],
+      privateKey
+    );
+  } catch (e) {
+    console.log(e);
+  }
 }
