@@ -19,7 +19,7 @@ const url = process.env["CI"]
   ? "http://wormchain:26657"
   : "http://localhost:26659";
 
-export async function submitAccountantVAA(vaa: Uint8Array) {
+export async function submitAccountantVAAs(vaas: Uint8Array[]) {
   if (!signer) {
     // NttAccountantTest = wormhole18s5lynnmx37hq4wlrw9gdn68sg2uxp5rwf5k3u
     const wallet = await getWallet(privateKey);
@@ -34,7 +34,7 @@ export async function submitAccountantVAA(vaa: Uint8Array) {
     msg: encoding.bytes.encode(
       JSON.stringify({
         submit_vaas: {
-          vaas: [encoding.b64.encode(vaa)],
+          vaas: vaas.map((vaa) => encoding.b64.encode(vaa)),
         },
       })
     ),
@@ -42,7 +42,7 @@ export async function submitAccountantVAA(vaa: Uint8Array) {
   });
   const result = await client.signAndBroadcast(signer, [msg], {
     ...ZERO_FEE,
-    gas: "10000000",
+    gas: (BigInt("10000000") * BigInt(vaas.length)).toString(),
   });
   if (result.code !== 0) {
     throw new Error(`Bad result: ${result.rawLog}`);

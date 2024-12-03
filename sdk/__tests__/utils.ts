@@ -34,12 +34,12 @@ import { WormholeTransceiver__factory } from "../../evm/ts/ethers-ci-contracts/f
 
 import solanaTiltKey from "./solana-tilt.json"; // from https://github.com/wormhole-foundation/wormhole/blob/main/solana/keys/solana-devnet.json
 
-import { Ntt } from "../definitions/src/index.js";
 import "../../evm/ts/src/index.js";
 import "../../solana/ts/sdk/index.js";
 import { NTT } from "../../solana/ts/lib/index.js";
 import { SolanaNtt } from "../../solana/ts/sdk/index.js";
-import { submitAccountantVAA } from "./accountant.js";
+import { Ntt } from "../definitions/src/index.js";
+import { submitAccountantVAAs } from "./accountant.js";
 
 // Note: Currently, in order for this to run, the evm bindings with extra contracts must be build
 // To do that, at the root, run `npm run generate:test`
@@ -134,7 +134,7 @@ export async function link(chainInfos: Ctx[]) {
   };
 
   const vaa = await wh.getVaa(msgId, "Ntt:TransceiverInfo");
-  await submitAccountantVAA(serialize(vaa!));
+  const vaas: Uint8Array[] = [serialize(vaa!)];
 
   // [target, peer, vaa]
   const registrations: [string, string, VAA<"Ntt:TransceiverRegistration">][] =
@@ -164,47 +164,50 @@ export async function link(chainInfos: Ctx[]) {
     }
   }
 
-  // Submit Hub to Spoke registrations
+  // Push Hub to Spoke registrations
   const hubToSpokeRegistrations = registrations.filter(
     ([_, peer]) => peer === hubChain
   );
   for (const [, , vaa] of hubToSpokeRegistrations) {
     console.log(
-      "Submitting hub to spoke registrations: ",
+      "Pushing hub to spoke registrations: ",
       vaa.emitterChain,
       vaa.payload.chain,
       vaa.payload.transceiver.toString()
     );
-    await submitAccountantVAA(serialize(vaa));
+    vaas.push(serialize(vaa));
   }
 
-  // Submit Spoke to Hub registrations
+  // Push Spoke to Hub registrations
   const spokeToHubRegistrations = registrations.filter(
     ([target, _]) => target === hubChain
   );
   for (const [, , vaa] of spokeToHubRegistrations) {
     console.log(
-      "Submitting spoke to hub registrations: ",
+      "Pushing spoke to hub registrations: ",
       vaa.emitterChain,
       vaa.payload.chain,
       vaa.payload.transceiver.toString()
     );
-    await submitAccountantVAA(serialize(vaa));
+    vaas.push(serialize(vaa));
   }
 
-  // Submit all other registrations
+  // Push all other registrations
   const spokeToSpokeRegistrations = registrations.filter(
     ([target, peer]) => target !== hubChain && peer !== hubChain
   );
   for (const [, , vaa] of spokeToSpokeRegistrations) {
     console.log(
-      "Submitting spoke to spoke registrations: ",
+      "Pushing spoke to spoke registrations: ",
       vaa.emitterChain,
       vaa.payload.chain,
       vaa.payload.transceiver.toString()
     );
-    await submitAccountantVAA(serialize(vaa));
+    vaas.push(serialize(vaa));
   }
+
+  // Submit all registrations at once
+  await submitAccountantVAAs(vaas);
 }
 
 export async function transferWithChecks(sourceCtx: Ctx, destinationCtx: Ctx) {
