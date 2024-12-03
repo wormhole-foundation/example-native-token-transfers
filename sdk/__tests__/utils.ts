@@ -140,29 +140,34 @@ export async function link(chainInfos: Ctx[]) {
   const registrations: [string, string, VAA<"Ntt:TransceiverRegistration">][] =
     [];
 
-  for (const targetInfo of chainInfos) {
-    const toRegister = chainInfos.filter(
-      (peerInfo) => peerInfo.context.chain !== targetInfo.context.chain
-    );
+  // register each chain in parallel
+  await Promise.all(
+    chainInfos.map((targetInfo) =>
+      (async () => {
+        const toRegister = chainInfos.filter(
+          (peerInfo) => peerInfo.context.chain !== targetInfo.context.chain
+        );
 
-    console.log(
-      "Registering peers for ",
-      targetInfo.context.chain,
-      ": ",
-      toRegister.map((x) => x.context.chain)
-    );
+        console.log(
+          "Registering peers for ",
+          targetInfo.context.chain,
+          ": ",
+          toRegister.map((x) => x.context.chain)
+        );
 
-    for (const peerInfo of toRegister) {
-      const vaa = await setupPeer(targetInfo, peerInfo);
-      if (!vaa) throw new Error("No VAA found");
-      // Add to registrations by PEER chain so we can register hub first
-      registrations.push([
-        targetInfo.context.chain,
-        peerInfo.context.chain,
-        vaa,
-      ]);
-    }
-  }
+        for (const peerInfo of toRegister) {
+          const vaa = await setupPeer(targetInfo, peerInfo);
+          if (!vaa) throw new Error("No VAA found");
+          // Add to registrations by PEER chain so we can register hub first
+          registrations.push([
+            targetInfo.context.chain,
+            peerInfo.context.chain,
+            vaa,
+          ]);
+        }
+      })()
+    )
+  );
 
   // Push Hub to Spoke registrations
   const hubToSpokeRegistrations = registrations.filter(
