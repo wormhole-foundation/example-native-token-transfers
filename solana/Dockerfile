@@ -30,12 +30,7 @@ RUN --mount=type=cache,target=/opt/solana/deps/target,id=build_anchor_ntt_target
 
 RUN cp ./target/sbf-solana-solana/release/example_native_token_transfers.so /opt/solana/deps/example_native_token_transfers_2.so
 
-COPY --from=solana-contract /opt/solana/deps/bridge.so /opt/solana/deps/bridge.so
-COPY --from=solana-contract /opt/solana/deps/token_bridge.so /opt/solana/deps/token_bridge.so
-COPY --from=solana-contract /opt/solana/deps/nft_bridge.so /opt/solana/deps/nft_bridge.so
-COPY --from=solana-contract /opt/solana/deps/cpi_poster.so /opt/solana/deps/cpi_poster.so
-COPY --from=solana-contract /opt/solana/deps/mpl_token_metadata.so /opt/solana/deps/mpl_token_metadata.so
-COPY --from=solana-contract /opt/solana/deps/wormhole_migration.so /opt/solana/deps/wormhole_migration.so
+COPY solana/tilt /opt/solana/deps
 
 COPY sdk ../sdk
 COPY solana/ts ts 
