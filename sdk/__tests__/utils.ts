@@ -2,6 +2,7 @@ import { web3 } from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
 import { Connection, PublicKey } from "@solana/web3.js";
 import {
+  Chain,
   ChainAddress,
   ChainContext,
   NativeSigner,
@@ -32,8 +33,6 @@ import { TransceiverStructs__factory } from "../../evm/ts/ethers-ci-contracts/fa
 import { TrimmedAmountLib__factory } from "../../evm/ts/ethers-ci-contracts/factories/TrimmedAmount.sol/TrimmedAmountLib__factory.js";
 import { WormholeTransceiver__factory } from "../../evm/ts/ethers-ci-contracts/factories/WormholeTransceiver__factory.js";
 
-import solanaTiltKey from "./solana-tilt.json"; // from https://github.com/wormhole-foundation/wormhole/blob/main/solana/keys/solana-devnet.json
-
 import "../../evm/ts/src/index.js";
 import "../../solana/ts/sdk/index.js";
 import { NTT } from "../../solana/ts/lib/index.js";
@@ -45,13 +44,6 @@ import { submitAccountantVAAs } from "./accountant.js";
 // To do that, at the root, run `npm run generate:test`
 
 export const NETWORK: "Devnet" = "Devnet";
-
-const ETH_PRIVATE_KEY =
-  "0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"; // Ganache default private key
-
-const SOL_PRIVATE_KEY = web3.Keypair.fromSecretKey(
-  new Uint8Array(solanaTiltKey)
-);
 
 type NativeSdkSigner<P extends Platform> = P extends "Evm"
   ? ethers.Wallet
@@ -101,9 +93,12 @@ export const wh = new Wormhole(NETWORK, [evm.Platform, solana.Platform], {
       }),
 });
 
-export async function deploy(_ctx: StartingCtx): Promise<Ctx> {
+export async function deploy(
+  _ctx: StartingCtx,
+  getNativeSigner: (ctx: Partial<Ctx>) => any
+): Promise<Ctx> {
   const platform = chainToPlatform(_ctx.context!.chain);
-  const ctx = { ..._ctx, signers: await getSigners(_ctx) };
+  const ctx = { ..._ctx, signers: await getSigners(_ctx, getNativeSigner) };
   switch (platform) {
     case "Evm":
       return deployEvm(ctx);
@@ -116,7 +111,7 @@ export async function deploy(_ctx: StartingCtx): Promise<Ctx> {
   }
 }
 
-export async function link(chainInfos: Ctx[]) {
+export async function link(chainInfos: Ctx[], accountantPrivateKey: string) {
   console.log("\nStarting linking process");
   console.log("========================");
 
@@ -212,7 +207,7 @@ export async function link(chainInfos: Ctx[]) {
   }
 
   // Submit all registrations at once
-  await submitAccountantVAAs(vaas);
+  await submitAccountantVAAs(vaas, accountantPrivateKey);
 }
 
 export async function transferWithChecks(sourceCtx: Ctx, destinationCtx: Ctx) {
@@ -328,19 +323,10 @@ async function getNtt(
   return ctx.context.getProtocol("Ntt", { ntt: ctx.contracts });
 }
 
-function getNativeSigner(ctx: Partial<Ctx>): any {
-  const platform = chainToPlatform(ctx.context!.chain);
-  switch (platform) {
-    case "Evm":
-      return ETH_PRIVATE_KEY;
-    case "Solana":
-      return SOL_PRIVATE_KEY;
-    default:
-      throw "Unsupported platform " + platform + " (add it to getNativeSigner)";
-  }
-}
-
-async function getSigners(ctx: Partial<Ctx>): Promise<Signers> {
+async function getSigners(
+  ctx: Partial<Ctx>,
+  getNativeSigner: (ctx: Partial<Ctx>) => any
+): Promise<Signers> {
   const platform = chainToPlatform(ctx.context!.chain);
   let nativeSigner = getNativeSigner(ctx);
   const rpc = await ctx.context?.getRpc();
@@ -374,19 +360,19 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
   console.log("Deploying transceiverStructs");
   const transceiverStructsFactory = new TransceiverStructs__factory(wallet);
   const transceiverStructsContract = await transceiverStructsFactory.deploy();
-  await transceiverStructsContract.waitForDeployment();
+  await transceiverStructsContract.deploymentTransaction()?.wait(1);
 
   console.log("Deploying trimmed amount");
   const trimmedAmountFactory = new TrimmedAmountLib__factory(wallet);
   const trimmedAmountContract = await trimmedAmountFactory.deploy();
-  await trimmedAmountContract.waitForDeployment();
+  await trimmedAmountContract.deploymentTransaction()?.wait(1);
 
   console.log("Deploying dummy token");
   // Deploy the NTT token
   const NTTAddress = await new (ctx.mode === "locking"
     ? DummyToken__factory
     : DummyTokenMintAndBurn__factory)(wallet).deploy();
-  await NTTAddress.waitForDeployment();
+  await NTTAddress.deploymentTransaction()?.wait(1);
 
   if (ctx.mode === "locking") {
     await tryAndWaitThrice(() =>
@@ -422,7 +408,7 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
     0, // Locking time
     true
   );
-  await managerAddress.waitForDeployment();
+  await managerAddress.deploymentTransaction()?.wait(1);
 
   console.log("Deploying manager proxy");
   const ERC1967ProxyFactory = new ERC1967Proxy__factory(wallet);
@@ -430,7 +416,7 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
     await managerAddress.getAddress(),
     "0x"
   );
-  await managerProxyAddress.waitForDeployment();
+  await managerProxyAddress.deploymentTransaction()?.wait(1);
 
   // After we've deployed the proxy AND the manager then connect to the proxy with the interface of the manager.
   const manager = NttManager__factory.connect(
@@ -452,16 +438,16 @@ async function deployEvm(ctx: Ctx): Promise<Ctx> {
     200, // Consistency level
     500000n // Gas limit
   );
-  await WormholeTransceiverAddress.waitForDeployment();
+  await WormholeTransceiverAddress.deploymentTransaction()?.wait(1);
 
-  // // Setup with the proxy
+  // Setup with the proxy
   console.log("Deploy transceiver proxy");
   const transceiverProxyFactory = new ERC1967Proxy__factory(wallet);
   const transceiverProxyDeployment = await transceiverProxyFactory.deploy(
     await WormholeTransceiverAddress.getAddress(),
     "0x"
   );
-  await transceiverProxyDeployment.waitForDeployment();
+  await transceiverProxyDeployment.deploymentTransaction()?.wait(1);
 
   const transceiverProxyAddress = await transceiverProxyDeployment.getAddress();
   const transceiver = WormholeTransceiver__factory.connect(
@@ -740,4 +726,48 @@ async function tryAndWaitThrice(
     }
   }
   return null;
+}
+
+export async function testHub(
+  source: Chain,
+  destinationA: Chain,
+  destinationB: Chain,
+  getNativeSigner: (ctx: Partial<Ctx>) => any,
+  accountantPrivateKey: string
+) {
+  // Get chain context objects
+  const hubChain = wh.getChain(source);
+
+  const spokeChainA = wh.getChain(destinationA);
+  const spokeChainB = wh.getChain(destinationB);
+
+  // Deploy contracts for hub chain
+  console.log("Deploying contracts");
+  const [hub, spokeA, spokeB] = await Promise.all([
+    deploy({ context: hubChain, mode: "locking" }, getNativeSigner),
+    deploy({ context: spokeChainA, mode: "burning" }, getNativeSigner),
+    deploy({ context: spokeChainB, mode: "burning" }, getNativeSigner),
+  ]);
+
+  console.log("Deployed: ", {
+    [hub.context.chain]: hub.contracts,
+    [spokeA.context.chain]: spokeA.contracts,
+    [spokeB.context.chain]: spokeB.contracts,
+  });
+
+  // Link contracts
+  console.log("Linking Peers");
+  await link([hub, spokeA, spokeB], accountantPrivateKey);
+
+  // Transfer tokens from hub to spoke and check balances
+  console.log("Transfer hub to spoke A");
+  await transferWithChecks(hub, spokeA);
+
+  // Transfer between spokes and check balances
+  console.log("Transfer spoke A to spoke B");
+  await transferWithChecks(spokeA, spokeB);
+
+  // Transfer back to hub and check balances
+  console.log("Transfer spoke B to hub");
+  await transferWithChecks(spokeB, hub);
 }
