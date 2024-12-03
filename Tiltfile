@@ -6,22 +6,6 @@ local(['sed','-i','/{chainId: vaa.ChainIDEthereum, addr: "0000000000000000000000
 
 load(".wormhole/Tiltfile", "namespace", "k8s_yaml_with_ns")
 
-# Copied from .wormhole/Tiltfile, as this setup will extend the `solana-contract` image in order to inject the .so at startup
-docker_build(
-    ref = "bridge-client",
-    context = ".wormhole/",
-    only = ["./proto", "./solana", "./clients"],
-    dockerfile = ".wormhole/solana/Dockerfile.client",
-    # Ignore target folders from local (non-container) development.
-    ignore = [".wormhole/solana/*/target"],
-)
-docker_build(
-    ref = "solana-contract",
-    context = ".wormhole/solana",
-    dockerfile = ".wormhole/solana/Dockerfile",
-    target = "builder",
-    build_args = {"BRIDGE_ADDRESS": "Bridge1p5gheXUvJ6jGWGeCsgPKgnE3YgdGKRVCMY9o"}
-)
 # Solana deploy
 docker_build(
     ref = "ntt-solana-contract",
