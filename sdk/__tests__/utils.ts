@@ -277,11 +277,7 @@ async function waitForRelay(
   dst: Ctx,
   retryTime: number = 2000
 ) {
-  console.log("Sleeping for 1 min to allow signing of VAA");
-  await new Promise((resolve) => setTimeout(resolve, 60 * 1000));
-
-  // long timeout because the relayer has consistency level set to 15
-  const vaa = await wh.getVaa(msgId, "Uint8Array", 2 * 60 * 1000);
+  const vaa = await wh.getVaa(msgId, "Uint8Array");
   const deliveryHash = keccak256(vaa!.hash);
 
   const wormholeRelayer = IWormholeRelayer__factory.connect(
