@@ -306,14 +306,14 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         bytes memory transceiverInstructions
     ) internal {
         _getOutboundQueueStorage()[sequence] = OutboundQueuedTransfer({
-            sourceChain: sourceChain,
             amount: amount,
             recipientChain: recipientChain,
             recipient: recipient,
             refundAddress: refundAddress,
             txTimestamp: uint64(block.timestamp),
             sender: senderAddress,
-            transceiverInstructions: transceiverInstructions
+            transceiverInstructions: transceiverInstructions,
+            sourceChain: sourceChain
         });
 
         emit OutboundTransferQueued(sequence);
@@ -326,10 +326,10 @@ abstract contract RateLimiter is IRateLimiter, IRateLimiterEvents {
         address recipient
     ) internal {
         _getInboundQueueStorage()[digest] = InboundQueuedTransfer({
-            sourceChain: sourceChain,
             amount: amount,
             recipient: recipient,
-            txTimestamp: uint64(block.timestamp)
+            txTimestamp: uint64(block.timestamp),
+            sourceChain: sourceChain
         });
 
         emit InboundTransferQueued(digest);

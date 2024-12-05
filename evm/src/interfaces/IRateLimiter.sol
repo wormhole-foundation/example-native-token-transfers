@@ -57,15 +57,14 @@ interface IRateLimiter {
 
     /// @notice Parameters for an outbound queued transfer.
     /// @dev
-    ///    - sourceChain: the chain of the sender.
     ///    - recipient: the recipient of the transfer.
     ///    - amount: the amount of the transfer, trimmed.
     ///    - txTimestamp: the timestamp of the transfer.
     ///    - recipientChain: the chain of the recipient.
     ///    - sender: the sender of the transfer.
     ///    - transceiverInstructions: additional instructions to be forwarded to the recipient chain.
+    ///    - sourceChain: the chain of the sender.
     struct OutboundQueuedTransfer {
-        uint16 sourceChain;
         bytes32 recipient;
         bytes32 refundAddress;
         TrimmedAmount amount;
@@ -73,19 +72,20 @@ interface IRateLimiter {
         uint16 recipientChain;
         address sender;
         bytes transceiverInstructions;
+        uint16 sourceChain;
     }
 
     /// @notice Parameters for an inbound queued transfer.
     /// @dev
-    ///   - sourceChain: the chain of the sender.
     ///   - amount: the amount of the transfer, trimmed.
     ///   - txTimestamp: the timestamp of the transfer.
     ///   - recipient: the recipient of the transfer.
+    ///   - sourceChain: the chain of the sender.
     struct InboundQueuedTransfer {
-        uint16 sourceChain;
         TrimmedAmount amount;
         uint64 txTimestamp;
         address recipient;
+        uint16 sourceChain;
     }
 
     /// @notice Returns the currently remaining outbound capacity allowed
