@@ -640,7 +640,8 @@ contract NttManager is INttManager, RateLimiter, ManagerBase {
         if (cancelled) {
             emit OutboundTransferCancelled(uint256(digest), recipient, untrimmedAmount);
         } else {
-            emit TransferRedeemed(sourceChain, digest);
+            emit TransferRedeemed(digest);
+            emit TransferRedeemed(sourceChain);
         }
 
         if (mode == Mode.LOCKING) {

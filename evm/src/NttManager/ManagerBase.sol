@@ -427,8 +427,9 @@ abstract contract ManagerBase is
         _setTransceiverAttestedToMessage(digest, _getTransceiverInfosStorage()[transceiver].index);
 
         emit MessageAttestedTo(
-            sourceChainId, digest, transceiver, _getTransceiverInfosStorage()[transceiver].index
+            digest, transceiver, _getTransceiverInfosStorage()[transceiver].index
         );
+        emit MessageAttestedTo(sourceChainId);
     }
 
     /// @dev Returns the bitmap of attestations from enabled transceivers for a given message.
