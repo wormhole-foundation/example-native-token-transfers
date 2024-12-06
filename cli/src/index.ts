@@ -472,6 +472,9 @@ yargs(hideBin(process.argv))
                 argv["binary"]
             );
 
+            // we sleep here to ensure the program has enough time to be deployed
+            // and we can fetch the version from the program itself
+            await new Promise((resolve) => setTimeout(resolve, 2000));
             // reinit the ntt object to get the new version
             // TODO: is there an easier way to do this?
             const { ntt: upgraded } = await nttFromManager(ch, chainConfig.manager);
@@ -1342,6 +1345,7 @@ async function deploySolana<N extends Network, C extends SolanaChains>(
 
     let binary: string;
 
+    // TODO: maybe this could be a flag?
     const skipDeploy = false;
 
     if (!skipDeploy) {
