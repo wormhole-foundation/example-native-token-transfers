@@ -1723,7 +1723,6 @@ async function pullChainConfig<N extends Network, C extends Chain>(
     const pauser = await ntt.getPauser();
 
     const version = getVersion(manager.chain, ntt);
-    console.log("PULLCHAINCONFIG VERSION:", version);
 
     const transceiverPauser = await ntt.getTransceiver(0).then((t) => t?.getPauser() ?? null);
 
