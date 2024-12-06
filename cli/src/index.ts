@@ -1839,7 +1839,6 @@ async function nttFromManager<N extends Network, C extends Chain>(
     const ntt = await ch.getProtocol("Ntt", {
         ntt: addresses
     });
-
     return { ntt, addresses };
 }
 
