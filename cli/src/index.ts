@@ -459,7 +459,7 @@ yargs(hideBin(process.argv))
                 { chain, address: toUniversal(chain, chainConfig.manager) },
                 overrides
             );
-            console.log("UPGRADE -> ntt:", JSON.stringify(ntt, null, 2))
+            console.log("UPGRADE -> before:", getVersion(chain, ntt));
 
             await upgrade(
                 currentVersion,
@@ -477,9 +477,6 @@ yargs(hideBin(process.argv))
             // TODO: is there an easier way to do this?
             const { ntt: upgraded } = await nttFromManager(ch, chainConfig.manager);
 
-            console.log("UPGRADE -> upgraded:", JSON.stringify(upgraded, null, 2));
-
-            console.log("UPGRADE -> CHAINCONFIG BEFORE:", chainConfig.version);
             chainConfig.version = getVersion(chain, upgraded)
             console.log("UPGRADE -> CHAINCONFIG AFTER:", chainConfig.version);
             fs.writeFileSync(path, JSON.stringify(deployments, null, 2));
