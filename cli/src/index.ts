@@ -459,6 +459,7 @@ yargs(hideBin(process.argv))
                 { chain, address: toUniversal(chain, chainConfig.manager) },
                 overrides
             );
+            console.log("UPGRADE -> ntt:", JSON.stringify(ntt, null, 2))
 
             await upgrade(
                 currentVersion,
@@ -475,6 +476,8 @@ yargs(hideBin(process.argv))
             // reinit the ntt object to get the new version
             // TODO: is there an easier way to do this?
             const { ntt: upgraded } = await nttFromManager(ch, chainConfig.manager);
+
+            console.log("UPGRADE -> upgraded:", JSON.stringify(upgraded, null, 2));
 
             console.log("UPGRADE -> CHAINCONFIG BEFORE:", chainConfig.version);
             chainConfig.version = getVersion(chain, upgraded)
