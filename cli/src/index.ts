@@ -1308,7 +1308,6 @@ async function deploySolana<N extends Network, C extends SolanaChains>(
             transceiver: { wormhole: emitter },
         }
     }) as SolanaNtt<N, C>;
-    console.log("DEPLOYDUMMY:", dummy.version);
 
     const ntt: SolanaNtt<N, C> = new SolanaNtt(
         dummy.network,
@@ -1317,7 +1316,6 @@ async function deploySolana<N extends Network, C extends SolanaChains>(
         dummy.contracts,
         version ?? undefined
     );
-    console.log("DEPLOYSOL:", ntt.version);
 
     // get the mint authority of 'token'
     const tokenMint = new PublicKey(token);
@@ -1831,13 +1829,20 @@ async function nttFromManager<N extends Network, C extends Chain>(
             transceiver: {},
         }
     });
+    console.log("NTTFROMMANAGER -> onlyMan:", getVersion(ch.chain, onlyManager));
     const diff = await onlyManager.verifyAddresses();
 
     const addresses: Partial<Ntt.Contracts> = { manager: nativeManagerAddress, ...diff };
 
+    if (diff) {
+        console.log("NTTFROMMANAGER -> addresses:", JSON.stringify(diff));
+    }
+
     const ntt = await ch.getProtocol("Ntt", {
         ntt: addresses
     });
+    console.log("NTTFROMMANAGER -> ntt:", getVersion(ch.chain, ntt));
+
     return { ntt, addresses };
 }
 
