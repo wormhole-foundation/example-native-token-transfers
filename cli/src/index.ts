@@ -472,9 +472,11 @@ yargs(hideBin(process.argv))
                 argv["binary"]
             );
 
+            // we sleep here to ensure the program has enough time to be deployed
+            // and we can fetch the version from the program itself
+            await new Promise((resolve) => setTimeout(resolve, 2000));
             // reinit the ntt object to get the new version
             // TODO: is there an easier way to do this?
-            await new Promise((resolve) => setTimeout(resolve, 2000));
             const { ntt: upgraded } = await nttFromManager(ch, chainConfig.manager);
 
             chainConfig.version = getVersion(chain, upgraded)
@@ -1343,6 +1345,7 @@ async function deploySolana<N extends Network, C extends SolanaChains>(
 
     let binary: string;
 
+    // TODO: maybe this could be a flag?
     const skipDeploy = false;
 
     if (!skipDeploy) {
@@ -1829,7 +1832,6 @@ async function nttFromManager<N extends Network, C extends Chain>(
             transceiver: {},
         }
     });
-    console.log("NTTFROMMANAGER -> onlyMan:", getVersion(ch.chain, onlyManager));
     const diff = await onlyManager.verifyAddresses();
 
     const addresses: Partial<Ntt.Contracts> = { manager: nativeManagerAddress, ...diff };
