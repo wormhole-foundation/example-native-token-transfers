@@ -474,10 +474,10 @@ yargs(hideBin(process.argv))
 
             // reinit the ntt object to get the new version
             // TODO: is there an easier way to do this?
+            await new Promise((resolve) => setTimeout(resolve, 2000));
             const { ntt: upgraded } = await nttFromManager(ch, chainConfig.manager);
 
             chainConfig.version = getVersion(chain, upgraded)
-            console.log("UPGRADE -> CHAINCONFIG AFTER:", chainConfig.version);
             fs.writeFileSync(path, JSON.stringify(deployments, null, 2));
 
             console.log(`Successfully upgraded ${chain} to version ${toVersion || 'local version'}`);
@@ -1834,14 +1834,9 @@ async function nttFromManager<N extends Network, C extends Chain>(
 
     const addresses: Partial<Ntt.Contracts> = { manager: nativeManagerAddress, ...diff };
 
-    if (diff) {
-        console.log("NTTFROMMANAGER -> addresses:", JSON.stringify(diff));
-    }
-
     const ntt = await ch.getProtocol("Ntt", {
         ntt: addresses
     });
-    console.log("NTTFROMMANAGER -> ntt:", getVersion(ch.chain, ntt));
 
     return { ntt, addresses };
 }
