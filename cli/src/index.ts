@@ -476,9 +476,9 @@ yargs(hideBin(process.argv))
             // TODO: is there an easier way to do this?
             const { ntt: upgraded } = await nttFromManager(ch, chainConfig.manager);
 
-            console.log("UPGRADE -> CHAINCONFIG BEFORE:", JSON.stringify(chainConfig));
+            console.log("UPGRADE -> CHAINCONFIG BEFORE:", chainConfig.version);
             chainConfig.version = getVersion(chain, upgraded)
-            console.log("UPGRADE -> CHAINCONFIG AFTER:", JSON.stringify(chainConfig));
+            console.log("UPGRADE -> CHAINCONFIG AFTER:", chainConfig.version);
             fs.writeFileSync(path, JSON.stringify(deployments, null, 2));
 
             console.log(`Successfully upgraded ${chain} to version ${toVersion || 'local version'}`);
@@ -1743,7 +1743,6 @@ async function pullChainConfig<N extends Network, C extends Chain>(
             inbound: {},
         },
     };
-    console.log("PULLCHAINCONFIG CONFIG:", JSON.stringify(config, null, 2));
     if (transceiverPauser) {
         config.transceivers.wormhole.pauser = transceiverPauser.toString();
     }
