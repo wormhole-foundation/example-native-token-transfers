@@ -618,8 +618,9 @@ export class SolanaNtt<N extends Network, C extends SolanaChains>
         sender ? new SolanaAddress(sender).unwrap() : undefined
       );
     } catch (e) {
+      console.log("NOT DEPLOYED!");
       // This might happen if e.g. the program is not deployed yet.
-      const version = "2.0.0";
+      const version = "3.0.0";
       return version;
     }
   }
