@@ -837,7 +837,7 @@
         {
           "name": "newAuthority",
           "isMut": false,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "pendingTokenAuthority",

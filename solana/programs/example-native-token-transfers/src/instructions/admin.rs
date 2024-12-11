@@ -183,7 +183,7 @@ pub struct SetTokenAuthority<'info> {
     /// CHECK: The constraints enforce this is valid mint authority
     pub token_authority: UncheckedAccount<'info>,
 
-    /// CHECK: This account will be the signer in the [claim_token_authority] instruction.
+    /// CHECK: The rent payer of the [PendingTokenAuthority] storing this account will be the signer in the [claim_token_authority] instruction.
     pub new_authority: UncheckedAccount<'info>,
 }
 
@@ -277,7 +277,8 @@ pub struct ClaimTokenAuthority<'info> {
             || new_authority.key() == token_authority.key()
         ) @ NTTError::InvalidPendingTokenAuthority
     )]
-    pub new_authority: Signer<'info>,
+    /// CHECK: constraint ensures that this is the correct address
+    pub new_authority: UncheckedAccount<'info>,
 
     #[account(
         mut,
