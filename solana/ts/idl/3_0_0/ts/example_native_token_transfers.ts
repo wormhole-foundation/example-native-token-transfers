@@ -837,7 +837,7 @@ export type ExampleNativeTokenTransfers = {
         {
           "name": "newAuthority",
           "isMut": false,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "pendingTokenAuthority",
@@ -3034,7 +3034,7 @@ export const IDL: ExampleNativeTokenTransfers = {
         {
           "name": "newAuthority",
           "isMut": false,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "pendingTokenAuthority",
