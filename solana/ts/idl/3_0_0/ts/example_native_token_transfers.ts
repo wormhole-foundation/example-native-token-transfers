@@ -720,6 +720,190 @@ export type ExampleNativeTokenTransfers = {
       "args": []
     },
     {
+      "name": "setTokenAuthority",
+      "accounts": [
+        {
+          "name": "common",
+          "accounts": [
+            {
+              "name": "config",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "owner",
+              "isMut": false,
+              "isSigner": true
+            },
+            {
+              "name": "mint",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "tokenAuthority",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "newAuthority",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "pendingTokenAuthority",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "setTokenAuthorityOneStepUnchecked",
+      "accounts": [
+        {
+          "name": "common",
+          "accounts": [
+            {
+              "name": "config",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "owner",
+              "isMut": false,
+              "isSigner": true
+            },
+            {
+              "name": "mint",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "tokenAuthority",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "newAuthority",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "revertTokenAuthority",
+      "accounts": [
+        {
+          "name": "config",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "mint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "pendingTokenAuthority",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claimTokenAuthority",
+      "accounts": [
+        {
+          "name": "common",
+          "accounts": [
+            {
+              "name": "config",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "payer",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "mint",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "tokenAuthority",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "pendingTokenAuthority",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "tokenProgram",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "systemProgram",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "newAuthority",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "setPaused",
       "accounts": [
         {
@@ -1377,6 +1561,26 @@ export type ExampleNativeTokenTransfers = {
       }
     },
     {
+      "name": "pendingTokenAuthority",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "pendingAuthority",
+            "type": "publicKey"
+          },
+          {
+            "name": "rentPayer",
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
       "name": "inboxItem",
       "type": {
         "kind": "struct",
@@ -2019,6 +2223,21 @@ export type ExampleNativeTokenTransfers = {
       "code": 6023,
       "name": "NoRegisteredTransceivers",
       "msg": "NoRegisteredTransceivers"
+    },
+    {
+      "code": 6024,
+      "name": "NotPaused",
+      "msg": "NotPaused"
+    },
+    {
+      "code": 6025,
+      "name": "InvalidPendingTokenAuthority",
+      "msg": "InvalidPendingTokenAuthority"
+    },
+    {
+      "code": 6026,
+      "name": "IncorrectRentPayer",
+      "msg": "IncorrectRentPayer"
     }
   ]
 }
@@ -2744,6 +2963,190 @@ export const IDL: ExampleNativeTokenTransfers = {
       "args": []
     },
     {
+      "name": "setTokenAuthority",
+      "accounts": [
+        {
+          "name": "common",
+          "accounts": [
+            {
+              "name": "config",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "owner",
+              "isMut": false,
+              "isSigner": true
+            },
+            {
+              "name": "mint",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "tokenAuthority",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "newAuthority",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "pendingTokenAuthority",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "setTokenAuthorityOneStepUnchecked",
+      "accounts": [
+        {
+          "name": "common",
+          "accounts": [
+            {
+              "name": "config",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "owner",
+              "isMut": false,
+              "isSigner": true
+            },
+            {
+              "name": "mint",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "tokenAuthority",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "newAuthority",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "revertTokenAuthority",
+      "accounts": [
+        {
+          "name": "config",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "mint",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenAuthority",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "pendingTokenAuthority",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claimTokenAuthority",
+      "accounts": [
+        {
+          "name": "common",
+          "accounts": [
+            {
+              "name": "config",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "payer",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "mint",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "tokenAuthority",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "pendingTokenAuthority",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "tokenProgram",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "systemProgram",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "newAuthority",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "setPaused",
       "accounts": [
         {
@@ -3401,6 +3804,26 @@ export const IDL: ExampleNativeTokenTransfers = {
       }
     },
     {
+      "name": "pendingTokenAuthority",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "pendingAuthority",
+            "type": "publicKey"
+          },
+          {
+            "name": "rentPayer",
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
       "name": "inboxItem",
       "type": {
         "kind": "struct",
@@ -4043,6 +4466,21 @@ export const IDL: ExampleNativeTokenTransfers = {
       "code": 6023,
       "name": "NoRegisteredTransceivers",
       "msg": "NoRegisteredTransceivers"
+    },
+    {
+      "code": 6024,
+      "name": "NotPaused",
+      "msg": "NotPaused"
+    },
+    {
+      "code": 6025,
+      "name": "InvalidPendingTokenAuthority",
+      "msg": "InvalidPendingTokenAuthority"
+    },
+    {
+      "code": 6026,
+      "name": "IncorrectRentPayer",
+      "msg": "IncorrectRentPayer"
     }
   ]
 }
