@@ -178,12 +178,12 @@ pub struct SetTokenAuthority<'info> {
     #[account(
         seeds = [crate::TOKEN_AUTHORITY_SEED],
         bump,
-        constraint = mint.mint_authority.unwrap() == token_authority.key() @ NTTError::InvalidMintAuthority
+        address = mint.mint_authority.unwrap() @ NTTError::InvalidMintAuthority
     )]
     /// CHECK: The constraints enforce this is valid mint authority
     pub token_authority: UncheckedAccount<'info>,
 
-    /// CHECK: The rent payer of the [PendingTokenAuthority] storing this account will be the signer in the [claim_token_authority] instruction.
+    /// CHECK: This account will be the signer in the [claim_token_authority] instruction.
     pub new_authority: UncheckedAccount<'info>,
 }
 
@@ -245,7 +245,7 @@ pub fn set_token_authority_one_step_unchecked(
 }
 
 #[derive(Accounts)]
-pub struct ClaimTokenAuthority<'info> {
+pub struct RevertTokenAuthority<'info> {
     #[account(
         constraint = config.paused @ NTTError::NotPaused,
     )]
@@ -255,7 +255,8 @@ pub struct ClaimTokenAuthority<'info> {
         mut,
         address = pending_token_authority.rent_payer @ NTTError::IncorrectRentPayer,
     )]
-    pub payer: Signer<'info>,
+    /// CHECK: the constraint enforces that this is the correct address
+    pub payer: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -272,15 +273,6 @@ pub struct ClaimTokenAuthority<'info> {
     pub token_authority: UncheckedAccount<'info>,
 
     #[account(
-        constraint = (
-            new_authority.key() == pending_token_authority.pending_authority
-            || new_authority.key() == token_authority.key()
-        ) @ NTTError::InvalidPendingTokenAuthority
-    )]
-    /// CHECK: constraint ensures that this is the correct address
-    pub new_authority: UncheckedAccount<'info>,
-
-    #[account(
         mut,
         seeds = [PendingTokenAuthority::SEED_PREFIX],
         bump = pending_token_authority.bump,
@@ -293,15 +285,32 @@ pub struct ClaimTokenAuthority<'info> {
     pub system_program: Program<'info, System>,
 }
 
+pub fn revert_token_authority(_ctx: Context<RevertTokenAuthority>) -> Result<()> {
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct ClaimTokenAuthority<'info> {
+    pub common: RevertTokenAuthority<'info>,
+
+    #[account(
+        address = common.pending_token_authority.pending_authority @ NTTError::InvalidPendingTokenAuthority
+    )]
+    pub new_authority: Signer<'info>,
+}
+
 pub fn claim_token_authority(ctx: Context<ClaimTokenAuthority>) -> Result<()> {
     token_interface::set_authority(
         CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.common.token_program.to_account_info(),
             token_interface::SetAuthority {
-                account_or_mint: ctx.accounts.mint.to_account_info(),
-                current_authority: ctx.accounts.token_authority.to_account_info(),
+                account_or_mint: ctx.accounts.common.mint.to_account_info(),
+                current_authority: ctx.accounts.common.token_authority.to_account_info(),
             },
-            &[&[crate::TOKEN_AUTHORITY_SEED, &[ctx.bumps.token_authority]]],
+            &[&[
+                crate::TOKEN_AUTHORITY_SEED,
+                &[ctx.bumps.common.token_authority],
+            ]],
         ),
         AuthorityType::MintTokens,
         Some(ctx.accounts.new_authority.key()),
