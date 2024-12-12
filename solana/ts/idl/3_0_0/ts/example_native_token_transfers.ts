@@ -812,7 +812,7 @@ export type ExampleNativeTokenTransfers = {
       "args": []
     },
     {
-      "name": "claimTokenAuthority",
+      "name": "revertTokenAuthority",
       "accounts": [
         {
           "name": "config",
@@ -822,7 +822,7 @@ export type ExampleNativeTokenTransfers = {
         {
           "name": "payer",
           "isMut": true,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "mint",
@@ -831,11 +831,6 @@ export type ExampleNativeTokenTransfers = {
         },
         {
           "name": "tokenAuthority",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "newAuthority",
           "isMut": false,
           "isSigner": false
         },
@@ -853,6 +848,57 @@ export type ExampleNativeTokenTransfers = {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claimTokenAuthority",
+      "accounts": [
+        {
+          "name": "common",
+          "accounts": [
+            {
+              "name": "config",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "payer",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "mint",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "tokenAuthority",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "pendingTokenAuthority",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "tokenProgram",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "systemProgram",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "newAuthority",
+          "isMut": false,
+          "isSigner": true
         }
       ],
       "args": []
@@ -3009,7 +3055,7 @@ export const IDL: ExampleNativeTokenTransfers = {
       "args": []
     },
     {
-      "name": "claimTokenAuthority",
+      "name": "revertTokenAuthority",
       "accounts": [
         {
           "name": "config",
@@ -3019,7 +3065,7 @@ export const IDL: ExampleNativeTokenTransfers = {
         {
           "name": "payer",
           "isMut": true,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "mint",
@@ -3028,11 +3074,6 @@ export const IDL: ExampleNativeTokenTransfers = {
         },
         {
           "name": "tokenAuthority",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
-          "name": "newAuthority",
           "isMut": false,
           "isSigner": false
         },
@@ -3050,6 +3091,57 @@ export const IDL: ExampleNativeTokenTransfers = {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claimTokenAuthority",
+      "accounts": [
+        {
+          "name": "common",
+          "accounts": [
+            {
+              "name": "config",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "payer",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "mint",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "tokenAuthority",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "pendingTokenAuthority",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "tokenProgram",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "systemProgram",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "newAuthority",
+          "isMut": false,
+          "isSigner": true
         }
       ],
       "args": []
