@@ -1389,7 +1389,8 @@ async function deploySolana<N extends Network, C extends SolanaChains>(
             "--buffer", `buffer.json`,
             binary,
             "--keypair", payer,
-            "-u", ch.config.rpc
+            "-u", ch.config.rpc,
+            "--commitment", "finalized"
         ];
 
         if (priorityFee !== undefined) {
