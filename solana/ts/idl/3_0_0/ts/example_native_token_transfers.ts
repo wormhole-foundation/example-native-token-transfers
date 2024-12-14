@@ -2188,6 +2188,11 @@ export type ExampleNativeTokenTransfers = {
       "code": 6023,
       "name": "NoRegisteredTransceivers",
       "msg": "NoRegisteredTransceivers"
+    },
+    {
+      "code": 6024,
+      "name": "InvalidMultisig",
+      "msg": "InvalidMultisig"
     }
   ]
 }
@@ -4381,6 +4386,11 @@ export const IDL: ExampleNativeTokenTransfers = {
       "code": 6023,
       "name": "NoRegisteredTransceivers",
       "msg": "NoRegisteredTransceivers"
+    },
+    {
+      "code": 6024,
+      "name": "InvalidMultisig",
+      "msg": "InvalidMultisig"
     }
   ]
 }
