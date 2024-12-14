@@ -192,12 +192,12 @@ pub struct SetTokenAuthorityChecked<'info> {
     pub common: SetTokenAuthority<'info>,
 
     #[account(mut)]
-    pub payer: Signer<'info>,
+    pub rent_payer: Signer<'info>,
 
     #[account(
         init_if_needed,
         space = 8 + PendingTokenAuthority::INIT_SPACE,
-        payer = payer,
+        payer = rent_payer,
         seeds = [PendingTokenAuthority::SEED_PREFIX],
         bump
      )]
@@ -212,7 +212,7 @@ pub fn set_token_authority(ctx: Context<SetTokenAuthorityChecked>) -> Result<()>
         .set_inner(PendingTokenAuthority {
             bump: ctx.bumps.pending_token_authority,
             pending_authority: ctx.accounts.common.new_authority.key(),
-            rent_payer: ctx.accounts.payer.key(),
+            rent_payer: ctx.accounts.rent_payer.key(),
         });
     Ok(())
 }
@@ -253,13 +253,6 @@ pub struct RevertTokenAuthority<'info> {
 
     #[account(
         mut,
-        address = pending_token_authority.rent_payer @ NTTError::IncorrectRentPayer,
-    )]
-    /// CHECK: the constraint enforces that this is the correct address
-    pub payer: UncheckedAccount<'info>,
-
-    #[account(
-        mut,
         address = config.mint,
     )]
     /// CHECK: the mint address matches the config
@@ -272,11 +265,16 @@ pub struct RevertTokenAuthority<'info> {
     /// CHECK: The seeds constraint enforces that this is the correct address
     pub token_authority: UncheckedAccount<'info>,
 
+    #[account(mut)]
+    /// CHECK: the constraint enforces that this is the correct address
+    pub rent_payer: UncheckedAccount<'info>,
+
     #[account(
         mut,
         seeds = [PendingTokenAuthority::SEED_PREFIX],
         bump = pending_token_authority.bump,
-        close = payer
+        has_one = rent_payer @ NTTError::IncorrectRentPayer,
+        close = rent_payer
      )]
     pub pending_token_authority: Account<'info, PendingTokenAuthority>,
 
