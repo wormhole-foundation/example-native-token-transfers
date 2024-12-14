@@ -20,6 +20,7 @@ pub mod messages;
 pub mod peer;
 pub mod queue;
 pub mod registered_transceiver;
+pub mod spl_multisig;
 pub mod transceivers;
 pub mod transfer;
 
