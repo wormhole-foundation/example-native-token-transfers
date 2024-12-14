@@ -178,7 +178,6 @@ pub struct SetTokenAuthority<'info> {
     #[account(
         seeds = [crate::TOKEN_AUTHORITY_SEED],
         bump,
-        address = mint.mint_authority.unwrap() @ NTTError::InvalidMintAuthority
     )]
     /// CHECK: The constraints enforce this is valid mint authority
     pub token_authority: UncheckedAccount<'info>,
@@ -189,6 +188,9 @@ pub struct SetTokenAuthority<'info> {
 
 #[derive(Accounts)]
 pub struct SetTokenAuthorityChecked<'info> {
+    #[account(
+        constraint = common.token_authority.key() == common.mint.mint_authority.unwrap() @ NTTError::InvalidMintAuthority
+    )]
     pub common: SetTokenAuthority<'info>,
 
     #[account(mut)]
