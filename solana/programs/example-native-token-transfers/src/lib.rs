@@ -20,6 +20,7 @@ pub mod messages;
 pub mod peer;
 pub mod queue;
 pub mod registered_transceiver;
+pub mod spl_multisig;
 pub mod transceivers;
 pub mod transfer;
 
@@ -74,6 +75,13 @@ pub mod example_native_token_transfers {
         instructions::initialize(ctx, args)
     }
 
+    pub fn initialize_multisig(
+        ctx: Context<InitializeMultisig>,
+        args: InitializeArgs,
+    ) -> Result<()> {
+        instructions::initialize_multisig(ctx, args)
+    }
+
     pub fn initialize_lut(ctx: Context<InitializeLUT>, recent_slot: u64) -> Result<()> {
         instructions::initialize_lut(ctx, recent_slot)
     }
@@ -105,6 +113,13 @@ pub mod example_native_token_transfers {
         args: ReleaseInboundArgs,
     ) -> Result<()> {
         instructions::release_inbound_mint(ctx, args)
+    }
+
+    pub fn release_inbound_mint_multisig<'info>(
+        ctx: Context<'_, '_, '_, 'info, ReleaseInboundMintMultisig<'info>>,
+        args: ReleaseInboundArgs,
+    ) -> Result<()> {
+        instructions::release_inbound_mint_multisig(ctx, args)
     }
 
     pub fn release_inbound_unlock<'info>(

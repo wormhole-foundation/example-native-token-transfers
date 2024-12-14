@@ -53,6 +53,8 @@ pub enum NTTError {
     BitmapIndexOutOfBounds,
     #[msg("NoRegisteredTransceivers")]
     NoRegisteredTransceivers,
+    #[msg("InvalidMultisig")]
+    InvalidMultisig,
 }
 
 impl From<ScalingError> for NTTError {
