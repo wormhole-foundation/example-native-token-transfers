@@ -159,6 +159,43 @@ pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
 // * Set token authority
 
 #[derive(Accounts)]
+pub struct AcceptTokenAuthority<'info> {
+    #[account(
+        has_one = mint,
+        constraint = config.paused @ NTTError::NotPaused,
+    )]
+    pub config: Account<'info, Config>,
+
+    #[account(mut)]
+    pub mint: InterfaceAccount<'info, token_interface::Mint>,
+
+    #[account(
+        seeds = [crate::TOKEN_AUTHORITY_SEED],
+        bump,
+    )]
+    /// CHECK: The constraints enforce this is valid mint authority
+    pub token_authority: UncheckedAccount<'info>,
+
+    pub current_authority: Signer<'info>,
+
+    pub token_program: Interface<'info, token_interface::TokenInterface>,
+}
+
+pub fn accept_token_authority(ctx: Context<AcceptTokenAuthority>) -> Result<()> {
+    token_interface::set_authority(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            token_interface::SetAuthority {
+                account_or_mint: ctx.accounts.mint.to_account_info(),
+                current_authority: ctx.accounts.current_authority.to_account_info(),
+            },
+        ),
+        AuthorityType::MintTokens,
+        Some(ctx.accounts.token_authority.key()),
+    )
+}
+
+#[derive(Accounts)]
 pub struct SetTokenAuthority<'info> {
     #[account(
         has_one = owner,
@@ -170,7 +207,6 @@ pub struct SetTokenAuthority<'info> {
     pub owner: Signer<'info>,
 
     #[account(mut)]
-    /// CHECK: the mint address matches the config
     pub mint: InterfaceAccount<'info, token_interface::Mint>,
 
     #[account(
@@ -244,6 +280,8 @@ pub fn set_token_authority_one_step_unchecked(
     )
 }
 
+// * Claim token authority
+
 #[derive(Accounts)]
 pub struct RevertTokenAuthority<'info> {
     #[account(
@@ -253,7 +291,6 @@ pub struct RevertTokenAuthority<'info> {
     pub config: Account<'info, Config>,
 
     #[account(mut)]
-    /// CHECK: the mint address matches the config
     pub mint: InterfaceAccount<'info, token_interface::Mint>,
 
     #[account(
@@ -264,7 +301,7 @@ pub struct RevertTokenAuthority<'info> {
     pub token_authority: UncheckedAccount<'info>,
 
     #[account(mut)]
-    /// CHECK: the constraint enforces that this is the correct address
+    /// CHECK: the `pending_token_authority` constraint enforces that this is the correct address
     pub rent_payer: UncheckedAccount<'info>,
 
     #[account(

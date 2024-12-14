@@ -713,6 +713,27 @@ export namespace NTT {
       .instruction();
   }
 
+  export async function createAcceptTokenAuthorityInstruction(
+    program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
+    config: NttBindings.Config<IdlVersion>,
+    args: {
+      currentAuthority: PublicKey;
+    },
+    pdas?: Pdas
+  ) {
+    pdas = pdas ?? NTT.pdas(program.programId);
+    return await program.methods
+      .acceptTokenAuthority()
+      .accountsStrict({
+        config: pdas.configAccount(),
+        mint: config.mint,
+        tokenProgram: config.tokenProgram,
+        tokenAuthority: pdas.tokenAuthority(),
+        currentAuthority: args.currentAuthority,
+      })
+      .instruction();
+  }
+
   export async function createSetTokenAuthorityInstruction(
     program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
     config: NttBindings.Config<IdlVersion>,

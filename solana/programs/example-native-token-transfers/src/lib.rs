@@ -127,6 +127,10 @@ pub mod example_native_token_transfers {
         instructions::claim_ownership(ctx)
     }
 
+    pub fn accept_token_authority(ctx: Context<AcceptTokenAuthority>) -> Result<()> {
+        instructions::accept_token_authority(ctx)
+    }
+
     pub fn set_token_authority(ctx: Context<SetTokenAuthorityChecked>) -> Result<()> {
         instructions::set_token_authority(ctx)
     }
