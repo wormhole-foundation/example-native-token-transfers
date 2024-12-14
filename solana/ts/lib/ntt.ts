@@ -97,6 +97,8 @@ export namespace NTT {
       derivePda("outbox_rate_limit", programId);
     const tokenAuthority = (): PublicKey =>
       derivePda("token_authority", programId);
+    const pendingTokenAuthority = (): PublicKey =>
+      derivePda("pending_token_authority", programId);
     const peerAccount = (chain: Chain): PublicKey =>
       derivePda(["peer", chainToBytes(chain)], programId);
     const registeredTransceiver = (transceiver: PublicKey): PublicKey =>
@@ -131,6 +133,7 @@ export namespace NTT {
       inboxItemAccount,
       sessionAuthority,
       tokenAuthority,
+      pendingTokenAuthority,
       peerAccount,
       registeredTransceiver,
       lutAccount,
@@ -706,6 +709,55 @@ export namespace NTT {
       .accounts({
         config: pdas.configAccount(),
         newOwner: args.newOwner,
+      })
+      .instruction();
+  }
+
+  export async function createAcceptTokenAuthorityInstruction(
+    program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
+    config: NttBindings.Config<IdlVersion>,
+    args: {
+      currentAuthority: PublicKey;
+    },
+    pdas?: Pdas
+  ) {
+    pdas = pdas ?? NTT.pdas(program.programId);
+    return await program.methods
+      .acceptTokenAuthority()
+      .accountsStrict({
+        config: pdas.configAccount(),
+        mint: config.mint,
+        tokenProgram: config.tokenProgram,
+        tokenAuthority: pdas.tokenAuthority(),
+        currentAuthority: args.currentAuthority,
+      })
+      .instruction();
+  }
+
+  export async function createSetTokenAuthorityInstruction(
+    program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
+    config: NttBindings.Config<IdlVersion>,
+    args: {
+      rentPayer: PublicKey;
+      owner: PublicKey;
+      newAuthority: PublicKey;
+    },
+    pdas?: Pdas
+  ) {
+    pdas = pdas ?? NTT.pdas(program.programId);
+    return await program.methods
+      .setTokenAuthority()
+      .accountsStrict({
+        common: {
+          config: pdas.configAccount(),
+          tokenAuthority: pdas.tokenAuthority(),
+          mint: config.mint,
+          owner: args.owner,
+          newAuthority: args.newAuthority,
+        },
+        rentPayer: args.rentPayer,
+        pendingTokenAuthority: pdas.pendingTokenAuthority(),
+        systemProgram: SystemProgram.programId,
       })
       .instruction();
   }

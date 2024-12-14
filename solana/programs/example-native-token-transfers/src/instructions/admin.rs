@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::{token_2022::spl_token_2022::instruction::AuthorityType, token_interface};
 use ntt_messages::chain_id::ChainId;
 use wormhole_solana_utils::cpi::bpf_loader_upgradeable::{self, BpfLoaderUpgradeable};
 
@@ -9,6 +10,7 @@ use crate::{
     config::Config,
     error::NTTError,
     peer::NttManagerPeer,
+    pending_token_authority::PendingTokenAuthority,
     queue::{inbox::InboxRateLimit, outbox::OutboxRateLimit, rate_limit::RateLimitState},
     registered_transceiver::RegisteredTransceiver,
 };
@@ -154,6 +156,200 @@ pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
     )
 }
 
+// * Set token authority
+
+#[derive(Accounts)]
+pub struct AcceptTokenAuthority<'info> {
+    #[account(
+        has_one = mint,
+        constraint = config.paused @ NTTError::NotPaused,
+    )]
+    pub config: Account<'info, Config>,
+
+    #[account(mut)]
+    pub mint: InterfaceAccount<'info, token_interface::Mint>,
+
+    #[account(
+        seeds = [crate::TOKEN_AUTHORITY_SEED],
+        bump,
+    )]
+    /// CHECK: The constraints enforce this is valid mint authority
+    pub token_authority: UncheckedAccount<'info>,
+
+    pub current_authority: Signer<'info>,
+
+    pub token_program: Interface<'info, token_interface::TokenInterface>,
+}
+
+pub fn accept_token_authority(ctx: Context<AcceptTokenAuthority>) -> Result<()> {
+    token_interface::set_authority(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            token_interface::SetAuthority {
+                account_or_mint: ctx.accounts.mint.to_account_info(),
+                current_authority: ctx.accounts.current_authority.to_account_info(),
+            },
+        ),
+        AuthorityType::MintTokens,
+        Some(ctx.accounts.token_authority.key()),
+    )
+}
+
+#[derive(Accounts)]
+pub struct SetTokenAuthority<'info> {
+    #[account(
+        has_one = owner,
+        has_one = mint,
+        constraint = config.paused @ NTTError::NotPaused,
+    )]
+    pub config: Account<'info, Config>,
+
+    pub owner: Signer<'info>,
+
+    #[account(mut)]
+    pub mint: InterfaceAccount<'info, token_interface::Mint>,
+
+    #[account(
+        seeds = [crate::TOKEN_AUTHORITY_SEED],
+        bump,
+    )]
+    /// CHECK: The constraints enforce this is valid mint authority
+    pub token_authority: UncheckedAccount<'info>,
+
+    /// CHECK: This account will be the signer in the [claim_token_authority] instruction.
+    pub new_authority: UncheckedAccount<'info>,
+}
+
+#[derive(Accounts)]
+pub struct SetTokenAuthorityChecked<'info> {
+    #[account(
+        constraint = common.token_authority.key() == common.mint.mint_authority.unwrap() @ NTTError::InvalidMintAuthority
+    )]
+    pub common: SetTokenAuthority<'info>,
+
+    #[account(mut)]
+    pub rent_payer: Signer<'info>,
+
+    #[account(
+        init_if_needed,
+        space = 8 + PendingTokenAuthority::INIT_SPACE,
+        payer = rent_payer,
+        seeds = [PendingTokenAuthority::SEED_PREFIX],
+        bump
+     )]
+    pub pending_token_authority: Account<'info, PendingTokenAuthority>,
+
+    pub system_program: Program<'info, System>,
+}
+
+pub fn set_token_authority(ctx: Context<SetTokenAuthorityChecked>) -> Result<()> {
+    ctx.accounts
+        .pending_token_authority
+        .set_inner(PendingTokenAuthority {
+            bump: ctx.bumps.pending_token_authority,
+            pending_authority: ctx.accounts.common.new_authority.key(),
+            rent_payer: ctx.accounts.rent_payer.key(),
+        });
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct SetTokenAuthorityUnchecked<'info> {
+    pub common: SetTokenAuthority<'info>,
+
+    pub token_program: Interface<'info, token_interface::TokenInterface>,
+}
+
+pub fn set_token_authority_one_step_unchecked(
+    ctx: Context<SetTokenAuthorityUnchecked>,
+) -> Result<()> {
+    token_interface::set_authority(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            token_interface::SetAuthority {
+                account_or_mint: ctx.accounts.common.mint.to_account_info(),
+                current_authority: ctx.accounts.common.token_authority.to_account_info(),
+            },
+            &[&[
+                crate::TOKEN_AUTHORITY_SEED,
+                &[ctx.bumps.common.token_authority],
+            ]],
+        ),
+        AuthorityType::MintTokens,
+        Some(ctx.accounts.common.new_authority.key()),
+    )
+}
+
+// * Claim token authority
+
+#[derive(Accounts)]
+pub struct RevertTokenAuthority<'info> {
+    #[account(
+        has_one = mint,
+        constraint = config.paused @ NTTError::NotPaused,
+    )]
+    pub config: Account<'info, Config>,
+
+    #[account(mut)]
+    pub mint: InterfaceAccount<'info, token_interface::Mint>,
+
+    #[account(
+        seeds = [crate::TOKEN_AUTHORITY_SEED],
+        bump,
+    )]
+    /// CHECK: The seeds constraint enforces that this is the correct address
+    pub token_authority: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    /// CHECK: the `pending_token_authority` constraint enforces that this is the correct address
+    pub rent_payer: UncheckedAccount<'info>,
+
+    #[account(
+        mut,
+        seeds = [PendingTokenAuthority::SEED_PREFIX],
+        bump = pending_token_authority.bump,
+        has_one = rent_payer @ NTTError::IncorrectRentPayer,
+        close = rent_payer
+     )]
+    pub pending_token_authority: Account<'info, PendingTokenAuthority>,
+
+    pub token_program: Interface<'info, token_interface::TokenInterface>,
+
+    pub system_program: Program<'info, System>,
+}
+
+pub fn revert_token_authority(_ctx: Context<RevertTokenAuthority>) -> Result<()> {
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct ClaimTokenAuthority<'info> {
+    pub common: RevertTokenAuthority<'info>,
+
+    #[account(
+        address = common.pending_token_authority.pending_authority @ NTTError::InvalidPendingTokenAuthority
+    )]
+    pub new_authority: Signer<'info>,
+}
+
+pub fn claim_token_authority(ctx: Context<ClaimTokenAuthority>) -> Result<()> {
+    token_interface::set_authority(
+        CpiContext::new_with_signer(
+            ctx.accounts.common.token_program.to_account_info(),
+            token_interface::SetAuthority {
+                account_or_mint: ctx.accounts.common.mint.to_account_info(),
+                current_authority: ctx.accounts.common.token_authority.to_account_info(),
+            },
+            &[&[
+                crate::TOKEN_AUTHORITY_SEED,
+                &[ctx.bumps.common.token_authority],
+            ]],
+        ),
+        AuthorityType::MintTokens,
+        Some(ctx.accounts.new_authority.key()),
+    )
+}
+
 // * Set peers
 
 #[derive(Accounts)]
@@ -267,7 +463,7 @@ pub fn register_transceiver(ctx: Context<RegisterTransceiver>) -> Result<()> {
 #[derive(Accounts)]
 pub struct SetOutboundLimit<'info> {
     #[account(
-        constraint = config.owner == owner.key()
+        has_one = owner,
     )]
     pub config: Account<'info, Config>,
 
@@ -294,7 +490,7 @@ pub fn set_outbound_limit(
 #[instruction(args: SetInboundLimitArgs)]
 pub struct SetInboundLimit<'info> {
     #[account(
-        constraint = config.owner == owner.key()
+        has_one = owner,
     )]
     pub config: Account<'info, Config>,
 
