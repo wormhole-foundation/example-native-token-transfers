@@ -753,7 +753,7 @@
           ]
         },
         {
-          "name": "payer",
+          "name": "rentPayer",
           "isMut": true,
           "isSigner": true
         },
@@ -820,11 +820,6 @@
           "isSigner": false
         },
         {
-          "name": "payer",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "mint",
           "isMut": true,
           "isSigner": false
@@ -832,6 +827,11 @@
         {
           "name": "tokenAuthority",
           "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -864,11 +864,6 @@
               "isSigner": false
             },
             {
-              "name": "payer",
-              "isMut": true,
-              "isSigner": false
-            },
-            {
               "name": "mint",
               "isMut": true,
               "isSigner": false
@@ -876,6 +871,11 @@
             {
               "name": "tokenAuthority",
               "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "rentPayer",
+              "isMut": true,
               "isSigner": false
             },
             {

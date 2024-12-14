@@ -717,7 +717,7 @@ export namespace NTT {
     program: Program<NttBindings.NativeTokenTransfer<IdlVersion>>,
     config: NttBindings.Config<IdlVersion>,
     args: {
-      payer: PublicKey;
+      rentPayer: PublicKey;
       owner: PublicKey;
       newAuthority: PublicKey;
     },
@@ -734,7 +734,7 @@ export namespace NTT {
           owner: args.owner,
           newAuthority: args.newAuthority,
         },
-        payer: args.payer,
+        rentPayer: args.rentPayer,
         pendingTokenAuthority: pdas.pendingTokenAuthority(),
         systemProgram: SystemProgram.programId,
       })
