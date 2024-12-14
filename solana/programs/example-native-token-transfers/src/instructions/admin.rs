@@ -426,7 +426,7 @@ pub fn register_transceiver(ctx: Context<RegisterTransceiver>) -> Result<()> {
 #[derive(Accounts)]
 pub struct SetOutboundLimit<'info> {
     #[account(
-        constraint = config.owner == owner.key()
+        has_one = owner,
     )]
     pub config: Account<'info, Config>,
 
@@ -453,7 +453,7 @@ pub fn set_outbound_limit(
 #[instruction(args: SetInboundLimitArgs)]
 pub struct SetInboundLimit<'info> {
     #[account(
-        constraint = config.owner == owner.key()
+        has_one = owner,
     )]
     pub config: Account<'info, Config>,
 
