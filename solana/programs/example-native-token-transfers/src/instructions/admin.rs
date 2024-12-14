@@ -162,16 +162,14 @@ pub fn claim_ownership(ctx: Context<ClaimOwnership>) -> Result<()> {
 pub struct SetTokenAuthority<'info> {
     #[account(
         has_one = owner,
+        has_one = mint,
         constraint = config.paused @ NTTError::NotPaused,
     )]
     pub config: Account<'info, Config>,
 
     pub owner: Signer<'info>,
 
-    #[account(
-        mut,
-        address = config.mint,
-    )]
+    #[account(mut)]
     /// CHECK: the mint address matches the config
     pub mint: InterfaceAccount<'info, token_interface::Mint>,
 
@@ -249,14 +247,12 @@ pub fn set_token_authority_one_step_unchecked(
 #[derive(Accounts)]
 pub struct RevertTokenAuthority<'info> {
     #[account(
+        has_one = mint,
         constraint = config.paused @ NTTError::NotPaused,
     )]
     pub config: Account<'info, Config>,
 
-    #[account(
-        mut,
-        address = config.mint,
-    )]
+    #[account(mut)]
     /// CHECK: the mint address matches the config
     pub mint: InterfaceAccount<'info, token_interface::Mint>,
 
