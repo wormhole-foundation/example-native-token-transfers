@@ -162,6 +162,14 @@
       "gasGost": 500000,
       "wormholeTransceiverIndex": 0,
       "isSupported": true
+    },
+    {
+      "name": "ValleyDAO",
+      "programId": "nttgQT42hdZ1vNryzXwu2DzCVnxdDrAYyZnYs51gSSd",
+      "tokenAddress": "growFDf9teg9gwVTTY3DgpPXU31qBrnbSQCqtY2vkR8",
+      "gasGost": 500000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
     }
   ],
   "peerQuotes": {
