@@ -170,6 +170,14 @@
       "gasGost": 500000,
       "wormholeTransceiverIndex": 0,
       "isSupported": true
+    },
+    {
+      "name": "Houdini Swap",
+      "programId": "NTtMFrtV9uzEW9skftVkA7EsR6dUhPtpMNK9J2aCnpG",
+      "tokenAddress": "App2Sp9pgmQG7yD6uVaygULxALf4TpfALgnhHEkJimih",
+      "gasGost": 500000,
+      "wormholeTransceiverIndex": 0,
+      "isSupported": true
     }
   ],
   "peerQuotes": {
