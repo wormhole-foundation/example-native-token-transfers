@@ -20,7 +20,8 @@
         "inbound": {
           "Ethereum": "50000000.000000000000000000",
           "Base": "50000000.000000000000000000",
-          "Bsc": "50000000.000000000000000000"
+          "Bsc": "50000000.000000000000000000",
+          "Solana": "50000000.000000000000000000"
         }
       },
       "pauser": "0x40C7b9612B394212394EA860cACd0e176CA4Ae5B",
@@ -30,7 +31,7 @@
       "version": "1.3.1",
       "mode": "burning",
       "paused": false,
-      "owner": "0x98D8899c3030741925BE630C710A98B57F397C7a",
+      "owner": "0x123694886DBf5Ac94DDA07135349534536D14cAf",
       "manager": "0x13916D0daB357DCBAa1600b594d62C641840686A",
       "token": "0x8e4cbBcc33dB6c0a18561fDE1F6bA35906d4848b",
       "transceivers": {
@@ -45,7 +46,8 @@
         "inbound": {
           "Mezo": "50000000.000000000000000000",
           "Base": "50000000.000000000000000000",
-          "Bsc": "50000000.000000000000000000"
+          "Bsc": "50000000.000000000000000000",
+          "Solana": "50000000.000000000000000000"
         }
       },
       "pauser": "0x40C7b9612B394212394EA860cACd0e176CA4Ae5B",
@@ -68,9 +70,10 @@
       "limits": {
         "outbound": "184467440737.095516150000000000",
         "inbound": {
-          "Ethereum": "50000000.000000000000000000",
           "Mezo": "50000000.000000000000000000",
-          "Bsc": "50000000.000000000000000000"
+          "Ethereum": "50000000.000000000000000000",
+          "Bsc": "50000000.000000000000000000",
+          "Solana": "50000000.000000000000000000"
         }
       },
       "pauser": "0x40C7b9612B394212394EA860cACd0e176CA4Ae5B",
@@ -93,13 +96,37 @@
       "limits": {
         "outbound": "184467440737.095516150000000000",
         "inbound": {
+          "Mezo": "50000000.000000000000000000",
           "Ethereum": "50000000.000000000000000000",
           "Base": "50000000.000000000000000000",
-          "Mezo": "50000000.000000000000000000"
+          "Solana": "50000000.000000000000000000"
         }
       },
       "pauser": "0x40C7b9612B394212394EA860cACd0e176CA4Ae5B",
       "managerVariant": "standard"
+    },
+    "Solana": {
+      "version": "3.0.0",
+      "mode": "burning",
+      "paused": false,
+      "owner": "W5HbYWPvF8UCtmWRcxMK8pRcp1DxMxymUv84sjrX1AS",
+      "manager": "Ntt4AnEASZ9oLw25PTmXFrwSFD473ufd3rCLWoX5Gg7",
+      "token": "8niMFW4yuv3vLoqTtBaC6rchyasmUhgvpgSyPEeeCrw6",
+      "transceivers": {
+        "threshold": 1,
+        "wormhole": {
+          "address": "6aVRLvdjgrovCiZa5q5kifUtvD6p2ogaQ2J248MpfCa3"
+        }
+      },
+      "limits": {
+        "outbound": "18446744073.709551615",
+        "inbound": {
+          "Mezo": "50000000.000000000",
+          "Ethereum": "50000000.000000000",
+          "Base": "50000000.000000000",
+          "Bsc": "50000000.000000000"
+        }
+      }
     }
   }
 }
