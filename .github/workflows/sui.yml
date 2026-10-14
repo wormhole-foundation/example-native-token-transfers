@@ -38,6 +38,9 @@ jobs:
           suiup install -y sui@1.63.2
           echo "$HOME/.local/bin" >> $GITHUB_PATH
         working-directory: .
+        env:
+          # Authenticated requests avoid the anonymous GitHub API rate limit (403) in the installer
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check Sui version
         run: sui --version

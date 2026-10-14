@@ -49,6 +49,18 @@ jobs:
         with:
           persist-credentials: false
 
+      # Fork PRs get a read-only GITHUB_TOKEN, so they can build but not push to ghcr.io
+      - name: Check if fork PR
+        id: check-fork
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" && "${GITHUB_EVENT_PULL_REQUEST_HEAD_REPO_FULL_NAME}" != "${GITHUB_REPOSITORY}" ]]; then
+            echo "is_fork=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_fork=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_EVENT_PULL_REQUEST_HEAD_REPO_FULL_NAME: ${{ github.event.pull_request.head.repo.full_name }}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
@@ -82,11 +94,11 @@ jobs:
           context: .
           file: solana/Dockerfile
           target: builder
-          push: true
+          push: ${{ steps.check-fork.outputs.is_fork != 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           # Use registry-based caching for builder layers
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository }}/ntt-solana-contract:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository }}/ntt-solana-contract:buildcache,mode=max
+          cache-to: ${{ steps.check-fork.outputs.is_fork != 'true' && format('type=registry,ref={0}/{1}/ntt-solana-contract:buildcache,mode=max', env.REGISTRY, github.repository) || '' }}
 
   # Build ntt-evm-contract image (faster, but still benefits from caching)
   build-evm:
@@ -101,6 +113,18 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: false
+
+      # Fork PRs get a read-only GITHUB_TOKEN, so they can build but not push to ghcr.io
+      - name: Check if fork PR
+        id: check-fork
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" && "${GITHUB_EVENT_PULL_REQUEST_HEAD_REPO_FULL_NAME}" != "${GITHUB_REPOSITORY}" ]]; then
+            echo "is_fork=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_fork=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_EVENT_PULL_REQUEST_HEAD_REPO_FULL_NAME: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
@@ -135,8 +159,8 @@ jobs:
           context: evm
           file: evm/Dockerfile
           target: foundry-export
-          push: true
+          push: ${{ steps.check-fork.outputs.is_fork != 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           # Use registry-based caching (GHA cache can hang on large uploads)
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository }}/ntt-evm-contract:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository }}/ntt-evm-contract:buildcache,mode=max
+          cache-to: ${{ steps.check-fork.outputs.is_fork != 'true' && format('type=registry,ref={0}/{1}/ntt-evm-contract:buildcache,mode=max', env.REGISTRY, github.repository) || '' }}
