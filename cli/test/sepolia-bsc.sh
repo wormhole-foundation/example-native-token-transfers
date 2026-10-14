@@ -33,9 +33,9 @@ BSC_FORK_RPC_URL=http://127.0.0.1:$BSC_PORT
 SEPOLIA_CORE_BRIDGE=0x4a8bc80Ed5a4067f1CCf107057b8270E0cC11A78
 BSC_CORE_BRIDGE=0x68605AD7b15c732a30b1BbC62BE8F2A509D74b4D
 
-anvil --silent --rpc-url $BSC_RPC_URL -p "$BSC_PORT" &
+anvil --silent --rpc-url $BSC_RPC_URL -p "$BSC_PORT" --compute-units-per-second 100 &
 pid1=$!
-anvil --silent --rpc-url $SEPOLIA_RPC_URL -p "$SEPOLIA_PORT" &
+anvil --silent --rpc-url $SEPOLIA_RPC_URL -p "$SEPOLIA_PORT" --compute-units-per-second 100 &
 pid2=$!
 # check both processes are running
 if ! kill -0 $pid1 || ! kill -0 $pid2; then
