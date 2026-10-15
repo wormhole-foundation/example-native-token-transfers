@@ -261,6 +261,8 @@ describe("E2E: NTT deployment on Anvil forks", () => {
         "--port",
         String(SEPOLIA_PORT),
         "--auto-impersonate",
+        "--compute-units-per-second",
+        "100",
       ],
       { stdout: "ignore", stderr: "pipe" }
     );
@@ -274,6 +276,8 @@ describe("E2E: NTT deployment on Anvil forks", () => {
         "--port",
         String(BASE_SEPOLIA_PORT),
         "--auto-impersonate",
+        "--compute-units-per-second",
+        "100",
       ],
       { stdout: "ignore", stderr: "pipe" }
     );
