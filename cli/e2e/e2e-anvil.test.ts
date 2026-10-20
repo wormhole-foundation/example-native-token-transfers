@@ -32,9 +32,9 @@ const BASE_SEPOLIA_FORK_RPC = `http://127.0.0.1:${BASE_SEPOLIA_PORT}`;
 
 // Public RPCs for forking
 const SEPOLIA_RPC =
-  process.env.SEPOLIA_RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com";
+  process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com";
 const BASE_SEPOLIA_RPC =
-  process.env.BASE_SEPOLIA_RPC_URL ?? "https://sepolia.base.org";
+  process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org";
 
 // Anvil's default account #0
 const ANVIL_PRIVATE_KEY =
@@ -261,6 +261,8 @@ describe("E2E: NTT deployment on Anvil forks", () => {
         "--port",
         String(SEPOLIA_PORT),
         "--auto-impersonate",
+        "--compute-units-per-second",
+        "100",
       ],
       { stdout: "ignore", stderr: "pipe" }
     );
@@ -274,6 +276,8 @@ describe("E2E: NTT deployment on Anvil forks", () => {
         "--port",
         String(BASE_SEPOLIA_PORT),
         "--auto-impersonate",
+        "--compute-units-per-second",
+        "100",
       ],
       { stdout: "ignore", stderr: "pipe" }
     );

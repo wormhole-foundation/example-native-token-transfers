@@ -312,6 +312,24 @@ async function getNtt(
   return ctx.context.getProtocol("Ntt", { ntt: ctx.contracts });
 }
 
+// The SDK signer takes each nonce from the provider's "latest" transaction
+// count, served through ethers' 250ms request cache. In Tilt CI that read
+// intermittently returned a nonce the chain had already consumed when a
+// transfer was signed right after a redeem was mined ("nonce too low").
+// Read the pending nonce directly from the node on every sign instead.
+class PendingNonceProvider extends ethers.JsonRpcProvider {
+  override async getTransactionCount(
+    address: ethers.AddressLike
+  ): Promise<number> {
+    const resolved = await ethers.resolveAddress(address, this);
+    const nonce: string = await this.send("eth_getTransactionCount", [
+      resolved,
+      "pending",
+    ]);
+    return Number(nonce);
+  }
+}
+
 async function getSigners(
   ctx: Partial<Ctx>,
   getNativeSigner: (ctx: Partial<Ctx>) => any
@@ -322,10 +340,13 @@ async function getSigners(
 
   let signer: Signer;
   switch (platform) {
-    case "Evm":
-      signer = await evm.getSigner(rpc, nativeSigner);
+    case "Evm": {
+      const provider = new PendingNonceProvider(ctx.context!.config.rpc);
+      const wallet = new ethers.Wallet(nativeSigner, provider);
+      signer = await evm.getSigner(rpc, wallet);
       nativeSigner = (signer as NativeSigner).unwrap();
       break;
+    }
     case "Solana":
       signer = await solana.getSigner(rpc, nativeSigner);
       break;
