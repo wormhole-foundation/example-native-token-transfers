@@ -1,8 +1,3 @@
-# Use pre-built anchor image to avoid 6+ minute compile time
-# See Dockerfile.anchor-base for how this image is built
-# ARG must be declared before any FROM to be used in FROM instructions
-ARG ANCHOR_BASE_IMAGE=ghcr.io/wormhole-foundation/native-token-transfers/anchor-base:0.29.0
-
 # NOTE: we use the backpackapp base image so we can use solana. You would think
 # that the solana installer script just works, but you would be wrong. It seems
 # to have been broken recently since the migration to the anza url.
@@ -26,18 +21,11 @@ RUN foundryup --install v1.3.6
 
 RUN apt install -y jq
 
-FROM ${ANCHOR_BASE_IMAGE} AS anchor-base
-
 FROM base AS base-solana
-# Copy pre-compiled anchor binaries from anchor-base image
-# - avm: anchor version manager CLI
-# - anchor: avm wrapper that delegates to correct anchor version
-# - .avm: contains installed anchor versions (e.g., anchor-0.29.0)
-COPY --from=anchor-base /root/.cargo/bin/avm /root/.cargo/bin/avm
-COPY --from=anchor-base /root/.cargo/bin/anchor /root/.cargo/bin/anchor
-COPY --from=anchor-base /root/.avm /root/.avm
-# Verify correct anchor version is active
-RUN anchor --version | grep -q "0.29.0" || (echo "ERROR: Expected anchor 0.29.0" && exit 1)
+
+RUN cargo install --git https://github.com/coral-xyz/anchor --tag v0.29.0 avm --locked --force
+RUN avm install 0.29.0
+RUN avm use 0.29.0
 
 FROM base AS cli-remote
 # NOTE: when invoking the installer outside of the source tree, it clones the
