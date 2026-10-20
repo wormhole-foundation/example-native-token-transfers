@@ -6,7 +6,7 @@ local(['sed','-i.bak','s/{chainId: vaa.ChainIDEthereum, addr: "00000000000000000
 
 load(".wormhole/Tiltfile", "namespace", "k8s_yaml_with_ns")
 
-# Registry for pre-built images (speeds up CI builds via layer caching)
+# Registry for images pre-built from main by tilt-images.yml (speeds up CI builds via layer caching)
 REGISTRY = "ghcr.io/wormhole-foundation/native-token-transfers"
 
 # Solana deploy - uses cache_from for faster CI builds
@@ -44,13 +44,12 @@ docker_build(
     cache_from = [REGISTRY + "/ntt-evm-contract:latest"],
 )
 
-# CI tests - uses cache_from for faster CI builds
+# CI tests
 docker_build(
     ref = "ntt-ci",
     context = "./",
     only=["./sdk", "./cli/package.json", "./sui/ts/package.json", "./xrpl/ts/package.json", "./package.json", "./bun.lock", "./bunfig.toml", "jest.config.ts", "tsconfig.json", "tsconfig.esm.json", "tsconfig.test.json"],
     dockerfile = "./sdk/Dockerfile",
-    cache_from = [REGISTRY + "/ntt-ci:latest"],
 )
 k8s_yaml_with_ns("./sdk/ci.yaml")
 k8s_resource(

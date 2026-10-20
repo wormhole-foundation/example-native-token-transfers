@@ -8,23 +8,17 @@ name: Anchor Base Image
 # 2. Update: Anchor version changed -> builds and pushes
 # 3. No-op: Image already exists with correct version -> skips build
 #
-# Can be called directly or as a reusable workflow from cli.yml
+# Runs only from main (never from pull requests), so the image is published
+# by reviewed code and PR runs, including from forks with a read-only
+# GITHUB_TOKEN, only ever pull it. A PR that bumps the Anchor version builds
+# the CLI image against the previous anchor-base until it merges, after which
+# this workflow publishes the new version.
 
 on:
   workflow_dispatch:
-  workflow_call:
-    outputs:
-      image:
-        description: "The full image reference to use"
-        value: ${{ jobs.build.outputs.image }}
   push:
     branches:
       - main
-  pull_request:
-
-# Note: No concurrency block here - when called as reusable workflow,
-# github.workflow refers to the CALLER, which would conflict.
-# The caller (cli.yml) handles its own concurrency.
 
 env:
   REGISTRY: ghcr.io
@@ -36,8 +30,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    outputs:
-      image: ${{ steps.result.outputs.image }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -49,17 +41,6 @@ jobs:
           ANCHOR_VERSION=$(grep 'anchor_version' solana/Anchor.toml | sed 's/.*"\(.*\)"/\1/')
           echo "version=${ANCHOR_VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Check if fork PR
-        id: check-fork
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" && "${GITHUB_EVENT_PULL_REQUEST_HEAD_REPO_FULL_NAME}" != "${{ github.repository }}" ]]; then
-            echo "is_fork=true" >> $GITHUB_OUTPUT
-          else
-            echo "is_fork=false" >> $GITHUB_OUTPUT
-          fi
-        env:
-          GITHUB_EVENT_PULL_REQUEST_HEAD_REPO_FULL_NAME: ${{ github.event.pull_request.head.repo.full_name }}
-
       - name: Check if anchor-base image exists
         id: check
         run: |
@@ -69,15 +50,9 @@ jobs:
           else
             echo "exists=false" >> $GITHUB_OUTPUT
             echo "Image not found, will build"
-            # Fork PRs cannot push new images
-            if [[ "${STEPS_CHECK_FORK_OUTPUTS_IS_FORK}" == "true" ]]; then
-              echo "::error::Fork PRs cannot build anchor-base image. Image does not exist. A maintainer must first build this image by running this workflow from main."
-              exit 1
-            fi
           fi
         env:
           STEPS_ANCHOR_OUTPUTS_VERSION: ${{ steps.anchor.outputs.version }}
-          STEPS_CHECK_FORK_OUTPUTS_IS_FORK: ${{ steps.check-fork.outputs.is_fork }}
 
       - name: Set up Docker Buildx
         if: steps.check.outputs.exists == 'false'
@@ -105,10 +80,3 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           cache-from: type=gha,scope=anchor-base
           cache-to: type=gha,mode=max,scope=anchor-base
-
-      - name: Output image reference
-        id: result
-        run: |
-          echo "image=${{ env.REGISTRY }}/${IMAGE_NAME}:${STEPS_ANCHOR_OUTPUTS_VERSION}" >> $GITHUB_OUTPUT
-        env:
-          STEPS_ANCHOR_OUTPUTS_VERSION: ${{ steps.anchor.outputs.version }}
