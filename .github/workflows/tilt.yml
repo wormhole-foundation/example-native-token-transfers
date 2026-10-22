@@ -7,23 +7,11 @@ on:
     branches:
       - main
 
-env:
-  REGISTRY: ghcr.io
+permissions: {}
 
 jobs:
-  # Pre-build Solana and EVM contract images (fast if cached)
-  tilt-images:
-    uses: ./.github/workflows/tilt-images.yml
-    permissions:
-      contents: read
-      packages: write
-
   tilt:
-    needs: tilt-images
     runs-on: tilt-kube-public
-    permissions:
-      contents: read
-      packages: read
 
     # Cancel previous builds on the same branch/ref. Full runs are expensive
     # and capacity is limited, so we want to avoid running multiple builds
@@ -42,15 +30,6 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: false
-
-      # Login to ghcr.io so Tilt can pull cache_from images
-      - name: Log in to Container Registry
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Expand for link to Tilt dashboard (only available during build)
         run: >
           echo "Tilt progress dashboard: https://$DASHBOARD_URL"

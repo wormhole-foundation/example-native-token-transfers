@@ -51,26 +51,10 @@ jobs:
             fi
           fi
 
-  # Fast lint check - no build needed, runs in parallel with other jobs
-  lint:
-    name: forge fmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
+  check:
+    strategy:
+      fail-fast: true
 
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1.9.1
-        with:
-          version: v1.5.0
-
-      - name: Run Forge fmt
-        run: make lint
-        working-directory: ./evm
-
-  # Build and test
-  test:
     name: forge test
     runs-on: ubuntu-latest
     steps:
@@ -89,6 +73,9 @@ jobs:
 
       - name: Run Forge tests
         run: make forge-test
+
+      - name: Run Forge fmt
+        run: make lint
 
       - name: Run size test
         run: make size-test
