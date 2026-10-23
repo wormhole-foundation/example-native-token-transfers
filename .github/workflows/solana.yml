@@ -19,45 +19,6 @@ defaults:
     working-directory: ./solana
 
 jobs:
-  # Linting runs on standard ubuntu runner (no need for tilt-kube-public)
-  lint:
-    name: Solana Lint
-    runs-on: ubuntu-latest
-    env:
-      RUSTFLAGS: -Dwarnings
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      - name: Get rust toolchain version
-        id: toolchain
-        run: |
-          RUST_VERSION="$(awk '/channel =/ { print substr($3, 2, length($3)-2) }' rust-toolchain)"
-          echo "version=${RUST_VERSION}" >> $GITHUB_OUTPUT
-
-      - name: Install rust toolchain
-        uses: dtolnay/rust-toolchain@55c7845fad90d0ae8b2e83715cb900e5e861e8cb # zizmor: ignore[superfluous-actions]
-        with:
-          toolchain: ${{ steps.toolchain.outputs.version }}
-          components: "clippy,rustfmt"
-
-      - name: Cache Cargo dependencies
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-        with:
-          workspaces: "solana"
-
-      - name: Run `cargo fmt`
-        run: cargo fmt --check --all --manifest-path Cargo.toml
-
-      - name: Run `cargo check`
-        run: cargo check --workspace --tests --manifest-path Cargo.toml --features mainnet
-
-      - name: Run `cargo clippy`
-        run: cargo clippy --workspace --tests --manifest-path Cargo.toml --features mainnet -- -Dclippy::cast_possible_truncation
-
-  # SBF build and tests require Solana tools
-  # Note: This doesn't need tilt-kube-public - standard ubuntu runner works fine
   solana-sbf:
     name: Solana Cargo SBF
     runs-on: ubuntu-latest
@@ -83,34 +44,25 @@ jobs:
           SOLANA_VERSION="$(awk '/solana-program =/ { print substr($3, 3, length($3)-3) }' Cargo.toml)"
           echo "version=${SOLANA_VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Restore cached SBF artifacts
-        id: cache-sbf
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: solana/target/deploy
-          key: solana-sbf-${{ steps.solana.outputs.version }}-${{ hashFiles('solana/Cargo.lock', 'solana/**/Cargo.toml', 'solana/programs/**/*.rs', 'solana/modules/**/*.rs') }}
-
-      - name: Verify cache contains .so files
-        id: verify-cache
-        run: |
-          if [ -d "target/deploy" ] && ls target/deploy/*.so 1>/dev/null 2>&1; then
-            echo "Cache contains valid .so files"
-            ls -la target/deploy/*.so
-            echo "valid=true" >> $GITHUB_OUTPUT
-          else
-            echo "Cache is empty or missing .so files, will rebuild"
-            echo "valid=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Install rust toolchain
         uses: dtolnay/rust-toolchain@55c7845fad90d0ae8b2e83715cb900e5e861e8cb # zizmor: ignore[superfluous-actions]
         with:
           toolchain: ${{ steps.toolchain.outputs.version }}
+          components: "clippy,rustfmt"
 
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: "solana"
+
+      - name: Run `cargo fmt`
+        run: cargo fmt --check --all --manifest-path Cargo.toml
+
+      - name: Run `cargo check`
+        run: cargo check --workspace --tests --manifest-path Cargo.toml --features mainnet
+
+      - name: Run `cargo clippy`
+        run: cargo clippy --workspace --tests --manifest-path Cargo.toml --features mainnet -- -Dclippy::cast_possible_truncation
 
       - name: Cache solana tools
         id: cache-solana
@@ -131,42 +83,19 @@ jobs:
           sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
           ~/.local/share/solana/install/active_release/bin/sdk/sbf/scripts/install.sh
 
-      - name: Build SBF programs
-        if: steps.verify-cache.outputs.valid != 'true'
+      - name: cargo build-sbf && cargo test-sbf && cargo test
         env:
           RUST_BACKTRACE: "1"
         run: |
           export BPF_OUT_DIR="$(pwd)/target/deploy"
           export PATH="${HOME}/.local/share/solana/install/active_release/bin:${PATH}"
+
           mkdir -p "${BPF_OUT_DIR}"
+
           cargo build-sbf --features "mainnet"
-
-      - name: Save SBF artifacts to cache
-        if: steps.verify-cache.outputs.valid != 'true'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: solana/target/deploy
-          key: solana-sbf-${{ steps.solana.outputs.version }}-${{ hashFiles('solana/Cargo.lock', 'solana/**/Cargo.toml', 'solana/programs/**/*.rs', 'solana/modules/**/*.rs') }}
-
-      - name: Run tests in parallel
-        env:
-          RUST_BACKTRACE: "1"
-        run: |
-          export BPF_OUT_DIR="$(pwd)/target/deploy"
-          export PATH="${HOME}/.local/share/solana/install/active_release/bin:${PATH}"
-
-          # Run test-sbf for both packages in parallel, plus native tests
-          cargo test-sbf -p "example-native-token-transfers" --features "mainnet" &
-          pid1=$!
-          cargo test-sbf -p "ntt-transceiver" --features "mainnet,testing" &
-          pid2=$!
-          cargo test --features "mainnet" &
-          pid3=$!
-
-          # Wait for all and capture exit codes
-          wait $pid1 || exit 1
-          wait $pid2 || exit 1
-          wait $pid3 || exit 1
+          cargo test-sbf -p "example-native-token-transfers" --features "mainnet"
+          cargo test-sbf -p "ntt-transceiver" --features "mainnet,testing"
+          cargo test --features "mainnet"
 
   check-version:
     name: Check version
